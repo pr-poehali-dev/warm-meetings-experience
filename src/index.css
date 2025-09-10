@@ -1,36 +1,38 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant:wght@300;400;600;700&family=Open+Sans:wght@300;400;500;600&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 37 19% 96%;
+    --foreground: 98 19% 18%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 37 19% 96%;
+    --card-foreground: 98 19% 18%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 37 19% 96%;
+    --popover-foreground: 98 19% 18%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 30 18% 46%;
+    --primary-foreground: 37 19% 96%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 93 28% 29%;
+    --secondary-foreground: 37 19% 96%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 32 15% 83%;
+    --muted-foreground: 98 8% 40%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 93 28% 29%;
+    --accent-foreground: 37 19% 96%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 32 15% 83%;
+    --input: 32 15% 83%;
+    --ring: 30 18% 46%;
 
     --radius: 0.5rem;
 
@@ -97,5 +99,10 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: "Open Sans", sans-serif;
+  }
+
+  .font-serif {
+    font-family: "Cormorant", serif;
   }
 }
