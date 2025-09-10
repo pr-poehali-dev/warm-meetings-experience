@@ -372,9 +372,12 @@ export default function Index() {
             <Button 
               size="lg"
               className="bg-nature-brown hover:bg-nature-brown/90 text-nature-cream px-8 py-4 rounded-full transition-all duration-300 hover:scale-105"
+              asChild
             >
-              <Icon name="MessageCircle" size={20} className="mr-2" />
-              Написать в Telegram
+              <a href="https://t.me/banya_live" target="_blank" rel="noopener noreferrer">
+                <Icon name="MessageCircle" size={20} className="mr-2" />
+                Написать в Telegram
+              </a>
             </Button>
             <Button 
               size="lg"
