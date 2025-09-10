@@ -256,8 +256,8 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Personal Story Section */
-      <section className="py-20 px-6 bg-nature-cream">
+      {/* Personal Story Section */}
+      <section className="py-20 px-6 bg-nature-beige">
         <div className="max-w-5xl mx-auto">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="order-2 md:order-1">
@@ -293,7 +293,7 @@ export default function Index() {
       </section>
 
       {/* Atmosphere Gallery */}
-      <section className="py-20 px-6 bg-nature-beige">
+      <section className="py-20 px-6 bg-nature-cream">
         <div className="max-w-6xl mx-auto text-center">
           <h2 className="text-4xl font-serif font-light text-nature-forest mb-16">
             Атмосфера встреч
