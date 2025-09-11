@@ -222,7 +222,7 @@ export default function GroupPrograms() {
               className="bg-nature-brown hover:bg-nature-brown/90 text-nature-cream px-8 py-4 rounded-full transition-all duration-300 hover:scale-105"
               asChild
             >
-              <a href="https://t.me/banya_live" target="_blank" rel="noopener noreferrer">
+              <a href="https://t.me/DmitryChikin" target="_blank" rel="noopener noreferrer">
                 <Icon name="MessageCircle" size={20} className="mr-2" />
                 Узнать о наборе в группы
               </a>

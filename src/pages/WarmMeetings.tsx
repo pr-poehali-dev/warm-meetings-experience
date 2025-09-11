@@ -176,7 +176,7 @@ const WarmMeetings = () => {
           {/* CTA */}
           <div className="text-center">
             <a 
-              href="https://t.me/your_contact" 
+              href="https://t.me/DmitryChikin" 
               target="_blank" 
               rel="noopener noreferrer"
             >

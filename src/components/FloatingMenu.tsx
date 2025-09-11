@@ -82,7 +82,7 @@ const FloatingMenu = () => {
           {/* Contact Section */}
           <div className="border-t border-nature-brown/10 px-4 py-4 bg-nature-brown/5">
             <a 
-              href="https://t.me/banya_live" 
+              href="https://t.me/DmitryChikin" 
               target="_blank" 
               rel="noopener noreferrer"
               onClick={() => setIsOpen(false)}
