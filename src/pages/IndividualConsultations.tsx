@@ -12,7 +12,7 @@ export default function IndividualConsultations() {
             <Icon name="ArrowLeft" size={20} />
             <span className="text-nature-brown font-medium">На главную</span>
           </Link>
-          <h1 className="text-2xl font-bold text-nature-brown">Индивидуальные консультации</h1>
+          <h1 className="text-2xl font-bold text-nature-brown">Индивидуальное парение</h1>
           <div className="w-24" />
         </div>
       </header>
@@ -22,8 +22,9 @@ export default function IndividualConsultations() {
         <div className="max-w-4xl mx-auto">
           {/* Hero Section */}
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-6xl font-bold text-nature-brown mb-6">Выездное парение</h2>
-            <p className="text-xl text-nature-brown/80 max-w-3xl mx-auto leading-relaxed">Премиальный банный опыт с экспертом в условиях полной приватности у вас в бане</p>
+            <h2 className="text-4xl md:text-6xl font-bold text-nature-brown mb-6">Ваше персональное пространство тишины и восстановления. Сеанс, созданный только для вас</h2>
+            <p className="text-xl text-nature-brown/80 max-w-3xl mx-auto leading-relaxed">Ваше персональное пространство тишины и восстановления. 
+Сеанс, созданный только для вас </p>
           </div>
 
           {/* Services Grid */}
