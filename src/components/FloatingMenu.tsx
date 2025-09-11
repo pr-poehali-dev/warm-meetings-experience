@@ -49,7 +49,7 @@ const FloatingMenu = () => {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute top-16 left-0 min-w-[320px] bg-nature-cream/98 backdrop-blur-sm rounded-2xl shadow-2xl border border-nature-brown/20 overflow-hidden animate-in slide-in-from-top-2 duration-300">
+        <div className="absolute top-16 left-0 min-w-[320px] bg-white backdrop-blur-sm rounded-2xl shadow-2xl border border-nature-brown/20 overflow-hidden animate-in slide-in-from-top-2 duration-300">
           {menuItems.map((section, sectionIndex) => (
             <div key={section.title} className={sectionIndex > 0 ? 'border-t border-nature-brown/10' : ''}>
               <div className="px-4 py-3 bg-nature-sage/20">
