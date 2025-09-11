@@ -391,21 +391,17 @@ export default function Index() {
                     </span>
                   </div>
                   <div className="text-right text-sm text-nature-forest/60">
-                    <div>25 сентября</div>
-                    <div>19:00 — 22:00</div>
+                    <div>30 сентября</div>
+                    <div>19:00 — 23:00</div>
                   </div>
                 </div>
                 
-                <h3 className="text-lg font-serif text-nature-forest mb-2">
-                  Тёплые Знакомства: Осенний круг
-                </h3>
+                <h3 className="text-lg font-serif text-nature-forest mb-2">Тёплые Знакомства: Осенний лес с высоты 30 этажа</h3>
                 
-                <p className="text-nature-forest/70 text-sm mb-4">
-                  Камерная встреча для 8 человек через ритуалы парения и чайные церемонии.
-                </p>
+                <p className="text-nature-forest/70 text-sm mb-4">Камерная встреча для 12 человек через ритуалы парения и чайные церемонии.</p>
                 
                 <div className="flex items-center justify-between">
-                  <div className="text-nature-brown font-medium">5 000 ₽</div>
+                  <div className="text-nature-brown font-medium mx-0">от 5 000 ₽</div>
                   <div className="text-xs text-green-600">Осталось 3 места</div>
                 </div>
               </CardContent>
