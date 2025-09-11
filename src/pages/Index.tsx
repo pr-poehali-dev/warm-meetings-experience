@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
+import { Link } from "react-router-dom";
 
 export default function Index() {
   return (
@@ -106,82 +107,88 @@ export default function Index() {
             В каком состоянии вы хотите встретиться?
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
-            <Card className="bg-nature-cream/95 border-nature-brown/20 hover:shadow-lg transition-all duration-300 hover:scale-105">
-              <CardContent className="p-8">
-                <div className="flex items-center mb-4">
-                  <Icon name="Users" size={32} className="text-nature-brown mr-3" />
-                  <span className="text-sm text-nature-brown font-medium uppercase tracking-wide">
-                    Состояние
-                  </span>
-                </div>
-                <h3 className="text-2xl font-serif font-medium text-nature-forest mb-3">
-                  Искренность
-                </h3>
-                <p className="text-nature-forest/60 text-sm mb-4 italic">
-                  Тёплые Знакомства
-                </p>
-                <p className="text-nature-forest/80 mb-4">
-                  Для тех, кто устал от масок и хочет услышать и быть услышанным.
-                </p>
-                <p className="text-sm text-nature-brown italic mb-3">
-                  «Знакомство, которое начинается с сердца, а не с профиля в соцсети.»
-                </p>
-                <p className="text-xs text-nature-forest/50">
-                  Локация: уютная камерная баня в черте города
-                </p>
-              </CardContent>
+            <Card className="bg-nature-cream/95 border-nature-brown/20 hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer">
+              <Link to="/individual-consultations">
+                <CardContent className="p-8">
+                  <div className="flex items-center mb-4">
+                    <Icon name="User" size={32} className="text-nature-brown mr-3" />
+                    <span className="text-sm text-nature-brown font-medium uppercase tracking-wide">
+                      Услуга
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-serif font-medium text-nature-forest mb-3">
+                    Индивидуальные консультации
+                  </h3>
+                  <p className="text-nature-forest/60 text-sm mb-4 italic">
+                    Персональная терапия
+                  </p>
+                  <p className="text-nature-forest/80 mb-4">
+                    Глубокая работа с личными запросами в индивидуальном формате.
+                  </p>
+                  <p className="text-sm text-nature-brown italic mb-3">
+                    «Ваша трансформация — мой главный результат.»
+                  </p>
+                  <p className="text-xs text-nature-forest/50">
+                    От 3 000 ₽ за сессию
+                  </p>
+                </CardContent>
+              </Link>
             </Card>
             
-            <Card className="bg-nature-cream/95 border-nature-brown/20 hover:shadow-lg transition-all duration-300 hover:scale-105">
-              <CardContent className="p-8">
-                <div className="flex items-center mb-4">
-                  <Icon name="HandHeart" size={32} className="text-nature-brown mr-3" />
-                  <span className="text-sm text-nature-brown font-medium uppercase tracking-wide">
-                    Состояние
-                  </span>
-                </div>
-                <h3 className="text-2xl font-serif font-medium text-nature-forest mb-3">
-                  Доверие
-                </h3>
-                <p className="text-nature-forest/60 text-sm mb-4 italic">
-                  Тёплый Тимбилдинг
-                </p>
-                <p className="text-nature-forest/80 mb-4">
-                  Для команд, которые хотят стать не коллегами, а сплочённым кругом.
-                </p>
-                <p className="text-sm text-nature-brown italic mb-3">
-                  «Где руководитель и стажёр встречаются как равные у общего пара.»
-                </p>
-                <p className="text-xs text-nature-forest/50">
-                  Локация: подбирается индивидуально под запрос и бюджет компании
-                </p>
-              </CardContent>
+            <Card className="bg-nature-cream/95 border-nature-brown/20 hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer">
+              <Link to="/group-programs">
+                <CardContent className="p-8">
+                  <div className="flex items-center mb-4">
+                    <Icon name="Users" size={32} className="text-nature-brown mr-3" />
+                    <span className="text-sm text-nature-brown font-medium uppercase tracking-wide">
+                      Услуга
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-serif font-medium text-nature-forest mb-3">
+                    Групповые программы
+                  </h3>
+                  <p className="text-nature-forest/60 text-sm mb-4 italic">
+                    Терапия в группе
+                  </p>
+                  <p className="text-nature-forest/80 mb-4">
+                    Работа в группе единомышленников для взаимной поддержки и роста.
+                  </p>
+                  <p className="text-sm text-nature-brown italic mb-3">
+                    «Вместе мы сильнее в преодолении трудностей.»
+                  </p>
+                  <p className="text-xs text-nature-forest/50">
+                    От 12 000 ₽ за программу
+                  </p>
+                </CardContent>
+              </Link>
             </Card>
             
-            <Card className="bg-nature-cream/95 border-nature-brown/20 hover:shadow-lg transition-all duration-300 hover:scale-105">
-              <CardContent className="p-8">
-                <div className="flex items-center mb-4">
-                  <Icon name="Heart" size={32} className="text-nature-brown mr-3" />
-                  <span className="text-sm text-nature-brown font-medium uppercase tracking-wide">
-                    Состояние
-                  </span>
-                </div>
+            <Card className="bg-nature-cream/95 border-nature-brown/20 hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer">
+              <Link to="/online-courses">
+                <CardContent className="p-8">
+                  <div className="flex items-center mb-4">
+                    <Icon name="Monitor" size={32} className="text-nature-brown mr-3" />
+                    <span className="text-sm text-nature-brown font-medium uppercase tracking-wide">
+                      Услуга
+                    </span>
+                  </div>
                 <h3 className="text-2xl font-serif font-medium text-nature-forest mb-3">
-                  Близость
+                  Онлайн-курсы
                 </h3>
                 <p className="text-nature-forest/60 text-sm mb-4 italic">
-                  Тёплые Свидания
+                  Обучение онлайн
                 </p>
                 <p className="text-nature-forest/80 mb-4">
-                  Для пар, которые хотят говорить на языке прикосновений и тишины.
+                  Структурированные программы для самостоятельного изучения.
                 </p>
                 <p className="text-sm text-nature-brown italic mb-3">
-                  «Свидание, которое вернёт вас от гаджетов — друг к другу.»
+                  «Знания, которые изменят вашу жизнь.»
                 </p>
                 <p className="text-xs text-nature-forest/50">
-                  Локация: приватная баня с особенным настроением
+                  От 5 500 ₽ за курс
                 </p>
-              </CardContent>
+                </CardContent>
+              </Link>
             </Card>
           </div>
         </div>
