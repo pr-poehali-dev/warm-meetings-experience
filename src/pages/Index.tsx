@@ -283,7 +283,7 @@ export default function Index() {
             </div>
             <div className="order-1 md:order-2">
               <img 
-                src="/img/60de1bde-6350-4f98-8a25-5b5f9377d361.jpg"
+                src="https://cdn.poehali.dev/files/4a037c7b-ace8-4491-8ec8-5bd4cf1f267b.jpg"
                 alt="Дмитрий Чикин"
                 className="w-full rounded-2xl shadow-lg animate-scale-in"
               />
