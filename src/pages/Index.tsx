@@ -134,9 +134,10 @@ export default function Index() {
               </Link>
             </Card>
             
-            <Card className="bg-nature-cream/95 border-nature-brown/20 hover:shadow-lg transition-all duration-300 hover:scale-105">
-              <CardContent className="p-8">
-                <div className="flex items-center mb-4">
+            <Card className="bg-nature-cream/95 border-nature-brown/20 hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer">
+              <Link to="/warm-team-building">
+                <CardContent className="p-8">
+                  <div className="flex items-center mb-4">
                     <Icon name="HandHeart" size={32} className="text-nature-brown mr-3" />
                     <span className="text-sm text-nature-brown font-medium uppercase tracking-wide">
                       Состояние
@@ -161,9 +162,10 @@ export default function Index() {
               </Link>
             </Card>
             
-            <Card className="bg-nature-cream/95 border-nature-brown/20 hover:shadow-lg transition-all duration-300 hover:scale-105">
-              <CardContent className="p-8">
-                <div className="flex items-center mb-4">
+            <Card className="bg-nature-cream/95 border-nature-brown/20 hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer">
+              <Link to="/warm-dates">
+                <CardContent className="p-8">
+                  <div className="flex items-center mb-4">
                     <Icon name="Heart" size={32} className="text-nature-brown mr-3" />
                     <span className="text-sm text-nature-brown font-medium uppercase tracking-wide">
                       Состояние
