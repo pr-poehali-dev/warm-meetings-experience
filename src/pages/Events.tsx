@@ -208,7 +208,7 @@ const Events = () => {
               Подпишитесь на уведомления о новых мероприятиях и получите скидку 10% на первое участие.
             </p>
             <a 
-              href="https://t.me/DmitryChikin" 
+              href="https://t.me/banya_live" 
               target="_blank" 
               rel="noopener noreferrer"
             >
