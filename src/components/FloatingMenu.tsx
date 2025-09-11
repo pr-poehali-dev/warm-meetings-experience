@@ -10,7 +10,7 @@ const FloatingMenu = () => {
     { 
       title: 'Услуги', 
       items: [
-        { name: 'Индивидуальные консультации', path: '/individual-consultations', icon: 'User' },
+        { name: 'Индивидуальное парение', path: '/individual-consultations', icon: 'User' },
         { name: 'Групповые программы', path: '/group-programs', icon: 'Users' },
         { name: 'Онлайн-курсы', path: '/online-courses', icon: 'Monitor' }
       ]
