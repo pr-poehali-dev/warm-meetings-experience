@@ -22,14 +22,8 @@ export default function IndividualConsultations() {
         <div className="max-w-4xl mx-auto">
           {/* Hero Section */}
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-6xl font-bold text-nature-brown mb-6">
-              Персональные
-              <span className="block text-nature-sage">консультации</span>
-            </h2>
-            <p className="text-xl text-nature-brown/80 max-w-3xl mx-auto leading-relaxed">
-              Индивидуальная работа с психологом для глубокого понимания себя 
-              и решения личных вопросов в комфортной атмосфере.
-            </p>
+            <h2 className="text-4xl md:text-6xl font-bold text-nature-brown mb-6">Выездное парение</h2>
+            <p className="text-xl text-nature-brown/80 max-w-3xl mx-auto leading-relaxed">Премиальный банный опыт с экспертом в условиях полной приватности у вас в бане</p>
           </div>
 
           {/* Services Grid */}
