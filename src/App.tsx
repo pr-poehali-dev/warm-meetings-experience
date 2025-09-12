@@ -14,6 +14,7 @@ import WarmMeetings from "./pages/WarmMeetings";
 import WarmTeamBuilding from "./pages/WarmTeamBuilding";
 import WarmDates from "./pages/WarmDates";
 import Events from "./pages/Events";
+import MobileServices from "./pages/MobileServices";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/warm-team-building" element={<WarmTeamBuilding />} />
           <Route path="/warm-dates" element={<WarmDates />} />
           <Route path="/events" element={<Events />} />
+          <Route path="/mobile-services" element={<MobileServices />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

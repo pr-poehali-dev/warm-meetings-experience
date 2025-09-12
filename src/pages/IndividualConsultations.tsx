@@ -22,111 +22,146 @@ export default function IndividualConsultations() {
         <div className="max-w-4xl mx-auto">
           {/* Hero Section */}
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-6xl font-bold text-nature-brown mb-6">Ваше персональное пространство тишины и восстановления. Сеанс, созданный только для вас</h2>
-            <p className="text-xl text-nature-brown/80 max-w-3xl mx-auto leading-relaxed">Ваше персональное пространство тишины и восстановления. 
-Сеанс, созданный только для вас </p>
+            <h2 className="text-4xl md:text-6xl font-bold text-nature-brown mb-6">Персональное парение: встреча с собой</h2>
+            <p className="text-xl text-nature-brown/80 max-w-3xl mx-auto leading-relaxed">
+              Глубокое погружение, где всё внимание — только вам. Ритуал для снятия напряжения, 
+              перезагрузки сознания и диалога с телом.
+            </p>
           </div>
 
-          {/* Services Grid */}
-          <div className="grid md:grid-cols-2 gap-8 mb-16">
-            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-8 shadow-lg">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-nature-sage rounded-full flex items-center justify-center">
-                  <Icon name="User" size={24} className="text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-nature-brown">Личная терапия</h3>
-              </div>
-              <p className="text-nature-brown/80 mb-6">
-                Глубокая работа с личными травмами, страхами и блоками. 
-                Помогаю разобраться в себе и найти внутренние ресурсы для изменений.
-              </p>
-              <ul className="space-y-2">
-                <li className="flex items-center gap-2 text-nature-brown">
-                  <Icon name="Check" size={16} className="text-nature-sage" />
-                  Работа с тревогой и депрессией
-                </li>
-                <li className="flex items-center gap-2 text-nature-brown">
-                  <Icon name="Check" size={16} className="text-nature-sage" />
-                  Проработка детских травм
-                </li>
-                <li className="flex items-center gap-2 text-nature-brown">
-                  <Icon name="Check" size={16} className="text-nature-sage" />
-                  Поиск жизненного пути
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-8 shadow-lg">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 bg-nature-sage rounded-full flex items-center justify-center">
-                  <Icon name="Heart" size={24} className="text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-nature-brown">Семейная терапия</h3>
-              </div>
-              <p className="text-nature-brown/80 mb-6">
-                Работа с парами и семьями для улучшения отношений, 
-                разрешения конфликтов и восстановления доверия.
-              </p>
-              <ul className="space-y-2">
-                <li className="flex items-center gap-2 text-nature-brown">
-                  <Icon name="Check" size={16} className="text-nature-sage" />
-                  Конфликты в паре
-                </li>
-                <li className="flex items-center gap-2 text-nature-brown">
-                  <Icon name="Check" size={16} className="text-nature-sage" />
-                  Детско-родительские отношения
-                </li>
-                <li className="flex items-center gap-2 text-nature-brown">
-                  <Icon name="Check" size={16} className="text-nature-sage" />
-                  Кризисы в семье
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Format & Pricing */}
+          {/* For Whom Section */}
           <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-8 shadow-lg mb-16">
-            <h3 className="text-3xl font-bold text-nature-brown mb-8 text-center">Форматы и стоимость</h3>
-            <div className="grid md:grid-cols-3 gap-6">
+            <h3 className="text-3xl font-bold text-nature-brown mb-8 text-center">Для кого</h3>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="flex items-start gap-3">
+                <Icon name="Crown" size={20} className="text-nature-sage mt-1" />
+                <p className="text-nature-brown">Для тех, кто ценит эксклюзивность и персональный подход</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Icon name="Zap" size={20} className="text-nature-sage mt-1" />
+                <p className="text-nature-brown">Для уставших от стресса и нуждающихся в глубоком перезапуске</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Icon name="Heart" size={20} className="text-nature-sage mt-1" />
+                <p className="text-nature-brown">Для тех, кто хочет разобраться в запросах своего тела без суеты</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Icon name="Shield" size={20} className="text-nature-sage mt-1" />
+                <p className="text-nature-brown">Для новичков, кто хочет впервые познакомиться с баней в безопасном формате</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Benefits Section */}
+          <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-8 shadow-lg mb-16">
+            <h3 className="text-3xl font-bold text-nature-brown mb-8 text-center">Ваша выгода</h3>
+            <div className="grid md:grid-cols-2 gap-8">
               <div className="text-center">
                 <div className="w-16 h-16 bg-nature-sage rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Icon name="Clock" size={24} className="text-white" />
+                  <Icon name="Target" size={24} className="text-white" />
                 </div>
-                <h4 className="text-xl font-semibold text-nature-brown mb-2">Разовая консультация</h4>
-                <p className="text-nature-brown/80 mb-4">50 минут</p>
-                <p className="text-2xl font-bold text-nature-sage">3 500 ₽</p>
+                <h4 className="text-xl font-semibold text-nature-brown mb-3">100% внимание</h4>
+                <p className="text-nature-brown/80">Программа, созданная под ваши уникальные запросы (расслабление, восстановление после спорта, детокс)</p>
               </div>
-              
+
               <div className="text-center">
                 <div className="w-16 h-16 bg-nature-sage rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Icon name="Calendar" size={24} className="text-white" />
+                  <Icon name="Waves" size={24} className="text-white" />
                 </div>
-                <h4 className="text-xl font-semibold text-nature-brown mb-2">Пакет из 4 сессий</h4>
-                <p className="text-nature-brown/80 mb-4">4 встречи по 50 минут</p>
-                <p className="text-2xl font-bold text-nature-sage">12 000 ₽</p>
-                <p className="text-sm text-nature-sage">Экономия 2 000 ₽</p>
+                <h4 className="text-xl font-semibold text-nature-brown mb-3">Глубина погружения</h4>
+                <p className="text-nature-brown/80">Возможность достичь состояния глубокого транса и осознанности, недоступного в группе</p>
               </div>
-              
+
               <div className="text-center">
                 <div className="w-16 h-16 bg-nature-sage rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Icon name="Star" size={24} className="text-white" />
+                  <Icon name="Lock" size={24} className="text-white" />
                 </div>
-                <h4 className="text-xl font-semibold text-nature-brown mb-2">Долгосрочная терапия</h4>
-                <p className="text-nature-brown/80 mb-4">От 8 сессий</p>
-                <p className="text-2xl font-bold text-nature-sage">3 000 ₽</p>
-                <p className="text-sm text-nature-sage">За сессию</p>
+                <h4 className="text-xl font-semibold text-nature-brown mb-3">Безопасность и доверие</h4>
+                <p className="text-nature-brown/80">Полная конфиденциальность и возможность быть собой</p>
               </div>
+
+              <div className="text-center">
+                <div className="w-16 h-16 bg-nature-sage rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Icon name="Award" size={24} className="text-white" />
+                </div>
+                <h4 className="text-xl font-semibold text-nature-brown mb-3">Экспертный подход</h4>
+                <p className="text-nature-brown/80">Не просто пар, а работа с телом и дыханием для точечного результата</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Process Section */}
+          <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-8 shadow-lg mb-16">
+            <h3 className="text-3xl font-bold text-nature-brown mb-8 text-center">Как это происходит</h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-nature-sage text-white rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">1</div>
+                <h4 className="text-lg font-semibold text-nature-brown mb-3">Диалог</h4>
+                <p className="text-nature-brown/80 text-sm">Предварительная беседа для определения вашего состояния и запроса</p>
+              </div>
+
+              <div className="text-center">
+                <div className="w-12 h-12 bg-nature-sage text-white rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">2</div>
+                <h4 className="text-lg font-semibold text-nature-brown mb-3">Настройка</h4>
+                <p className="text-nature-brown/80 text-sm">Создание атмосферы (свет, звук, ароматы) под ваши задачи</p>
+              </div>
+
+              <div className="text-center">
+                <div className="w-12 h-12 bg-nature-sage text-white rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">3</div>
+                <h4 className="text-lg font-semibold text-nature-brown mb-3">Парение</h4>
+                <p className="text-nature-brown/80 text-sm">Авторский ритуал с акцентами на нужные зоны и состояния</p>
+              </div>
+
+              <div className="text-center">
+                <div className="w-12 h-12 bg-nature-sage text-white rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">4</div>
+                <h4 className="text-lg font-semibold text-nature-brown mb-3">Интеграция</h4>
+                <p className="text-nature-brown/80 text-sm">Время для осознания эффекта и чайный ритуал для закрепления</p>
+              </div>
+            </div>
+          </div>
+
+          {/* FAQ Section */}
+          <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-8 shadow-lg mb-16">
+            <h3 className="text-3xl font-bold text-nature-brown mb-8 text-center">Ответы на вопросы</h3>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-semibold text-nature-brown mb-2">А если я никогда не парился?</h4>
+                <p className="text-nature-brown/80">Идеально для новичков. Это самый безопасный формат.</p>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold text-nature-brown mb-2">Что взять с собой?</h4>
+                <p className="text-nature-brown/80">Нужно только ваше тело и желание relax. Всё остальное предоставим мы.</p>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold text-nature-brown mb-2">Какой будет эффект?</h4>
+                <p className="text-nature-brown/80">Вы выйдете обновлённым, ясным и наполненным, как после недели отпуска.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing */}
+          <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-8 shadow-lg mb-16">
+            <h3 className="text-3xl font-bold text-nature-brown mb-8 text-center">Стоимость</h3>
+            <div className="text-center">
+              <div className="w-20 h-20 bg-nature-sage rounded-full flex items-center justify-center mx-auto mb-6">
+                <Icon name="Clock" size={32} className="text-white" />
+              </div>
+              <h4 className="text-2xl font-bold text-nature-brown mb-2">Персональная 2-часовая сессия</h4>
+              <p className="text-4xl font-bold text-nature-sage mb-4">10 000 ₽</p>
+              <p className="text-nature-brown/80 mb-6">
+                Включено: Работа пармейстера, приватная локация, травяной чай и все материалы
+              </p>
             </div>
           </div>
 
           {/* CTA */}
           <div className="text-center">
             <h3 className="text-3xl font-bold text-nature-brown mb-6">
-              Готовы начать путь к изменениям?
+              Забронировать свой ритуал
             </h3>
             <p className="text-xl text-nature-brown/80 mb-8 max-w-2xl mx-auto">
-              Записывайтесь на первую консультацию. 
-              Обсудим ваши запросы и найдем подходящий формат работы.
+              Готовы к персональному путешествию в мир банной культуры? 
+              Свяжитесь со мной для бронирования сессии.
             </p>
             <Button 
               size="lg"
@@ -135,7 +170,7 @@ export default function IndividualConsultations() {
             >
               <a href="https://t.me/DmitryChikin" target="_blank" rel="noopener noreferrer">
                 <Icon name="MessageCircle" size={20} className="mr-2" />
-                Записаться на консультацию
+                Забронировать ритуал
               </a>
             </Button>
           </div>

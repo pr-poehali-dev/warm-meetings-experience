@@ -11,8 +11,8 @@ const FloatingMenu = () => {
       title: 'Услуги', 
       items: [
         { name: 'Индивидуальное парение', path: '/individual-consultations', icon: 'User' },
-        { name: 'Групповые программы', path: '/group-programs', icon: 'Users' },
-        { name: 'Онлайн-курсы', path: '/online-courses', icon: 'Monitor' }
+        { name: 'Выездное парение', path: '/mobile-services', icon: 'Truck' },
+        { name: 'Обучение парению', path: '/online-courses', icon: 'GraduationCap' }
       ]
     },
     { 
