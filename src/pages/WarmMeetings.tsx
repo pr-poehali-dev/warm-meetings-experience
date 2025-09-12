@@ -62,11 +62,7 @@ const WarmMeetings = () => {
                 <Icon name="Compass" size={28} className="text-nature-brown" />
                 Суть формата
               </h2>
-              <p className="text-nature-forest/80 text-lg leading-relaxed">
-                Это не speed-dating и не вечеринка. Это carefully curated встреча для 6-8 человек 
-                в атмосфере доверия и взаимного уважения. Через общие ритуалы парения, чаепития 
-                и facilitated-диалоги мы создаём условия, где маски остаются за дверью.
-              </p>
+              <p className="text-nature-forest/80 text-lg leading-relaxed">Это не не быстрые свидания и не вечеринка. Это тщательно подготовленная встреча для 8-12 человек в атмосфере доверия и взаимного уважения. Через общие ритуалы парения, чаепития и легкие диалоги мы создаём условия, где маски остаются за дверью.</p>
             </CardContent>
           </Card>
 
@@ -137,9 +133,7 @@ const WarmMeetings = () => {
                     <div className="w-8 h-8 bg-nature-brown text-nature-cream rounded-full flex items-center justify-center text-sm font-medium">3</div>
                     <h3 className="font-medium text-nature-forest">Диалог</h3>
                   </div>
-                  <p className="text-nature-forest/80 ml-11">
-                    Facilitated-беседа в кругу на глубокие, но неформальные темы
-                  </p>
+                  <p className="text-nature-forest/80 ml-11">Легкая беседа в кругу на глубокие, но неформальные темы</p>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
@@ -164,7 +158,7 @@ const WarmMeetings = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-lg text-nature-forest">Участие:</span>
-                  <span className="text-2xl font-bold text-nature-brown">5 000 ₽</span>
+                  <span className="text-2xl font-bold text-nature-brown">от 5 000 ₽</span>
                 </div>
                 <p className="text-nature-forest/70 text-sm">
                   Включено: Работа ведущего, аренда локации, чайная церемония, все материалы
