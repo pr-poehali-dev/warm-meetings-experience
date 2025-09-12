@@ -147,7 +147,7 @@ export default function IndividualConsultations() {
                 <Icon name="Clock" size={32} className="text-white" />
               </div>
               <h4 className="text-2xl font-bold text-nature-brown mb-2">Персональная 2-часовая сессия</h4>
-              <p className="text-4xl font-bold text-nature-sage mb-4">10 000 ₽</p>
+              <p className="text-4xl font-bold text-nature-sage mb-4">25 000 ₽</p>
               <p className="text-nature-brown/80 mb-6">
                 Включено: Работа пармейстера, приватная локация, травяной чай и все материалы
               </p>
