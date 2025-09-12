@@ -174,10 +174,7 @@ const WarmMeetings = () => {
               target="_blank" 
               rel="noopener noreferrer"
             >
-              <Button className="bg-nature-brown hover:bg-nature-brown/90 text-nature-cream px-8 py-3 text-lg">
-                <Icon name="MessageCircle" size={20} className="mr-2" />
-                Найти свои тёплые знакомства
-              </Button>
+              <Button className="bg-nature-brown hover:bg-nature-brown/90 text-nature-cream px-8 py-3 text-lg">Посмотреть ближайшие мероприятия</Button>
             </a>
           </div>
         </div>
