@@ -21,9 +21,7 @@ export default function HeroSection() {
         <Button 
           size="lg" 
           className="bg-nature-brown hover:bg-nature-brown/90 text-nature-cream text-lg px-8 py-4 rounded-full transition-all duration-300 hover:scale-105"
-        >
-          Войти в пространство
-        </Button>
+        >Ближайшие мероприятия</Button>
       </div>
     </section>
   );
