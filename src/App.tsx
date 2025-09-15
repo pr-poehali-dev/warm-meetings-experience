@@ -9,7 +9,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import IndividualConsultations from "./pages/IndividualConsultations";
 import GroupPrograms from "./pages/GroupPrograms";
-import OnlineCourses from "./pages/OnlineCourses";
+
 import WarmMeetings from "./pages/WarmMeetings";
 import WarmTeamBuilding from "./pages/WarmTeamBuilding";
 import WarmDates from "./pages/WarmDates";
@@ -29,7 +29,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/individual-consultations" element={<IndividualConsultations />} />
           <Route path="/group-programs" element={<GroupPrograms />} />
-          <Route path="/online-courses" element={<OnlineCourses />} />
+
           <Route path="/warm-meetings" element={<WarmMeetings />} />
           <Route path="/warm-team-building" element={<WarmTeamBuilding />} />
           <Route path="/warm-dates" element={<WarmDates />} />
