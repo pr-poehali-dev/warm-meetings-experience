@@ -1,6 +1,9 @@
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 export default function HeroSection() {
+  const navigate = useNavigate();
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       <div 
@@ -20,6 +23,7 @@ export default function HeroSection() {
         </p>
         <Button 
           size="lg" 
+          onClick={() => navigate('/events')}
           className="bg-nature-brown hover:bg-nature-brown/90 text-nature-cream text-lg px-8 py-4 rounded-full transition-all duration-300 hover:scale-105"
         >Ближайшие события</Button>
       </div>
