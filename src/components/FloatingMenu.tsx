@@ -12,7 +12,7 @@ const FloatingMenu = () => {
       items: [
         { name: 'Индивидуальное парение', path: '/individual-consultations', icon: 'User' },
         { name: 'Выездное парение', path: '/mobile-services', icon: 'Truck' },
-        { name: 'Обучение парению', path: '/online-courses', icon: 'GraduationCap' }
+
       ]
     },
     { 
