@@ -398,7 +398,7 @@ const WarmTeamBuilding = () => {
               </div>
               <div className="flex items-center gap-3">
                 <Icon name="CheckCircle" className="text-green-500" size={24} />
-                <span>Профессиональные пармейстеры с опытом</span>
+                <span>Профессиональные ведущие и пармастеры с опытом</span>
               </div>
               <div className="flex items-center gap-3">
                 <Icon name="CheckCircle" className="text-green-500" size={24} />
