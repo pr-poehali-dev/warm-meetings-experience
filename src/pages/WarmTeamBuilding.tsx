@@ -138,9 +138,7 @@ const WarmTeamBuilding = () => {
             size="lg" 
             className="bg-nature-brown hover:bg-nature-forest text-white px-8 py-4 text-lg"
             onClick={() => document.getElementById('calculator')?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            Рассчитать стоимость для моей команды
-          </Button>
+          >Рассчитать стоимость</Button>
         </div>
       </section>
 
