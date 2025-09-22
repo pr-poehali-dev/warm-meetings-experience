@@ -105,10 +105,10 @@ const WarmTeamBuilding = () => {
       <section 
         className="relative min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: "linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('/img/f2551001-2b2c-4e6e-8b05-c36d1d5c5fcb.jpg')"
+          backgroundImage: "linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.6)), url('/img/f2551001-2b2c-4e6e-8b05-c36d1d5c5fcb.jpg')"
         }}
       >
-        <div className="container mx-auto px-4 text-center text-white max-w-4xl">
+        <div className="container mx-auto px-4 text-center text-white max-w-4xl drop-shadow-lg">
           <h1 className="text-4xl md:text-6xl font-serif mb-6 leading-tight">
             Тимбилдинг, который работает:<br />
             <span className="text-nature-sand">94% команд улучшают коммуникации</span><br />
