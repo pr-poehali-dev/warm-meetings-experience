@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
@@ -109,6 +110,13 @@ const WarmTeamBuilding = () => {
         }}
       >
         <div className="container mx-auto px-4 text-center text-white max-w-4xl drop-shadow-lg">
+          <div className="absolute top-8 left-8">
+            <Link to="/" className="flex items-center gap-2 text-white hover:text-nature-sand transition-colors">
+              <Icon name="ArrowLeft" size={20} />
+              <span>На главную</span>
+            </Link>
+          </div>
+          
           <h1 className="text-4xl md:text-6xl font-serif mb-6 leading-tight">
             Тимбилдинг, который работает:<br />
             <span className="text-nature-sand">94% команд улучшают коммуникации</span><br />
