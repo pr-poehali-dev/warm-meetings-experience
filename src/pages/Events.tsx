@@ -74,10 +74,7 @@ const Events = () => {
           <Link
             to="/"
             className="text-xl font-serif flex items-center gap-2 hover:text-nature-sage transition-colors"
-          >
-            <Icon name="ArrowLeft" size={20} />
-            Главная
-          </Link>
+          >Назад</Link>
           <h1 className="text-sm font-medium">Ближайшие события</h1>
         </div>
       </header>
