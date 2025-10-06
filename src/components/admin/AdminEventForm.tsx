@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import ImageUpload from "./ImageUpload";
 
 interface Event {
   id?: number;
@@ -139,25 +140,10 @@ const AdminEventForm = ({
                 </Select>
               </div>
 
-              <div>
-                <Label htmlFor="image_url">URL изображения</Label>
-                <Input
-                  id="image_url"
-                  type="url"
-                  value={formData.image_url}
-                  onChange={(e) =>
-                    onFormChange({ ...formData, image_url: e.target.value })
-                  }
-                  placeholder="https://example.com/image.jpg"
-                />
-                {formData.image_url && (
-                  <img
-                    src={formData.image_url}
-                    alt="Preview"
-                    className="mt-4 w-full max-w-md h-48 object-cover rounded-lg"
-                  />
-                )}
-              </div>
+              <ImageUpload
+                currentImageUrl={formData.image_url}
+                onImageUploaded={(url) => onFormChange({ ...formData, image_url: url })}
+              />
 
               <div className="flex items-center gap-2">
                 <input

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import AdminLogin from "@/components/admin/AdminLogin";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminOverview from "@/components/admin/AdminOverview";
 import AdminEventsList from "@/components/admin/AdminEventsList";
@@ -25,6 +26,7 @@ interface Event {
 const API_URL = "https://functions.poehali.dev/0d9ea640-f2f5-4e63-8633-db26b10decc8";
 
 const Admin = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<"overview" | "list" | "add">("overview");
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,10 +51,25 @@ const Admin = () => {
   });
 
   useEffect(() => {
-    if (currentView === "list" || currentView === "overview") {
+    const token = localStorage.getItem("admin_token");
+    const expires = localStorage.getItem("admin_token_expires");
+    
+    if (token && expires) {
+      const expiresDate = new Date(expires);
+      if (expiresDate > new Date()) {
+        setIsAuthenticated(true);
+      } else {
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("admin_token_expires");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && (currentView === "list" || currentView === "overview")) {
       fetchEvents();
     }
-  }, [currentView]);
+  }, [currentView, isAuthenticated]);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -202,6 +219,20 @@ const Admin = () => {
     });
   };
 
+  const handleLoginSuccess = (token: string) => {
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_token_expires");
+    setIsAuthenticated(false);
+    toast({
+      title: "Выход выполнен",
+      description: "Вы вышли из админ-панели",
+    });
+  };
+
   const getOccupancyLabel = (occupancy: string) => {
     const labels: Record<string, string> = {
       low: "Низкая",
@@ -222,6 +253,10 @@ const Admin = () => {
     return colors[occupancy] || "bg-gray-100 text-gray-800";
   };
 
+  if (!isAuthenticated) {
+    return <AdminLogin onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="flex">
@@ -229,6 +264,7 @@ const Admin = () => {
           currentView={currentView}
           onViewChange={setCurrentView}
           onNewEvent={resetForm}
+          onLogout={handleLogout}
         />
 
         <main className="flex-1 p-8">

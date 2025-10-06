@@ -1,3 +1,5 @@
 {
+  "admin-auth": "https://functions.poehali.dev/bf05e573-64d0-4ab1-a65d-3477af60fe9a",
+  "image-upload": "https://functions.poehali.dev/2ff77aef-179a-445e-8e7e-744cb90ea2e8",
   "events-api": "https://functions.poehali.dev/0d9ea640-f2f5-4e63-8633-db26b10decc8"
 }
