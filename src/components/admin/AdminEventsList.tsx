@@ -101,14 +101,46 @@ const AdminEventsList = ({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {events.map((event) => (
-            <Card key={event.id} className="overflow-hidden">
-              {event.image_url && (
-                <img
-                  src={event.image_url}
-                  alt={event.title}
-                  className="w-full h-48 object-cover"
-                />
-              )}
+            <Card key={event.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+              <div className="relative">
+                {event.image_url && (
+                  <img
+                    src={event.image_url}
+                    alt={event.title}
+                    className="w-full h-48 object-cover"
+                  />
+                )}
+                <div className="absolute top-2 right-2 flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onEdit(event)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
+                    title="Редактировать"
+                  >
+                    <Icon name="Edit" size={16} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onToggleVisibility(event)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
+                    title={event.is_visible ? "Скрыть" : "Показать"}
+                  >
+                    <Icon name={event.is_visible ? "Eye" : "EyeOff"} size={16} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onDeleteRequest(event.id!)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white hover:text-red-600"
+                    title="Удалить"
+                  >
+                    <Icon name="Trash2" size={16} />
+                  </Button>
+                </div>
+              </div>
+              
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="flex items-center gap-1.5 text-blue-600 text-xs bg-blue-50 px-2 py-1 rounded">
@@ -116,52 +148,40 @@ const AdminEventsList = ({
                     <span>{event.event_type}</span>
                   </div>
                   {!event.is_visible && (
-                    <Icon name="EyeOff" size={16} className="text-gray-400" />
+                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Скрыто</span>
                   )}
                 </div>
-                <h3 className="font-bold text-lg text-gray-800 mb-2">{event.title}</h3>
-                <p className="text-sm text-gray-600 mb-3">{event.short_description}</p>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                  <Icon name="Calendar" size={14} />
-                  <span>{event.event_date}</span>
+                
+                <h3 className="font-bold text-lg text-gray-800 mb-2 line-clamp-2">{event.title}</h3>
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{event.short_description}</p>
+                
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Icon name="Calendar" size={14} />
+                    <span>{event.event_date}</span>
+                  </div>
+                  {event.price && (
+                    <span className="text-sm font-semibold text-gray-700">{event.price}</span>
+                  )}
                 </div>
-                <span
-                  className={`inline-block px-3 py-1 rounded-full text-xs font-medium mb-4 ${getOccupancyColor(
-                    event.occupancy
-                  )}`}
-                >
-                  {getOccupancyLabel(event.occupancy)}
-                </span>
-
-                <div className="flex gap-2">
+                
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${getOccupancyColor(
+                      event.occupancy
+                    )}`}
+                  >
+                    {getOccupancyLabel(event.occupancy)}
+                  </span>
+                  
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => onViewDetails(event)}
-                    className="flex-1"
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                   >
                     Подробнее
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onEdit(event)}
-                  >
-                    <Icon name="Edit" size={14} />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onToggleVisibility(event)}
-                  >
-                    <Icon name={event.is_visible ? "EyeOff" : "Eye"} size={14} />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onDeleteRequest(event.id!)}
-                  >
-                    <Icon name="Trash2" size={14} />
+                    <Icon name="ChevronRight" size={14} className="ml-1" />
                   </Button>
                 </div>
               </CardContent>
