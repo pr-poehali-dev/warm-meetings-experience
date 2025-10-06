@@ -136,8 +136,8 @@ def create_event(event: Dict[str, Any], conn) -> Dict[str, Any]:
     cursor.execute("""
         INSERT INTO events (
             title, short_description, full_description, event_date,
-            start_time, end_time, occupancy, image_url, is_visible
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            start_time, end_time, occupancy, price, image_url, is_visible
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING *
     """, (
         body_data.get('title'),
@@ -147,6 +147,7 @@ def create_event(event: Dict[str, Any], conn) -> Dict[str, Any]:
         body_data.get('start_time'),
         body_data.get('end_time'),
         body_data.get('occupancy', 'low'),
+        body_data.get('price'),
         body_data.get('image_url'),
         body_data.get('is_visible', True)
     ))
@@ -188,6 +189,7 @@ def update_event(event: Dict[str, Any], conn) -> Dict[str, Any]:
         'start_time': 'start_time',
         'end_time': 'end_time',
         'occupancy': 'occupancy',
+        'price': 'price',
         'image_url': 'image_url',
         'is_visible': 'is_visible'
     }

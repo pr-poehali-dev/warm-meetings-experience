@@ -16,6 +16,7 @@ interface Event {
   start_time: string;
   end_time: string;
   occupancy: string;
+  price: string;
   image_url: string;
   is_visible: boolean;
   created_at?: string;
@@ -122,22 +123,36 @@ const AdminEventForm = ({
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="occupancy">Загруженность</Label>
-                <Select
-                  value={formData.occupancy}
-                  onValueChange={(value) => onFormChange({ ...formData, occupancy: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Низкая</SelectItem>
-                    <SelectItem value="medium">Средняя</SelectItem>
-                    <SelectItem value="high">Высокая</SelectItem>
-                    <SelectItem value="full">Полная</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="occupancy">Загруженность</Label>
+                  <Select
+                    value={formData.occupancy}
+                    onValueChange={(value) => onFormChange({ ...formData, occupancy: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Низкая</SelectItem>
+                      <SelectItem value="medium">Средняя</SelectItem>
+                      <SelectItem value="high">Высокая</SelectItem>
+                      <SelectItem value="full">Полная</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="price">Стоимость</Label>
+                  <Input
+                    id="price"
+                    placeholder="Например: 500₽, Бесплатно"
+                    value={formData.price}
+                    onChange={(e) =>
+                      onFormChange({ ...formData, price: e.target.value })
+                    }
+                  />
+                </div>
               </div>
 
               <ImageUpload

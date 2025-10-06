@@ -17,6 +17,7 @@ interface Event {
   start_time: string;
   end_time: string;
   occupancy: string;
+  price: string;
   image_url: string;
   is_visible: boolean;
   created_at?: string;
@@ -46,6 +47,7 @@ const Admin = () => {
     start_time: "",
     end_time: "",
     occupancy: "low",
+    price: "",
     image_url: "",
     is_visible: true,
   });
@@ -214,6 +216,7 @@ const Admin = () => {
       start_time: "",
       end_time: "",
       occupancy: "low",
+      price: "",
       image_url: "",
       is_visible: true,
     });

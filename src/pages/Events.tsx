@@ -1,70 +1,102 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 
+interface Event {
+  id: number;
+  title: string;
+  short_description: string;
+  full_description: string;
+  event_date: string;
+  start_time: string;
+  end_time: string;
+  occupancy: string;
+  price: string;
+  image_url: string;
+  is_visible: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+const API_URL = "https://functions.poehali.dev/0d9ea640-f2f5-4e63-8633-db26b10decc8";
+
 const Events = () => {
-  const upcomingEvents = [
-    {
-      id: 1,
-      title: "Тёплые Знакомства: Осенний лес с высоты 30 этажа",
-      date: "30 сентября 2025",
-      time: "19:00 — 23:00",
-      type: "Знакомства",
-      location: "Баня на 30 этаже в Измалово",
-      price: "от 5 900 ₽",
-      description:
-        "Встреча для 12 человек. Через ритуалы парения и чайные церемонии создаём пространство искренности.",
-      spotsLeft: 3,
-      totalSpots: 8,
-      icon: "Users",
-    },
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    {
-      id: 3,
-      title: "Мастер-класс: Искусство банных ритуалов",
-      date: "5 октября 2025",
-      time: "15:00 — 18:00",
-      type: "Обучение",
-      location: "Студия «Традиции»",
-      price: "3 500 ₽",
-      description:
-        "Изучаем древние практики работы с паром, дыханием и энергией пространства.",
-      spotsLeft: 2,
-      totalSpots: 12,
-      icon: "Flame",
-    },
-    {
-      id: 4,
-      title: "Романтический вечер: Пары под паром",
-      date: "12 октября 2025",
-      time: "20:00 — 23:00",
-      type: "Свидания",
-      location: "Приватная баня «Уют»",
-      price: "18 000 ₽ за пару",
-      description:
-        "Особый формат для трёх пар. Углубляем близость через совместные практики.",
-      spotsLeft: 1,
-      totalSpots: 3,
-      icon: "Heart",
-    },
-  ];
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "Знакомства":
-        return "bg-blue-100 text-blue-800";
-      case "Тимбилдинг":
-        return "bg-green-100 text-green-800";
-      case "Обучение":
-        return "bg-purple-100 text-purple-800";
-      case "Свидания":
-        return "bg-pink-100 text-pink-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+  const fetchEvents = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}?visible=true`);
+      const data = await response.json();
+      setEvents(data);
+    } catch (error) {
+      console.error('Failed to fetch events:', error);
+    } finally {
+      setLoading(false);
     }
   };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    });
+  };
+
+  const formatTime = (timeString: string) => {
+    if (!timeString) return '';
+    return timeString.substring(0, 5);
+  };
+
+  const getOccupancyLabel = (occupancy: string) => {
+    const labels: Record<string, string> = {
+      low: "Много мест",
+      medium: "Есть места",
+      high: "Мало мест",
+      full: "Мест нет",
+    };
+    return labels[occupancy] || "Есть места";
+  };
+
+  const getOccupancyColor = (occupancy: string) => {
+    const colors: Record<string, string> = {
+      low: "text-green-600",
+      medium: "text-blue-600",
+      high: "text-orange-600",
+      full: "text-red-600",
+    };
+    return colors[occupancy] || "text-gray-600";
+  };
+
+  const getOccupancyWidth = (occupancy: string) => {
+    const widths: Record<string, number> = {
+      low: 25,
+      medium: 50,
+      high: 75,
+      full: 100,
+    };
+    return widths[occupancy] || 0;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-nature-sage to-nature-cream flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-nature-brown border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-nature-forest">Загрузка мероприятий...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-nature-sage to-nature-cream">
@@ -92,140 +124,113 @@ const Events = () => {
         </section>
 
         {/* Events Grid */}
-        <div className="max-w-6xl mx-auto space-y-8">
-          {upcomingEvents.map((event) => (
-            <Card
-              key={event.id}
-              className="bg-nature-cream/95 border-nature-brown/20 overflow-hidden hover:shadow-lg transition-all duration-300"
-            >
-              <CardContent className="p-0">
-                <div className="grid lg:grid-cols-3 gap-0">
-                  {/* Event Info */}
-                  <div className="lg:col-span-2 p-8">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <Icon
-                          name={event.icon as any}
-                          size={24}
-                          className="text-nature-brown"
-                        />
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${getTypeColor(event.type)}`}
-                        >
-                          {event.type}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm text-nature-forest/60">
-                          {event.date}
-                        </div>
-                        <div className="text-sm font-medium text-nature-forest">
-                          {event.time}
-                        </div>
-                      </div>
-                    </div>
-
-                    <h2 className="text-2xl font-serif text-nature-forest mb-3">
-                      {event.title}
-                    </h2>
-
-                    <p className="text-nature-forest/80 mb-4 leading-relaxed">
-                      {event.description}
-                    </p>
-
-                    <div className="flex flex-wrap gap-4 text-sm text-nature-forest/70 mb-6">
-                      <div className="flex items-center gap-2">
-                        <Icon
-                          name="MapPin"
-                          size={16}
-                          className="text-nature-brown"
-                        />
-                        {event.location}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Icon
-                          name="Users"
-                          size={16}
-                          className="text-nature-brown"
-                        />
-                        Осталось мест: {event.spotsLeft} из {event.totalSpots}
-                      </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="mb-4">
-                      <div className="flex justify-between text-xs text-nature-forest/60 mb-1">
-                        <span>Заполненность</span>
-                        <span>
-                          {Math.round(
-                            ((event.totalSpots - event.spotsLeft) /
-                              event.totalSpots) *
-                              100,
-                          )}
-                          %
-                        </span>
-                      </div>
-                      <div className="w-full bg-nature-sage/20 rounded-full h-2">
-                        <div
-                          className="bg-nature-brown h-2 rounded-full transition-all duration-300"
-                          style={{
-                            width: `${((event.totalSpots - event.spotsLeft) / event.totalSpots) * 100}%`,
-                          }}
+        {events.length === 0 ? (
+          <div className="text-center py-16">
+            <Icon name="Calendar" size={64} className="text-nature-brown mx-auto mb-4 opacity-50" />
+            <p className="text-xl text-nature-forest/60">Пока нет запланированных мероприятий</p>
+            <p className="text-nature-forest/50 mt-2">Следите за обновлениями в нашем Telegram</p>
+          </div>
+        ) : (
+          <div className="max-w-6xl mx-auto space-y-8">
+            {events.map((event) => (
+              <Card
+                key={event.id}
+                className="bg-nature-cream/95 border-nature-brown/20 overflow-hidden hover:shadow-lg transition-all duration-300"
+              >
+                <CardContent className="p-0">
+                  <div className="grid lg:grid-cols-3 gap-0">
+                    {event.image_url && (
+                      <div className="lg:col-span-1 relative h-64 lg:h-auto">
+                        <img 
+                          src={event.image_url} 
+                          alt={event.title}
+                          className="w-full h-full object-cover"
                         />
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Booking Section */}
-                  <div className="bg-nature-sage/10 p-8 flex flex-col justify-center">
-                    <div className="text-center mb-6">
-                      <div className="text-3xl font-bold text-nature-brown mb-2">
-                        {event.price}
-                      </div>
-                      {event.spotsLeft > 0 ? (
-                        <div className="text-sm text-green-600 font-medium">
-                          ✓ Места доступны
-                        </div>
-                      ) : (
-                        <div className="text-sm text-red-600 font-medium">
-                          ✗ Мест нет
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-3">
-                      <a
-                        href="https://t.me/DmitryChikin"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button
-                          className="w-full bg-nature-brown hover:bg-nature-brown/90 text-nature-cream"
-                          disabled={event.spotsLeft === 0}
-                        >
+                    )}
+                    
+                    <div className={event.image_url ? "lg:col-span-2 p-8" : "lg:col-span-3 p-8"}>
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
                           <Icon
-                            name="MessageCircle"
-                            size={16}
-                            className="mr-2"
+                            name="Calendar"
+                            size={20}
+                            className="text-nature-brown"
                           />
-                          {event.spotsLeft > 0 ? "Записаться" : "Лист ожидания"}
-                        </Button>
-                      </a>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm text-nature-forest/60">
+                            {formatDate(event.event_date)}
+                          </div>
+                          {event.start_time && event.end_time && (
+                            <div className="text-sm font-medium text-nature-forest">
+                              {formatTime(event.start_time)} — {formatTime(event.end_time)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                      <Button
-                        variant="outline"
-                        className="w-full border-nature-brown text-nature-brown hover:bg-nature-brown hover:text-nature-cream"
-                      >
-                        <Icon name="Info" size={16} className="mr-2" />
-                        Подробнее
-                      </Button>
+                      <h2 className="text-2xl font-serif text-nature-forest mb-3">
+                        {event.title}
+                      </h2>
+
+                      {event.short_description && (
+                        <p className="text-nature-forest/80 mb-4 leading-relaxed">
+                          {event.short_description}
+                        </p>
+                      )}
+
+                      <div className="mb-4">
+                        <div className="flex justify-between text-xs text-nature-forest/60 mb-1">
+                          <span>Заполненность</span>
+                          <span className={`font-medium ${getOccupancyColor(event.occupancy)}`}>
+                            {getOccupancyLabel(event.occupancy)}
+                          </span>
+                        </div>
+                        <div className="w-full bg-nature-sage/20 rounded-full h-2">
+                          <div
+                            className="bg-nature-brown h-2 rounded-full transition-all duration-300"
+                            style={{
+                              width: `${getOccupancyWidth(event.occupancy)}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-nature-brown/10">
+                        {event.price && (
+                          <div className="text-2xl font-bold text-nature-brown">
+                            {event.price}
+                          </div>
+                        )}
+                        
+                        <div className="flex gap-2">
+                          <a
+                            href="https://t.me/DmitryChikin"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <Button
+                              className="bg-nature-brown hover:bg-nature-brown/90 text-nature-cream"
+                              disabled={event.occupancy === 'full'}
+                            >
+                              <Icon
+                                name="MessageCircle"
+                                size={16}
+                                className="mr-2"
+                              />
+                              {event.occupancy === 'full' ? "Лист ожидания" : "Записаться"}
+                            </Button>
+                          </a>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Newsletter Signup */}
         <Card className="max-w-2xl mx-auto mt-16 bg-nature-brown/5 border-nature-brown/30">

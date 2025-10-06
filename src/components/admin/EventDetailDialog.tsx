@@ -15,6 +15,7 @@ interface Event {
   start_time: string;
   end_time: string;
   occupancy: string;
+  price: string;
   image_url: string;
   is_visible: boolean;
   created_at?: string;
@@ -68,6 +69,13 @@ const EventDetailDialog = ({
                   {event.full_description}
                 </p>
               </div>
+
+              {event.price && (
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-2">Стоимость</h3>
+                  <p className="text-2xl font-bold text-gray-800">{event.price}</p>
+                </div>
+              )}
 
               <div className="flex items-center gap-4">
                 <span

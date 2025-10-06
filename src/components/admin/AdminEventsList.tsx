@@ -13,6 +13,7 @@ interface Event {
   start_time: string;
   end_time: string;
   occupancy: string;
+  price: string;
   image_url: string;
   is_visible: boolean;
   created_at?: string;
