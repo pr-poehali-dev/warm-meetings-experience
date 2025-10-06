@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import Icon from "@/components/ui/icon";
 import ImageUpload from "./ImageUpload";
 
 interface Event {
@@ -17,6 +18,8 @@ interface Event {
   end_time: string;
   occupancy: string;
   price: string;
+  event_type: string;
+  event_type_icon: string;
   image_url: string;
   is_visible: boolean;
   created_at?: string;
@@ -31,6 +34,16 @@ interface AdminEventFormProps {
   onCancel: () => void;
 }
 
+const eventTypes = [
+  { value: 'знакомство', label: 'Знакомство', icon: 'Users' },
+  { value: 'свидание', label: 'Свидание', icon: 'Heart' },
+  { value: 'обучение', label: 'Обучение', icon: 'GraduationCap' },
+  { value: 'встреча', label: 'Встреча', icon: 'Coffee' },
+  { value: 'вечеринка', label: 'Вечеринка', icon: 'PartyPopper' },
+  { value: 'спорт', label: 'Спорт', icon: 'Dumbbell' },
+  { value: 'другое', label: 'Другое', icon: 'Circle' },
+];
+
 const AdminEventForm = ({
   formData,
   loading,
@@ -38,6 +51,37 @@ const AdminEventForm = ({
   onSubmit,
   onCancel,
 }: AdminEventFormProps) => {
+  const [customTypeName, setCustomTypeName] = useState('');
+  const [customTypeIcon, setCustomTypeIcon] = useState('');
+  const [showCustomFields, setShowCustomFields] = useState(false);
+
+  const handleTypeChange = (value: string) => {
+    if (value === 'custom') {
+      setShowCustomFields(true);
+      return;
+    }
+    const selectedType = eventTypes.find(t => t.value === value);
+    if (selectedType) {
+      onFormChange({ 
+        ...formData, 
+        event_type: selectedType.value,
+        event_type_icon: selectedType.icon
+      });
+    }
+    setShowCustomFields(false);
+  };
+
+  const handleCustomTypeApply = () => {
+    if (customTypeName.trim()) {
+      onFormChange({ 
+        ...formData, 
+        event_type: customTypeName,
+        event_type_icon: customTypeIcon || 'Circle'
+      });
+      setShowCustomFields(false);
+    }
+  };
+
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-800 mb-6">
@@ -122,6 +166,89 @@ const AdminEventForm = ({
                   />
                 </div>
               </div>
+
+              <div>
+                <Label htmlFor="event_type">Тип мероприятия</Label>
+                <Select
+                  value={formData.event_type || 'знакомство'}
+                  onValueChange={handleTypeChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue>
+                      <div className="flex items-center gap-2">
+                        <Icon name={formData.event_type_icon || 'Users'} size={18} />
+                        <span>{formData.event_type || 'Знакомство'}</span>
+                      </div>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {eventTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        <div className="flex items-center gap-2">
+                          <Icon name={type.icon} size={18} />
+                          <span>{type.label}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">
+                      <div className="flex items-center gap-2">
+                        <Icon name="Plus" size={18} />
+                        <span>Свой тип...</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {showCustomFields && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardContent className="pt-6">
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="custom_type_name">Название типа *</Label>
+                        <Input
+                          id="custom_type_name"
+                          placeholder="Например: Мастер-класс"
+                          value={customTypeName}
+                          onChange={(e) => setCustomTypeName(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="custom_type_icon">Иконка (lucide-react)</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="custom_type_icon"
+                            placeholder="Например: Sparkles, Star, Flame"
+                            value={customTypeIcon}
+                            onChange={(e) => setCustomTypeIcon(e.target.value)}
+                          />
+                          {customTypeIcon && (
+                            <div className="flex items-center justify-center w-10 h-10 border rounded">
+                              <Icon name={customTypeIcon} size={20} fallback="Circle" />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Доступные иконки: Users, Heart, GraduationCap, Coffee, PartyPopper, Dumbbell, Sparkles, Star, Flame и др.
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button type="button" size="sm" onClick={handleCustomTypeApply}>
+                          Применить
+                        </Button>
+                        <Button 
+                          type="button" 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => setShowCustomFields(false)}
+                        >
+                          Отмена
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import Icon from "@/components/ui/icon";
 
 interface Event {
   id?: number;
@@ -16,6 +17,8 @@ interface Event {
   end_time: string;
   occupancy: string;
   price: string;
+  event_type: string;
+  event_type_icon: string;
   image_url: string;
   is_visible: boolean;
   created_at?: string;
@@ -43,6 +46,12 @@ const EventDetailDialog = ({
         {event && (
           <>
             <DialogHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center gap-2 text-blue-600">
+                  <Icon name={event.event_type_icon || 'Users'} size={24} />
+                  <span className="text-sm font-medium">{event.event_type}</span>
+                </div>
+              </div>
               <DialogTitle className="text-2xl">{event.title}</DialogTitle>
               <DialogDescription>
                 {event.event_date} | {event.start_time} - {event.end_time}

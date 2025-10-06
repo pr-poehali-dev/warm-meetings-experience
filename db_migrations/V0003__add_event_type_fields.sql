@@ -1,0 +1,2 @@
+ALTER TABLE events ADD COLUMN IF NOT EXISTS event_type VARCHAR(100) DEFAULT 'знакомство';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS event_type_icon VARCHAR(100) DEFAULT 'Users';

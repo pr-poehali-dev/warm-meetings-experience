@@ -18,6 +18,8 @@ interface Event {
   end_time: string;
   occupancy: string;
   price: string;
+  event_type: string;
+  event_type_icon: string;
   image_url: string;
   is_visible: boolean;
   created_at?: string;
@@ -48,6 +50,8 @@ const Admin = () => {
     end_time: "",
     occupancy: "low",
     price: "",
+    event_type: "знакомство",
+    event_type_icon: "Users",
     image_url: "",
     is_visible: true,
   });
@@ -217,6 +221,8 @@ const Admin = () => {
       end_time: "",
       occupancy: "low",
       price: "",
+      event_type: "знакомство",
+      event_type_icon: "Users",
       image_url: "",
       is_visible: true,
     });

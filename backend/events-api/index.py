@@ -136,8 +136,9 @@ def create_event(event: Dict[str, Any], conn) -> Dict[str, Any]:
     cursor.execute("""
         INSERT INTO events (
             title, short_description, full_description, event_date,
-            start_time, end_time, occupancy, price, image_url, is_visible
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            start_time, end_time, occupancy, price, image_url, is_visible,
+            event_type, event_type_icon
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING *
     """, (
         body_data.get('title'),
@@ -149,7 +150,9 @@ def create_event(event: Dict[str, Any], conn) -> Dict[str, Any]:
         body_data.get('occupancy', 'low'),
         body_data.get('price'),
         body_data.get('image_url'),
-        body_data.get('is_visible', True)
+        body_data.get('is_visible', True),
+        body_data.get('event_type', 'знакомство'),
+        body_data.get('event_type_icon', 'Users')
     ))
     
     result = cursor.fetchone()
@@ -191,7 +194,9 @@ def update_event(event: Dict[str, Any], conn) -> Dict[str, Any]:
         'occupancy': 'occupancy',
         'price': 'price',
         'image_url': 'image_url',
-        'is_visible': 'is_visible'
+        'is_visible': 'is_visible',
+        'event_type': 'event_type',
+        'event_type_icon': 'event_type_icon'
     }
     
     for field, column in fields_map.items():

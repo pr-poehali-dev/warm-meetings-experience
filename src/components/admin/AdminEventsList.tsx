@@ -14,6 +14,8 @@ interface Event {
   end_time: string;
   occupancy: string;
   price: string;
+  event_type: string;
+  event_type_icon: string;
   image_url: string;
   is_visible: boolean;
   created_at?: string;
@@ -108,12 +110,16 @@ const AdminEventsList = ({
                 />
               )}
               <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-bold text-lg text-gray-800">{event.title}</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-1.5 text-blue-600 text-xs bg-blue-50 px-2 py-1 rounded">
+                    <Icon name={event.event_type_icon || 'Users'} size={14} />
+                    <span>{event.event_type}</span>
+                  </div>
                   {!event.is_visible && (
                     <Icon name="EyeOff" size={16} className="text-gray-400" />
                   )}
                 </div>
+                <h3 className="font-bold text-lg text-gray-800 mb-2">{event.title}</h3>
                 <p className="text-sm text-gray-600 mb-3">{event.short_description}</p>
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
                   <Icon name="Calendar" size={14} />

@@ -14,6 +14,8 @@ interface Event {
   end_time: string;
   occupancy: string;
   price: string;
+  event_type: string;
+  event_type_icon: string;
   image_url: string;
   is_visible: boolean;
   created_at: string;
@@ -152,11 +154,14 @@ const Events = () => {
                     <div className={event.image_url ? "lg:col-span-2 p-8" : "lg:col-span-3 p-8"}>
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
-                          <Icon
-                            name="Calendar"
-                            size={20}
-                            className="text-nature-brown"
-                          />
+                          <div className="flex items-center gap-2 text-nature-brown bg-nature-sage/30 px-3 py-1.5 rounded-full">
+                            <Icon
+                              name={event.event_type_icon || 'Users'}
+                              size={18}
+                              className="text-nature-brown"
+                            />
+                            <span className="text-sm font-medium">{event.event_type}</span>
+                          </div>
                         </div>
                         <div className="text-right">
                           <div className="text-sm text-nature-forest/60">
