@@ -122,10 +122,7 @@ const WarmTeamBuilding = () => {
             <span className="text-nature-sand">94% команд улучшают коммуникации</span><br />
             после банных ритуалов
           </h1>
-          <p className="text-xl md:text-2xl mb-8 text-gray-200 leading-relaxed">
-            Уникальные программы в формате банных ритуалов для сплочения команды<br />
-            с измеримым результатом для HR-отдела
-          </p>
+          <p className="text-xl md:text-2xl mb-8 text-gray-200 leading-relaxed">Уникальные программы в формате банных ритуалов для сплочения команды с измеримым результатом для HR-отдела</p>
           
           <div className="grid md:grid-cols-3 gap-4 mb-10 text-left">
             <div className="flex items-center gap-3">
