@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
-import FloatingMenu from '@/components/FloatingMenu';
 import HeroSection from '@/components/sections/HeroSection';
 import ManifestoSection from '@/components/sections/ManifestoSection';
 import PrinciplesSection from '@/components/sections/PrinciplesSection';
@@ -23,7 +22,6 @@ export default function Index() {
         <Icon name="Settings" size={24} />
       </Link>
       
-      <FloatingMenu />
       <HeroSection />
       <ManifestoSection />
       <PrinciplesSection />
