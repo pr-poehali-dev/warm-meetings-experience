@@ -8,6 +8,12 @@ const FloatingMenu = () => {
 
   const menuItems = [
     { 
+      title: 'Навигация', 
+      items: [
+        { name: 'Главная страница', path: '/', icon: 'Home' }
+      ]
+    },
+    { 
       title: 'Услуги', 
       items: [
         { name: 'Индивидуальное парение', path: '/individual-consultations', icon: 'User' },
