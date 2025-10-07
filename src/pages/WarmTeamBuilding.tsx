@@ -396,7 +396,7 @@ const WarmTeamBuilding = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="flex items-center gap-3">
                 <Icon name="CheckCircle" className="text-green-500" size={24} />
-                <span>Полная безопасность и медицинский контроль</span>
+                <span>Полная безопасность и медицинский протокол</span>
               </div>
               <div className="flex items-center gap-3">
                 <Icon name="CheckCircle" className="text-green-500" size={24} />
