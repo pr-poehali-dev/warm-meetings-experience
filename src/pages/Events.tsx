@@ -3,6 +3,13 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Event {
   id: number;
@@ -27,6 +34,13 @@ const API_URL = "https://functions.poehali.dev/0d9ea640-f2f5-4e63-8633-db26b10de
 const Events = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const openEventDetails = (event: Event) => {
+    setSelectedEvent(event);
+    setIsDialogOpen(true);
+  };
 
   useEffect(() => {
     fetchEvents();
@@ -210,6 +224,20 @@ const Events = () => {
                         )}
                         
                         <div className="flex gap-2">
+                          {event.full_description && (
+                            <Button
+                              variant="outline"
+                              className="border-nature-brown text-nature-brown hover:bg-nature-sage/20"
+                              onClick={() => openEventDetails(event)}
+                            >
+                              <Icon
+                                name="Info"
+                                size={16}
+                                className="mr-2"
+                              />
+                              Подробнее
+                            </Button>
+                          )}
                           <a
                             href="https://t.me/DmitryChikin"
                             target="_blank"
@@ -265,6 +293,91 @@ const Events = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto bg-nature-cream">
+          <DialogHeader>
+            <DialogTitle className="text-3xl font-serif text-nature-forest mb-2">
+              {selectedEvent?.title}
+            </DialogTitle>
+            {selectedEvent && (
+              <div className="flex items-center gap-4 text-sm text-nature-forest/60">
+                <div className="flex items-center gap-2">
+                  <Icon name="Calendar" size={16} />
+                  {formatDate(selectedEvent.event_date)}
+                </div>
+                {selectedEvent.start_time && selectedEvent.end_time && (
+                  <div className="flex items-center gap-2">
+                    <Icon name="Clock" size={16} />
+                    {formatTime(selectedEvent.start_time)} — {formatTime(selectedEvent.end_time)}
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Icon name={selectedEvent.event_type_icon || 'Users'} size={16} />
+                  {selectedEvent.event_type}
+                </div>
+              </div>
+            )}
+          </DialogHeader>
+          
+          {selectedEvent && (
+            <>
+              {selectedEvent.image_url && (
+                <div className="w-full h-64 rounded-lg overflow-hidden my-4">
+                  <img 
+                    src={selectedEvent.image_url} 
+                    alt={selectedEvent.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              
+              <DialogDescription className="text-base text-nature-forest/90 leading-relaxed whitespace-pre-wrap">
+                {selectedEvent.full_description}
+              </DialogDescription>
+
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center justify-between p-4 bg-nature-sage/10 rounded-lg">
+                  <div>
+                    <div className="text-sm text-nature-forest/60 mb-1">Заполненность</div>
+                    <div className={`font-medium ${getOccupancyColor(selectedEvent.occupancy)}`}>
+                      {getOccupancyLabel(selectedEvent.occupancy)}
+                    </div>
+                  </div>
+                  {selectedEvent.price && (
+                    <div className="text-right">
+                      <div className="text-sm text-nature-forest/60 mb-1">Стоимость</div>
+                      <div className="text-2xl font-bold text-nature-brown">
+                        {selectedEvent.price}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <a
+                  href="https://t.me/DmitryChikin"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <Button
+                    className="w-full bg-nature-brown hover:bg-nature-brown/90 text-nature-cream"
+                    disabled={selectedEvent.occupancy === 'full'}
+                    size="lg"
+                  >
+                    <Icon
+                      name="MessageCircle"
+                      size={20}
+                      className="mr-2"
+                    />
+                    {selectedEvent.occupancy === 'full' ? "Записаться в лист ожидания" : "Записаться на мероприятие"}
+                  </Button>
+                </a>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
