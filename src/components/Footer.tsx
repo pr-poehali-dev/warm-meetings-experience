@@ -55,9 +55,7 @@ const Footer = () => {
           {/* О проекте */}
           <div>
             <h3 className="text-xl font-serif mb-4">О проекте</h3>
-            <p className="text-gray-300 leading-relaxed">
-              Место, где рождается близость через банные ритуалы и атмосферу тепла
-            </p>
+            <p className="text-gray-300 leading-relaxed">Создаём пространства для искренних коммуникаций через банные ритуалы</p>
           </div>
         </div>
 
