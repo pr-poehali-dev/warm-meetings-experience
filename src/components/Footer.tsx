@@ -33,14 +33,12 @@ const Footer = () => {
           <div>
             <h3 className="text-xl font-serif mb-4">Правовая информация</h3>
             <div className="space-y-3">
-              <a 
-                href="https://disk.yandex.ru/i/NnDao-8RmPiocA" 
-                target="_blank" 
-                rel="noopener noreferrer"
+              <Link 
+                to="/personal-data-consent"
                 className="block hover:text-nature-sand transition-colors"
               >
                 Обработка персональных данных
-              </a>
+              </Link>
               <Link 
                 to="/privacy-policy"
                 className="block hover:text-nature-sand transition-colors"
