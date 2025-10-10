@@ -33,6 +33,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
   const [packages, setPackages] = useState<any[]>([]);
   const [addons, setAddons] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [showRestoreNotice, setShowRestoreNotice] = useState<boolean>(false);
 
   const STORAGE_KEY = 'warmDatesCalculatorProgress';
   const CACHE_KEY = 'warmDatesCalculatorCache';
@@ -86,6 +87,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
       if (saved) {
         try {
           const progress = JSON.parse(saved);
+          setShowRestoreNotice(true);
           setStep(progress.step || 1);
           setSelectedPackage(progress.selectedPackage || "");
           setSelectedDate(progress.selectedDate ? new Date(progress.selectedDate) : undefined);
@@ -209,6 +211,26 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
             Калькулятор стоимости ритуала
           </DialogTitle>
         </DialogHeader>
+
+        {showRestoreNotice && (
+          <div className="bg-nature-sage/20 border border-nature-sage rounded-lg p-4 flex items-start gap-3">
+            <Icon name="Info" className="text-nature-sage mt-0.5 flex-shrink-0" size={20} />
+            <div className="flex-1">
+              <p className="text-sm text-nature-forest font-medium">
+                Вы можете продолжить незавершённую заявку
+              </p>
+              <p className="text-xs text-nature-forest/70 mt-1">
+                Мы сохранили ваш прогресс. Можете продолжить с того момента, где остановились.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowRestoreNotice(false)}
+              className="text-nature-forest/50 hover:text-nature-forest transition-colors"
+            >
+              <Icon name="X" size={16} />
+            </button>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-[2fr,1fr] gap-8 mt-6">
           <div className="space-y-8">
