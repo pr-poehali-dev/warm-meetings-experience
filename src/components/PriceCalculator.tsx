@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { packages } from "./calculator/data";
 import { calculatePrice } from "./calculator/utils";
 import Step1PackageSelection from "./calculator/Step1PackageSelection";
 import Step2Parameters from "./calculator/Step2Parameters";
@@ -31,8 +30,34 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
   const [comment, setComment] = useState<string>("");
   const [consentChecked, setConsentChecked] = useState<boolean>(false);
 
+  const [packages, setPackages] = useState<any[]>([]);
+  const [addons, setAddons] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
   useEffect(() => {
-    if (!open) {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [packagesRes, addonsRes] = await Promise.all([
+          fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=packages'),
+          fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=addons')
+        ]);
+        
+        const packagesData = await packagesRes.json();
+        const addonsData = await addonsRes.json();
+        
+        setPackages(packagesData.filter((p: any) => p.is_active));
+        setAddons(addonsData.filter((a: any) => a.is_active));
+      } catch (error) {
+        console.error('Error loading calculator data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (open) {
+      fetchData();
+    } else {
       setStep(1);
       setSelectedPackage("");
       setSelectedDate(undefined);
@@ -136,6 +161,8 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
                 selectedPackage={selectedPackage}
                 onSelectPackage={setSelectedPackage}
                 onNext={() => setStep(2)}
+                packages={packages}
+                loading={loading}
               />
             )}
 
@@ -164,6 +191,8 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
                 onApplyPromo={handleApplyPromo}
                 onBack={() => setStep(2)}
                 onNext={() => setStep(4)}
+                addons={addons}
+                loading={loading}
               />
             )}
 

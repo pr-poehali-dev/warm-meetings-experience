@@ -4,7 +4,6 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { addons } from "./data";
 
 interface Step3AddonsProps {
   selectedAddons: string[];
@@ -15,6 +14,8 @@ interface Step3AddonsProps {
   onApplyPromo: () => void;
   onBack: () => void;
   onNext: () => void;
+  addons: any[];
+  loading: boolean;
 }
 
 const Step3Addons: React.FC<Step3AddonsProps> = ({
@@ -26,38 +27,44 @@ const Step3Addons: React.FC<Step3AddonsProps> = ({
   onApplyPromo,
   onBack,
   onNext,
+  addons,
+  loading,
 }) => {
   return (
     <div className="space-y-6">
       <h3 className="text-xl font-serif text-nature-forest mb-4">Шаг 3: Дополнительные услуги</h3>
       
-      <div className="grid gap-3">
-        {addons.map((addon) => (
-          <Card
-            key={addon.id}
-            className={`p-4 cursor-pointer transition-all border ${
-              selectedAddons.includes(addon.id)
-                ? "border-nature-brown bg-nature-cream/30"
-                : "border-nature-brown/20 hover:border-nature-brown/40"
-            }`}
-            onClick={() => onToggleAddon(addon.id)}
-          >
-            <div className="flex items-start gap-3">
-              <Checkbox
-                checked={selectedAddons.includes(addon.id)}
-                onCheckedChange={() => onToggleAddon(addon.id)}
-              />
-              <div className="flex-1">
-                <h4 className="font-medium text-nature-forest mb-1">{addon.name}</h4>
-                <p className="text-sm text-nature-forest/70">{addon.description}</p>
+      {loading ? (
+        <div className="text-center py-8 text-nature-forest">Загрузка дополнений...</div>
+      ) : (
+        <div className="grid gap-3">
+          {addons.map((addon) => (
+            <Card
+              key={addon.id}
+              className={`p-4 cursor-pointer transition-all border ${
+                selectedAddons.includes(String(addon.id))
+                  ? "border-nature-brown bg-nature-cream/30"
+                  : "border-nature-brown/20 hover:border-nature-brown/40"
+              }`}
+              onClick={() => onToggleAddon(String(addon.id))}
+            >
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  checked={selectedAddons.includes(String(addon.id))}
+                  onCheckedChange={() => onToggleAddon(String(addon.id))}
+                />
+                <div className="flex-1">
+                  <h4 className="font-medium text-nature-forest mb-1">{addon.name}</h4>
+                  <p className="text-sm text-nature-forest/70">{addon.description}</p>
+                </div>
+                <p className="font-semibold text-nature-brown whitespace-nowrap">
+                  +{parseFloat(addon.price).toLocaleString()} ₽
+                </p>
               </div>
-              <p className="font-semibold text-nature-brown whitespace-nowrap">
-                +{addon.price.toLocaleString()} ₽
-              </p>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <div>
         <Label className="text-nature-forest mb-2 block">Промо-код</Label>
