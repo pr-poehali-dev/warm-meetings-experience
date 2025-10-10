@@ -4,6 +4,8 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import urllib.request
+import urllib.parse
 
 def get_db_connection():
     '''
@@ -13,12 +15,14 @@ def get_db_connection():
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
-    Business: API для управления мероприятиями (CRUD операции)
+    Business: API для управления мероприятиями и заявками (CRUD операции)
     Args: event - dict с httpMethod, body, queryStringParameters, pathParams
           context - объект с request_id, function_name
-    Returns: HTTP response dict с данными мероприятий
+    Returns: HTTP response dict с данными мероприятий или заявок
     '''
     method: str = event.get('httpMethod', 'GET')
+    params = event.get('queryStringParameters') or {}
+    resource = params.get('resource', 'events')
     
     if method == 'OPTIONS':
         return {
@@ -36,6 +40,17 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     conn = get_db_connection()
     
     try:
+        if resource == 'bookings':
+            if method == 'POST':
+                return create_booking(event, conn)
+            else:
+                return {
+                    'statusCode': 405,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'error': 'Only POST method allowed for bookings'}),
+                    'isBase64Encoded': False
+                }
+        
         if method == 'GET':
             return get_events(event, conn)
         elif method == 'POST':
@@ -272,3 +287,96 @@ def delete_event(event: Dict[str, Any], conn) -> Dict[str, Any]:
             'body': json.dumps({'error': 'Event not found'}),
             'isBase64Encoded': False
         }
+
+def send_telegram_notification(booking_data: Dict[str, Any]) -> None:
+    '''Send booking notification to Telegram'''
+    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+    
+    if not bot_token or not chat_id:
+        return
+    
+    message = f"""🔔 Новая заявка #{booking_data['id']}
+
+👤 Клиент: {booking_data['client_name']}
+📱 Телефон: {booking_data['client_phone']}
+📧 Email: {booking_data.get('client_email', 'не указан')}
+
+📦 Пакет: {booking_data.get('package_name', 'не выбран')}
+📅 Дата: {booking_data.get('event_date', 'не указана')}
+👥 Количество: {booking_data.get('person_count', 0)} чел.
+
+💰 Стоимость: {booking_data['total_price']:,.0f} ₽
+💵 Депозит: {booking_data['total_price'] * 0.3:,.0f} ₽
+
+Статус: {booking_data['status']}"""
+    
+    url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
+    data = urllib.parse.urlencode({
+        'chat_id': chat_id,
+        'text': message,
+        'parse_mode': 'HTML'
+    }).encode()
+    
+    try:
+        req = urllib.request.Request(url, data=data)
+        urllib.request.urlopen(req)
+    except Exception:
+        pass
+
+def create_booking(event: Dict[str, Any], conn) -> Dict[str, Any]:
+    '''Create new booking from calculator'''
+    body_data = json.loads(event.get('body', '{}'))
+    
+    required_fields = ['client_name', 'client_phone', 'total_price']
+    for field in required_fields:
+        if not body_data.get(field):
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': f'Field {field} is required'}),
+                'isBase64Encoded': False
+            }
+    
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cursor.execute("""
+        INSERT INTO bookings (
+            client_name, client_phone, client_email,
+            package_id, package_name, service_area_id, event_date, person_count,
+            selected_addons, promo_code, base_price, total_price, discount_amount,
+            calculation_details, consent_given, status
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING *
+    """, (
+        body_data.get('client_name'),
+        body_data.get('client_phone'),
+        body_data.get('client_email'),
+        body_data.get('package_id'),
+        body_data.get('package_name'),
+        body_data.get('service_area_id'),
+        body_data.get('event_date'),
+        body_data.get('person_count', 0),
+        json.dumps(body_data.get('selected_addons', [])),
+        body_data.get('promo_code'),
+        body_data.get('base_price', 0),
+        body_data.get('total_price'),
+        body_data.get('discount_amount', 0),
+        json.dumps(body_data.get('calculation_details', {})),
+        body_data.get('consent_given', False),
+        'new'
+    ))
+    
+    result = cursor.fetchone()
+    conn.commit()
+    cursor.close()
+    
+    booking_dict = dict(result)
+    send_telegram_notification(booking_dict)
+    
+    return {
+        'statusCode': 201,
+        'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+        'body': json.dumps(booking_dict, default=str),
+        'isBase64Encoded': False
+    }

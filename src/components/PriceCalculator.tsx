@@ -168,7 +168,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
     const selectedPackageData = packages.find(p => String(p.id) === String(selectedPackage));
     
     try {
-      const response = await fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=bookings', {
+      const response = await fetch('https://functions.poehali.dev/0d9ea640-f2f5-4e63-8633-db26b10decc8?resource=bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
