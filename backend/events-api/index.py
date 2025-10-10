@@ -328,7 +328,7 @@ def create_booking(event: Dict[str, Any], conn) -> Dict[str, Any]:
     '''Create new booking from calculator'''
     body_data = json.loads(event.get('body', '{}'))
     
-    required_fields = ['client_name', 'client_phone', 'total_price']
+    required_fields = ['client_name', 'client_phone', 'total_price', 'event_date']
     for field in required_fields:
         if not body_data.get(field):
             return {
@@ -340,29 +340,30 @@ def create_booking(event: Dict[str, Any], conn) -> Dict[str, Any]:
     
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     
+    selected_addons = body_data.get('selected_addons', [])
+    calculation_details = body_data.get('calculation_details', {})
+    
     cursor.execute("""
         INSERT INTO bookings (
-            client_name, client_phone, client_email,
-            package_id, package_name, service_area_id, event_date, person_count,
+            client_name, client_phone,
+            package_id, service_area_id, event_date, person_count,
             selected_addons, promo_code, base_price, total_price, discount_amount,
             calculation_details, consent_given, status
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING *
     """, (
         body_data.get('client_name'),
         body_data.get('client_phone'),
-        body_data.get('client_email'),
         body_data.get('package_id'),
-        body_data.get('package_name'),
         body_data.get('service_area_id'),
         body_data.get('event_date'),
         body_data.get('person_count', 0),
-        json.dumps(body_data.get('selected_addons', [])),
+        json.dumps(selected_addons),
         body_data.get('promo_code'),
         body_data.get('base_price', 0),
         body_data.get('total_price'),
         body_data.get('discount_amount', 0),
-        json.dumps(body_data.get('calculation_details', {})),
+        json.dumps(calculation_details),
         body_data.get('consent_given', False),
         'new'
     ))
@@ -372,6 +373,7 @@ def create_booking(event: Dict[str, Any], conn) -> Dict[str, Any]:
     cursor.close()
     
     booking_dict = dict(result)
+    booking_dict['package_name'] = body_data.get('package_name', '')
     send_telegram_notification(booking_dict)
     
     return {
