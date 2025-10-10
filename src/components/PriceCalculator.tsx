@@ -137,7 +137,9 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
     extraDuration,
     selectedAddons,
     promoApplied,
-    promoCode
+    promoCode,
+    packages,
+    addons
   );
 
   const deposit = Math.round(total * 0.30 / 100) * 100;

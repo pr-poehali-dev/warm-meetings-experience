@@ -1,5 +1,3 @@
-import { packages, addons } from "./data";
-
 export const calculatePrice = (
   selectedPackage: string,
   selectedDate: Date | undefined,
@@ -8,12 +6,14 @@ export const calculatePrice = (
   extraDuration: number,
   selectedAddons: string[],
   promoApplied: boolean,
-  promoCode: string
+  promoCode: string,
+  packages: any[] = [],
+  addons: any[] = []
 ) => {
   const pkg = packages.find(p => p.id === selectedPackage);
   if (!pkg) return { total: 0, breakdown: {} };
 
-  const basePrice = pkg.basePrice;
+  const basePrice = pkg.base_price;
   
   const addonsTotal = selectedAddons.reduce((sum, addonId) => {
     const addon = addons.find(a => a.id === addonId);
