@@ -1,193 +1,265 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import Icon from '@/components/ui/icon';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import Icon from "@/components/ui/icon";
 
 const WarmDates = () => {
+  const [activeRitual, setActiveRitual] = useState<number | null>(null);
+
+  const rituals = [
+    {
+      title: 'Ритуал «Ближе»',
+      description: 'Синхронизация дыхания, тепла и взгляда.',
+      subtitle: 'Идеален для первого погружения.',
+      details: 'Мягкое введение в практику банных ритуалов для пар. Через простые, но глубокие упражнения вы учитесь чувствовать дыхание друг друга, синхронизировать движения и присутствовать в моменте. Продолжительность: 1.5 часа.'
+    },
+    {
+      title: 'Тепло в тишине',
+      description: 'Без слов, только чувства.',
+      subtitle: 'Глубокое погружение в невербальную коммуникацию.',
+      details: 'Особый формат, где мы сознательно убираем слова и оставляем только тактильность, взгляды и совместное присутствие. Идеален для пар, которые хотят выйти за пределы привычных способов общения. Продолжительность: 2 часа.'
+    },
+    {
+      title: 'Пар на двоих',
+      description: 'Обучение искусству парения друг друга.',
+      subtitle: 'Игра, доверие, забота.',
+      details: 'Я обучаю вас базовым техникам парения, и вы практикуете их друг на друге. Это не только телесная практика, но и упражнение на доверие, внимание и заботу. Вы уходите с новым совместным навыком. Продолжительность: 2.5 часа.'
+    },
+    {
+      title: 'Свидание с ужином',
+      description: 'Ритуал завершается ужином у камина.',
+      subtitle: 'С авторским чаем и угощениями.',
+      details: 'Полный формат: банный ритуал + завершающая трапеза в уютной комнате отдыха. Лёгкие закуски, травяные чаи, пледы, камин и возможность просто быть вместе после глубокого опыта. Продолжительность: 3 часа.'
+    }
+  ];
+
+  const testimonials = [
+    {
+      text: '«Это была не баня, а сеанс глубокой терапии отношениями. Мы говорили глазами и молчали сердцем. Спасибо.»',
+      author: '— Алина и Максим'
+    },
+    {
+      text: '«Подарил жене на годовщину. Она сказала, что это лучший подарок за последние 5 лет. Всё сказано.»',
+      author: '— Артём'
+    },
+    {
+      text: '«Свидание, после которого не хочется смотреть в телефон, а хочется смотреть друг на друга.»',
+      author: '— Вика и Сергей'
+    }
+  ];
+
+  const timeline = [
+    { title: 'Встреча и чай', description: 'Знакомство, настройка, погружение в атмосферу.' },
+    { title: 'Первый заход', description: 'Лёгкий пар. Знакомство с теплом, встреча с собой.' },
+    { title: 'Отдых и тишина', description: 'Прохладный напиток, молчаливое созерцание.' },
+    { title: 'Второй заход', description: 'Парение на двоих. Синхронизация дыхания и прикосновений.' },
+    { title: 'Чайная церемония', description: 'Глубокий разговор или лёгкая беседа у огня.' },
+    { title: 'Завершение', description: 'Вы возвращаетесь в мир обновлёнными и соединёнными.' }
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-nature-sage to-nature-cream">
-      {/* Header */}
-      <header className="bg-nature-forest/95 text-nature-cream py-4">
-        <div className="container mx-auto px-6 flex items-center justify-between">
-          <Link to="/" className="text-xl font-serif flex items-center gap-2 hover:text-nature-sage transition-colors">
-            <Icon name="ArrowLeft" size={20} />
-            Главная
-          </Link>
-          <h1 className="text-sm font-medium">Тёплые Свидания</h1>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-6 py-12">
-        {/* Hero Section */}
-        <section className="text-center mb-16">
-          <h1 className="text-4xl md:text-6xl font-serif text-nature-forest mb-6">
-            Свидание, которое вернёт вас друг к другу
+    <div className="min-h-screen bg-gradient-to-b from-nature-cream via-white to-nature-cream">
+      <section 
+        className="relative min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "linear-gradient(rgba(90,60,50,0.7), rgba(60,40,30,0.8)), url('https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/271711d7-ab48-4ed6-869a-a051e0ec01fc.jpg')"
+        }}
+      >
+        <div className="container mx-auto px-4 text-center text-white max-w-4xl">
+          <h1 className="text-5xl md:text-7xl font-serif mb-6 leading-tight">
+            Встреча, которая остаётся в коже.<br />
+            <span className="text-nature-sand">И в сердце.</span>
           </h1>
-          <p className="text-xl text-nature-forest/80 max-w-3xl mx-auto leading-relaxed">
-            Интимный формат для пар, где через тактильность, ритуалы и общее погружение 
-            рождается новая глубина близости.
+          <p className="text-xl md:text-2xl mb-10 text-gray-200 leading-relaxed max-w-3xl mx-auto">
+            Преображаем свидание в глубокий ритуал близости, где тело, чувства и внимание соединяются в атмосфере тепла и заботы.
           </p>
-        </section>
+          <Button 
+            size="lg" 
+            className="bg-nature-brown hover:bg-nature-forest text-white px-10 py-6 text-lg shadow-2xl hover:shadow-nature-sand/50 transition-all"
+            onClick={() => document.getElementById('rituals')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            Забронировать погружение
+          </Button>
+        </div>
+      </section>
 
-        <div className="max-w-4xl mx-auto space-y-12">
-          {/* Для кого */}
-          <Card className="bg-nature-cream/95 border-nature-brown/20">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-serif text-nature-forest mb-6 flex items-center gap-3">
-                <Icon name="HeartHandshake" size={28} className="text-nature-brown" />
-                Для кого
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 max-w-5xl">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div 
+              className="h-96 bg-cover bg-center rounded-lg shadow-xl"
+              style={{
+                backgroundImage: "url('https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/271711d7-ab48-4ed6-869a-a051e0ec01fc.jpg')"
+              }}
+            />
+            <div>
+              <h2 className="text-4xl font-serif text-nature-forest mb-6 italic">
+                Баня — это не про жар.<br />Это про людей.
               </h2>
-              <div className="space-y-4 text-nature-forest/80">
-                <p className="flex items-start gap-3">
-                  <Icon name="RefreshCw" size={20} className="text-nature-brown mt-0.5 flex-shrink-0" />
-                  Для пар, которые хотят освежить ощущения и выйти из режима рутины
-                </p>
-                <p className="flex items-start gap-3">
-                  <Icon name="Calendar" size={20} className="text-nature-brown mt-0.5 flex-shrink-0" />
-                  Для тех, кто отмечает особую дату (годовщина, предложение)
-                </p>
-                <p className="flex items-start gap-3">
-                  <Icon name="Heart" size={20} className="text-nature-brown mt-0.5 flex-shrink-0" />
-                  Для пар, желающих углубить эмоциональную и телесную связь
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Суть формата */}
-          <Card className="bg-nature-sage/10 border-nature-brown/20">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-serif text-nature-forest mb-6 flex items-center gap-3">
-                <Icon name="Compass" size={28} className="text-nature-brown" />
-                Суть формата
-              </h2>
-              <p className="text-nature-forest/80 text-lg leading-relaxed">
-                Это больше, чем спа. Это персональный ритуал для вас двоих, где я, как проводник, 
-                создаю безопасное и чувственное пространство. Через синхронное парение, контрастные практики 
-                и ритуалы заботы вы заново учитесь чувствовать друг друга без слов.
+              <p className="text-lg text-nature-forest/80 leading-relaxed mb-4">
+                Тело — проводник к душе, а тепло — мост между сердцами. Через парение мы создаём мир, в котором люди встречаются по-настоящему: с собой, с другими, с жизнью.
               </p>
-            </CardContent>
-          </Card>
-
-          {/* Что получите */}
-          <Card className="bg-nature-cream/95 border-nature-brown/20">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-serif text-nature-forest mb-6 flex items-center gap-3">
-                <Icon name="Gift" size={28} className="text-nature-brown" />
-                Что получите
-              </h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="flex items-start gap-3">
-                  <Icon name="Hand" size={20} className="text-nature-brown mt-0.5 flex-shrink-0" />
-                  <p className="text-nature-forest/80">
-                    Возвращение тактильности и невербального диалога в отношения
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Icon name="Waves" size={20} className="text-nature-brown mt-0.5 flex-shrink-0" />
-                  <p className="text-nature-forest/80">
-                    Глубокое расслабление и снятие накопленного напряжения вместе
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Icon name="Camera" size={20} className="text-nature-brown mt-0.5 flex-shrink-0" />
-                  <p className="text-nature-forest/80">
-                    Новые shared воспоминания, которые станут ресурсом для пары
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Icon name="Sparkles" size={20} className="text-nature-brown mt-0.5 flex-shrink-0" />
-                  <p className="text-nature-forest/80">
-                    Романтический опыт, который невозможно повторить в обычной обстановке
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Как это происходит */}
-          <Card className="bg-nature-sage/10 border-nature-brown/20">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-serif text-nature-forest mb-6 flex items-center gap-3">
-                <Icon name="MapPin" size={28} className="text-nature-brown" />
-                Как это происходит
-              </h2>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-nature-brown text-nature-cream rounded-full flex items-center justify-center text-sm font-medium">1</div>
-                    <h3 className="font-medium text-nature-forest">Настройка</h3>
-                  </div>
-                  <p className="text-nature-forest/80 ml-11">
-                    Персональное обсуждение ваших пожеланий и границ
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-nature-brown text-nature-cream rounded-full flex items-center justify-center text-sm font-medium">2</div>
-                    <h3 className="font-medium text-nature-forest">Ритуал</h3>
-                  </div>
-                  <p className="text-nature-forest/80 ml-11">
-                    Совместное парение по авторской методике для пар
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-nature-brown text-nature-cream rounded-full flex items-center justify-center text-sm font-medium">3</div>
-                    <h3 className="font-medium text-nature-forest">Практика</h3>
-                  </div>
-                  <p className="text-nature-forest/80 ml-11">
-                    Контрастные immersion (лёд/пар) для пробуждения чувственности
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-nature-brown text-nature-cream rounded-full flex items-center justify-center text-sm font-medium">4</div>
-                    <h3 className="font-medium text-nature-forest">Завершение</h3>
-                  </div>
-                  <p className="text-nature-forest/80 ml-11">
-                    Чаепитие и время для интеграции ощущений вдвоём
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Стоимость */}
-          <Card className="bg-nature-brown/5 border-nature-brown/30">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-serif text-nature-forest mb-6 flex items-center gap-3">
-                <Icon name="CreditCard" size={28} className="text-nature-brown" />
-                Стоимость
-              </h2>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg text-nature-forest">Индивидуальная сессия для пары (2-3 часа):</span>
-                  <span className="text-2xl font-bold text-nature-brown">15 000 ₽</span>
-                </div>
-                <p className="text-nature-forest/70 text-sm">
-                  Включено: Приватная локация, работа пармейстера, авторский чайный сет, все материалы
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* CTA */}
-          <div className="text-center">
-            <a 
-              href="https://t.me/DmitryChikin" 
-              target="_blank" 
-              rel="noopener noreferrer"
-            >
-              <Button className="bg-nature-brown hover:bg-nature-brown/90 text-nature-cream px-8 py-3 text-lg">
-                <Icon name="MessageCircle" size={20} className="mr-2" />
-                Забронировать для нас двоих
-              </Button>
-            </a>
+              <p className="text-nature-brown font-medium">
+                ~ Дмитрий Чикин, основатель
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      <section className="py-20 bg-nature-cream/30">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <h2 className="text-4xl md:text-5xl font-serif text-center text-nature-forest mb-16">
+            Это свидание для вас, если вы...
+          </h2>
+          <div className="grid md:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="w-20 h-20 mx-auto mb-4 bg-nature-brown/10 rounded-full flex items-center justify-center">
+                <Icon name="Users" size={36} className="text-nature-brown" />
+              </div>
+              <p className="text-nature-forest/80 leading-relaxed">
+                Влюблённые пары, желающие углубить связь
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-20 h-20 mx-auto mb-4 bg-nature-brown/10 rounded-full flex items-center justify-center">
+                <Icon name="Heart" size={36} className="text-nature-brown" />
+              </div>
+              <p className="text-nature-forest/80 leading-relaxed">
+                Супруги, желающие вернуть свежесть и нежность
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-20 h-20 mx-auto mb-4 bg-nature-brown/10 rounded-full flex items-center justify-center">
+                <Icon name="Sparkles" size={36} className="text-nature-brown" />
+              </div>
+              <p className="text-nature-forest/80 leading-relaxed">
+                Новые пары, стремящиеся узнать друг друга глубже
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-20 h-20 mx-auto mb-4 bg-nature-brown/10 rounded-full flex items-center justify-center">
+                <Icon name="Gift" size={36} className="text-nature-brown" />
+              </div>
+              <p className="text-nature-forest/80 leading-relaxed">
+                Те, кто празднует или ищет уникальный подарок
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="rituals" className="py-20 bg-white">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <h2 className="text-4xl md:text-5xl font-serif text-center text-nature-forest mb-12">
+            Выберите формат вашей встречи
+          </h2>
+          <div className="space-y-4">
+            {rituals.map((ritual, index) => (
+              <Card 
+                key={index}
+                className="overflow-hidden border-nature-brown/20 hover:border-nature-brown/40 transition-all cursor-pointer"
+                onClick={() => setActiveRitual(activeRitual === index ? null : index)}
+              >
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="text-2xl font-serif text-nature-forest mb-2">{ritual.title}</h3>
+                      <p className="text-nature-forest/70 mb-1">{ritual.description}</p>
+                      <p className="text-nature-brown text-sm italic">{ritual.subtitle}</p>
+                    </div>
+                    <Icon 
+                      name={activeRitual === index ? "ChevronUp" : "ChevronDown"} 
+                      size={24} 
+                      className="text-nature-brown flex-shrink-0 ml-4"
+                    />
+                  </div>
+                  {activeRitual === index && (
+                    <div className="mt-4 pt-4 border-t border-nature-brown/20">
+                      <p className="text-nature-forest/80 leading-relaxed">{ritual.details}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 bg-nature-sage/10">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <h2 className="text-4xl md:text-5xl font-serif text-center text-nature-forest mb-16">
+            Путешествие длиною в два часа
+          </h2>
+          <div className="relative">
+            <div className="absolute top-8 left-0 right-0 h-0.5 bg-nature-brown/30 hidden md:block" />
+            <div className="grid md:grid-cols-3 gap-8">
+              {timeline.map((step, index) => (
+                <div key={index} className="relative">
+                  <div className="bg-white rounded-lg p-6 shadow-lg border border-nature-brown/10">
+                    <div className="w-12 h-12 mx-auto mb-4 bg-nature-brown text-white rounded-full flex items-center justify-center text-xl font-serif">
+                      {index + 1}
+                    </div>
+                    <h3 className="text-xl font-serif text-nature-forest mb-2 text-center">{step.title}</h3>
+                    <p className="text-nature-forest/70 text-center text-sm leading-relaxed">{step.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 max-w-5xl">
+          <h2 className="text-4xl md:text-5xl font-serif text-center text-nature-forest mb-16">
+            Отзывы
+          </h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            {testimonials.map((testimonial, index) => (
+              <Card key={index} className="bg-nature-cream/30 border-nature-brown/20">
+                <CardContent className="p-8">
+                  <p className="text-lg text-nature-forest/80 italic mb-4 leading-relaxed">
+                    {testimonial.text}
+                  </p>
+                  <p className="text-nature-brown font-medium">{testimonial.author}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section 
+        className="relative py-32 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "linear-gradient(rgba(60,40,30,0.85), rgba(40,30,20,0.9)), url('https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/af34bfcb-a0a6-4c11-81e3-dc21f774d1d6.jpg')"
+        }}
+      >
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-4xl md:text-6xl font-serif text-white mb-6">
+            Готовы создать воспоминание?
+          </h2>
+          <p className="text-xl text-gray-200 mb-10 max-w-2xl mx-auto">
+            Забронируйте ваше путешествие в тепло.
+          </p>
+          <a 
+            href="https://t.me/DmitryChikin" 
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            <Button 
+              size="lg" 
+              className="bg-nature-sand hover:bg-nature-sand/90 text-nature-forest px-10 py-6 text-lg shadow-2xl"
+            >
+              Выбрать дату и время
+            </Button>
+          </a>
+          <p className="text-gray-300 text-sm mt-6">
+            Конфиденциальность и ваше комфортное состояние — наш главный приоритет.
+          </p>
+        </div>
+      </section>
     </div>
   );
 };
