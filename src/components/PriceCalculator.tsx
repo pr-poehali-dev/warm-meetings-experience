@@ -165,7 +165,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
       return;
     }
 
-    const selectedPackageData = packages.find(p => p.id === selectedPackage);
+    const selectedPackageData = packages.find(p => String(p.id) === String(selectedPackage));
     
     try {
       const response = await fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=bookings', {
@@ -177,14 +177,14 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
           client_name: name,
           client_phone: phone,
           client_email: email || null,
-          package_id: selectedPackage || null,
+          package_id: selectedPackage ? parseInt(selectedPackage) : null,
           package_name: selectedPackageData?.name || '',
           service_area_id: selectedArea || null,
           event_date: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
           person_count: persons,
-          selected_addons: selectedAddons,
+          selected_addons: selectedAddons.map(id => parseInt(id)),
           promo_code: promoApplied ? promoCode : null,
-          base_price: breakdown.basePrice || total,
+          base_price: parseFloat(String(breakdown.basePrice || total)),
           total_price: total,
           discount_amount: breakdown.discount || 0,
           calculation_details: breakdown,

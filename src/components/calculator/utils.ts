@@ -10,14 +10,14 @@ export const calculatePrice = (
   packages: any[] = [],
   addons: any[] = []
 ) => {
-  const pkg = packages.find(p => p.id === selectedPackage);
+  const pkg = packages.find(p => String(p.id) === String(selectedPackage));
   if (!pkg) return { total: 0, breakdown: {} };
 
-  const basePrice = pkg.base_price;
+  const basePrice = parseFloat(pkg.base_price) || 0;
   
   const addonsTotal = selectedAddons.reduce((sum, addonId) => {
-    const addon = addons.find(a => a.id === addonId);
-    return sum + (addon?.price || 0);
+    const addon = addons.find(a => String(a.id) === String(addonId));
+    return sum + (parseFloat(addon?.price) || 0);
   }, 0);
 
   const areaMultiplier = selectedArea === "area_moscow" ? 1.30 : 1.00;
