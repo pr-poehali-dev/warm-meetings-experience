@@ -34,10 +34,26 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
   const [addons, setAddons] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const STORAGE_KEY = 'warmDatesCalculatorProgress';
+  const CACHE_KEY = 'warmDatesCalculatorCache';
+  const CACHE_EXPIRY = 5 * 60 * 1000;
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_EXPIRY) {
+            setPackages(data.packages);
+            setAddons(data.addons);
+            setLoading(false);
+            return;
+          }
+        }
+        
         const [packagesRes, addonsRes] = await Promise.all([
           fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=packages'),
           fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=addons')
@@ -46,8 +62,16 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
         const packagesData = await packagesRes.json();
         const addonsData = await addonsRes.json();
         
-        setPackages(packagesData.filter((p: any) => p.is_active));
-        setAddons(addonsData.filter((a: any) => a.is_active));
+        const activePackages = packagesData.filter((p: any) => p.is_active);
+        const activeAddons = addonsData.filter((a: any) => a.is_active);
+        
+        setPackages(activePackages);
+        setAddons(activeAddons);
+        
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+          data: { packages: activePackages, addons: activeAddons },
+          timestamp: Date.now()
+        }));
       } catch (error) {
         console.error('Error loading calculator data:', error);
       } finally {
@@ -57,19 +81,51 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
 
     if (open) {
       fetchData();
-    } else {
-      setStep(1);
-      setSelectedPackage("");
-      setSelectedDate(undefined);
-      setSelectedArea("area_moscow_region");
-      setPersons(2);
-      setExtraDuration(0);
-      setSelectedAddons([]);
-      setPromoCode("");
-      setPromoApplied(false);
-      setConsentChecked(false);
+      
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const progress = JSON.parse(saved);
+          setStep(progress.step || 1);
+          setSelectedPackage(progress.selectedPackage || "");
+          setSelectedDate(progress.selectedDate ? new Date(progress.selectedDate) : undefined);
+          setSelectedArea(progress.selectedArea || "area_moscow_region");
+          setPersons(progress.persons || 2);
+          setExtraDuration(progress.extraDuration || 0);
+          setSelectedAddons(progress.selectedAddons || []);
+          setPromoCode(progress.promoCode || "");
+          setPromoApplied(progress.promoApplied || false);
+          setName(progress.name || "");
+          setPhone(progress.phone || "");
+          setEmail(progress.email || "");
+          setComment(progress.comment || "");
+        } catch (e) {
+          console.error('Error restoring progress:', e);
+        }
+      }
     }
   }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      const progress = {
+        step,
+        selectedPackage,
+        selectedDate: selectedDate?.toISOString(),
+        selectedArea,
+        persons,
+        extraDuration,
+        selectedAddons,
+        promoCode,
+        promoApplied,
+        name,
+        phone,
+        email,
+        comment
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    }
+  }, [open, step, selectedPackage, selectedDate, selectedArea, persons, extraDuration, selectedAddons, promoCode, promoApplied, name, phone, email, comment]);
 
   const { total, breakdown } = calculatePrice(
     selectedPackage,
@@ -136,6 +192,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
       }
 
       const result = await response.json();
+      localStorage.removeItem(STORAGE_KEY);
       alert(`Заявка успешно отправлена!\n\nНомер заявки: ${result.id}\nИтого: ${total.toLocaleString()} ₽\nДепозит: ${deposit.toLocaleString()} ₽\n\nМы свяжемся с вами в ближайшее время!`);
       onClose();
     } catch (error) {
