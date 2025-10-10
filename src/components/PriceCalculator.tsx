@@ -29,6 +29,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
   const [phone, setPhone] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [comment, setComment] = useState<string>("");
+  const [consentChecked, setConsentChecked] = useState<boolean>(false);
 
   useEffect(() => {
     if (!open) {
@@ -41,6 +42,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
       setSelectedAddons([]);
       setPromoCode("");
       setPromoApplied(false);
+      setConsentChecked(false);
     }
   }, [open]);
 
@@ -72,8 +74,8 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
   };
 
   const handleBooking = () => {
-    if (!name || !phone) {
-      alert("Пожалуйста, заполните имя и телефон");
+    if (!name || !phone || !consentChecked) {
+      alert("Пожалуйста, заполните все обязательные поля и подтвердите согласие");
       return;
     }
     
@@ -139,6 +141,8 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
                 onEmailChange={setEmail}
                 comment={comment}
                 onCommentChange={setComment}
+                consentChecked={consentChecked}
+                onConsentChange={setConsentChecked}
                 onBack={() => setStep(3)}
                 onSubmit={handleBooking}
               />

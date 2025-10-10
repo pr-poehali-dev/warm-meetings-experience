@@ -14,6 +14,8 @@ interface Step4BookingProps {
   onEmailChange: (email: string) => void;
   comment: string;
   onCommentChange: (comment: string) => void;
+  consentChecked: boolean;
+  onConsentChange: (checked: boolean) => void;
   onBack: () => void;
   onSubmit: () => void;
 }
@@ -27,6 +29,8 @@ const Step4Booking: React.FC<Step4BookingProps> = ({
   onEmailChange,
   comment,
   onCommentChange,
+  consentChecked,
+  onConsentChange,
   onBack,
   onSubmit,
 }) => {
@@ -73,7 +77,11 @@ const Step4Booking: React.FC<Step4BookingProps> = ({
       </div>
 
       <div className="flex items-start gap-2">
-        <Checkbox id="consent" />
+        <Checkbox 
+          id="consent" 
+          checked={consentChecked}
+          onCheckedChange={onConsentChange}
+        />
         <Label htmlFor="consent" className="text-sm text-nature-forest/80 cursor-pointer leading-relaxed">
           Я согласен на обработку персональных данных в соответствии с{" "}
           <Link 
@@ -104,7 +112,8 @@ const Step4Booking: React.FC<Step4BookingProps> = ({
         </Button>
         <Button
           onClick={onSubmit}
-          className="flex-1 bg-nature-brown hover:bg-nature-forest"
+          disabled={!name || !phone || !consentChecked}
+          className="flex-1 bg-nature-brown hover:bg-nature-forest disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Забронировать
         </Button>
