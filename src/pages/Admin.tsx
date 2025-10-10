@@ -7,6 +7,14 @@ import AdminEventsList from "@/components/admin/AdminEventsList";
 import AdminEventForm from "@/components/admin/AdminEventForm";
 import EventDetailDialog from "@/components/admin/EventDetailDialog";
 import DeleteConfirmDialog from "@/components/admin/DeleteConfirmDialog";
+import AdminPackages from "@/components/admin/AdminPackages";
+import AdminAddons from "@/components/admin/AdminAddons";
+import AdminBookings from "@/components/admin/AdminBookings";
+import AdminServiceAreas from "@/components/admin/AdminServiceAreas";
+import AdminMultipliers from "@/components/admin/AdminMultipliers";
+import AdminHolidays from "@/components/admin/AdminHolidays";
+import AdminPromoCodes from "@/components/admin/AdminPromoCodes";
+import AdminSettings from "@/components/admin/AdminSettings";
 
 interface Event {
   id?: number;
@@ -26,11 +34,24 @@ interface Event {
   updated_at?: string;
 }
 
-const API_URL = "https://functions.poehali.dev/0d9ea640-f2f5-4e63-8633-db26b10decc8";
+const EVENTS_API_URL = "https://functions.poehali.dev/0d9ea640-f2f5-4e63-8633-db26b10decc8";
+
+type ViewType = 
+  | "overview" 
+  | "list" 
+  | "add" 
+  | "packages" 
+  | "addons" 
+  | "bookings" 
+  | "service-areas" 
+  | "multipliers" 
+  | "holidays" 
+  | "promo-codes" 
+  | "settings";
 
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentView, setCurrentView] = useState<"overview" | "list" | "add">("overview");
+  const [currentView, setCurrentView] = useState<ViewType>("overview");
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -80,7 +101,7 @@ const Admin = () => {
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      let url = `${API_URL}?visible=false`;
+      let url = `${EVENTS_API_URL}?visible=false`;
       if (searchTerm) url += `&search=${encodeURIComponent(searchTerm)}`;
       if (filterOccupancy) url += `&occupancy=${filterOccupancy}`;
 
@@ -104,7 +125,7 @@ const Admin = () => {
 
     try {
       const method = formData.id ? "PUT" : "POST";
-      const response = await fetch(API_URL, {
+      const response = await fetch(EVENTS_API_URL, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -126,6 +147,9 @@ const Admin = () => {
           start_time: "",
           end_time: "",
           occupancy: "low",
+          price: "",
+          event_type: "знакомство",
+          event_type_icon: "Users",
           image_url: "",
           is_visible: true,
         });
@@ -155,7 +179,7 @@ const Admin = () => {
     
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}?id=${eventToDelete}`, {
+      const response = await fetch(`${EVENTS_API_URL}?id=${eventToDelete}`, {
         method: "DELETE",
       });
 
@@ -183,7 +207,7 @@ const Admin = () => {
   const toggleVisibility = async (event: Event) => {
     setLoading(true);
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch(EVENTS_API_URL, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -322,6 +346,15 @@ const Admin = () => {
               onCancel={() => setCurrentView("list")}
             />
           )}
+
+          {currentView === "packages" && <AdminPackages />}
+          {currentView === "addons" && <AdminAddons />}
+          {currentView === "bookings" && <AdminBookings />}
+          {currentView === "service-areas" && <AdminServiceAreas />}
+          {currentView === "multipliers" && <AdminMultipliers />}
+          {currentView === "holidays" && <AdminHolidays />}
+          {currentView === "promo-codes" && <AdminPromoCodes />}
+          {currentView === "settings" && <AdminSettings />}
         </main>
       </div>
 
