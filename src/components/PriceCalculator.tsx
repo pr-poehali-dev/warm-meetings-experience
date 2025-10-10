@@ -7,6 +7,7 @@ import Step3Addons from "./calculator/Step3Addons";
 import Step4Booking from "./calculator/Step4Booking";
 import PriceSummary from "./calculator/PriceSummary";
 import StepIndicator from "./calculator/StepIndicator";
+import Icon from "@/components/ui/icon";
 
 interface PriceCalculatorProps {
   open: boolean;
