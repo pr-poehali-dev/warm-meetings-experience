@@ -8,6 +8,9 @@ import csv
 from io import StringIO
 import urllib.request
 import urllib.parse
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
@@ -84,6 +87,66 @@ def send_telegram_notification(booking_data: dict):
     try:
         req = urllib.request.Request(url, data=data)
         urllib.request.urlopen(req, timeout=5)
+    except Exception:
+        pass
+
+def send_email_to_client(booking_data: dict):
+    client_email = booking_data.get('client_email')
+    if not client_email:
+        return
+    
+    smtp_host = os.environ.get('SMTP_HOST')
+    smtp_port = os.environ.get('SMTP_PORT', '587')
+    smtp_user = os.environ.get('SMTP_USER')
+    smtp_password = os.environ.get('SMTP_PASSWORD')
+    
+    if not all([smtp_host, smtp_user, smtp_password]):
+        return
+    
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = f"Подтверждение заявки #{booking_data.get('id')} - Тёплые Свидания"
+    msg['From'] = smtp_user
+    msg['To'] = client_email
+    
+    html_content = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #5d4037;">🔥 Благодарим за бронирование!</h2>
+            
+            <p>Здравствуйте, <strong>{booking_data.get('client_name')}</strong>!</p>
+            
+            <p>Ваша заявка успешно получена и обрабатывается.</p>
+            
+            <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #5d4037;">Детали бронирования:</h3>
+                <p><strong>Номер заявки:</strong> #{booking_data.get('id')}</p>
+                <p><strong>Пакет:</strong> {booking_data.get('package_name', 'Не выбран')}</p>
+                <p><strong>Дата:</strong> {booking_data.get('event_date', 'Не указана')}</p>
+                <p><strong>Количество человек:</strong> {booking_data.get('person_count', 0)}</p>
+                <p><strong>Итоговая стоимость:</strong> {booking_data.get('total_price', 0):,.0f} ₽</p>
+            </div>
+            
+            <p>Мы свяжемся с вами в ближайшее время для подтверждения деталей и внесения депозита.</p>
+            
+            <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                С теплом,<br>
+                Команда Тёплых Свиданий<br>
+                <a href="https://t.me/DmitryChikin" style="color: #5d4037;">Telegram</a>
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+    
+    msg.attach(MIMEText(html_content, 'html'))
+    
+    try:
+        server = smtplib.SMTP(smtp_host, int(smtp_port))
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
+        server.quit()
     except Exception:
         pass
 
@@ -201,8 +264,10 @@ def handle_bookings(conn, event):
         
         booking_dict = dict(new_booking)
         booking_dict['package_name'] = body_data.get('package_name', '')
+        booking_dict['client_email'] = body_data.get('client_email')
         
         send_telegram_notification(booking_dict)
+        send_email_to_client(booking_dict)
         
         return cors_response(201, json.dumps(booking_dict, default=str))
     
