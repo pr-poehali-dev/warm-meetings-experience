@@ -262,7 +262,7 @@ const WarmDates = () => {
           >
             <Button 
               size="lg" 
-              className="bg-nature-sand hover:bg-nature-sand/90 text-nature-forest px-10 py-6 text-lg shadow-2xl"
+              className="bg-white hover:bg-gray-100 text-gray-900 px-10 py-6 text-lg shadow-2xl font-semibold"
             >
               Выбрать дату и время
             </Button>
