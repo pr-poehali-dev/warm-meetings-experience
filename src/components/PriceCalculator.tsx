@@ -82,27 +82,27 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
     const selectedPackageData = packages.find(p => p.id === selectedPackage);
     
     try {
-      const response = await fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87/bookings', {
+      const response = await fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          customer_name: name,
-          customer_phone: phone,
-          customer_email: email || null,
-          package_id: selectedPackage,
+          client_name: name,
+          client_phone: phone,
+          client_email: email || null,
+          package_id: selectedPackage || null,
           package_name: selectedPackageData?.name || '',
-          event_date: selectedDate?.toISOString() || null,
-          area_id: selectedArea,
-          persons_count: persons,
-          extra_duration: extraDuration,
-          addons: selectedAddons,
+          service_area_id: selectedArea || null,
+          event_date: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
+          person_count: persons,
+          selected_addons: selectedAddons,
           promo_code: promoApplied ? promoCode : null,
-          price_breakdown: breakdown,
+          base_price: breakdown.basePrice || total,
           total_price: total,
-          deposit_amount: deposit,
-          customer_comment: comment || null
+          discount_amount: breakdown.discount || 0,
+          calculation_details: breakdown,
+          consent_given: consentChecked
         })
       });
 
@@ -111,7 +111,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
       }
 
       const result = await response.json();
-      alert(`Заявка успешно отправлена!\n\nНомер заявки: ${result.booking_id}\nИтого: ${total.toLocaleString()} ₽\nДепозит: ${deposit.toLocaleString()} ₽\n\nМы свяжемся с вами в ближайшее время!`);
+      alert(`Заявка успешно отправлена!\n\nНомер заявки: ${result.id}\nИтого: ${total.toLocaleString()} ₽\nДепозит: ${deposit.toLocaleString()} ₽\n\nМы свяжемся с вами в ближайшее время!`);
       onClose();
     } catch (error) {
       console.error('Error submitting booking:', error);
