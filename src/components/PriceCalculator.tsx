@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { calculatePrice } from "./calculator/utils";
 import Step1PackageSelection from "./calculator/Step1PackageSelection";
@@ -129,7 +129,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
     }
   }, [open, step, selectedPackage, selectedDate, selectedArea, persons, extraDuration, selectedAddons, promoCode, promoApplied, name, phone, email, comment]);
 
-  const { total, breakdown } = calculatePrice(
+  const { total, breakdown } = useMemo(() => calculatePrice(
     selectedPackage,
     selectedDate,
     selectedArea,
@@ -140,7 +140,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
     promoCode,
     packages,
     addons
-  );
+  ), [selectedPackage, selectedDate, selectedArea, persons, extraDuration, selectedAddons, promoApplied, promoCode, packages, addons]);
 
   const deposit = Math.round(total * 0.30 / 100) * 100;
 
