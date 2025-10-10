@@ -41,14 +41,12 @@ const Footer = () => {
               >
                 Обработка персональных данных
               </a>
-              <a 
-                href="https://disk.yandex.ru/i/xa3Ep9y2MGEbsw" 
-                target="_blank" 
-                rel="noopener noreferrer"
+              <Link 
+                to="/privacy-policy"
                 className="block hover:text-nature-sand transition-colors"
               >
                 Положение о конфиденциальности
-              </a>
+              </Link>
             </div>
           </div>
 

@@ -18,6 +18,7 @@ import WarmDates from "./pages/WarmDates";
 import Events from "./pages/Events";
 import MobileServices from "./pages/MobileServices";
 import Admin from "./pages/Admin";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const AppContent = () => {
         <Route path="/events" element={<Events />} />
         <Route path="/mobile-services" element={<MobileServices />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
