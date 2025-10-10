@@ -6,6 +6,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import csv
 from io import StringIO
+import urllib.request
+import urllib.parse
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
@@ -53,6 +55,37 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     except Exception as e:
         conn.close()
         return cors_response(500, json.dumps({'error': str(e)}))
+
+def send_telegram_notification(booking_data: dict):
+    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+    
+    if not bot_token or not chat_id:
+        return
+    
+    message = f"""🔔 Новая заявка #{booking_data.get('id')}
+
+👤 Клиент: {booking_data.get('client_name')}
+📱 Телефон: {booking_data.get('client_phone')}
+📅 Дата: {booking_data.get('event_date', 'Не указана')}
+📦 Пакет: {booking_data.get('package_name', 'Не выбран')}
+👥 Человек: {booking_data.get('person_count', 0)}
+💰 Сумма: {booking_data.get('total_price', 0):,.0f} ₽
+
+Статус: {booking_data.get('status', 'new')}"""
+    
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    data = urllib.parse.urlencode({
+        'chat_id': chat_id,
+        'text': message,
+        'parse_mode': 'HTML'
+    }).encode()
+    
+    try:
+        req = urllib.request.Request(url, data=data)
+        urllib.request.urlopen(req, timeout=5)
+    except Exception:
+        pass
 
 def cors_response(status: int, body: str, extra_headers: dict = None) -> Dict[str, Any]:
     headers = {
@@ -166,7 +199,12 @@ def handle_bookings(conn, event):
         conn.commit()
         cursor.close()
         
-        return cors_response(201, json.dumps(dict(new_booking), default=str))
+        booking_dict = dict(new_booking)
+        booking_dict['package_name'] = body_data.get('package_name', '')
+        
+        send_telegram_notification(booking_dict)
+        
+        return cors_response(201, json.dumps(booking_dict, default=str))
     
     elif method == 'PUT':
         body_data = json.loads(event.get('body', '{}'))
