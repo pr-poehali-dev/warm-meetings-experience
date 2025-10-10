@@ -7,6 +7,7 @@ import Step2Parameters from "./calculator/Step2Parameters";
 import Step3Addons from "./calculator/Step3Addons";
 import Step4Booking from "./calculator/Step4Booking";
 import PriceSummary from "./calculator/PriceSummary";
+import StepIndicator from "./calculator/StepIndicator";
 
 interface PriceCalculatorProps {
   open: boolean;
@@ -91,6 +92,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
 
         <div className="grid md:grid-cols-[2fr,1fr] gap-8 mt-6">
           <div className="space-y-8">
+            <StepIndicator currentStep={step} totalSteps={4} />
             {step === 1 && (
               <Step1PackageSelection
                 selectedPackage={selectedPackage}

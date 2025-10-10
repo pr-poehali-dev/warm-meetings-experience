@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,8 +74,23 @@ const Step4Booking: React.FC<Step4BookingProps> = ({
 
       <div className="flex items-start gap-2">
         <Checkbox id="consent" />
-        <Label htmlFor="consent" className="text-sm text-nature-forest/80 cursor-pointer">
-          Я согласен на обработку персональных данных
+        <Label htmlFor="consent" className="text-sm text-nature-forest/80 cursor-pointer leading-relaxed">
+          Я согласен на обработку персональных данных в соответствии с{" "}
+          <Link 
+            to="/personal-data-consent" 
+            target="_blank"
+            className="text-nature-brown hover:underline"
+          >
+            Согласием
+          </Link>
+          {" "}и{" "}
+          <Link 
+            to="/privacy-policy" 
+            target="_blank"
+            className="text-nature-brown hover:underline"
+          >
+            Политикой конфиденциальности
+          </Link>
         </Label>
       </div>
 
