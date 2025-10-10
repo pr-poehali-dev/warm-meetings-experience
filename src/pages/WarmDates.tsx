@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
+import PriceCalculator from "@/components/PriceCalculator";
 
 const WarmDates = () => {
   const [activeRitual, setActiveRitual] = useState<number | null>(null);
+  const [calculatorOpen, setCalculatorOpen] = useState<boolean>(false);
 
   const rituals = [
     {
@@ -73,13 +75,23 @@ const WarmDates = () => {
           <p className="text-xl md:text-2xl mb-10 text-gray-200 leading-relaxed max-w-3xl mx-auto">
             Преображаем свидание в глубокий ритуал близости, где тело, чувства и внимание соединяются в атмосфере тепла и заботы.
           </p>
-          <Button 
-            size="lg" 
-            className="bg-nature-brown hover:bg-nature-forest text-white px-10 py-6 text-lg shadow-2xl hover:shadow-nature-sand/50 transition-all"
-            onClick={() => document.getElementById('rituals')?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            Забронировать погружение
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              size="lg" 
+              className="bg-nature-brown hover:bg-nature-forest text-white px-10 py-6 text-lg shadow-2xl hover:shadow-nature-sand/50 transition-all"
+              onClick={() => setCalculatorOpen(true)}
+            >
+              Рассчитать стоимость
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline"
+              className="border-white text-white hover:bg-white/10 px-10 py-6 text-lg shadow-2xl"
+              onClick={() => document.getElementById('rituals')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              Узнать подробнее
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -260,6 +272,8 @@ const WarmDates = () => {
           </p>
         </div>
       </section>
+
+      <PriceCalculator open={calculatorOpen} onClose={() => setCalculatorOpen(false)} />
     </div>
   );
 };
