@@ -1,0 +1,116 @@
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+interface Step2ParametersProps {
+  selectedDate: Date | undefined;
+  onSelectDate: (date: Date | undefined) => void;
+  selectedArea: string;
+  onSelectArea: (area: string) => void;
+  persons: number;
+  onSelectPersons: (persons: number) => void;
+  extraDuration: number;
+  onSelectExtraDuration: (duration: number) => void;
+  onBack: () => void;
+  onNext: () => void;
+}
+
+const Step2Parameters: React.FC<Step2ParametersProps> = ({
+  selectedDate,
+  onSelectDate,
+  selectedArea,
+  onSelectArea,
+  persons,
+  onSelectPersons,
+  extraDuration,
+  onSelectExtraDuration,
+  onBack,
+  onNext,
+}) => {
+  return (
+    <div className="space-y-6">
+      <h3 className="text-xl font-serif text-nature-forest mb-4">Шаг 2: Параметры</h3>
+      
+      <div>
+        <Label className="text-nature-forest mb-2 block">Дата</Label>
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={onSelectDate}
+          className="rounded-md border border-nature-brown/20"
+          disabled={(date) => date < new Date()}
+        />
+      </div>
+
+      <div>
+        <Label className="text-nature-forest mb-3 block">Зона обслуживания</Label>
+        <RadioGroup value={selectedArea} onValueChange={onSelectArea}>
+          <div className="flex items-center space-x-2 mb-2">
+            <RadioGroupItem value="area_moscow_region" id="region" />
+            <Label htmlFor="region" className="cursor-pointer">Московская область (базовая цена)</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="area_moscow" id="moscow" />
+            <Label htmlFor="moscow" className="cursor-pointer">Москва (+30%)</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      <div>
+        <Label className="text-nature-forest mb-3 block">Количество участников</Label>
+        <RadioGroup value={persons.toString()} onValueChange={(v) => onSelectPersons(parseInt(v))}>
+          <div className="flex items-center space-x-2 mb-2">
+            <RadioGroupItem value="2" id="p2" />
+            <Label htmlFor="p2" className="cursor-pointer">2 человека</Label>
+          </div>
+          <div className="flex items-center space-x-2 mb-2">
+            <RadioGroupItem value="3" id="p3" />
+            <Label htmlFor="p3" className="cursor-pointer">3 человека (+15%)</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="4" id="p4" />
+            <Label htmlFor="p4" className="cursor-pointer">4 человека (+30%)</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      <div>
+        <Label className="text-nature-forest mb-3 block">Удлинение длительности</Label>
+        <RadioGroup value={extraDuration.toString()} onValueChange={(v) => onSelectExtraDuration(parseInt(v))}>
+          <div className="flex items-center space-x-2 mb-2">
+            <RadioGroupItem value="0" id="d0" />
+            <Label htmlFor="d0" className="cursor-pointer">Без удлинения</Label>
+          </div>
+          <div className="flex items-center space-x-2 mb-2">
+            <RadioGroupItem value="30" id="d30" />
+            <Label htmlFor="d30" className="cursor-pointer">+30 минут (+20%)</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="60" id="d60" />
+            <Label htmlFor="d60" className="cursor-pointer">+60 минут (+40%)</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      <div className="flex gap-3">
+        <Button
+          onClick={onBack}
+          variant="outline"
+          className="flex-1"
+        >
+          Назад
+        </Button>
+        <Button
+          onClick={onNext}
+          className="flex-1 bg-nature-brown hover:bg-nature-forest"
+        >
+          Далее
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+export default Step2Parameters;
