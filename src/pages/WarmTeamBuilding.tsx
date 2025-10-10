@@ -463,47 +463,6 @@ const WarmTeamBuilding = () => {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="py-12 bg-gray-900 text-white">
-        <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-8">
-            <div>
-              <h3 className="font-semibold text-lg mb-4">Контакты</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Icon name="Phone" size={16} />
-                  <span>+7 (495) 123-45-67</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Icon name="Mail" size={16} />
-                  <span>hello@teplie-vstrechi.ru</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Icon name="MapPin" size={16} />
-                  <span>Москва, Подмосковье</span>
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="font-semibold text-lg mb-4">Социальные сети</h3>
-              <div className="flex gap-4">
-                <Icon name="Instagram" size={24} className="hover:text-nature-sand cursor-pointer" />
-                <Icon name="Facebook" size={24} className="hover:text-nature-sand cursor-pointer" />
-                <Icon name="Send" size={24} className="hover:text-nature-sand cursor-pointer" />
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="font-semibold text-lg mb-4">Тёплые Встречи</h3>
-              <p className="text-gray-400">
-                Создаём пространства для искренних коммуникаций через банные ритуалы
-              </p>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
