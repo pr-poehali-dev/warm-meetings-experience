@@ -11,7 +11,7 @@ const WarmDates = () => {
 
   const rituals = [
     {
-      emoji: '🌿',
+      emoji: '○',
       title: 'Ритуал «Ближе»',
       description: 'Синхронизация дыхания, тепла и взгляда',
       idea: 'Помочь парам настроиться на одну волну через телесные практики и осознанное присутствие.',
@@ -26,7 +26,7 @@ const WarmDates = () => {
       value: 'Возвращение к естественному состоянию единства, где слова становятся вторичными.'
     },
     {
-      emoji: '🤫',
+      emoji: '◇',
       title: 'Тепло в тишине',
       description: 'Свидание без слов, только чувства',
       idea: 'Погрузиться в мир тактильных ощущений и эмоционального контакта, где тишина становится языком близости.',
@@ -41,7 +41,7 @@ const WarmDates = () => {
       value: 'Открытие новых граней отношений через молчаливое присутствие.'
     },
     {
-      emoji: '👐',
+      emoji: '△',
       title: 'Пар на двоих',
       description: 'Обучение искусству парения и совместный ритуал',
       idea: 'Научить пары создавать целебный пар и делать массаж вениками друг другу.',
@@ -56,7 +56,7 @@ const WarmDates = () => {
       value: 'Общее дело, которое объединяет и даёт практический навык для поддержания близости.'
     },
     {
-      emoji: '💍',
+      emoji: '◐',
       title: 'Свадебный пар',
       description: 'Для особых дат и воспоминаний',
       idea: 'Создать незабываемый ритуал для празднования свадьбы, годовщины или помолвки.',
@@ -71,7 +71,7 @@ const WarmDates = () => {
       value: 'Создание личной традиции и ярких воспоминаний, которые останутся с парой на всю жизнь.'
     },
     {
-      emoji: '🍽️',
+      emoji: '□',
       title: 'Свидание с ужином',
       description: 'Полное погружение в романтическую атмосферу',
       idea: 'Объединить целительную силу пара и наслаждение изысканной кухней.',
@@ -218,20 +218,24 @@ const WarmDates = () => {
           <h2 className="text-4xl md:text-5xl font-serif text-center text-nature-forest mb-12">
             Выберите формат вашей встречи
           </h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-4">
             {rituals.map((ritual, index) => (
               <Card 
                 key={index}
                 className="overflow-hidden border-nature-brown/20 hover:border-nature-brown/40 hover:shadow-xl transition-all cursor-pointer group"
                 onClick={() => setSelectedRitual(index)}
               >
-                <CardContent className="p-6">
-                  <div className="text-5xl mb-4">{ritual.emoji}</div>
-                  <h3 className="text-xl font-serif text-nature-forest mb-2 group-hover:text-nature-brown transition-colors">{ritual.title}</h3>
-                  <p className="text-nature-forest/70 text-sm leading-relaxed">{ritual.description}</p>
-                  <div className="mt-4 flex items-center text-nature-brown text-sm font-medium">
-                    <span>Подробнее</span>
-                    <Icon name="ArrowRight" size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                <CardContent className="p-8">
+                  <div className="flex items-start gap-6">
+                    <div className="text-6xl font-light text-nature-brown/40 flex-shrink-0 w-20 h-20 flex items-center justify-center">{ritual.emoji}</div>
+                    <div className="flex-1">
+                      <h3 className="text-2xl font-serif text-nature-forest mb-2 group-hover:text-nature-brown transition-colors">{ritual.title}</h3>
+                      <p className="text-nature-forest/70 leading-relaxed">{ritual.description}</p>
+                    </div>
+                    <div className="flex items-center text-nature-brown font-medium flex-shrink-0">
+                      <span>Подробнее</span>
+                      <Icon name="ArrowRight" size={20} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
