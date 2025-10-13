@@ -1,29 +1,25 @@
 {
   "tests": [
     {
-      "name": "Get all bookings",
+      "name": "Get all events",
       "method": "GET",
-      "path": "/?resource=bookings",
+      "path": "/",
       "expectedStatus": 200
     },
     {
-      "name": "Create booking",
+      "name": "Create event",
       "method": "POST",
-      "path": "/?resource=bookings",
+      "path": "/",
       "body": {
-        "client_name": "Test Client",
-        "client_phone": "+79991234567",
-        "client_email": "test@example.com",
+        "title": "Test Event",
+        "short_description": "Test description",
         "event_date": "2025-12-31",
-        "total_price": 15000,
-        "person_count": 2,
-        "package_id": 1,
-        "consent_given": true
+        "occupancy": "low"
       },
       "expectedStatus": 201,
       "expectedBody": {
-        "client_name": "Test Client",
-        "status": "new"
+        "title": "Test Event",
+        "occupancy": "low"
       },
       "bodyMatcher": "partial"
     }

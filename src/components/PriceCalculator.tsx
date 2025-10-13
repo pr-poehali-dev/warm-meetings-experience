@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { calculatePrice } from "./calculator/utils";
 import Step1PackageSelection from "./calculator/Step1PackageSelection";
@@ -7,7 +7,6 @@ import Step3Addons from "./calculator/Step3Addons";
 import Step4Booking from "./calculator/Step4Booking";
 import PriceSummary from "./calculator/PriceSummary";
 import StepIndicator from "./calculator/StepIndicator";
-import Icon from "@/components/ui/icon";
 
 interface PriceCalculatorProps {
   open: boolean;
@@ -34,28 +33,11 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
   const [packages, setPackages] = useState<any[]>([]);
   const [addons, setAddons] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [showRestoreNotice, setShowRestoreNotice] = useState<boolean>(false);
-
-  const STORAGE_KEY = 'warmDatesCalculatorProgress';
-  const CACHE_KEY = 'warmDatesCalculatorCache';
-  const CACHE_EXPIRY = 5 * 60 * 1000;
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { data, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < CACHE_EXPIRY) {
-            setPackages(data.packages);
-            setAddons(data.addons);
-            setLoading(false);
-            return;
-          }
-        }
-        
         const [packagesRes, addonsRes] = await Promise.all([
           fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=packages'),
           fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=addons')
@@ -64,16 +46,8 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
         const packagesData = await packagesRes.json();
         const addonsData = await addonsRes.json();
         
-        const activePackages = packagesData.filter((p: any) => p.is_active);
-        const activeAddons = addonsData.filter((a: any) => a.is_active);
-        
-        setPackages(activePackages);
-        setAddons(activeAddons);
-        
-        localStorage.setItem(CACHE_KEY, JSON.stringify({
-          data: { packages: activePackages, addons: activeAddons },
-          timestamp: Date.now()
-        }));
+        setPackages(packagesData.filter((p: any) => p.is_active));
+        setAddons(addonsData.filter((a: any) => a.is_active));
       } catch (error) {
         console.error('Error loading calculator data:', error);
       } finally {
@@ -83,54 +57,21 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
 
     if (open) {
       fetchData();
-      
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const progress = JSON.parse(saved);
-          setShowRestoreNotice(true);
-          setStep(progress.step || 1);
-          setSelectedPackage(progress.selectedPackage || "");
-          setSelectedDate(progress.selectedDate ? new Date(progress.selectedDate) : undefined);
-          setSelectedArea(progress.selectedArea || "area_moscow_region");
-          setPersons(progress.persons || 2);
-          setExtraDuration(progress.extraDuration || 0);
-          setSelectedAddons(progress.selectedAddons || []);
-          setPromoCode(progress.promoCode || "");
-          setPromoApplied(progress.promoApplied || false);
-          setName(progress.name || "");
-          setPhone(progress.phone || "");
-          setEmail(progress.email || "");
-          setComment(progress.comment || "");
-        } catch (e) {
-          console.error('Error restoring progress:', e);
-        }
-      }
+    } else {
+      setStep(1);
+      setSelectedPackage("");
+      setSelectedDate(undefined);
+      setSelectedArea("area_moscow_region");
+      setPersons(2);
+      setExtraDuration(0);
+      setSelectedAddons([]);
+      setPromoCode("");
+      setPromoApplied(false);
+      setConsentChecked(false);
     }
   }, [open]);
 
-  useEffect(() => {
-    if (open) {
-      const progress = {
-        step,
-        selectedPackage,
-        selectedDate: selectedDate?.toISOString(),
-        selectedArea,
-        persons,
-        extraDuration,
-        selectedAddons,
-        promoCode,
-        promoApplied,
-        name,
-        phone,
-        email,
-        comment
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-    }
-  }, [open, step, selectedPackage, selectedDate, selectedArea, persons, extraDuration, selectedAddons, promoCode, promoApplied, name, phone, email, comment]);
-
-  const { total, breakdown } = useMemo(() => calculatePrice(
+  const { total, breakdown } = calculatePrice(
     selectedPackage,
     selectedDate,
     selectedArea,
@@ -138,10 +79,8 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
     extraDuration,
     selectedAddons,
     promoApplied,
-    promoCode,
-    packages,
-    addons
-  ), [selectedPackage, selectedDate, selectedArea, persons, extraDuration, selectedAddons, promoApplied, promoCode, packages, addons]);
+    promoCode
+  );
 
   const deposit = Math.round(total * 0.30 / 100) * 100;
 
@@ -165,10 +104,10 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
       return;
     }
 
-    const selectedPackageData = packages.find(p => String(p.id) === String(selectedPackage));
+    const selectedPackageData = packages.find(p => p.id === selectedPackage);
     
     try {
-      const response = await fetch('https://functions.poehali.dev/0d9ea640-f2f5-4e63-8633-db26b10decc8?resource=bookings', {
+      const response = await fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=bookings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -177,14 +116,14 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
           client_name: name,
           client_phone: phone,
           client_email: email || null,
-          package_id: selectedPackage ? parseInt(selectedPackage) : null,
+          package_id: selectedPackage || null,
           package_name: selectedPackageData?.name || '',
           service_area_id: selectedArea || null,
           event_date: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
           person_count: persons,
-          selected_addons: selectedAddons.map(id => parseInt(id)),
+          selected_addons: selectedAddons,
           promo_code: promoApplied ? promoCode : null,
-          base_price: parseFloat(String(breakdown.basePrice || total)),
+          base_price: breakdown.basePrice || total,
           total_price: total,
           discount_amount: breakdown.discount || 0,
           calculation_details: breakdown,
@@ -197,7 +136,6 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
       }
 
       const result = await response.json();
-      localStorage.removeItem(STORAGE_KEY);
       alert(`Заявка успешно отправлена!\n\nНомер заявки: ${result.id}\nИтого: ${total.toLocaleString()} ₽\nДепозит: ${deposit.toLocaleString()} ₽\n\nМы свяжемся с вами в ближайшее время!`);
       onClose();
     } catch (error) {
@@ -214,26 +152,6 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
             Калькулятор стоимости ритуала
           </DialogTitle>
         </DialogHeader>
-
-        {showRestoreNotice && (
-          <div className="bg-nature-sage/20 border border-nature-sage rounded-lg p-4 flex items-start gap-3">
-            <Icon name="Info" className="text-nature-sage mt-0.5 flex-shrink-0" size={20} />
-            <div className="flex-1">
-              <p className="text-sm text-nature-forest font-medium">
-                Вы можете продолжить незавершённую заявку
-              </p>
-              <p className="text-xs text-nature-forest/70 mt-1">
-                Мы сохранили ваш прогресс. Можете продолжить с того момента, где остановились.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowRestoreNotice(false)}
-              className="text-nature-forest/50 hover:text-nature-forest transition-colors"
-            >
-              <Icon name="X" size={16} />
-            </button>
-          </div>
-        )}
 
         <div className="grid md:grid-cols-[2fr,1fr] gap-8 mt-6">
           <div className="space-y-8">
