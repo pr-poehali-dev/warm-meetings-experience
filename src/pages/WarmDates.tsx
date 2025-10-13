@@ -1,37 +1,89 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Icon from "@/components/ui/icon";
 import PriceCalculator from "@/components/PriceCalculator";
 
 const WarmDates = () => {
-  const [activeRitual, setActiveRitual] = useState<number | null>(null);
+  const [selectedRitual, setSelectedRitual] = useState<number | null>(null);
   const [calculatorOpen, setCalculatorOpen] = useState<boolean>(false);
 
   const rituals = [
     {
+      emoji: '🌿',
       title: 'Ритуал «Ближе»',
-      description: 'Синхронизация дыхания, тепла и взгляда.',
-      subtitle: 'Идеален для первого погружения.',
-      details: 'Мягкое введение в практику банных ритуалов для пар. Через простые, но глубокие упражнения вы учитесь чувствовать дыхание друг друга, синхронизировать движения и присутствовать в моменте. Продолжительность: 1.5 часа.'
+      description: 'Синхронизация дыхания, тепла и взгляда',
+      idea: 'Помочь парам настроиться на одну волну через телесные практики и осознанное присутствие.',
+      format: [
+        'Практика совместного дыхания в парной',
+        'Синхронные движения и тактильные ритуалы',
+        'Упражнения на осознанный зрительный контакт',
+        'Ароматерапия с маслами, усиливающими эмпатию'
+      ],
+      forWhom: 'Для пар, которые хотят углубить связь, научиться чувствовать друг друга без слов.',
+      duration: '2 часа',
+      value: 'Возвращение к естественному состоянию единства, где слова становятся вторичными.'
     },
     {
+      emoji: '🤫',
       title: 'Тепло в тишине',
-      description: 'Без слов, только чувства.',
-      subtitle: 'Глубокое погружение в невербальную коммуникацию.',
-      details: 'Особый формат, где мы сознательно убираем слова и оставляем только тактильность, взгляды и совместное присутствие. Идеален для пар, которые хотят выйти за пределы привычных способов общения. Продолжительность: 2 часа.'
+      description: 'Свидание без слов, только чувства',
+      idea: 'Погрузиться в мир тактильных ощущений и эмоционального контакта, где тишина становится языком близости.',
+      format: [
+        'Медитативное погружение в парной без вербального общения',
+        'Практики осознанного прикосновения',
+        'Сенсорные игры с теплом, паром и ароматами',
+        'Ритуал совместного чаепития в тишине'
+      ],
+      forWhom: 'Для пар, уставших от слов и суеты, желающих услышать друг друга на уровне чувств.',
+      duration: '2,5 часа',
+      value: 'Открытие новых граней отношений через молчаливое присутствие.'
     },
     {
+      emoji: '👐',
       title: 'Пар на двоих',
-      description: 'Обучение искусству парения друг друга.',
-      subtitle: 'Игра, доверие, забота.',
-      details: 'Я обучаю вас базовым техникам парения, и вы практикуете их друг на друге. Это не только телесная практика, но и упражнение на доверие, внимание и заботу. Вы уходите с новым совместным навыком. Продолжительность: 2.5 часа.'
+      description: 'Обучение искусству парения и совместный ритуал',
+      idea: 'Научить пары создавать целебный пар и делать массаж вениками друг другу.',
+      format: [
+        'Мастер-класс по технике парения от опытного банщика',
+        'Изучение разных видов веников и их воздействия',
+        'Практика синхронного создания пара',
+        'Совместный ритуал с применением новых навыков'
+      ],
+      forWhom: 'Для активных пар, которые хотят не просто получить услугу, а освоить искусство парения для домашней практики.',
+      duration: '3 часа',
+      value: 'Общее дело, которое объединяет и даёт практический навык для поддержания близости.'
     },
     {
+      emoji: '💍',
+      title: 'Свадебный пар',
+      description: 'Для особых дат и воспоминаний',
+      idea: 'Создать незабываемый ритуал для празднования свадьбы, годовщины или помолвки.',
+      format: [
+        'Тематическое оформление парной (лепестки цветов, особые ароматы)',
+        'Романтический ритуал с использованием свадебной символики',
+        'Фирменный чайный сет с праздничными угощениями',
+        'Памятный сертификат о прохождении ритуала'
+      ],
+      forWhom: 'Для молодожёнов и пар, отмечающих важные вехи отношений. Идеальный подарок на свадьбу или годовщину.',
+      duration: '3 часа',
+      value: 'Создание личной традиции и ярких воспоминаний, которые останутся с парой на всю жизнь.'
+    },
+    {
+      emoji: '🍽️',
       title: 'Свидание с ужином',
-      description: 'Ритуал завершается ужином у камина.',
-      subtitle: 'С авторским чаем и угощениями.',
-      details: 'Полный формат: банный ритуал + завершающая трапеза в уютной комнате отдыха. Лёгкие закуски, травяные чаи, пледы, камин и возможность просто быть вместе после глубокого опыта. Продолжительность: 3 часа.'
+      description: 'Полное погружение в романтическую атмосферу',
+      idea: 'Объединить целительную силу пара и наслаждение изысканной кухней.',
+      format: [
+        'Банный ритуал на выбор («Ближе» или «Тепло в тишине»)',
+        'Гастрономическая часть: ужин от шефа в зоне релаксации',
+        'Подбор блюд, усиливающих чувственность и энергию пары',
+        'Романтическая сервировка и атмосферное освещение'
+      ],
+      forWhom: 'Для пар, ценящих полное погружение и желающих сделать свидание по-настоящему особенным.',
+      duration: '4 часа',
+      value: 'Гармония телесного и гастрономического удовольствия, создающая идеальную романтическую среду.'
     }
   ];
 
@@ -162,41 +214,114 @@ const WarmDates = () => {
       </section>
 
       <section id="rituals" className="py-20 bg-white">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="container mx-auto px-4 max-w-5xl">
           <h2 className="text-4xl md:text-5xl font-serif text-center text-nature-forest mb-12">
             Выберите формат вашей встречи
           </h2>
-          <div className="space-y-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {rituals.map((ritual, index) => (
               <Card 
                 key={index}
-                className="overflow-hidden border-nature-brown/20 hover:border-nature-brown/40 transition-all cursor-pointer"
-                onClick={() => setActiveRitual(activeRitual === index ? null : index)}
+                className="overflow-hidden border-nature-brown/20 hover:border-nature-brown/40 hover:shadow-xl transition-all cursor-pointer group"
+                onClick={() => setSelectedRitual(index)}
               >
                 <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="text-2xl font-serif text-nature-forest mb-2">{ritual.title}</h3>
-                      <p className="text-nature-forest/70 mb-1">{ritual.description}</p>
-                      <p className="text-nature-brown text-sm italic">{ritual.subtitle}</p>
-                    </div>
-                    <Icon 
-                      name={activeRitual === index ? "ChevronUp" : "ChevronDown"} 
-                      size={24} 
-                      className="text-nature-brown flex-shrink-0 ml-4"
-                    />
+                  <div className="text-5xl mb-4">{ritual.emoji}</div>
+                  <h3 className="text-xl font-serif text-nature-forest mb-2 group-hover:text-nature-brown transition-colors">{ritual.title}</h3>
+                  <p className="text-nature-forest/70 text-sm leading-relaxed">{ritual.description}</p>
+                  <div className="mt-4 flex items-center text-nature-brown text-sm font-medium">
+                    <span>Подробнее</span>
+                    <Icon name="ArrowRight" size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
                   </div>
-                  {activeRitual === index && (
-                    <div className="mt-4 pt-4 border-t border-nature-brown/20">
-                      <p className="text-nature-forest/80 leading-relaxed">{ritual.details}</p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             ))}
           </div>
         </div>
       </section>
+
+      <Dialog open={selectedRitual !== null} onOpenChange={() => setSelectedRitual(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          {selectedRitual !== null && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-3xl font-serif text-nature-forest flex items-center gap-3">
+                  <span className="text-4xl">{rituals[selectedRitual].emoji}</span>
+                  {rituals[selectedRitual].title}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6 pt-4">
+                <div>
+                  <p className="text-lg text-nature-forest/90 italic leading-relaxed">
+                    {rituals[selectedRitual].description}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold text-nature-brown mb-2">Идея</h4>
+                  <p className="text-nature-forest/80 leading-relaxed">
+                    {rituals[selectedRitual].idea}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold text-nature-brown mb-3">Формат</h4>
+                  <ul className="space-y-2">
+                    {rituals[selectedRitual].format.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-nature-forest/80">
+                        <Icon name="Check" size={20} className="text-nature-brown flex-shrink-0 mt-0.5" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="text-lg font-semibold text-nature-brown mb-2">Для кого</h4>
+                  <p className="text-nature-forest/80 leading-relaxed">
+                    {rituals[selectedRitual].forWhom}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-2 text-nature-brown">
+                    <Icon name="Clock" size={18} />
+                    <span className="font-medium">{rituals[selectedRitual].duration}</span>
+                  </div>
+                </div>
+
+                <div className="bg-nature-cream/50 rounded-lg p-4 border border-nature-brown/20">
+                  <h4 className="text-lg font-semibold text-nature-brown mb-2">Ценность</h4>
+                  <p className="text-nature-forest/80 leading-relaxed">
+                    {rituals[selectedRitual].value}
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button 
+                    className="flex-1 bg-nature-brown hover:bg-nature-forest text-white"
+                    onClick={() => {
+                      setSelectedRitual(null);
+                      setCalculatorOpen(true);
+                    }}
+                  >
+                    Рассчитать стоимость
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    className="border-nature-brown text-nature-brown hover:bg-nature-cream"
+                    asChild
+                  >
+                    <a href="https://t.me/DmitryChikin" target="_blank" rel="noopener noreferrer">
+                      Забронировать
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <section className="py-20 bg-nature-sage/10">
         <div className="container mx-auto px-4 max-w-6xl">
