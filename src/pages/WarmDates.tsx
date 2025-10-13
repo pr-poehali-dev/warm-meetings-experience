@@ -11,7 +11,7 @@ const WarmDates = () => {
 
   const rituals = [
     {
-      emoji: '○',
+      icon: 'Wind',
       title: 'Ритуал «Ближе»',
       description: 'Синхронизация дыхания, тепла и взгляда',
       idea: 'Помочь парам настроиться на одну волну через телесные практики и осознанное присутствие.',
@@ -26,7 +26,7 @@ const WarmDates = () => {
       value: 'Возвращение к естественному состоянию единства, где слова становятся вторичными.'
     },
     {
-      emoji: '◇',
+      icon: 'Volume2',
       title: 'Тепло в тишине',
       description: 'Свидание без слов, только чувства',
       idea: 'Погрузиться в мир тактильных ощущений и эмоционального контакта, где тишина становится языком близости.',
@@ -41,7 +41,7 @@ const WarmDates = () => {
       value: 'Открытие новых граней отношений через молчаливое присутствие.'
     },
     {
-      emoji: '△',
+      icon: 'Flame',
       title: 'Пар на двоих',
       description: 'Обучение искусству парения и совместный ритуал',
       idea: 'Научить пары создавать целебный пар и делать массаж вениками друг другу.',
@@ -56,7 +56,7 @@ const WarmDates = () => {
       value: 'Общее дело, которое объединяет и даёт практический навык для поддержания близости.'
     },
     {
-      emoji: '◐',
+      icon: 'Sparkles',
       title: 'Свадебный пар',
       description: 'Для особых дат и воспоминаний',
       idea: 'Создать незабываемый ритуал для празднования свадьбы, годовщины или помолвки.',
@@ -71,7 +71,7 @@ const WarmDates = () => {
       value: 'Создание личной традиции и ярких воспоминаний, которые останутся с парой на всю жизнь.'
     },
     {
-      emoji: '□',
+      icon: 'Utensils',
       title: 'Свидание с ужином',
       description: 'Полное погружение в романтическую атмосферу',
       idea: 'Объединить целительную силу пара и наслаждение изысканной кухней.',
@@ -227,7 +227,9 @@ const WarmDates = () => {
               >
                 <CardContent className="p-8">
                   <div className="flex items-start gap-6">
-                    <div className="text-6xl font-light text-nature-brown/40 flex-shrink-0 w-20 h-20 flex items-center justify-center">{ritual.emoji}</div>
+                    <div className="w-16 h-16 flex-shrink-0 bg-nature-brown/10 rounded-full flex items-center justify-center">
+                      <Icon name={ritual.icon} size={32} className="text-nature-brown" />
+                    </div>
                     <div className="flex-1">
                       <h3 className="text-2xl font-serif text-nature-forest mb-2 group-hover:text-nature-brown transition-colors">{ritual.title}</h3>
                       <p className="text-nature-forest/70 leading-relaxed">{ritual.description}</p>
@@ -249,8 +251,10 @@ const WarmDates = () => {
           {selectedRitual !== null && (
             <>
               <DialogHeader>
-                <DialogTitle className="text-3xl font-serif text-nature-forest flex items-center gap-3">
-                  <span className="text-4xl">{rituals[selectedRitual].emoji}</span>
+                <DialogTitle className="text-3xl font-serif text-nature-forest flex items-center gap-4">
+                  <div className="w-14 h-14 bg-nature-brown/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Icon name={rituals[selectedRitual].icon} size={28} className="text-nature-brown" />
+                  </div>
                   {rituals[selectedRitual].title}
                 </DialogTitle>
               </DialogHeader>
