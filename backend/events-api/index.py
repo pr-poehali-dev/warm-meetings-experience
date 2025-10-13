@@ -2,6 +2,7 @@ import json
 import os
 from typing import Dict, Any, List, Optional
 from datetime import datetime
+from decimal import Decimal
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import urllib.request
@@ -41,13 +42,17 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     try:
         if resource == 'bookings':
-            if method == 'POST':
+            if method == 'GET':
+                return get_bookings(event, conn)
+            elif method == 'POST':
                 return create_booking(event, conn)
+            elif method == 'PUT':
+                return update_booking(event, conn)
             else:
                 return {
                     'statusCode': 405,
                     'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
-                    'body': json.dumps({'error': 'Only POST method allowed for bookings'}),
+                    'body': json.dumps({'error': 'Method not allowed for bookings'}),
                     'isBase64Encoded': False
                 }
         
@@ -288,6 +293,113 @@ def delete_event(event: Dict[str, Any], conn) -> Dict[str, Any]:
             'isBase64Encoded': False
         }
 
+def get_bookings(event: Dict[str, Any], conn) -> Dict[str, Any]:
+    '''Get all bookings or single booking by ID'''
+    params = event.get('queryStringParameters') or {}
+    booking_id = params.get('id')
+    status_filter = params.get('status')
+    
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    if booking_id:
+        cursor.execute("SELECT * FROM bookings WHERE id = %s", (booking_id,))
+        result = cursor.fetchone()
+        cursor.close()
+        
+        if result:
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps(dict(result), default=str),
+                'isBase64Encoded': False
+            }
+        else:
+            return {
+                'statusCode': 404,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'error': 'Booking not found'}),
+                'isBase64Encoded': False
+            }
+    
+    query = "SELECT * FROM bookings WHERE 1=1"
+    query_params: List[Any] = []
+    
+    if status_filter:
+        query += " AND status = %s"
+        query_params.append(status_filter)
+    
+    query += " ORDER BY created_at DESC"
+    
+    cursor.execute(query, query_params)
+    results = cursor.fetchall()
+    cursor.close()
+    
+    bookings_list = [dict(row) for row in results]
+    
+    return {
+        'statusCode': 200,
+        'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+        'body': json.dumps(bookings_list, default=str),
+        'isBase64Encoded': False
+    }
+
+def update_booking(event: Dict[str, Any], conn) -> Dict[str, Any]:
+    '''Update booking status or notes'''
+    body_data = json.loads(event.get('body', '{}'))
+    booking_id = body_data.get('id')
+    
+    if not booking_id:
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({'error': 'Booking ID is required'}),
+            'isBase64Encoded': False
+        }
+    
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    update_fields = []
+    update_values = []
+    
+    if 'status' in body_data:
+        update_fields.append("status = %s")
+        update_values.append(body_data['status'])
+    
+    if not update_fields:
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({'error': 'No fields to update'}),
+            'isBase64Encoded': False
+        }
+    
+    update_fields.append("updated_at = CURRENT_TIMESTAMP")
+    update_values.append(booking_id)
+    
+    query = f"UPDATE bookings SET {', '.join(update_fields)} WHERE id = %s RETURNING *"
+    
+    cursor.execute(query, update_values)
+    result = cursor.fetchone()
+    
+    if not result:
+        cursor.close()
+        return {
+            'statusCode': 404,
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({'error': 'Booking not found'}),
+            'isBase64Encoded': False
+        }
+    
+    conn.commit()
+    cursor.close()
+    
+    return {
+        'statusCode': 200,
+        'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+        'body': json.dumps(dict(result), default=str),
+        'isBase64Encoded': False
+    }
+
 def send_telegram_notification(booking_data: Dict[str, Any]) -> None:
     '''Send booking notification to Telegram'''
     bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
@@ -295,6 +407,9 @@ def send_telegram_notification(booking_data: Dict[str, Any]) -> None:
     
     if not bot_token or not chat_id:
         return
+    
+    total_price = Decimal(str(booking_data['total_price']))
+    deposit = int(total_price * Decimal('0.3'))
     
     message = f"""🔔 Новая заявка #{booking_data['id']}
 
@@ -306,8 +421,8 @@ def send_telegram_notification(booking_data: Dict[str, Any]) -> None:
 📅 Дата: {booking_data.get('event_date', 'не указана')}
 👥 Количество: {booking_data.get('person_count', 0)} чел.
 
-💰 Стоимость: {booking_data['total_price']:,.0f} ₽
-💵 Депозит: {booking_data['total_price'] * 0.3:,.0f} ₽
+💰 Стоимость: {int(total_price):,} ₽
+💵 Депозит: {deposit:,} ₽
 
 Статус: {booking_data['status']}"""
     
@@ -345,15 +460,16 @@ def create_booking(event: Dict[str, Any], conn) -> Dict[str, Any]:
     
     cursor.execute("""
         INSERT INTO bookings (
-            client_name, client_phone,
+            client_name, client_phone, client_email,
             package_id, service_area_id, event_date, person_count,
             selected_addons, promo_code, base_price, total_price, discount_amount,
             calculation_details, consent_given, status
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING *
     """, (
         body_data.get('client_name'),
         body_data.get('client_phone'),
+        body_data.get('client_email'),
         body_data.get('package_id'),
         body_data.get('service_area_id'),
         body_data.get('event_date'),
