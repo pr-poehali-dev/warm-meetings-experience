@@ -16,24 +16,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const API_URL = "https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87";
+const API_URL = "https://functions.poehali.dev/0d9ea640-f2f5-4e63-8633-db26b10decc8";
 
 interface Booking {
   id?: number;
-  customer_name: string;
-  customer_phone: string;
-  customer_email: string;
+  client_name: string;
+  client_phone: string;
+  client_email?: string;
   event_date: string;
-  package_id: number;
-  package_name?: string;
-  selected_addons: number[];
-  addon_names?: string[];
-  service_area: string;
-  final_price: string;
+  package_id?: number;
+  selected_addons?: any[];
+  service_area_id?: number;
+  total_price: string;
   promo_code?: string;
   discount_amount?: string;
+  base_price?: string;
+  calculation_details?: any;
   status: string;
-  notes?: string;
+  consent_given?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -77,7 +77,7 @@ const AdminBookings = () => {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...booking,
+          id,
           status,
         }),
       });
@@ -201,13 +201,13 @@ const AdminBookings = () => {
                 {filteredBookings.map((booking) => (
                   <tr key={booking.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm text-gray-900">#{booking.id}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{booking.customer_name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{booking.customer_phone}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{booking.client_name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{booking.client_phone}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {new Date(booking.event_date).toLocaleDateString('ru-RU')}
                     </td>
                     <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                      {Number(booking.final_price).toLocaleString()} ₽
+                      {Number(booking.total_price).toLocaleString()} ₽
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`}>
@@ -260,15 +260,15 @@ const AdminBookings = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Клиент</p>
-                  <p className="font-semibold">{selectedBooking.customer_name}</p>
+                  <p className="font-semibold">{selectedBooking.client_name}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Телефон</p>
-                  <p className="font-semibold">{selectedBooking.customer_phone}</p>
+                  <p className="font-semibold">{selectedBooking.client_phone}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Email</p>
-                  <p className="font-semibold">{selectedBooking.customer_email}</p>
+                  <p className="font-semibold">{selectedBooking.client_email || 'не указан'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Дата мероприятия</p>
@@ -278,26 +278,26 @@ const AdminBookings = () => {
                 </div>
               </div>
 
-              <div className="border-t pt-4">
-                <p className="text-sm text-gray-500 mb-2">Пакет</p>
-                <p className="font-semibold">{selectedBooking.package_name || `Пакет #${selectedBooking.package_id}`}</p>
-              </div>
-
-              {selectedBooking.addon_names && selectedBooking.addon_names.length > 0 && (
+              {selectedBooking.package_id && (
                 <div className="border-t pt-4">
-                  <p className="text-sm text-gray-500 mb-2">Дополнения</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    {selectedBooking.addon_names.map((name, idx) => (
-                      <li key={idx}>{name}</li>
-                    ))}
-                  </ul>
+                  <p className="text-sm text-gray-500 mb-2">Пакет</p>
+                  <p className="font-semibold">Пакет #{selectedBooking.package_id}</p>
                 </div>
               )}
 
-              <div className="border-t pt-4">
-                <p className="text-sm text-gray-500 mb-2">Зона обслуживания</p>
-                <p className="font-semibold">{selectedBooking.service_area}</p>
-              </div>
+              {selectedBooking.selected_addons && selectedBooking.selected_addons.length > 0 && (
+                <div className="border-t pt-4">
+                  <p className="text-sm text-gray-500 mb-2">Дополнения</p>
+                  <p className="text-gray-700">{selectedBooking.selected_addons.length} выбрано</p>
+                </div>
+              )}
+
+              {selectedBooking.service_area_id && (
+                <div className="border-t pt-4">
+                  <p className="text-sm text-gray-500 mb-2">Зона обслуживания</p>
+                  <p className="font-semibold">Зона #{selectedBooking.service_area_id}</p>
+                </div>
+              )}
 
               {selectedBooking.promo_code && (
                 <div className="border-t pt-4">
@@ -313,15 +313,11 @@ const AdminBookings = () => {
 
               <div className="border-t pt-4">
                 <p className="text-sm text-gray-500 mb-2">Итоговая сумма</p>
-                <p className="text-2xl font-bold">{Number(selectedBooking.final_price).toLocaleString()} ₽</p>
+                <p className="text-2xl font-bold">{Number(selectedBooking.total_price).toLocaleString()} ₽</p>
+                {selectedBooking.base_price && (
+                  <p className="text-sm text-gray-500">Базовая цена: {Number(selectedBooking.base_price).toLocaleString()} ₽</p>
+                )}
               </div>
-
-              {selectedBooking.notes && (
-                <div className="border-t pt-4">
-                  <p className="text-sm text-gray-500 mb-2">Примечания</p>
-                  <p className="text-gray-700">{selectedBooking.notes}</p>
-                </div>
-              )}
 
               <div className="border-t pt-4">
                 <p className="text-sm text-gray-500">Статус</p>
