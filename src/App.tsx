@@ -21,6 +21,7 @@ import Admin from "./pages/Admin";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import PersonalDataConsent from "./pages/PersonalDataConsent";
 import AiPolicy from "./pages/AiPolicy";
+import Philosophy from "./pages/Philosophy";
 
 const queryClient = new QueryClient();
 
@@ -46,7 +47,8 @@ const AppContent = () => {
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/personal-data-consent" element={<PersonalDataConsent />} />
         <Route path="/ai-policy" element={<AiPolicy />} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="/philosophy" element={<Philosophy />} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!isAdminPage && <Footer />}

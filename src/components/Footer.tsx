@@ -57,7 +57,13 @@ const Footer = () => {
           {/* О проекте */}
           <div>
             <h3 className="text-xl font-serif mb-4">О проекте</h3>
-            <p className="text-gray-300 leading-relaxed">Создаём пространства для искренних коммуникаций через банные ритуалы</p>
+            <p className="text-gray-300 leading-relaxed mb-4">Создаём пространства для искренних коммуникаций через банные ритуалы</p>
+            <Link 
+              to="/philosophy"
+              className="block hover:text-nature-sand transition-colors"
+            >
+              Философия доверия
+            </Link>
           </div>
         </div>
 
