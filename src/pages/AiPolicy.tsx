@@ -15,9 +15,7 @@ const AiPolicy = () => {
 
         <div className="bg-white rounded-lg shadow-lg p-8 md:p-12">
           <div className="mb-8">
-            <h1 className="text-4xl font-serif text-nature-forest mb-4 flex items-center gap-3">
-              🌿 Политика использования AI-контента
-            </h1>
+            <h1 className="text-4xl font-serif text-nature-forest mb-4 flex items-center gap-3">Политика использования AI-контента</h1>
             <p className="text-nature-forest/60">Обновлено: 14 октября 2025</p>
             <p className="text-nature-forest/80 mt-2">Проект "Тёплые встречи" основан пармастером Дмитрием Чикиным.</p>
           </div>
