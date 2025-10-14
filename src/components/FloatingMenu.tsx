@@ -26,7 +26,7 @@ const FloatingMenu = () => {
       items: [
         { name: 'Тёплые Знакомства', path: '/warm-meetings', icon: 'Users' },
         { name: 'Тёплый Тимбилдинг', path: '/warm-team-building', icon: 'HandHeart' },
-        { name: 'Тёплые Свидания', path: '/warm-dates', icon: 'Heart' }
+        { name: 'Тёплые Свидания', path: '/svidanie', icon: 'Heart' }
       ]
     },
     { 

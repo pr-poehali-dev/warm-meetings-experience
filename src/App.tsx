@@ -40,7 +40,7 @@ const AppContent = () => {
 
         <Route path="/warm-meetings" element={<WarmMeetings />} />
         <Route path="/warm-team-building" element={<WarmTeamBuilding />} />
-        <Route path="/warm-dates" element={<WarmDates />} />
+        <Route path="/svidanie" element={<WarmDates />} />
         <Route path="/events" element={<Events />} />
         <Route path="/mobile-services" element={<MobileServices />} />
         <Route path="/admin" element={<Admin />} />

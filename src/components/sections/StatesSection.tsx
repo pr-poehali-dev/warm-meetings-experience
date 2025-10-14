@@ -109,7 +109,7 @@ export default function StatesSection() {
                 className="bg-nature-brown hover:bg-nature-brown/90 text-nature-cream rounded-full self-start"
                 asChild
               >
-                <Link to="/warm-dates">
+                <Link to="/svidanie">
                   Подробнее
                 </Link>
               </Button>
