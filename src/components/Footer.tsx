@@ -45,6 +45,12 @@ const Footer = () => {
               >
                 Положение о конфиденциальности
               </Link>
+              <Link 
+                to="/ai-policy"
+                className="block hover:text-nature-sand transition-colors"
+              >
+                Политика использования AI-контента
+              </Link>
             </div>
           </div>
 
