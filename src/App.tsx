@@ -48,7 +48,6 @@ const AppContent = () => {
         <Route path="/personal-data-consent" element={<PersonalDataConsent />} />
         <Route path="/ai-policy" element={<AiPolicy />} />
         <Route path="/philosophy" element={<Philosophy />} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */
         <Route path="*" element={<NotFound />} />
       </Routes>
       {!isAdminPage && <Footer />}
