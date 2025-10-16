@@ -114,7 +114,7 @@ const WarmDates = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-nature-cream via-white to-nature-cream">
       <section 
-        className="relative min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat"
+        className="relative min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat pt-24 md:pt-0"
         style={{
           backgroundImage: "linear-gradient(rgba(90,60,50,0.7), rgba(60,40,30,0.8)), url('https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/271711d7-ab48-4ed6-869a-a051e0ec01fc.jpg')"
         }}
