@@ -4,7 +4,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Icon from "@/components/ui/icon";
-import FUNC_URLS from '../../../backend/func2url.json';
+
+const CALENDAR_AVAILABILITY_URL = 'https://functions.poehali.dev/4f685755-a5d0-49f6-8351-5d452cf7ceb2';
 
 interface Step2ParametersProps {
   selectedDate: Date | undefined;
@@ -48,7 +49,7 @@ const Step2Parameters: React.FC<Step2ParametersProps> = ({
       setLoadingSlots(true);
       try {
         const dateStr = selectedDate.toISOString().split('T')[0];
-        const response = await fetch(`${FUNC_URLS['calendar-availability']}?date=${dateStr}`);
+        const response = await fetch(`${CALENDAR_AVAILABILITY_URL}?date=${dateStr}`);
         const data = await response.json();
         setAvailableSlots(data.available_slots || []);
       } catch (error) {
