@@ -4,10 +4,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Icon from "@/components/ui/icon";
 import PriceCalculator from "@/components/PriceCalculator";
+import BookingWidget from "@/components/BookingWidget";
 
 const WarmDates = () => {
   const [selectedRitual, setSelectedRitual] = useState<number | null>(null);
   const [calculatorOpen, setCalculatorOpen] = useState<boolean>(false);
+  const [bookingOpen, setBookingOpen] = useState<boolean>(false);
+  const [bookingPackage, setBookingPackage] = useState<{id: string, name: string}>({id: 'signature', name: 'Signature'});
 
   const rituals = [
     {
@@ -131,6 +134,17 @@ const WarmDates = () => {
             <Button 
               size="lg" 
               className="bg-nature-brown hover:bg-nature-forest text-white px-10 py-6 text-lg shadow-2xl hover:shadow-nature-sand/50 transition-all"
+              onClick={() => {
+                setBookingPackage({id: 'signature', name: 'Тёплые Свидания'});
+                setBookingOpen(true);
+              }}
+            >
+              Забронировать
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline"
+              className="border-2 border-white bg-white/90 text-nature-forest hover:bg-white px-10 py-6 text-lg shadow-2xl font-semibold"
               onClick={() => setCalculatorOpen(true)}
             >
               Рассчитать стоимость
@@ -138,7 +152,7 @@ const WarmDates = () => {
             <Button 
               size="lg" 
               variant="outline"
-              className="border-2 border-white bg-white text-nature-forest hover:bg-nature-sand hover:border-nature-sand px-10 py-6 text-lg shadow-2xl font-semibold"
+              className="border-2 border-white bg-transparent text-white hover:bg-white/10 px-10 py-6 text-lg shadow-2xl font-semibold"
               onClick={() => document.getElementById('rituals')?.scrollIntoView({ behavior: 'smooth' })}
             >
               Узнать подробнее
@@ -388,18 +402,16 @@ const WarmDates = () => {
           <p className="text-xl text-gray-200 mb-10 max-w-2xl mx-auto">
             Забронируйте ваше путешествие в тепло.
           </p>
-          <a 
-            href="https://t.me/DmitryChikin" 
-            target="_blank" 
-            rel="noopener noreferrer"
+          <Button 
+            size="lg" 
+            className="bg-white hover:bg-gray-100 text-gray-900 px-10 py-6 text-lg shadow-2xl font-semibold"
+            onClick={() => {
+              setBookingPackage({id: 'signature', name: 'Тёплые Свидания'});
+              setBookingOpen(true);
+            }}
           >
-            <Button 
-              size="lg" 
-              className="bg-white hover:bg-gray-100 text-gray-900 px-10 py-6 text-lg shadow-2xl font-semibold"
-            >
-              Выбрать дату и время
-            </Button>
-          </a>
+            Выбрать дату и время
+          </Button>
           <p className="text-gray-300 text-sm mt-6">
             Конфиденциальность и ваше комфортное состояние — наш главный приоритет.
           </p>
@@ -407,6 +419,19 @@ const WarmDates = () => {
       </section>
 
       <PriceCalculator open={calculatorOpen} onClose={() => setCalculatorOpen(false)} />
+      
+      <Dialog open={bookingOpen} onOpenChange={setBookingOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-serif text-nature-forest">Бронирование</DialogTitle>
+          </DialogHeader>
+          <BookingWidget 
+            packageId={bookingPackage.id}
+            serviceAreaId="area_moscow"
+            packageName={bookingPackage.name}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "name": "Get all bookings",
+      "method": "GET",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "bookings": "array",
+        "count": "number"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

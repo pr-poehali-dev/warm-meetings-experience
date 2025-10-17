@@ -1,0 +1,23 @@
+{
+  "tests": [
+    {
+      "name": "Create hold booking",
+      "method": "POST",
+      "body": {
+        "package_id": "signature",
+        "service_area_id": "area_moscow",
+        "start_at": "2025-11-01T19:00:00+03:00",
+        "persons": 2,
+        "customer_name": "Тест",
+        "customer_phone": "+79991234567",
+        "addons": []
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "booking_id": "string",
+        "token": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
