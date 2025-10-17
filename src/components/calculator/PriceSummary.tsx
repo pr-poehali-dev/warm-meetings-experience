@@ -6,6 +6,7 @@ import { PriceBreakdown } from "./types";
 interface PriceSummaryProps {
   selectedPackage: string;
   selectedDate: Date | undefined;
+  selectedTime?: string;
   selectedArea: string;
   persons: number;
   extraDuration: number;
@@ -18,6 +19,7 @@ interface PriceSummaryProps {
 const PriceSummary: React.FC<PriceSummaryProps> = ({
   selectedPackage,
   selectedDate,
+  selectedTime,
   selectedArea,
   persons,
   extraDuration,
@@ -99,6 +101,14 @@ const PriceSummary: React.FC<PriceSummaryProps> = ({
       </div>
 
       <div className="space-y-2 text-xs text-nature-forest/60">
+        {selectedDate && selectedTime && (
+          <div className="flex items-start gap-2 mb-3 pb-3 border-b border-nature-brown/20">
+            <Icon name="Calendar" size={14} className="mt-0.5 flex-shrink-0 text-nature-brown" />
+            <p className="font-medium text-nature-forest">
+              {selectedDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })} в {selectedTime.substring(0, 5)}
+            </p>
+          </div>
+        )}
         <div className="flex items-start gap-2">
           <Icon name="Info" size={14} className="mt-0.5 flex-shrink-0" />
           <p>Сауна подбирается оператором и включена в стоимость</p>

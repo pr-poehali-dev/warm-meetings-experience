@@ -18,6 +18,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
   const [step, setStep] = useState(1);
   const [selectedPackage, setSelectedPackage] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedTime, setSelectedTime] = useState<string>("");
   const [selectedArea, setSelectedArea] = useState<string>("area_moscow_region");
   const [persons, setPersons] = useState<number>(2);
   const [extraDuration, setExtraDuration] = useState<number>(0);
@@ -92,6 +93,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
           setStep(progress.step || 1);
           setSelectedPackage(progress.selectedPackage || "");
           setSelectedDate(progress.selectedDate ? new Date(progress.selectedDate) : undefined);
+          setSelectedTime(progress.selectedTime || "");
           setSelectedArea(progress.selectedArea || "area_moscow_region");
           setPersons(progress.persons || 2);
           setExtraDuration(progress.extraDuration || 0);
@@ -115,6 +117,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
         step,
         selectedPackage,
         selectedDate: selectedDate?.toISOString(),
+        selectedTime,
         selectedArea,
         persons,
         extraDuration,
@@ -128,7 +131,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
     }
-  }, [open, step, selectedPackage, selectedDate, selectedArea, persons, extraDuration, selectedAddons, promoCode, promoApplied, name, phone, email, comment]);
+  }, [open, step, selectedPackage, selectedDate, selectedTime, selectedArea, persons, extraDuration, selectedAddons, promoCode, promoApplied, name, phone, email, comment]);
 
   const { total, breakdown } = useMemo(() => calculatePrice(
     selectedPackage,
@@ -181,6 +184,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
           package_name: selectedPackageData?.name || '',
           service_area_id: selectedArea || null,
           event_date: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
+          event_time: selectedTime || null,
           person_count: persons,
           selected_addons: selectedAddons.map(id => parseInt(id)),
           promo_code: promoApplied ? promoCode : null,
@@ -252,6 +256,8 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
               <Step2Parameters
                 selectedDate={selectedDate}
                 onSelectDate={setSelectedDate}
+                selectedTime={selectedTime}
+                onSelectTime={setSelectedTime}
                 selectedArea={selectedArea}
                 onSelectArea={setSelectedArea}
                 persons={persons}
@@ -300,6 +306,7 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
             <PriceSummary
               selectedPackage={selectedPackage}
               selectedDate={selectedDate}
+              selectedTime={selectedTime}
               selectedArea={selectedArea}
               persons={persons}
               extraDuration={extraDuration}

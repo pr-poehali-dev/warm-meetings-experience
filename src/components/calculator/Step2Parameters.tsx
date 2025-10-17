@@ -1,12 +1,16 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import Icon from "@/components/ui/icon";
+import FUNC_URLS from '../../../backend/func2url.json';
 
 interface Step2ParametersProps {
   selectedDate: Date | undefined;
   onSelectDate: (date: Date | undefined) => void;
+  selectedTime: string;
+  onSelectTime: (time: string) => void;
   selectedArea: string;
   onSelectArea: (area: string) => void;
   persons: number;
@@ -20,6 +24,8 @@ interface Step2ParametersProps {
 const Step2Parameters: React.FC<Step2ParametersProps> = ({
   selectedDate,
   onSelectDate,
+  selectedTime,
+  onSelectTime,
   selectedArea,
   onSelectArea,
   persons,
@@ -29,6 +35,35 @@ const Step2Parameters: React.FC<Step2ParametersProps> = ({
   onBack,
   onNext,
 }) => {
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
+  useEffect(() => {
+    if (!selectedDate) {
+      setAvailableSlots([]);
+      return;
+    }
+
+    const fetchAvailableSlots = async () => {
+      setLoadingSlots(true);
+      try {
+        const dateStr = selectedDate.toISOString().split('T')[0];
+        const response = await fetch(`${FUNC_URLS['calendar-availability']}?date=${dateStr}`);
+        const data = await response.json();
+        setAvailableSlots(data.available_slots || []);
+      } catch (error) {
+        console.error('Error loading slots:', error);
+        setAvailableSlots([]);
+      }
+      setLoadingSlots(false);
+    };
+
+    fetchAvailableSlots();
+  }, [selectedDate]);
+
+  const formatTime = (time: string) => {
+    return time.substring(0, 5);
+  };
   return (
     <div className="space-y-6">
       <h3 className="text-xl font-serif text-nature-forest mb-4">Шаг 2: Параметры</h3>
@@ -38,11 +73,53 @@ const Step2Parameters: React.FC<Step2ParametersProps> = ({
         <Calendar
           mode="single"
           selected={selectedDate}
-          onSelect={onSelectDate}
+          onSelect={(date) => {
+            onSelectDate(date);
+            onSelectTime('');
+          }}
           className="rounded-md border border-nature-brown/20"
-          disabled={(date) => date < new Date()}
+          disabled={(date) => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const maxDate = new Date();
+            maxDate.setDate(maxDate.getDate() + 30);
+            return date < today || date > maxDate;
+          }}
         />
       </div>
+
+      {selectedDate && (
+        <div>
+          <Label className="text-nature-forest mb-3 block">Время начала</Label>
+          {loadingSlots ? (
+            <div className="flex items-center justify-center py-8 text-nature-forest/60">
+              <Icon name="Loader2" className="animate-spin mr-2" size={20} />
+              Загрузка доступных слотов...
+            </div>
+          ) : availableSlots.length === 0 ? (
+            <div className="text-center py-8 text-nature-forest/60">
+              <Icon name="Calendar" className="mx-auto mb-2" size={32} />
+              <p>На выбранную дату нет доступных слотов</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+              {availableSlots.map((slot) => (
+                <button
+                  key={slot}
+                  onClick={() => onSelectTime(slot)}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    selectedTime === slot
+                      ? 'border-nature-brown bg-nature-brown text-white'
+                      : 'border-nature-brown/20 hover:border-nature-brown/50'
+                  }`}
+                >
+                  {formatTime(slot)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div>
         <Label className="text-nature-forest mb-3 block">Зона обслуживания</Label>
@@ -105,6 +182,7 @@ const Step2Parameters: React.FC<Step2ParametersProps> = ({
         <Button
           onClick={onNext}
           className="flex-1 bg-nature-brown hover:bg-nature-forest"
+          disabled={!selectedDate || !selectedTime}
         >
           Далее
         </Button>
