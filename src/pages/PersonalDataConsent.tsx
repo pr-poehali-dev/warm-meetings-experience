@@ -74,7 +74,7 @@ const PersonalDataConsent = () => {
                 6. Принципы обработки
               </h2>
               <p className="leading-relaxed">
-                Обработка персональных данных осуществляется в соответствии принципами и условиями обработки персональных данных компании «Теплые Встречи», изложенными в{" "}
+                Обработка персональных данных осуществляется в соответствии принципами и условиями обработки персональных данных компании «СПАРКОМ», изложенными в{" "}
                 <a 
                   href="/privacy-policy" 
                   className="text-nature-brown hover:underline"
@@ -115,7 +115,7 @@ const PersonalDataConsent = () => {
 
           <section className="mt-8 pt-8 border-t border-nature-brown/20">
             <p className="text-sm text-nature-forest/70 text-center">
-              © Теплые Встречи. Все права защищены.
+              © СПАРКОМ. Все права защищены.
             </p>
           </section>
         </div>
