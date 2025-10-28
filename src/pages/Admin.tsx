@@ -315,7 +315,7 @@ const Admin = () => {
       )}
 
       <div className="flex">
-        <div className={`fixed lg:static inset-y-0 left-0 z-40 transition-transform duration-300 ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className={`fixed lg:static inset-y-0 left-0 z-40 transition-transform duration-300 overflow-y-auto ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
           <AdminSidebar
             currentView={currentView}
             onViewChange={(view) => {
