@@ -246,6 +246,10 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
               <Step1PackageSelection
                 selectedPackage={selectedPackage}
                 onSelectPackage={setSelectedPackage}
+                selectedDate={selectedDate}
+                onSelectDate={setSelectedDate}
+                selectedTime={selectedTime}
+                onSelectTime={setSelectedTime}
                 onNext={() => setStep(2)}
                 packages={packages}
                 loading={loading}
