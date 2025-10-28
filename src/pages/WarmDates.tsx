@@ -131,13 +131,6 @@ const WarmDates = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               size="lg" 
-              className="bg-nature-brown hover:bg-nature-forest text-white px-10 py-6 text-lg shadow-2xl hover:shadow-nature-sand/50 transition-all"
-              onClick={() => document.getElementById('booking')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              Забронировать
-            </Button>
-            <Button 
-              size="lg" 
               variant="outline"
               className="border-2 border-white bg-white/90 text-nature-forest hover:bg-white px-10 py-6 text-lg shadow-2xl font-semibold"
               onClick={() => setCalculatorOpen(true)}
@@ -324,13 +317,6 @@ const WarmDates = () => {
                   >
                     Рассчитать стоимость
                   </Button>
-                  <Button 
-                    variant="outline"
-                    className="border-nature-brown text-nature-brown hover:bg-nature-cream"
-                    onClick={() => document.getElementById('booking')?.scrollIntoView({ behavior: 'smooth' })}
-                  >
-                    Забронировать
-                  </Button>
                 </div>
               </div>
             </>
@@ -382,19 +368,7 @@ const WarmDates = () => {
         </div>
       </section>
 
-      <section id="booking" className="py-20 bg-nature-cream">
-        <div className="container mx-auto px-4 max-w-4xl">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-serif text-nature-forest mb-4">
-              Забронировать свидание
-            </h2>
-            <p className="text-xl text-nature-forest/70">
-              Оставьте заявку, и мы свяжемся с вами для подтверждения деталей
-            </p>
-          </div>
-          <BookingWidget packageName="Тёплые Свидания" />
-        </div>
-      </section>
+
 
       <PriceCalculator open={calculatorOpen} onClose={() => setCalculatorOpen(false)} />
     </div>
