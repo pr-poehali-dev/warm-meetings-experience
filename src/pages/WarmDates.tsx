@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Icon from "@/components/ui/icon";
 import PriceCalculator from "@/components/PriceCalculator";
 import BookingWidget from "@/components/BookingWidget";
@@ -9,8 +8,6 @@ import BookingWidget from "@/components/BookingWidget";
 const WarmDates = () => {
   const [selectedRitual, setSelectedRitual] = useState<number | null>(null);
   const [calculatorOpen, setCalculatorOpen] = useState<boolean>(false);
-  const [bookingOpen, setBookingOpen] = useState<boolean>(false);
-  const [bookingPackage, setBookingPackage] = useState<{id: string, name: string}>({id: 'signature', name: 'Signature'});
 
   const rituals = [
     {
@@ -134,10 +131,7 @@ const WarmDates = () => {
             <Button 
               size="lg" 
               className="bg-nature-brown hover:bg-nature-forest text-white px-10 py-6 text-lg shadow-2xl hover:shadow-nature-sand/50 transition-all"
-              onClick={() => {
-                setBookingPackage({id: 'signature', name: 'Тёплые Свидания'});
-                setBookingOpen(true);
-              }}
+              onClick={() => document.getElementById('booking')?.scrollIntoView({ behavior: 'smooth' })}
             >
               Забронировать
             </Button>
@@ -332,11 +326,9 @@ const WarmDates = () => {
                   <Button 
                     variant="outline"
                     className="border-nature-brown text-nature-brown hover:bg-nature-cream"
-                    asChild
+                    onClick={() => document.getElementById('booking')?.scrollIntoView({ behavior: 'smooth' })}
                   >
-                    <a href="https://t.me/DmitryChikin" target="_blank" rel="noopener noreferrer">
-                      Забронировать
-                    </a>
+                    Забронировать
                   </Button>
                 </div>
               </div>
@@ -389,49 +381,21 @@ const WarmDates = () => {
         </div>
       </section>
 
-      <section 
-        className="relative py-32 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: "linear-gradient(rgba(60,40,30,0.85), rgba(40,30,20,0.9)), url('https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/af34bfcb-a0a6-4c11-81e3-dc21f774d1d6.jpg')"
-        }}
-      >
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl md:text-6xl font-serif text-white mb-6">
-            Готовы создать воспоминание?
-          </h2>
-          <p className="text-xl text-gray-200 mb-10 max-w-2xl mx-auto">
-            Забронируйте ваше путешествие в тепло.
-          </p>
-          <Button 
-            size="lg" 
-            className="bg-white hover:bg-gray-100 text-gray-900 px-10 py-6 text-lg shadow-2xl font-semibold"
-            onClick={() => {
-              setBookingPackage({id: 'signature', name: 'Тёплые Свидания'});
-              setBookingOpen(true);
-            }}
-          >
-            Выбрать дату и время
-          </Button>
-          <p className="text-gray-300 text-sm mt-6">
-            Конфиденциальность и ваше комфортное состояние — наш главный приоритет.
-          </p>
+      <section id="booking" className="py-20 bg-nature-cream">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-serif text-nature-forest mb-4">
+              Забронировать свидание
+            </h2>
+            <p className="text-xl text-nature-forest/70">
+              Оставьте заявку, и мы свяжемся с вами для подтверждения деталей
+            </p>
+          </div>
+          <BookingWidget packageName="Тёплые Свидания" />
         </div>
       </section>
 
       <PriceCalculator open={calculatorOpen} onClose={() => setCalculatorOpen(false)} />
-      
-      <Dialog open={bookingOpen} onOpenChange={setBookingOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-serif text-nature-forest">Бронирование</DialogTitle>
-          </DialogHeader>
-          <BookingWidget 
-            packageId={bookingPackage.id}
-            serviceAreaId="area_moscow"
-            packageName={bookingPackage.name}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
