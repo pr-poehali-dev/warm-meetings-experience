@@ -170,10 +170,10 @@ const AdminAddons = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Дополнительные услуги</h1>
-          <p className="text-gray-500 mt-1">Управление дополнениями к пакетам</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Дополнительные услуги</h1>
+          <p className="text-gray-500 mt-1 text-sm">Управление дополнениями к пакетам</p>
         </div>
         <Button
           onClick={() => {
@@ -186,6 +186,7 @@ const AdminAddons = () => {
             });
             setIsDialogOpen(true);
           }}
+          className="w-full sm:w-auto"
         >
           <Icon name="Plus" size={18} className="mr-2" />
           Добавить услугу

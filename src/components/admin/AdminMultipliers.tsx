@@ -177,10 +177,10 @@ const AdminMultipliers = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Мультипликаторы цен</h1>
-          <p className="text-gray-500 mt-1">Управление сезонными и временными коэффициентами</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Мультипликаторы цен</h1>
+          <p className="text-gray-500 mt-1 text-sm">Управление сезонными и временными коэффициентами</p>
         </div>
         <Button
           onClick={() => {
@@ -194,6 +194,7 @@ const AdminMultipliers = () => {
             });
             setIsDialogOpen(true);
           }}
+          className="w-full sm:w-auto"
         >
           <Icon name="Plus" size={18} className="mr-2" />
           Добавить мультипликатор

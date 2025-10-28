@@ -288,21 +288,48 @@ const Admin = () => {
     return colors[occupancy] || "bg-gray-100 text-gray-800";
   };
 
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   if (!isAuthenticated) {
     return <AdminLogin onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="flex">
-        <AdminSidebar
-          currentView={currentView}
-          onViewChange={setCurrentView}
-          onNewEvent={resetForm}
-          onLogout={handleLogout}
-        />
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
+        <h2 className="text-lg font-bold text-gray-800">Админ-панель</h2>
+        <button
+          onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <Icon name={isMobileSidebarOpen ? "X" : "Menu"} size={24} />
+        </button>
+      </div>
 
-        <main className="flex-1 p-8">
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      <div className="flex">
+        <div className={`fixed lg:static inset-y-0 left-0 z-40 transition-transform duration-300 ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+          <AdminSidebar
+            currentView={currentView}
+            onViewChange={(view) => {
+              setCurrentView(view);
+              setIsMobileSidebarOpen(false);
+            }}
+            onNewEvent={() => {
+              resetForm();
+              setIsMobileSidebarOpen(false);
+            }}
+            onLogout={handleLogout}
+          />
+        </div>
+
+        <main className="flex-1 p-4 lg:p-8 pt-20 lg:pt-8">
           {currentView === "overview" && (
             <AdminOverview
               events={events}

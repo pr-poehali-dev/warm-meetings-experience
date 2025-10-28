@@ -197,10 +197,10 @@ const AdminPromoCodes = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Промо-коды</h1>
-          <p className="text-gray-500 mt-1">Управление промо-кодами и скидками</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Промо-коды</h1>
+          <p className="text-gray-500 mt-1 text-sm">Управление промо-кодами и скидками</p>
         </div>
         <Button
           onClick={() => {
@@ -217,6 +217,7 @@ const AdminPromoCodes = () => {
             });
             setIsDialogOpen(true);
           }}
+          className="w-full sm:w-auto"
         >
           <Icon name="Plus" size={18} className="mr-2" />
           Добавить промо-код
@@ -228,85 +229,150 @@ const AdminPromoCodes = () => {
           <Icon name="Loader2" size={32} className="animate-spin mx-auto text-gray-400" />
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Код
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Скидка
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Период действия
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Использования
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Статус
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Действия
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {promoCodes.map((promo) => (
-                <tr key={promo.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-bold text-gray-900">
-                    {promo.code}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+        <>
+          <div className="hidden lg:block bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Код
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Скидка
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Период действия
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Использования
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Статус
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Действия
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {promoCodes.map((promo) => (
+                  <tr key={promo.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono font-bold text-gray-900">
+                      {promo.code}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        {formatDiscount(promo.discount_type, promo.discount_value)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatDate(promo.valid_from)} - {formatDate(promo.valid_until)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {promo.used_count} / {promo.usage_limit || "∞"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        onClick={() => toggleActive(promo)}
+                        className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          promo.is_active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {promo.is_active ? "Активен" : "Неактивен"}
+                      </button>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => handleEdit(promo)}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          <Icon name="Pencil" size={18} />
+                        </button>
+                        <button
+                          onClick={() => promo.id && handleDelete(promo.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Icon name="Trash2" size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {promoCodes.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                Нет промо-кодов
+              </div>
+            )}
+          </div>
+
+          <div className="lg:hidden space-y-3">
+            {promoCodes.map((promo) => (
+              <div key={promo.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <p className="font-mono font-bold text-gray-900 text-lg">{promo.code}</p>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mt-2">
                       {formatDiscount(promo.discount_type, promo.discount_value)}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatDate(promo.valid_from)} - {formatDate(promo.valid_until)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {promo.used_count} / {promo.usage_limit || "∞"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <button
-                      onClick={() => toggleActive(promo)}
-                      className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        promo.is_active
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {promo.is_active ? "Активен" : "Неактивен"}
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <div className="flex gap-2 justify-end">
-                      <button
-                        onClick={() => handleEdit(promo)}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        <Icon name="Pencil" size={18} />
-                      </button>
-                      <button
-                        onClick={() => promo.id && handleDelete(promo.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <Icon name="Trash2" size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {promoCodes.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              Нет промо-кодов
-            </div>
-          )}
-        </div>
+                  </div>
+                  <button
+                    onClick={() => toggleActive(promo)}
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      promo.is_active
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {promo.is_active ? "Активен" : "Неактивен"}
+                  </button>
+                </div>
+                <div className="space-y-2 mb-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Период:</span>
+                    <span className="text-gray-900">
+                      {formatDate(promo.valid_from)} - {formatDate(promo.valid_until)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Использования:</span>
+                    <span className="text-gray-900">
+                      {promo.used_count} / {promo.usage_limit || "∞"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleEdit(promo)}
+                    className="flex-1"
+                  >
+                    <Icon name="Pencil" size={16} className="mr-2" />
+                    Изменить
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => promo.id && handleDelete(promo.id)}
+                    className="text-red-600 hover:text-red-700 border-red-200"
+                  >
+                    <Icon name="Trash2" size={16} />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {promoCodes.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                Нет промо-кодов
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

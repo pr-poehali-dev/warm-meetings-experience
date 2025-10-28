@@ -24,7 +24,7 @@ interface AdminSidebarProps {
 
 const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: AdminSidebarProps) => {
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 min-h-screen p-6 overflow-y-auto">
+    <aside className="w-64 lg:w-64 w-64 bg-white border-r border-gray-200 min-h-screen p-4 lg:p-6 overflow-y-auto">
       <div className="mb-8">
         <h2 className="text-xl font-bold text-gray-800">Админ-панель</h2>
         <p className="text-sm text-gray-500">Управление системой</p>

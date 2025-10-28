@@ -153,14 +153,23 @@ const AdminBookings = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Заявки</h1>
-          <p className="text-gray-500 mt-1">Управление заявками клиентов</p>
+      <div className="mb-6">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Заявки</h1>
+            <p className="text-gray-500 mt-1 text-sm">Управление заявками клиентов</p>
+          </div>
+          <Button onClick={exportToCSV} variant="outline" size="sm" className="lg:hidden">
+            <Icon name="Download" size={16} />
+          </Button>
+          <Button onClick={exportToCSV} variant="outline" className="hidden lg:flex">
+            <Icon name="Download" size={18} className="mr-2" />
+            Экспорт CSV
+          </Button>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Фильтр по статусу" />
             </SelectTrigger>
             <SelectContent>
@@ -171,10 +180,6 @@ const AdminBookings = () => {
               <SelectItem value="completed">Завершены</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={exportToCSV} variant="outline">
-            <Icon name="Download" size={18} className="mr-2" />
-            Экспорт CSV
-          </Button>
         </div>
       </div>
 
@@ -183,74 +188,135 @@ const AdminBookings = () => {
           <Icon name="Loader2" size={32} className="animate-spin mx-auto text-gray-400" />
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Клиент</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Телефон</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Дата</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сумма</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Действия</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredBookings.map((booking) => (
-                  <tr key={booking.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm text-gray-900">#{booking.id}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{booking.client_name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{booking.client_phone}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {new Date(booking.event_date).toLocaleDateString('ru-RU')}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                      {Number(booking.total_price).toLocaleString()} ₽
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`}>
-                        {getStatusLabel(booking.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedBooking(booking);
-                            setIsDetailOpen(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Icon name="Eye" size={18} />
-                        </button>
-                        <Select
-                          value={booking.status}
-                          onValueChange={(status) => booking.id && updateStatus(booking.id, status)}
-                        >
-                          <SelectTrigger className="w-[140px] h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="new">Новая</SelectItem>
-                            <SelectItem value="confirmed">Подтверждена</SelectItem>
-                            <SelectItem value="cancelled">Отменена</SelectItem>
-                            <SelectItem value="completed">Завершена</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </td>
+        <>
+          <div className="hidden lg:block bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Клиент</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Телефон</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Дата</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Сумма</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Действия</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredBookings.map((booking) => (
+                    <tr key={booking.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm text-gray-900">#{booking.id}</td>
+                      <td className="px-6 py-4 text-sm text-gray-900">{booking.client_name}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{booking.client_phone}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {new Date(booking.event_date).toLocaleDateString('ru-RU')}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                        {Number(booking.total_price).toLocaleString()} ₽
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`}>
+                          {getStatusLabel(booking.status)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedBooking(booking);
+                              setIsDetailOpen(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            <Icon name="Eye" size={18} />
+                          </button>
+                          <Select
+                            value={booking.status}
+                            onValueChange={(status) => booking.id && updateStatus(booking.id, status)}
+                          >
+                            <SelectTrigger className="w-[140px] h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="new">Новая</SelectItem>
+                              <SelectItem value="confirmed">Подтверждена</SelectItem>
+                              <SelectItem value="cancelled">Отменена</SelectItem>
+                              <SelectItem value="completed">Завершена</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          <div className="lg:hidden space-y-3">
+            {filteredBookings.map((booking) => (
+              <div key={booking.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <p className="text-xs text-gray-500">Заявка #{booking.id}</p>
+                    <p className="font-semibold text-gray-900 mt-1">{booking.client_name}</p>
+                    <p className="text-sm text-gray-600">{booking.client_phone}</p>
+                  </div>
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`}>
+                    {getStatusLabel(booking.status)}
+                  </span>
+                </div>
+                <div className="space-y-2 mb-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Дата:</span>
+                    <span className="text-gray-900">
+                      {new Date(booking.event_date).toLocaleDateString('ru-RU')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Сумма:</span>
+                    <span className="font-semibold text-gray-900">
+                      {Number(booking.total_price).toLocaleString()} ₽
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedBooking(booking);
+                      setIsDetailOpen(true);
+                    }}
+                    className="flex-1"
+                  >
+                    <Icon name="Eye" size={16} className="mr-2" />
+                    Детали
+                  </Button>
+                  <Select
+                    value={booking.status}
+                    onValueChange={(status) => booking.id && updateStatus(booking.id, status)}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">Новая</SelectItem>
+                      <SelectItem value="confirmed">Подтверждена</SelectItem>
+                      <SelectItem value="cancelled">Отменена</SelectItem>
+                      <SelectItem value="completed">Завершена</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Заявка #{selectedBooking?.id}</DialogTitle>
           </DialogHeader>

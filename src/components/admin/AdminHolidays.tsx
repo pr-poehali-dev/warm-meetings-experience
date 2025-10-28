@@ -144,10 +144,10 @@ const AdminHolidays = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Праздничный календарь</h1>
-          <p className="text-gray-500 mt-1">Управление праздничными днями и коэффициентами</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Праздничный календарь</h1>
+          <p className="text-gray-500 mt-1 text-sm">Управление праздничными днями и коэффициентами</p>
         </div>
         <Button
           onClick={() => {
@@ -159,6 +159,7 @@ const AdminHolidays = () => {
             });
             setIsDialogOpen(true);
           }}
+          className="w-full sm:w-auto"
         >
           <Icon name="Plus" size={18} className="mr-2" />
           Добавить праздник
@@ -170,64 +171,106 @@ const AdminHolidays = () => {
           <Icon name="Loader2" size={32} className="animate-spin mx-auto text-gray-400" />
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Дата
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Название
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Коэффициент
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Действия
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {holidays.map((holiday) => (
-                <tr key={holiday.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {formatDate(holiday.holiday_date)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {holiday.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {(Number(holiday.multiplier) * 100).toFixed(0)}%
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <div className="flex gap-2 justify-end">
-                      <button
-                        onClick={() => handleEdit(holiday)}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        <Icon name="Pencil" size={18} />
-                      </button>
-                      <button
-                        onClick={() => holiday.id && handleDelete(holiday.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <Icon name="Trash2" size={18} />
-                      </button>
-                    </div>
-                  </td>
+        <>
+          <div className="hidden lg:block bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Дата
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Название
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Коэффициент
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Действия
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {holidays.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              Нет праздников в календаре
-            </div>
-          )}
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {holidays.map((holiday) => (
+                  <tr key={holiday.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {formatDate(holiday.holiday_date)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {holiday.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {(Number(holiday.multiplier) * 100).toFixed(0)}%
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => handleEdit(holiday)}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          <Icon name="Pencil" size={18} />
+                        </button>
+                        <button
+                          onClick={() => holiday.id && handleDelete(holiday.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Icon name="Trash2" size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {holidays.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                Нет праздников в календаре
+              </div>
+            )}
+          </div>
+
+          <div className="lg:hidden space-y-3">
+            {holidays.map((holiday) => (
+              <div key={holiday.id} className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">{holiday.name}</p>
+                    <p className="text-sm text-gray-600 mt-1">{formatDate(holiday.holiday_date)}</p>
+                  </div>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {(Number(holiday.multiplier) * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleEdit(holiday)}
+                    className="flex-1"
+                  >
+                    <Icon name="Pencil" size={16} className="mr-2" />
+                    Изменить
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => holiday.id && handleDelete(holiday.id)}
+                    className="text-red-600 hover:text-red-700 border-red-200"
+                  >
+                    <Icon name="Trash2" size={16} />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {holidays.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                Нет праздников в календаре
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

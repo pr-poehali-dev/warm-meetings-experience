@@ -173,12 +173,12 @@ const AdminAvailability = () => {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Управление занятостью</h1>
-          <p className="text-gray-500 mt-1">Блокируйте даты когда вы не можете принимать гостей</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Управление занятостью</h1>
+          <p className="text-gray-500 mt-1 text-sm">Блокируйте даты когда вы не можете принимать гостей</p>
         </div>
-        <Button onClick={openNewDialog} disabled={loading}>
+        <Button onClick={openNewDialog} disabled={loading} className="w-full sm:w-auto">
           <Icon name="Plus" size={18} className="mr-2" />
           Добавить блокировку
         </Button>
