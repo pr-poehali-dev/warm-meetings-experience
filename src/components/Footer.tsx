@@ -70,7 +70,7 @@ const Footer = () => {
         {/* Разделитель */}
         <div className="border-t border-white/20 pt-6">
           <p className="text-center text-gray-300">
-            ©️ СПАРКОМ. Место, где рождается близость.
+            ©️ СПАРКОМ<Link to="/admin" className="opacity-0 hover:opacity-100 transition-opacity">.</Link> Место, где рождается близость.
           </p>
         </div>
       </div>
