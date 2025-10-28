@@ -45,47 +45,20 @@ const Step2Parameters: React.FC<Step2ParametersProps> = ({
       return;
     }
 
-    const fetchAvailableSlots = async () => {
-      setLoadingSlots(true);
-      try {
-        const dateStr = selectedDate.toISOString().split('T')[0];
-        const response = await fetch(CALENDAR_AVAILABILITY_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            package_id: '1',
-            service_area_id: '1',
-            date_from: dateStr
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const data = await response.json();
-        setAvailableSlots(data.available_slots || []);
-      } catch (error) {
-        console.error('Error loading slots:', error);
-        setAvailableSlots([]);
+    const generateTimeSlots = () => {
+      const slots: string[] = [];
+      for (let hour = 10; hour <= 18; hour += 2) {
+        const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+        slots.push(timeStr);
       }
-      setLoadingSlots(false);
+      setAvailableSlots(slots);
     };
 
-    fetchAvailableSlots();
+    generateTimeSlots();
   }, [selectedDate]);
 
-  const formatTime = (isoString: string) => {
-    try {
-      const date = new Date(isoString);
-      return date.toLocaleTimeString('ru-RU', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        timeZone: 'Europe/Moscow'
-      });
-    } catch (e) {
-      return isoString.substring(0, 5);
-    }
+  const formatTime = (time: string) => {
+    return time;
   };
   return (
     <div className="space-y-6">
@@ -114,33 +87,21 @@ const Step2Parameters: React.FC<Step2ParametersProps> = ({
       {selectedDate && (
         <div>
           <Label className="text-nature-forest mb-3 block">Время начала</Label>
-          {loadingSlots ? (
-            <div className="flex items-center justify-center py-8 text-nature-forest/60">
-              <Icon name="Loader2" className="animate-spin mr-2" size={20} />
-              Загрузка доступных слотов...
-            </div>
-          ) : availableSlots.length === 0 ? (
-            <div className="text-center py-8 text-nature-forest/60">
-              <Icon name="Calendar" className="mx-auto mb-2" size={32} />
-              <p>На выбранную дату нет доступных слотов</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-              {availableSlots.map((slot) => (
-                <button
-                  key={slot}
-                  onClick={() => onSelectTime(slot)}
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    selectedTime === slot
-                      ? 'border-nature-brown bg-nature-brown text-white'
-                      : 'border-nature-brown/20 hover:border-nature-brown/50'
-                  }`}
-                >
-                  {formatTime(slot)}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-3 gap-2">
+            {availableSlots.map((slot) => (
+              <button
+                key={slot}
+                onClick={() => onSelectTime(slot)}
+                className={`p-3 rounded-lg border-2 transition-all ${
+                  selectedTime === slot
+                    ? 'border-nature-brown bg-nature-brown text-white'
+                    : 'border-nature-brown/20 hover:border-nature-brown/50'
+                }`}
+              >
+                {slot}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
