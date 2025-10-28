@@ -1,11 +1,11 @@
 {
   "tests": [
     {
-      "name": "Get availability for signature package",
+      "name": "Get availability for package",
       "method": "POST",
       "body": {
-        "package_id": "signature",
-        "service_area_id": "area_moscow",
+        "package_id": "1",
+        "service_area_id": "1",
         "date_from": "2025-11-01"
       },
       "expectedStatus": 200,
