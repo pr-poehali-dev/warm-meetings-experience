@@ -46,13 +46,14 @@ const AdminSettings = () => {
     try {
       const response = await fetch(`${API_URL}?resource=settings`);
       const data = await response.json();
-      setSettings(data);
+      setSettings(Array.isArray(data) ? data : []);
     } catch (error) {
       toast({
         title: "Ошибка",
         description: "Не удалось загрузить настройки",
         variant: "destructive",
       });
+      setSettings([]);
     } finally {
       setLoading(false);
     }
