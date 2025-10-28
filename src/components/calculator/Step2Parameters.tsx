@@ -49,7 +49,20 @@ const Step2Parameters: React.FC<Step2ParametersProps> = ({
       setLoadingSlots(true);
       try {
         const dateStr = selectedDate.toISOString().split('T')[0];
-        const response = await fetch(`${CALENDAR_AVAILABILITY_URL}?date=${dateStr}`);
+        const response = await fetch(CALENDAR_AVAILABILITY_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            package_id: '1',
+            service_area_id: '1',
+            date_from: dateStr
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
         const data = await response.json();
         setAvailableSlots(data.available_slots || []);
       } catch (error) {
@@ -62,8 +75,17 @@ const Step2Parameters: React.FC<Step2ParametersProps> = ({
     fetchAvailableSlots();
   }, [selectedDate]);
 
-  const formatTime = (time: string) => {
-    return time.substring(0, 5);
+  const formatTime = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleTimeString('ru-RU', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Europe/Moscow'
+      });
+    } catch (e) {
+      return isoString.substring(0, 5);
+    }
   };
   return (
     <div className="space-y-6">
