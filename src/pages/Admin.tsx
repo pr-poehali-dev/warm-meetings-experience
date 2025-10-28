@@ -15,6 +15,7 @@ import AdminMultipliers from "@/components/admin/AdminMultipliers";
 import AdminHolidays from "@/components/admin/AdminHolidays";
 import AdminPromoCodes from "@/components/admin/AdminPromoCodes";
 import AdminSettings from "@/components/admin/AdminSettings";
+import AdminAvailability from "@/components/admin/AdminAvailability";
 
 interface Event {
   id?: number;
@@ -47,7 +48,8 @@ type ViewType =
   | "multipliers" 
   | "holidays" 
   | "promo-codes" 
-  | "settings";
+  | "settings"
+  | "availability";
 
 const Admin = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -355,6 +357,7 @@ const Admin = () => {
           {currentView === "holidays" && <AdminHolidays />}
           {currentView === "promo-codes" && <AdminPromoCodes />}
           {currentView === "settings" && <AdminSettings />}
+          {currentView === "availability" && <AdminAvailability />}
         </main>
       </div>
 

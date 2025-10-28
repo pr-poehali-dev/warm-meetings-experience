@@ -48,6 +48,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             result = handle_promo_codes(conn, event)
         elif resource == 'settings':
             result = handle_settings(conn, event)
+        elif resource == 'calendar-blocks':
+            result = handle_calendar_blocks(conn, event)
         elif resource == 'analytics':
             result = handle_analytics(conn, event)
         else:
@@ -589,6 +591,75 @@ def handle_settings(conn, event):
         cursor.close()
         
         return cors_response(200, json.dumps({'message': 'Settings updated'}))
+
+def handle_calendar_blocks(conn, event):
+    method = event.get('httpMethod', 'GET')
+    
+    if method == 'GET':
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute('''
+            SELECT id, title, reason, block_from, block_to, notes, created_at, updated_at 
+            FROM calendar_blocks 
+            ORDER BY block_from DESC
+        ''')
+        results = cursor.fetchall()
+        cursor.close()
+        
+        return cors_response(200, json.dumps([dict(row) for row in results], default=str))
+    
+    elif method == 'POST':
+        body_data = json.loads(event.get('body', '{}'))
+        
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO calendar_blocks (id, title, reason, block_from, block_to, notes, created_at, updated_at)
+            VALUES (gen_random_uuid(), %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ''', (
+            body_data.get('title'),
+            body_data.get('reason'),
+            body_data.get('block_from'),
+            body_data.get('block_to'),
+            body_data.get('notes')
+        ))
+        
+        conn.commit()
+        cursor.close()
+        
+        return cors_response(201, json.dumps({'message': 'Block created'}))
+    
+    elif method == 'PUT':
+        body_data = json.loads(event.get('body', '{}'))
+        block_id = body_data.get('id')
+        
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE calendar_blocks 
+            SET title = %s, reason = %s, block_from = %s, block_to = %s, notes = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        ''', (
+            body_data.get('title'),
+            body_data.get('reason'),
+            body_data.get('block_from'),
+            body_data.get('block_to'),
+            body_data.get('notes'),
+            block_id
+        ))
+        
+        conn.commit()
+        cursor.close()
+        
+        return cors_response(200, json.dumps({'message': 'Block updated'}))
+    
+    elif method == 'DELETE':
+        body_data = json.loads(event.get('body', '{}'))
+        block_id = body_data.get('id')
+        
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM calendar_blocks WHERE id = %s', (block_id,))
+        conn.commit()
+        cursor.close()
+        
+        return cors_response(200, json.dumps({'message': 'Block deleted'}))
 
 def handle_analytics(conn, event):
     query_params = event.get('queryStringParameters') or {}
