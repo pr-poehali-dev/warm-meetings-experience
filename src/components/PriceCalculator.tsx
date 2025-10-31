@@ -168,7 +168,16 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
       return;
     }
 
+    if (!selectedPackage || !selectedArea || !selectedDate || !selectedTime) {
+      alert("Пожалуйста, выберите пакет, зону обслуживания, дату и время");
+      return;
+    }
+
     const selectedPackageData = packages.find(p => String(p.id) === String(selectedPackage));
+    
+    const [hours, minutes] = selectedTime.split(':');
+    const startAt = new Date(selectedDate);
+    startAt.setHours(parseInt(hours), parseInt(minutes), 0, 0);
     
     try {
       const response = await fetch('https://functions.poehali.dev/2aed360c-6e66-4038-ba4a-0a75e3db19be', {
@@ -177,36 +186,33 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          client_name: name,
-          client_phone: phone,
-          client_email: email || null,
-          package_id: selectedPackage ? parseInt(selectedPackage) : null,
-          package_name: selectedPackageData?.name || '',
-          service_area_id: selectedArea || null,
-          event_date: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
-          event_time: selectedTime || null,
-          person_count: persons,
-          selected_addons: selectedAddons.map(id => parseInt(id)),
-          promo_code: promoApplied ? promoCode : null,
-          base_price: parseFloat(String(breakdown.basePrice || total)),
-          total_price: total,
-          discount_amount: breakdown.discount || 0,
-          calculation_details: breakdown,
-          consent_given: consentChecked
+          package_id: selectedPackage,
+          service_area_id: selectedArea,
+          start_at: startAt.toISOString(),
+          persons: persons,
+          customer_name: name,
+          customer_phone: phone,
+          customer_email: email || '',
+          notes: '',
+          addons: selectedAddons,
+          promo_code: promoApplied ? promoCode : ''
         })
       });
 
       if (!response.ok) {
-        throw new Error('Ошибка при отправке заявки');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка при отправке заявки');
       }
 
       const result = await response.json();
+      const resultData = result.data || result;
+      
       localStorage.removeItem(STORAGE_KEY);
-      alert(`Заявка успешно отправлена!\n\nНомер заявки: ${result.id}\nИтого: ${total.toLocaleString()} ₽\nДепозит: ${deposit.toLocaleString()} ₽\n\nМы свяжемся с вами в ближайшее время!`);
+      alert(`Заявка успешно отправлена!\n\nНомер заявки: ${resultData.booking_id}\nИтого: ${resultData.final_price?.toLocaleString()} ₽\nДепозит: ${resultData.deposit_amount?.toLocaleString()} ₽\n\nБронь удерживается до: ${new Date(resultData.hold_expires_at).toLocaleString('ru-RU')}\n\nМы свяжемся с вами для подтверждения!`);
       onClose();
     } catch (error) {
       console.error('Error submitting booking:', error);
-      alert('Произошла ошибка при отправке заявки. Пожалуйста, попробуйте снова или свяжитесь с нами напрямую.');
+      alert(`Произошла ошибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}\n\nПожалуйста, попробуйте снова или свяжитесь с нами напрямую.`);
     }
   };
 
