@@ -1,11 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import Icon from "@/components/ui/icon";
-
-const CALENDAR_AVAILABILITY_URL = 'https://functions.poehali.dev/4f685755-a5d0-49f6-8351-5d452cf7ceb2';
 
 interface Step2ParametersProps {
   selectedDate: Date | undefined;
@@ -36,74 +32,9 @@ const Step2Parameters: React.FC<Step2ParametersProps> = ({
   onBack,
   onNext,
 }) => {
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-
-  useEffect(() => {
-    if (!selectedDate) {
-      setAvailableSlots([]);
-      return;
-    }
-
-    const generateTimeSlots = () => {
-      const slots: string[] = [];
-      for (let hour = 10; hour <= 18; hour += 2) {
-        const timeStr = `${hour.toString().padStart(2, '0')}:00`;
-        slots.push(timeStr);
-      }
-      setAvailableSlots(slots);
-    };
-
-    generateTimeSlots();
-  }, [selectedDate]);
-
-  const formatTime = (time: string) => {
-    return time;
-  };
   return (
     <div className="space-y-6">
       <h3 className="text-xl font-serif text-nature-forest mb-4">Шаг 2: Параметры</h3>
-      
-      <div>
-        <Label className="text-nature-forest mb-2 block">Дата</Label>
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={(date) => {
-            onSelectDate(date);
-            onSelectTime('');
-          }}
-          className="rounded-md border border-nature-brown/20"
-          disabled={(date) => {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const maxDate = new Date();
-            maxDate.setDate(maxDate.getDate() + 30);
-            return date < today || date > maxDate;
-          }}
-        />
-      </div>
-
-      {selectedDate && (
-        <div>
-          <Label className="text-nature-forest mb-3 block">Время начала</Label>
-          <div className="grid grid-cols-3 gap-2">
-            {availableSlots.map((slot) => (
-              <button
-                key={slot}
-                onClick={() => onSelectTime(slot)}
-                className={`p-3 rounded-lg border-2 transition-all ${
-                  selectedTime === slot
-                    ? 'border-nature-brown bg-nature-brown text-white'
-                    : 'border-nature-brown/20 hover:border-nature-brown/50'
-                }`}
-              >
-                {slot}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div>
         <Label className="text-nature-forest mb-3 block">Зона обслуживания</Label>
@@ -166,7 +97,6 @@ const Step2Parameters: React.FC<Step2ParametersProps> = ({
         <Button
           onClick={onNext}
           className="flex-1 bg-nature-brown hover:bg-nature-forest"
-          disabled={!selectedDate || !selectedTime}
         >
           Далее
         </Button>
