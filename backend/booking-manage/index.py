@@ -83,11 +83,13 @@ def send_telegram_notification(booking_data: Dict[str, Any]):
         print(f'[ERROR] Failed to send Telegram notification: {e}')
 
 def get_buffers(package_id: str, service_area_id: str, conn) -> tuple:
+    safe_package_id = str(package_id).replace("'", "''")
+    safe_area_id = str(service_area_id).replace("'", "''")
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        cur.execute('''
+        cur.execute(f'''
             SELECT prep_minutes, cleanup_minutes FROM buffers_config
-            WHERE (scope_type = 'package' AND scope_id = %s)
-            OR (scope_type = 'area' AND scope_id = %s)
+            WHERE (scope_type = 'package' AND scope_id = '{safe_package_id}')
+            OR (scope_type = 'area' AND scope_id = '{safe_area_id}')
             OR (scope_type = 'global' AND scope_id IS NULL)
             ORDER BY 
                 CASE scope_type 
@@ -96,7 +98,7 @@ def get_buffers(package_id: str, service_area_id: str, conn) -> tuple:
                     WHEN 'global' THEN 3
                 END
             LIMIT 1
-        ''', (package_id, service_area_id))
+        ''')
         
         result = cur.fetchone()
         if result:
@@ -118,11 +120,11 @@ def get_package_info(package_id: str, conn) -> Dict[str, Any]:
     
     # Получаем из БД
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        cur.execute('''
+        cur.execute(f'''
             SELECT id, name, description, duration_hours, base_price 
             FROM packages 
-            WHERE id = %s
-        ''', (db_package_id,))
+            WHERE id = {int(db_package_id)}
+        ''')
         pkg = cur.fetchone()
         if pkg:
             return {
@@ -145,12 +147,13 @@ def calculate_price(package_id: str, service_area_id: str, persons: int, addons:
     # Получаем стоимость аддонов из БД
     addon_total = 0
     if addons:
+        addon_ids_str = ','.join(str(int(aid)) for aid in addons)
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute('''
+            cur.execute(f'''
                 SELECT id, price 
                 FROM addons 
-                WHERE id = ANY(%s)
-            ''', (addons,))
+                WHERE id IN ({addon_ids_str})
+            ''')
             for addon in cur.fetchall():
                 addon_total += float(addon['price'])
     
@@ -158,12 +161,13 @@ def calculate_price(package_id: str, service_area_id: str, persons: int, addons:
     
     # Промокод
     if promo_code:
+        safe_promo = promo_code.replace("'", "''")
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute('''
+            cur.execute(f'''
                 SELECT discount_percent 
                 FROM promo_codes 
-                WHERE code = %s AND is_active = TRUE
-            ''', (promo_code,))
+                WHERE code = '{safe_promo}' AND is_active = TRUE
+            ''')
             promo = cur.fetchone()
             if promo:
                 total *= (1 - float(promo['discount_percent']) / 100)
@@ -171,24 +175,27 @@ def calculate_price(package_id: str, service_area_id: str, persons: int, addons:
     return round(total, 2)
 
 def check_slot_available(start_at: datetime, total_block_from: datetime, total_block_to: datetime, conn) -> bool:
+    from_str = total_block_from.strftime('%Y-%m-%d %H:%M:%S')
+    to_str = total_block_to.strftime('%Y-%m-%d %H:%M:%S')
+    
     with conn.cursor() as cur:
-        cur.execute('''
+        cur.execute(f'''
             SELECT COUNT(*) FROM bookings
             WHERE status IN ('CONFIRMED', 'HOLD')
             AND archived_at IS NULL
             AND total_block_from IS NOT NULL
             AND total_block_to IS NOT NULL
-            AND NOT (total_block_to <= %s OR total_block_from >= %s)
-        ''', (total_block_from, total_block_to))
+            AND NOT (total_block_to <= '{from_str}' OR total_block_from >= '{to_str}')
+        ''')
         
         count = cur.fetchone()[0]
         if count > 0:
             return False
         
-        cur.execute('''
+        cur.execute(f'''
             SELECT COUNT(*) FROM calendar_blocks
-            WHERE NOT (block_to <= %s OR block_from >= %s)
-        ''', (total_block_from, total_block_to))
+            WHERE NOT (block_to <= '{from_str}' OR block_from >= '{to_str}')
+        ''')
         
         count = cur.fetchone()[0]
         return count == 0
@@ -227,8 +234,30 @@ def create_hold(body: Dict[str, Any], conn) -> Dict[str, Any]:
     hold_token = str(uuid.uuid4())
     now = datetime.now(MOSCOW_TZ)
     
+    # Экранирование строк для Simple Query Protocol
+    safe_name = customer_name.replace("'", "''")
+    safe_phone = customer_phone.replace("'", "''")
+    safe_email = customer_email.replace("'", "''")
+    safe_promo = promo_code.replace("'", "''") if promo_code else ''
+    safe_area = service_area_id.replace("'", "''")
+    safe_addons = json.dumps(addons).replace("'", "''")
+    safe_calc_details = json.dumps({
+        'prep_minutes': prep_minutes,
+        'cleanup_minutes': cleanup_minutes,
+        'duration_minutes': duration_minutes,
+        'deposit_amount': deposit_amount,
+        'hold_token': hold_token,
+        'hold_expires_at': (now + timedelta(minutes=HOLD_TTL_MINUTES)).isoformat()
+    }).replace("'", "''")
+    
+    event_date_str = start_at.date().strftime('%Y-%m-%d')
+    start_time_str = start_at.time().strftime('%H:%M:%S')
+    from_str = total_block_from.strftime('%Y-%m-%d %H:%M:%S')
+    to_str = total_block_to.strftime('%Y-%m-%d %H:%M:%S')
+    now_str = now.strftime('%Y-%m-%d %H:%M:%S')
+    
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        cur.execute('''
+        cur.execute(f'''
             INSERT INTO bookings (
                 client_name, client_phone, client_email,
                 event_date, start_time,
@@ -240,26 +269,17 @@ def create_hold(body: Dict[str, Any], conn) -> Dict[str, Any]:
                 total_block_from, total_block_to,
                 created_at, updated_at
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, 'HOLD', TRUE, %s, %s, %s, %s
+                '{safe_name}', '{safe_phone}', '{safe_email}',
+                '{event_date_str}', '{start_time_str}',
+                {package_info['id']}, '{safe_area}', {persons},
+                '{safe_addons}', '{safe_promo}',
+                {price}, {price}, {discount_amount},
+                '{safe_calc_details}',
+                'HOLD', TRUE,
+                '{from_str}', '{to_str}',
+                '{now_str}', '{now_str}'
             ) RETURNING id
-        ''', (
-            customer_name, customer_phone, customer_email,
-            start_at.date(), start_at.time(),
-            package_info['id'], service_area_id, persons,
-            json.dumps(addons), promo_code,
-            price, price, discount_amount,
-            json.dumps({
-                'prep_minutes': prep_minutes,
-                'cleanup_minutes': cleanup_minutes,
-                'duration_minutes': duration_minutes,
-                'deposit_amount': deposit_amount,
-                'hold_token': hold_token,
-                'hold_expires_at': (now + timedelta(minutes=HOLD_TTL_MINUTES)).isoformat()
-            }),
-            total_block_from, total_block_to,
-            now, now
-        ))
+        ''')
         
         booking_id = cur.fetchone()['id']
         
@@ -308,7 +328,7 @@ def confirm_booking(body: Dict[str, Any], conn) -> Dict[str, Any]:
         return {'statusCode': 400, 'error': 'Missing booking_id'}
     
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        cur.execute('SELECT * FROM bookings WHERE id = %s AND archived_at IS NULL', (booking_id,))
+        cur.execute(f"SELECT * FROM bookings WHERE id = {int(booking_id)} AND archived_at IS NULL")
         booking = cur.fetchone()
         
         if not booking:
@@ -329,9 +349,9 @@ def confirm_booking(body: Dict[str, Any], conn) -> Dict[str, Any]:
                 return {'statusCode': 410, 'error': 'Hold expired'}
     
     now = datetime.now(MOSCOW_TZ)
+    now_str = now.strftime('%Y-%m-%d %H:%M:%S')
     with conn.cursor() as cur:
-        cur.execute('UPDATE bookings SET status = %s, updated_at = %s WHERE id = %s',
-                    ('CONFIRMED', now, booking_id))
+        cur.execute(f"UPDATE bookings SET status = 'CONFIRMED', updated_at = '{now_str}' WHERE id = {int(booking_id)}")
         # Не используем booking_events (type mismatch)
     
     conn.commit()
@@ -345,14 +365,14 @@ def cancel_booking(body: Dict[str, Any], conn) -> Dict[str, Any]:
         return {'statusCode': 400, 'error': 'Missing booking_id'}
     
     with conn.cursor() as cur:
-        cur.execute('SELECT id FROM bookings WHERE id = %s AND archived_at IS NULL', (booking_id,))
+        cur.execute(f"SELECT id FROM bookings WHERE id = {int(booking_id)} AND archived_at IS NULL")
         if not cur.fetchone():
             return {'statusCode': 404, 'error': 'Booking not found'}
     
     now = datetime.now(MOSCOW_TZ)
+    now_str = now.strftime('%Y-%m-%d %H:%M:%S')
     with conn.cursor() as cur:
-        cur.execute('UPDATE bookings SET status = %s, updated_at = %s WHERE id = %s',
-                    ('CANCELLED', now, booking_id))
+        cur.execute(f"UPDATE bookings SET status = 'CANCELLED', updated_at = '{now_str}' WHERE id = {int(booking_id)}")
         # Не используем booking_events (type mismatch)
     
     conn.commit()
