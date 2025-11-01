@@ -5,8 +5,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import Icon from "@/components/ui/icon";
 import PriceCalculator from "@/components/PriceCalculator";
 import BookingWidget from "@/components/BookingWidget";
+import { useNavigate } from "react-router-dom";
 
 const WarmDates = () => {
+  const navigate = useNavigate();
   const [selectedRitual, setSelectedRitual] = useState<number | null>(null);
   const [calculatorOpen, setCalculatorOpen] = useState<boolean>(false);
 
@@ -133,9 +135,9 @@ const WarmDates = () => {
               size="lg" 
               variant="outline"
               className="border-2 border-white bg-white/90 text-nature-forest hover:bg-white px-10 py-6 text-lg shadow-2xl font-semibold"
-              onClick={() => setCalculatorOpen(true)}
+              onClick={() => navigate('/calculator')}
             >
-              Рассчитать стоимость
+              Записаться на ритуал
             </Button>
             <Button 
               size="lg" 
@@ -311,11 +313,10 @@ const WarmDates = () => {
                   <Button 
                     className="flex-1 bg-nature-brown hover:bg-nature-forest text-white"
                     onClick={() => {
-                      setSelectedRitual(null);
-                      setCalculatorOpen(true);
+                      navigate('/calculator');
                     }}
                   >
-                    Рассчитать стоимость
+                    Записаться на ритуал
                   </Button>
                 </div>
               </div>
@@ -345,6 +346,24 @@ const WarmDates = () => {
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="py-16 bg-gradient-to-r from-nature-brown to-nature-forest">
+        <div className="container mx-auto px-4 max-w-4xl text-center">
+          <h2 className="text-4xl md:text-5xl font-serif text-white mb-6">
+            Готовы к встрече с собой и друг другом?
+          </h2>
+          <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+            Выберите формат ритуала, дату и время. Мы создадим для вас пространство настоящей близости.
+          </p>
+          <Button
+            size="lg"
+            className="bg-white text-nature-forest hover:bg-nature-cream px-12 py-6 text-lg font-semibold shadow-xl"
+            onClick={() => navigate('/calculator')}
+          >
+            Записаться на ритуал
+          </Button>
         </div>
       </section>
 

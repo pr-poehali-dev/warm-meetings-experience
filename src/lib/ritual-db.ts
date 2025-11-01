@@ -51,7 +51,7 @@ export function saveConfig(config: RitualConfig): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 }
 
-export function createBooking(booking: RitualBooking): Promise<{ bookingId: number; message: string }> {
+export async function createBooking(booking: RitualBooking): Promise<{ bookingId: number; message: string }> {
   const config = getConfig();
   
   const format = config.formats.find(f => f.id === booking.ritualFormatId);
@@ -59,7 +59,9 @@ export function createBooking(booking: RitualBooking): Promise<{ bookingId: numb
   const timeSlot = config.timeSlots.find(t => t.id === booking.timeSlotId);
   const options = config.options.filter(o => booking.selectedOptions.includes(o.id));
   
-  const message = `🔥 Новый запрос на ритуал!
+  const optionsText = options.length > 0 ? options.map(o => `  • ${o.name}`).join('\n') : '  Нет';
+  
+  const telegramMessage = `🔥 Новый запрос на ритуал!
 
 Имя: ${booking.clientName}
 Телефон: ${booking.clientPhone}
@@ -72,16 +74,43 @@ Email: ${booking.clientEmail}
 Время: ${timeSlot?.time_label || 'Неизвестно'}
 
 Дополнительные опции:
-${options.length > 0 ? options.map(o => `  • ${o.name}`).join('\n') : '  Нет'}
+${optionsText}
 
 Итоговая стоимость: ${booking.totalPrice.toLocaleString()} ₽
 
 Комментарий: ${booking.comment || 'Нет'}`;
   
-  console.log(message);
+  const TELEGRAM_BOT_TOKEN = '7877864092:AAFbbgv1YuCBE0wr5m7Ib6vDDuVrjhvICW0';
+  const TELEGRAM_CHAT_ID = '-4524074558';
   
-  return Promise.resolve({
-    bookingId: Math.floor(Math.random() * 10000),
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text: telegramMessage,
+        parse_mode: 'HTML',
+      }),
+    });
+    
+    if (!response.ok) {
+      console.error('Telegram API error:', await response.text());
+    }
+  } catch (error) {
+    console.error('Failed to send Telegram notification:', error);
+  }
+  
+  const bookingId = Math.floor(Math.random() * 10000);
+  
+  if (typeof window !== 'undefined') {
+    const bookings = JSON.parse(localStorage.getItem('ritual_bookings') || '[]');
+    bookings.push({ ...booking, id: bookingId, createdAt: new Date().toISOString() });
+    localStorage.setItem('ritual_bookings', JSON.stringify(bookings));
+  }
+  
+  return {
+    bookingId,
     message: 'Ваш запрос на ритуал принят. Мы свяжемся для подтверждения',
-  });
+  };
 }
