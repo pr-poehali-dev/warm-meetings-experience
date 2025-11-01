@@ -6,7 +6,7 @@
       "body": {
         "package_id": "signature",
         "service_area_id": "area_moscow",
-        "start_at": "2025-11-03T16:00:00+03:00",
+        "start_at": "2025-11-04T10:00:00+03:00",
         "persons": 2,
         "customer_name": "Тест",
         "customer_phone": "+79991234567",

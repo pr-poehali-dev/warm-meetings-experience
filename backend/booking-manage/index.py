@@ -13,6 +13,8 @@ from typing import Dict, Any
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from zoneinfo import ZoneInfo
+import urllib.request
+import urllib.parse
 
 MOSCOW_TZ = ZoneInfo('Europe/Moscow')
 HOLD_TTL_MINUTES = 20
@@ -20,6 +22,65 @@ HOLD_TTL_MINUTES = 20
 def get_db_connection():
     dsn = os.environ.get('DATABASE_URL')
     return psycopg2.connect(dsn)
+
+def send_telegram_notification(booking_data: Dict[str, Any]):
+    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+    
+    if not bot_token or not chat_id:
+        print('[WARNING] Telegram credentials not configured, skipping notification')
+        return
+    
+    try:
+        # Форматирование даты и времени
+        start_at = datetime.fromisoformat(booking_data['start_at'])
+        date_str = start_at.strftime('%d.%m.%Y')
+        time_str = start_at.strftime('%H:%M')
+        
+        # Названия пакетов
+        package_names = {
+            'signature': 'Ритуал "Ближе"',
+            'romance': 'Тепло в тишине',
+            'wedding': 'Свадебный пар'
+        }
+        package_name = package_names.get(booking_data['package_id'], booking_data['package_id'])
+        
+        # Формирование сообщения
+        message = f'''🔔 Новая заявка!
+
+📦 Пакет: {package_name}
+👤 Клиент: {booking_data['customer_name']}
+📞 Телефон: {booking_data['customer_phone']}
+📧 Email: {booking_data.get('customer_email', 'не указан')}
+
+📅 Дата: {date_str}
+🕐 Время: {time_str}
+👥 Количество: {booking_data['persons']} чел.
+
+💰 Сумма: {booking_data['final_price']} ₽
+💳 Депозит: {booking_data['deposit_amount']} ₽
+
+🆔 Номер брони: {booking_data['booking_id']}
+⏰ Бронь удерживается до: {booking_data['hold_expires_at']}'''
+        
+        # Отправка через Telegram Bot API
+        url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
+        data = urllib.parse.urlencode({
+            'chat_id': chat_id,
+            'text': message,
+            'parse_mode': 'HTML'
+        }).encode('utf-8')
+        
+        req = urllib.request.Request(url, data=data)
+        with urllib.request.urlopen(req, timeout=5) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            if result.get('ok'):
+                print('[INFO] Telegram notification sent successfully')
+            else:
+                print(f'[WARNING] Telegram API error: {result}')
+                
+    except Exception as e:
+        print(f'[ERROR] Failed to send Telegram notification: {e}')
 
 def get_buffers(package_id: str, service_area_id: str, conn) -> tuple:
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -208,15 +269,35 @@ def create_hold(body: Dict[str, Any], conn) -> Dict[str, Any]:
     conn.commit()
     hold_expires_at = now + timedelta(minutes=HOLD_TTL_MINUTES)
     
+    result_data = {
+        'booking_id': str(booking_id),
+        'token': hold_token,
+        'hold_expires_at': hold_expires_at.isoformat(),
+        'final_price': price,
+        'deposit_amount': deposit_amount
+    }
+    
+    # Отправка уведомления в Telegram
+    try:
+        notification_data = {
+            'booking_id': str(booking_id),
+            'package_id': package_id,
+            'customer_name': customer_name,
+            'customer_phone': customer_phone,
+            'customer_email': customer_email,
+            'start_at': start_at.isoformat(),
+            'persons': persons,
+            'final_price': price,
+            'deposit_amount': deposit_amount,
+            'hold_expires_at': hold_expires_at.strftime('%d.%m.%Y %H:%M')
+        }
+        send_telegram_notification(notification_data)
+    except Exception as e:
+        print(f'[WARNING] Notification failed but booking created: {e}')
+    
     return {
         'statusCode': 200,
-        'data': {
-            'booking_id': str(booking_id),
-            'token': hold_token,
-            'hold_expires_at': hold_expires_at.isoformat(),
-            'final_price': price,
-            'deposit_amount': deposit_amount
-        }
+        'data': result_data
     }
 
 def confirm_booking(body: Dict[str, Any], conn) -> Dict[str, Any]:
