@@ -18,6 +18,8 @@ import WarmDates from "./pages/WarmDates";
 import Events from "./pages/Events";
 import MobileServices from "./pages/MobileServices";
 import Admin from "./pages/Admin";
+import RitualCalculator from "./pages/RitualCalculator";
+import RitualAdmin from "./pages/RitualAdmin";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import PersonalDataConsent from "./pages/PersonalDataConsent";
 import AiPolicy from "./pages/AiPolicy";
@@ -44,6 +46,8 @@ const AppContent = () => {
         <Route path="/events" element={<Events />} />
         <Route path="/mobile-services" element={<MobileServices />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/calculator" element={<RitualCalculator />} />
+        <Route path="/admin_svidanie" element={<RitualAdmin />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/personal-data-consent" element={<PersonalDataConsent />} />
         <Route path="/ai-policy" element={<AiPolicy />} />
