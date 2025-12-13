@@ -30,10 +30,11 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith('/admin');
+  const isHomePage = location.pathname === '/';
 
   return (
     <>
-      {!isAdminPage && <FloatingMenu />}
+      {!isAdminPage && !isHomePage && <FloatingMenu />}
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Index />} />
@@ -54,7 +55,7 @@ const AppContent = () => {
         <Route path="/philosophy" element={<Philosophy />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
-      {!isAdminPage && <Footer />}
+      {!isAdminPage && !isHomePage && <Footer />}
     </>
   );
 };

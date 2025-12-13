@@ -91,29 +91,30 @@ export default function Index() {
               </div>
 
               <div className="text-center">
-                <div className="inline-block bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl p-8 md:p-10 mb-6">
+                <div className="bg-gradient-to-r from-amber-100 to-orange-100 rounded-2xl p-6 md:p-10 mb-6">
                   <p className="text-lg md:text-xl text-gray-900 font-semibold mb-3">
                     Присоединяйтесь к сообществу
                   </p>
-                  <p className="text-gray-700 mb-6 max-w-md mx-auto">
+                  <p className="text-gray-700 mb-6">
                     Узнайте больше о ближайших встречах, мастерах и условиях участия
                   </p>
                   <a 
                     href="https://t.me/banya_live" 
                     target="_blank" 
                     rel="noopener noreferrer"
+                    className="block"
                   >
                     <Button 
                       size="lg" 
-                      className="bg-gradient-to-r from-[#229ED9] to-[#0088cc] hover:from-[#0088cc] hover:to-[#006699] text-white shadow-xl text-lg px-8 py-6 h-auto"
+                      className="w-full md:w-auto bg-gradient-to-r from-[#229ED9] to-[#0088cc] hover:from-[#0088cc] hover:to-[#006699] text-white shadow-xl px-6 py-5 md:px-8 md:py-6 h-auto text-base md:text-lg"
                     >
-                      <Icon name="Send" size={24} className="mr-3" />
+                      <Icon name="Send" size={20} className="mr-2 md:mr-3" />
                       Перейти в Telegram-канал
                     </Button>
                   </a>
                 </div>
 
-                <p className="text-gray-500 text-sm">
+                <p className="text-gray-500 text-sm px-4">
                   Банный клуб — место, где традиции живут в современном формате
                 </p>
               </div>
