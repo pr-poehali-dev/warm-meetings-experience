@@ -109,7 +109,7 @@ export default function Index() {
                       className="w-full md:w-auto bg-gradient-to-r from-[#229ED9] to-[#0088cc] hover:from-[#0088cc] hover:to-[#006699] text-white shadow-xl px-6 py-5 md:px-8 md:py-6 h-auto text-base md:text-lg"
                     >
                       <Icon name="Send" size={20} className="mr-2 md:mr-3" />
-                      Перейти в Telegram-канал
+                      Подписаться
                     </Button>
                   </a>
                 </div>
