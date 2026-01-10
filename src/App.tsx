@@ -9,6 +9,7 @@ import FloatingMenu from "./components/FloatingMenu";
 import Footer from "./components/Footer";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import About from "./pages/About";
 import IndividualConsultations from "./pages/IndividualConsultations";
 import GroupPrograms from "./pages/GroupPrograms";
 
@@ -38,6 +39,7 @@ const AppContent = () => {
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/about" element={<About />} />
         <Route path="/individual-consultations" element={<IndividualConsultations />} />
         <Route path="/group-programs" element={<GroupPrograms />} />
 
