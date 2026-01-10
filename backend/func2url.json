@@ -1,7 +1,1 @@
-{
-  "bookings-list": "https://functions.poehali.dev/af56e561-66e8-45f0-bdc2-64c6182193ef",
-  "booking-manage": "https://functions.poehali.dev/2aed360c-6e66-4038-ba4a-0a75e3db19be",
-  "calendar-availability": "https://functions.poehali.dev/4f685755-a5d0-49f6-8351-5d452cf7ceb2",
-  "calculator-api": "https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87",
-  "admin-auth": "https://functions.poehali.dev/bf05e573-64d0-4ab1-a65d-3477af60fe9a"
-}
+{}
