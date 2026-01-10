@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Cormorant:wght@300;400;600;700&family=Open+Sans:wght@300;400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,35 +6,35 @@
 
 @layer base {
   :root {
-    --background: 37 19% 96%;
-    --foreground: 98 19% 18%;
+    --background: 0 0% 98%;
+    --foreground: 0 0% 15%;
 
-    --card: 37 19% 96%;
-    --card-foreground: 98 19% 18%;
+    --card: 0 0% 98%;
+    --card-foreground: 0 0% 15%;
 
-    --popover: 37 19% 96%;
-    --popover-foreground: 98 19% 18%;
+    --popover: 0 0% 98%;
+    --popover-foreground: 0 0% 15%;
 
-    --primary: 30 18% 46%;
-    --primary-foreground: 37 19% 96%;
+    --primary: 0 0% 20%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 93 28% 29%;
-    --secondary-foreground: 37 19% 96%;
+    --secondary: 0 0% 25%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 32 15% 83%;
-    --muted-foreground: 98 8% 40%;
+    --muted: 0 0% 92%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 93 28% 29%;
-    --accent-foreground: 37 19% 96%;
+    --accent: 0 0% 25%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 32 15% 83%;
-    --input: 32 15% 83%;
-    --ring: 30 18% 46%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 0 0% 20%;
 
-    --radius: 0.5rem;
+    --radius: 0rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -99,10 +99,6 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: "Open Sans", sans-serif;
-  }
-
-  .font-serif {
-    font-family: "Cormorant", serif;
+    font-family: "Inter", sans-serif;
   }
 }
