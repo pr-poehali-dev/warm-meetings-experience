@@ -9,6 +9,12 @@ export default function Index() {
     window.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
   };
 
+  const getEventColor = (type: string) => {
+    if (type === "Мужская встреча") return "bg-blue-600 text-white";
+    if (type === "Женская встреча") return "bg-pink-600 text-white";
+    return "bg-purple-600 text-white";
+  };
+
   const upcomingEvents = [
     {
       date: "12 февраля, суббота",
@@ -173,7 +179,7 @@ export default function Index() {
               {upcomingEvents.map((event, index) => (
                 <Card key={index} className="p-8 bg-card border-0 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
                   <div className="absolute top-0 right-0">
-                    <div className="bg-accent text-accent-foreground px-4 py-1 text-xs font-semibold uppercase tracking-wide" style={{
+                    <div className={`${getEventColor(event.type)} px-4 py-1 text-xs font-semibold uppercase tracking-wide`} style={{
                       clipPath: 'polygon(0 0, 100% 0, 100% 100%, 10% 100%)'
                     }}>
                       {event.type}
