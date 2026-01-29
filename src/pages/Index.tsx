@@ -22,15 +22,19 @@ export default function Index() {
       type: "Мужская встреча",
       venue: "Баня на дровах «Берёзка»",
       price: "2 500 ₽",
-      spotsLeft: 3
+      spotsLeft: 3,
+      totalSpots: 8
     },
     {
-      date: "15 февраля, вторник",
-      time: "19:00 — 22:00",
+      title: "Тихая суббота в бане",
+      date: "2 марта, суббота",
+      time: "12:00 — 16:00",
       type: "Совместная встреча",
       venue: "Баня «Источник»",
-      price: "3 000 ₽",
-      spotsLeft: 5
+      price: "4 500 ₽",
+      spotsLeft: 3,
+      totalSpots: 12,
+      description: "Клубная банная встреча для тех, кому важно пойти в баню спокойно и без неловкости: одна группа, один ритм, трезво и без случайных людей."
     },
     {
       date: "19 февраля, суббота",
@@ -38,7 +42,8 @@ export default function Index() {
       type: "Женская встреча",
       venue: "Баня на дровах «Берёзка»",
       price: "2 500 ₽",
-      spotsLeft: 2
+      spotsLeft: 2,
+      totalSpots: 8
     }
   ];
 
@@ -185,34 +190,48 @@ export default function Index() {
                       {event.type}
                     </div>
                   </div>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="text-lg font-semibold mb-1">{event.date}</div>
-                      <div className="text-sm text-muted-foreground">{event.time}</div>
-                    </div>
+                  <div className="space-y-5">
+                    {event.title && (
+                      <h3 className="text-2xl font-bold leading-tight pt-2">{event.title}</h3>
+                    )}
                     
-                    <div className="py-4 border-y border-border/50">
-                      <div className="text-sm text-muted-foreground mb-1">Место</div>
-                      <div className="font-medium">{event.venue}</div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-2xl font-bold">{event.price}</div>
-                        <div className="text-xs text-muted-foreground">с человека</div>
+                    <div className="space-y-1">
+                      <div className="text-base font-medium">
+                        <span className="font-semibold">{event.date}</span> · {event.time}
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm font-semibold text-accent">
-                          Осталось {event.spotsLeft} {event.spotsLeft === 1 ? 'место' : event.spotsLeft < 5 ? 'места' : 'мест'}
+                      {event.totalSpots && (
+                        <div className="text-sm text-muted-foreground">
+                          Осталось {event.spotsLeft} из {event.totalSpots} мест
                         </div>
-                      </div>
+                      )}
                     </div>
+                    
+                    <div className="text-2xl font-bold">{event.price}</div>
+                    
+                    {event.description && (
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        {event.description}
+                      </p>
+                    )}
+                    
+                    {!event.description && (
+                      <div className="py-3 border-y border-border/50">
+                        <div className="text-sm text-muted-foreground mb-1">Место</div>
+                        <div className="font-medium">{event.venue}</div>
+                      </div>
+                    )}
+                    
+                    {!event.description && !event.totalSpots && (
+                      <div className="text-sm font-semibold text-accent">
+                        Осталось {event.spotsLeft} {event.spotsLeft === 1 ? 'место' : event.spotsLeft < 5 ? 'места' : 'мест'}
+                      </div>
+                    )}
                     
                     <Button 
                       className="w-full rounded-full"
                       onClick={() => window.open(TELEGRAM_URL, '_blank')}
                     >
-                      Узнать подробности
+                      👉 Посмотреть детали встречи
                     </Button>
                   </div>
                 </Card>
