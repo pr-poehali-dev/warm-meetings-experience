@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 
-const TELEGRAM_URL = "https://t.me/sparcom_bot";
+const TELEGRAM_URL = "https://t.me/sparcom_ru";
 
 export default function Index() {
   const scrollDown = () => {
