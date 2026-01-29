@@ -171,10 +171,16 @@ export default function Index() {
             
             <div className="grid md:grid-cols-3 gap-6">
               {upcomingEvents.map((event, index) => (
-                <Card key={index} className="p-8 bg-card border-0 shadow-sm hover:shadow-md transition-shadow">
+                <Card key={index} className="p-8 bg-card border-0 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                  <div className="absolute top-0 right-0">
+                    <div className="bg-accent text-accent-foreground px-4 py-1 text-xs font-semibold uppercase tracking-wide" style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% 100%, 10% 100%)'
+                    }}>
+                      {event.type}
+                    </div>
+                  </div>
                   <div className="space-y-4">
                     <div>
-                      <div className="text-sm font-semibold text-accent mb-2">{event.type}</div>
                       <div className="text-lg font-semibold mb-1">{event.date}</div>
                       <div className="text-sm text-muted-foreground">{event.time}</div>
                     </div>
