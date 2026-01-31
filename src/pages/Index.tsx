@@ -9,44 +9,7 @@ export default function Index() {
     window.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
   };
 
-  const getEventColor = (type: string) => {
-    if (type === "Мужская встреча") return "bg-blue-600 text-white";
-    if (type === "Женская встреча") return "bg-pink-600 text-white";
-    return "bg-purple-600 text-white";
-  };
 
-  const upcomingEvents = [
-    {
-      title: "Мужская баня на берёзовых дровах",
-      date: "12 февраля, суббота",
-      time: "18:00 — 21:00",
-      type: "Мужская встреча",
-      price: "2 500 ₽",
-      spotsLeft: 3,
-      totalSpots: 8,
-      description: "Вечерняя встреча для мужчин в аутентичной бане на дровах. Без суеты, с правильным паром и возможностью поговорить о важном в кругу своих."
-    },
-    {
-      title: "Тихая суббота в бане",
-      date: "2 марта, суббота",
-      time: "12:00 — 16:00",
-      type: "Совместная встреча",
-      price: "4 500 ₽",
-      spotsLeft: 3,
-      totalSpots: 12,
-      description: "Клубная банная встреча для тех, кому важно пойти в баню спокойно и без неловкости: одна группа, один ритм, трезво и без случайных людей."
-    },
-    {
-      title: "Женский день в бане",
-      date: "19 февраля, суббота",
-      time: "16:00 — 19:00",
-      type: "Женская встреча",
-      price: "2 500 ₽",
-      spotsLeft: 2,
-      totalSpots: 8,
-      description: "Дневная встреча для женщин в уютной бане на дровах. Мягкий пар, спокойная атмосфера и время для себя в компании единомышленниц."
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -171,78 +134,7 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Блок 4: Ближайшие встречи */}
-      <section className="py-24 md:py-32 bg-muted/30">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-semibold mb-4">
-                Ближайшие встречи
-              </h2>
-            </div>
-            
-            <div className="grid md:grid-cols-3 gap-6">
-              {upcomingEvents.map((event, index) => (
-                <Card key={index} className="p-8 bg-card border-0 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
-                  <div className="absolute top-0 right-0">
-                    <div className={`${getEventColor(event.type)} px-4 py-1 text-xs font-semibold uppercase tracking-wide`} style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% 100%, 10% 100%)'
-                    }}>
-                      {event.type}
-                    </div>
-                  </div>
-                  <div className="space-y-5">
-                    {event.title && (
-                      <h3 className="text-2xl font-bold leading-tight pt-2">{event.title}</h3>
-                    )}
-                    
-                    <div className="space-y-1">
-                      <div className="text-base font-medium">
-                        <span className="font-semibold">{event.date}</span> · {event.time}
-                      </div>
-                      {event.totalSpots && (
-                        <div className="text-sm text-muted-foreground">
-                          Осталось {event.spotsLeft} из {event.totalSpots} мест
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="text-2xl font-bold">{event.price}</div>
-                    
-                    {event.description && (
-                      <p className="text-sm leading-relaxed text-muted-foreground">
-                        {event.description}
-                      </p>
-                    )}
-                    
-                    {!event.description && (
-                      <div className="py-3 border-y border-border/50">
-                        <div className="text-sm text-muted-foreground mb-1">Место</div>
-                        <div className="font-medium">{event.venue}</div>
-                      </div>
-                    )}
-                    
-                    {!event.description && !event.totalSpots && (
-                      <div className="text-sm font-semibold text-accent">
-                        Осталось {event.spotsLeft} {event.spotsLeft === 1 ? 'место' : event.spotsLeft < 5 ? 'места' : 'мест'}
-                      </div>
-                    )}
-                    
-                    <Button 
-                      className="w-full rounded-full"
-                      onClick={() => window.open(TELEGRAM_URL, '_blank')}
-                    >
-                      👉 Посмотреть детали встречи
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Блок 5: Как это работает */}
+      {/* Блок 4: Как это работает */}
       <section className="py-24 md:py-32">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto">
