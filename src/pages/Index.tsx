@@ -31,23 +31,23 @@ export default function Index() {
           </p>
           
           {/* Блок со ссылкой на канал */}
-          <div className="mb-16 inline-block">
-            <Card className="p-6 bg-white/95 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Icon name="Calendar" className="text-accent" size={24} />
+          <div className="mb-16 w-full max-w-md mx-auto px-4">
+            <Card className="p-4 sm:p-6 bg-white/95 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-accent/10 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Icon name="Calendar" className="text-accent" size={20} />
                 </div>
-                <div className="text-left">
-                  <div className="text-sm text-muted-foreground font-medium mb-1">
+                <div className="text-left min-w-0 flex-1">
+                  <div className="text-xs sm:text-sm text-muted-foreground font-medium mb-1">
                     Актуальное расписание встреч
                   </div>
                   <Button 
                     variant="link" 
-                    className="p-0 h-auto text-lg font-semibold text-accent hover:text-accent/80"
+                    className="p-0 h-auto text-base sm:text-lg font-semibold text-accent hover:text-accent/80 truncate w-full justify-start"
                     onClick={() => window.open('https://t.me/banya_live', '_blank')}
                   >
-                    Телеграм-канал СПАРКОМ
-                    <Icon name="ExternalLink" className="ml-2" size={18} />
+                    <span className="truncate">Телеграм-канал СПАРКОМ</span>
+                    <Icon name="ExternalLink" className="ml-2 flex-shrink-0" size={16} />
                   </Button>
                 </div>
               </div>
@@ -144,10 +144,10 @@ export default function Index() {
               </Card>
             </div>
 
-            <div className="mt-16 text-center">
+            <div className="mt-16 text-center px-4">
               <Button 
                 size="lg" 
-                className="rounded-full text-lg px-8"
+                className="rounded-full text-base sm:text-lg px-6 sm:px-8 w-full sm:w-auto"
                 onClick={() => window.open(TELEGRAM_URL, '_blank')}
               >
                 <Icon name="MessageCircle" className="mr-2" size={20} />
@@ -171,7 +171,7 @@ export default function Index() {
             </p>
             <Button 
               size="lg" 
-              className="rounded-full text-lg px-10"
+              className="rounded-full text-base sm:text-lg px-6 sm:px-10 w-full sm:w-auto max-w-md mx-auto"
               onClick={() => window.open('https://t.me/banya_live', '_blank')}
             >
               <Icon name="ExternalLink" className="mr-2" size={20} />
@@ -224,10 +224,10 @@ export default function Index() {
               </div>
             </div>
 
-            <div className="mt-16 text-center">
+            <div className="mt-16 text-center px-4">
               <Button 
                 size="lg" 
-                className="rounded-full text-lg px-8"
+                className="rounded-full text-base sm:text-lg px-6 sm:px-8 w-full sm:w-auto"
                 onClick={() => window.open(TELEGRAM_URL, '_blank')}
               >
                 Начать общение
@@ -370,7 +370,7 @@ export default function Index() {
             <Button 
               size="lg" 
               variant="secondary"
-              className="rounded-full text-lg px-10"
+              className="rounded-full text-base sm:text-lg px-6 sm:px-10 w-full sm:w-auto max-w-md mx-auto"
               onClick={() => window.open(TELEGRAM_URL, '_blank')}
             >
               <Icon name="Send" className="mr-2" size={20} />
