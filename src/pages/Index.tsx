@@ -22,6 +22,19 @@ export default function Index() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
         
+        {/* Кнопка в шапке */}
+        <div className="absolute top-6 right-6 z-20">
+          <Button 
+            variant="secondary"
+            size="sm"
+            className="rounded-full shadow-lg backdrop-blur-sm bg-white/90 hover:bg-white"
+            onClick={() => window.open('https://t.me/banya_live', '_blank')}
+          >
+            <Icon name="Calendar" className="mr-2" size={16} />
+            Расписание встреч
+          </Button>
+        </div>
+        
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-8 leading-tight">
             В баню можно идти одному.
