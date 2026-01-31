@@ -134,7 +134,30 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Блок 4: Как это работает */}
+      {/* Блок 4: Ближайшие встречи */}
+      <section className="py-24 md:py-32 bg-accent/5">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mx-auto text-center">
+            <Icon name="Calendar" className="text-accent mx-auto mb-6" size={48} />
+            <h2 className="text-3xl md:text-4xl font-semibold mb-6">
+              Ближайшие встречи
+            </h2>
+            <p className="text-xl text-muted-foreground mb-10 leading-relaxed">
+              Все актуальные банные встречи, свободные места и детали — в нашем телеграм-канале
+            </p>
+            <Button 
+              size="lg" 
+              className="rounded-full text-lg px-10"
+              onClick={() => window.open('https://t.me/banya_live', '_blank')}
+            >
+              <Icon name="ExternalLink" className="mr-2" size={20} />
+              Смотреть расписание встреч
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Блок 5: Как это работает */}
       <section className="py-24 md:py-32">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto">
