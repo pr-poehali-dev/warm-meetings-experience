@@ -22,26 +22,37 @@ export default function Index() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
         
-        {/* Кнопка в шапке */}
-        <div className="absolute top-6 right-6 z-20">
-          <Button 
-            variant="secondary"
-            size="sm"
-            className="rounded-full shadow-lg backdrop-blur-sm bg-white/90 hover:bg-white"
-            onClick={() => window.open('https://t.me/banya_live', '_blank')}
-          >
-            <Icon name="Calendar" className="mr-2" size={16} />
-            Расписание встреч
-          </Button>
-        </div>
-        
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-8 leading-tight">
             В баню можно идти одному.
           </h1>
-          <p className="text-xl md:text-2xl text-white/90 mb-16 font-light max-w-2xl mx-auto">
+          <p className="text-xl md:text-2xl text-white/90 mb-12 font-light max-w-2xl mx-auto">
             Если хочется нормальной бани, но не с кем — это не проблема. СПАРКОМ существует именно для таких ситуаций.
           </p>
+          
+          {/* Блок со ссылкой на канал */}
+          <div className="mb-16 inline-block">
+            <Card className="p-6 bg-white/95 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Icon name="Calendar" className="text-accent" size={24} />
+                </div>
+                <div className="text-left">
+                  <div className="text-sm text-muted-foreground font-medium mb-1">
+                    Актуальное расписание встреч
+                  </div>
+                  <Button 
+                    variant="link" 
+                    className="p-0 h-auto text-lg font-semibold text-accent hover:text-accent/80"
+                    onClick={() => window.open('https://t.me/banya_live', '_blank')}
+                  >
+                    Телеграм-канал СПАРКОМ
+                    <Icon name="ExternalLink" className="ml-2" size={18} />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
           
           <button 
             onClick={scrollDown}
