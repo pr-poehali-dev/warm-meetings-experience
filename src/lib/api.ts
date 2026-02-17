@@ -1,5 +1,5 @@
 const EVENTS_API = "https://functions.poehali.dev/a8aa8917-24e9-450a-8ed1-28225a582a59";
-const AUTH_API = "https://functions.poehali.dev/bf05e573-64d0-4ab1-a65d-3477af60fe9a";
+const AUTH_API = "https://functions.poehali.dev/3f8dabee-7ea7-4701-8e3f-9ef3affcd6fe";
 const IMAGE_API = "https://functions.poehali.dev/2ff77aef-179a-445e-8e7e-744cb90ea2e8";
 
 export interface EventFromAPI {

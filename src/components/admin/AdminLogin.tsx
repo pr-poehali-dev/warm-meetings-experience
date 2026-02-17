@@ -10,7 +10,7 @@ interface AdminLoginProps {
   onLoginSuccess: (token: string) => void;
 }
 
-const AUTH_API_URL = "https://functions.poehali.dev/bf05e573-64d0-4ab1-a65d-3477af60fe9a";
+const AUTH_API_URL = "https://functions.poehali.dev/3f8dabee-7ea7-4701-8e3f-9ef3affcd6fe";
 
 const AdminLogin = ({ onLoginSuccess }: AdminLoginProps) => {
   const [password, setPassword] = useState("");
