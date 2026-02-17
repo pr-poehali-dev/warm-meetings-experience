@@ -88,7 +88,7 @@ const AdminEventsList = ({
                     size="sm"
                     variant="secondary"
                     onClick={() => onEdit(event)}
-                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
                     title="Редактировать"
                   >
                     <Icon name="Edit" size={16} />
@@ -97,7 +97,7 @@ const AdminEventsList = ({
                     size="sm"
                     variant="secondary"
                     onClick={() => onToggleVisibility(event)}
-                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
                     title={event.is_visible ? "Скрыть" : "Показать"}
                   >
                     <Icon name={event.is_visible ? "Eye" : "EyeOff"} size={16} />
@@ -106,7 +106,7 @@ const AdminEventsList = ({
                     size="sm"
                     variant="secondary"
                     onClick={() => event.id && onDelete(event.id)}
-                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white hover:text-red-600"
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700 hover:text-red-600"
                     title="Удалить"
                   >
                     <Icon name="Trash2" size={16} />
