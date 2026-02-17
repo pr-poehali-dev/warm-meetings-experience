@@ -1,0 +1,1 @@
+UPDATE events SET slug = 'astrobanya-teplo-dlya-tela-i-dushi' WHERE id = 4 AND slug IS NULL;

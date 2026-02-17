@@ -61,9 +61,14 @@ def handle_events(event, method, params, schema, headers):
     if method == 'GET':
         slug = params.get('slug')
         if slug:
-            cur.execute(
-                f"SELECT * FROM {schema}.events WHERE slug = '{slug}' AND is_visible = true"
-            )
+            if slug.startswith('event-') and slug[6:].isdigit():
+                cur.execute(
+                    f"SELECT * FROM {schema}.events WHERE id = {slug[6:]} AND is_visible = true"
+                )
+            else:
+                cur.execute(
+                    f"SELECT * FROM {schema}.events WHERE slug = '{slug}' AND is_visible = true"
+                )
             row = cur.fetchone()
             conn.close()
             if not row:
