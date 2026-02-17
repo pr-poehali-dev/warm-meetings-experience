@@ -61,7 +61,7 @@ const AdminLogin = ({ onLoginSuccess }: AdminLoginProps) => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-nature-moss rounded-full flex items-center justify-center mb-4">
+          <div className="mx-auto w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mb-4">
             <Icon name="Lock" size={32} className="text-white" />
           </div>
           <CardTitle className="text-2xl">Вход в админ-панель</CardTitle>

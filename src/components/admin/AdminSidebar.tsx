@@ -39,7 +39,7 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               onClick={() => onViewChange("overview")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
                 currentView === "overview"
-                  ? "bg-nature-moss text-white"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
@@ -51,7 +51,7 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               onClick={() => onViewChange("list")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
                 currentView === "list"
-                  ? "bg-nature-moss text-white"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
@@ -66,7 +66,7 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               }}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
                 currentView === "add"
-                  ? "bg-nature-moss text-white"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
@@ -78,7 +78,7 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               onClick={() => onViewChange("event-signups")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
                 currentView === "event-signups"
-                  ? "bg-nature-moss text-white"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
@@ -95,7 +95,7 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               onClick={() => onViewChange("packages")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
                 currentView === "packages"
-                  ? "bg-nature-moss text-white"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
@@ -107,7 +107,7 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               onClick={() => onViewChange("addons")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
                 currentView === "addons"
-                  ? "bg-nature-moss text-white"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
@@ -119,7 +119,7 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               onClick={() => onViewChange("bookings")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
                 currentView === "bookings"
-                  ? "bg-nature-moss text-white"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
@@ -136,7 +136,7 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               onClick={() => onViewChange("service-areas")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
                 currentView === "service-areas"
-                  ? "bg-nature-moss text-white"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
@@ -148,7 +148,7 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               onClick={() => onViewChange("multipliers")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
                 currentView === "multipliers"
-                  ? "bg-nature-moss text-white"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
@@ -160,7 +160,7 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               onClick={() => onViewChange("holidays")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
                 currentView === "holidays"
-                  ? "bg-nature-moss text-white"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
@@ -172,7 +172,7 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               onClick={() => onViewChange("promo-codes")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
                 currentView === "promo-codes"
-                  ? "bg-nature-moss text-white"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
@@ -184,7 +184,7 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               onClick={() => onViewChange("settings")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
                 currentView === "settings"
-                  ? "bg-nature-moss text-white"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
@@ -201,7 +201,7 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               onClick={() => onViewChange("availability")}
               className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
                 currentView === "availability"
-                  ? "bg-nature-moss text-white"
+                  ? "bg-gray-900 text-white"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
             >
