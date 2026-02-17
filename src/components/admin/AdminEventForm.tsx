@@ -22,6 +22,16 @@ interface Event {
   event_type_icon: string;
   image_url: string;
   is_visible: boolean;
+  bath_name?: string;
+  bath_address?: string;
+  description?: string;
+  program?: string[];
+  rules?: string[];
+  price_amount?: number;
+  price_label?: string;
+  total_spots?: number;
+  spots_left?: number;
+  featured?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -282,6 +292,106 @@ const AdminEventForm = ({
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="bath_name">Название бани</Label>
+                  <Input
+                    id="bath_name"
+                    placeholder="Например: Высота 30"
+                    value={formData.bath_name || ''}
+                    onChange={(e) => onFormChange({ ...formData, bath_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="bath_address">Адрес</Label>
+                  <Input
+                    id="bath_address"
+                    placeholder="Москва, ул. ..."
+                    value={formData.bath_address || ''}
+                    onChange={(e) => onFormChange({ ...formData, bath_address: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="price_amount">Цена (число)</Label>
+                  <Input
+                    id="price_amount"
+                    type="number"
+                    value={formData.price_amount || 0}
+                    onChange={(e) => onFormChange({ ...formData, price_amount: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="price_label">Цена (текст)</Label>
+                  <Input
+                    id="price_label"
+                    placeholder="от 5 000 ₽"
+                    value={formData.price_label || ''}
+                    onChange={(e) => onFormChange({ ...formData, price_label: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="total_spots">Кол-во мест</Label>
+                  <Input
+                    id="total_spots"
+                    type="number"
+                    value={formData.total_spots || 0}
+                    onChange={(e) => {
+                      const total = parseInt(e.target.value) || 0;
+                      onFormChange({ ...formData, total_spots: total, spots_left: Math.min(formData.spots_left || total, total) });
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="spots_left">Свободных мест</Label>
+                  <Input
+                    id="spots_left"
+                    type="number"
+                    value={formData.spots_left || 0}
+                    onChange={(e) => onFormChange({ ...formData, spots_left: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="flex items-end gap-4 pb-1">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="featured"
+                      checked={formData.featured || false}
+                      onChange={(e) => onFormChange({ ...formData, featured: e.target.checked })}
+                      className="w-4 h-4"
+                    />
+                    <Label htmlFor="featured" className="cursor-pointer">Избранное</Label>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="program">Программа (каждый пункт с новой строки)</Label>
+                <Textarea
+                  id="program"
+                  placeholder={"19:00 — Сбор, знакомство\n19:30 — Первый заход\n20:00 — Чайная церемония"}
+                  value={(formData.program || []).join('\n')}
+                  onChange={(e) => onFormChange({ ...formData, program: e.target.value.split('\n').filter(Boolean) })}
+                  rows={5}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="rules">Правила (каждое с новой строки)</Label>
+                <Textarea
+                  id="rules"
+                  placeholder={"Без алкоголя\nУважаем границы\nПриходим вовремя"}
+                  value={(formData.rules || []).join('\n')}
+                  onChange={(e) => onFormChange({ ...formData, rules: e.target.value.split('\n').filter(Boolean) })}
+                  rows={4}
+                />
+              </div>
+
               <ImageUpload
                 currentImageUrl={formData.image_url}
                 onImageUploaded={(url) => onFormChange({ ...formData, image_url: url })}
@@ -309,7 +419,7 @@ const AdminEventForm = ({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={(e) => onSubmit(e as any, true)}
+                  onClick={(e) => onSubmit(e as React.FormEvent, true)}
                   disabled={loading}
                 >
                   Сохранить и добавить новое

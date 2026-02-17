@@ -13,7 +13,8 @@ type ViewType =
   | "holidays" 
   | "promo-codes" 
   | "settings"
-  | "availability";
+  | "availability"
+  | "event-signups";
 
 interface AdminSidebarProps {
   currentView: ViewType;
@@ -71,6 +72,18 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
             >
               <Icon name="Plus" size={18} />
               <span className="text-sm">Добавить</span>
+            </button>
+
+            <button
+              onClick={() => onViewChange("event-signups")}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
+                currentView === "event-signups"
+                  ? "bg-nature-moss text-white"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Icon name="ClipboardList" size={18} />
+              <span className="text-sm">Заявки на события</span>
             </button>
           </div>
         </div>

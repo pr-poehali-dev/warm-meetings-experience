@@ -5,26 +5,37 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
+import { signupsApi } from "@/lib/api";
 
 interface SignUpFormProps {
+  eventId: number;
   eventTitle: string;
   spotsLeft: number;
 }
 
-export default function SignUpForm({ eventTitle, spotsLeft }: SignUpFormProps) {
+export default function SignUpForm({ eventId, eventTitle, spotsLeft }: SignUpFormProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [telegram, setTelegram] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim()) {
       toast.error("Заполните имя и телефон");
       return;
     }
-    setSubmitted(true);
-    toast.success("Заявка отправлена! Мы свяжемся с вами в ближайшее время.");
+    setLoading(true);
+    try {
+      await signupsApi.create({ event_id: eventId, name, phone, telegram });
+      setSubmitted(true);
+      toast.success("Заявка отправлена!");
+    } catch (err) {
+      toast.error("Не удалось отправить заявку. Попробуйте позже.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (spotsLeft === 0) {
@@ -104,9 +115,9 @@ export default function SignUpForm({ eventTitle, spotsLeft }: SignUpFormProps) {
               className="mt-1.5 rounded-lg"
             />
           </div>
-          <Button type="submit" className="w-full rounded-full" size="lg">
+          <Button type="submit" className="w-full rounded-full" size="lg" disabled={loading}>
             <Icon name="Send" size={16} className="mr-2" />
-            Отправить заявку
+            {loading ? "Отправка..." : "Отправить заявку"}
           </Button>
         </form>
       </CardContent>

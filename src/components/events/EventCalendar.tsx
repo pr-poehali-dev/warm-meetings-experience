@@ -1,5 +1,5 @@
 import { Calendar } from "@/components/ui/calendar";
-import { EventItem, EVENT_TYPE_CONFIG } from "@/data/events";
+import { EventItem, getTypeColors } from "@/data/events";
 import { parseISO, isSameDay, format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useState } from "react";
@@ -39,7 +39,7 @@ export default function EventCalendar({ events, onDateSelect, selectedDate }: Ev
             {format(selectedDate, "d MMMM", { locale: ru })}:
           </h4>
           {eventsForSelectedDate.map((event) => {
-            const typeConfig = EVENT_TYPE_CONFIG[event.type];
+            const typeColors = getTypeColors(event.type);
             return (
               <a
                 key={event.slug}
@@ -47,15 +47,17 @@ export default function EventCalendar({ events, onDateSelect, selectedDate }: Ev
                 className="block p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${typeConfig.bg} ${typeConfig.color}`}>
-                    {typeConfig.label}
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${typeColors.bg} ${typeColors.color}`}>
+                    {event.type}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {event.timeStart} — {event.timeEnd}
                   </span>
                 </div>
                 <div className="text-sm font-medium">{event.title}</div>
-                <div className="text-xs text-muted-foreground mt-1">{event.bathName} · {event.priceLabel}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {[event.bathName, event.priceLabel].filter(Boolean).join(" · ")}
+                </div>
               </a>
             );
           })}

@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "name": "Get all visible events",
+      "method": "GET",
+      "path": "/?resource=events&visible=true",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get all events including hidden",
+      "method": "GET",
+      "path": "/?resource=events&visible=all",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get event by slug not found",
+      "method": "GET",
+      "path": "/?resource=events&slug=nonexistent-slug-12345",
+      "expectedStatus": 404,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get signups list",
+      "method": "GET",
+      "path": "/?resource=signups",
+      "expectedStatus": 200
+    }
+  ]
+}

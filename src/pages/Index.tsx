@@ -1,13 +1,23 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { Link } from "react-router-dom";
 import EventCard from "@/components/events/EventCard";
-import { events } from "@/data/events";
+import { EventItem, mapApiEvent } from "@/data/events";
+import { eventsApi } from "@/lib/api";
 
 const TELEGRAM_URL = "https://t.me/sparcom_ru";
 
 export default function Index() {
+  const [events, setEvents] = useState<EventItem[]>([]);
+
+  useEffect(() => {
+    eventsApi.getAll(true).then((data) => {
+      setEvents(data.map(mapApiEvent));
+    }).catch(() => {});
+  }, []);
+
   const scrollDown = () => {
     window.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
   };

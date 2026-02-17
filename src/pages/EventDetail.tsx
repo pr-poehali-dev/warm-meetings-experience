@@ -1,21 +1,44 @@
 import { useParams, Link, Navigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import SignUpForm from "@/components/events/SignUpForm";
-import { events, EVENT_TYPE_CONFIG } from "@/data/events";
+import { EventItem, mapApiEvent, getTypeColors } from "@/data/events";
+import { eventsApi } from "@/lib/api";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 
 export default function EventDetail() {
   const { slug } = useParams<{ slug: string }>();
-  const event = events.find((e) => e.slug === slug);
+  const [event, setEvent] = useState<EventItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-  if (!event) {
-    return <Navigate to="/events" replace />;
+  useEffect(() => {
+    if (!slug) return;
+    eventsApi.getBySlug(slug).then((data) => {
+      setEvent(mapApiEvent(data));
+      setLoading(false);
+    }).catch(() => {
+      setNotFound(true);
+      setLoading(false);
+    });
+  }, [slug]);
+
+  if (notFound) return <Navigate to="/events" replace />;
+
+  if (loading || !event) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">Загрузка...</p>
+        </div>
+      </div>
+    );
   }
 
-  const typeConfig = EVENT_TYPE_CONFIG[event.type];
+  const typeColors = getTypeColors(event.type);
   const dateObj = parseISO(event.date);
   const spotsColor =
     event.spotsLeft === 0
@@ -36,20 +59,25 @@ export default function EventDetail() {
         </div>
       </header>
 
-      <div className="relative h-64 md:h-80 overflow-hidden">
-        <img
-          src={event.image}
-          alt={event.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        <div className="absolute bottom-6 left-0 right-0 container mx-auto px-4 sm:px-6 lg:px-8">
-          <span className={`inline-block text-xs px-3 py-1.5 rounded-full font-medium ${typeConfig.bg} ${typeConfig.color} mb-3`}>
-            {typeConfig.label}
-          </span>
-          <h1 className="text-2xl md:text-4xl font-bold text-white">{event.title}</h1>
+      {event.image ? (
+        <div className="relative h-64 md:h-80 overflow-hidden">
+          <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute bottom-6 left-0 right-0 container mx-auto px-4 sm:px-6 lg:px-8">
+            <span className={`inline-block text-xs px-3 py-1.5 rounded-full font-medium ${typeColors.bg} ${typeColors.color} mb-3`}>
+              {event.type}
+            </span>
+            <h1 className="text-2xl md:text-4xl font-bold text-white">{event.title}</h1>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+          <span className={`inline-block text-xs px-3 py-1.5 rounded-full font-medium ${typeColors.bg} ${typeColors.color} mb-3`}>
+            {event.type}
+          </span>
+          <h1 className="text-2xl md:text-4xl font-bold">{event.title}</h1>
+        </div>
+      )}
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         <div className="flex flex-col lg:flex-row gap-8">
@@ -64,90 +92,108 @@ export default function EventDetail() {
                   <div className="text-muted-foreground">{event.timeStart} — {event.timeEnd}</div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center">
-                  <Icon name="MapPin" size={16} className="text-accent" />
-                </div>
-                <div>
-                  <div className="font-medium">{event.bathName}</div>
-                  <div className="text-muted-foreground">{event.bathAddress}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center">
-                  <Icon name="Users" size={16} className="text-accent" />
-                </div>
-                <div>
-                  <div className="font-medium">{event.totalSpots} мест</div>
-                  <div className={`font-medium ${event.spotsLeft === 0 ? "text-red-600" : event.spotsLeft <= 2 ? "text-orange-600" : "text-green-600"}`}>
-                    {event.spotsLeft === 0 ? "Все заняты" : `Свободно ${event.spotsLeft}`}
+              {event.bathName && (
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center">
+                    <Icon name="MapPin" size={16} className="text-accent" />
+                  </div>
+                  <div>
+                    <div className="font-medium">{event.bathName}</div>
+                    {event.bathAddress && <div className="text-muted-foreground">{event.bathAddress}</div>}
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-4">О событии</h2>
-              <p className="text-muted-foreground leading-relaxed">{event.fullDescription}</p>
-            </div>
-
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-4">Программа</h2>
-              <div className="space-y-3">
-                {event.program.map((item, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-accent/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-xs font-medium text-accent">{i + 1}</span>
+              )}
+              {event.totalSpots > 0 && (
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center">
+                    <Icon name="Users" size={16} className="text-accent" />
+                  </div>
+                  <div>
+                    <div className="font-medium">{event.totalSpots} мест</div>
+                    <div className={`font-medium ${event.spotsLeft === 0 ? "text-red-600" : event.spotsLeft <= 2 ? "text-orange-600" : "text-green-600"}`}>
+                      {event.spotsLeft === 0 ? "Все заняты" : `Свободно ${event.spotsLeft}`}
                     </div>
-                    <span className="text-muted-foreground">{item}</span>
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
 
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-4">Правила</h2>
-              <Card className="border-0 shadow-sm">
-                <CardContent className="p-6">
-                  <ul className="space-y-3">
-                    {event.rules.map((rule, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <Icon name="Shield" size={16} className="text-accent mt-0.5 flex-shrink-0" />
-                        <span className="text-muted-foreground">{rule}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </div>
+            {event.fullDescription && (
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-4">О событии</h2>
+                <div className="text-muted-foreground leading-relaxed whitespace-pre-line">{event.fullDescription}</div>
+              </div>
+            )}
+
+            {event.program.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-4">Программа</h2>
+                <div className="space-y-3">
+                  {event.program.map((item, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-accent/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs font-medium text-accent">{i + 1}</span>
+                      </div>
+                      <span className="text-muted-foreground">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {event.rules.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-4">Правила</h2>
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-6">
+                    <ul className="space-y-3">
+                      {event.rules.map((rule, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <Icon name="Shield" size={16} className="text-accent mt-0.5 flex-shrink-0" />
+                          <span className="text-muted-foreground">{rule}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
 
           <div className="lg:w-[360px] flex-shrink-0">
             <div className="lg:sticky lg:top-24 space-y-4">
               <Card className="border-0 shadow-sm">
                 <CardContent className="p-6">
-                  <div className="text-3xl font-bold text-accent mb-1">{event.priceLabel}</div>
-                  <div className={`inline-block text-xs px-2.5 py-1 rounded-full font-medium ${spotsColor} mb-4`}>
-                    {event.spotsLeft === 0
-                      ? "Мест нет"
-                      : event.spotsLeft <= 2
-                        ? `Последние ${event.spotsLeft} места`
-                        : `Осталось ${event.spotsLeft} из ${event.totalSpots} мест`}
-                  </div>
+                  {event.priceLabel && (
+                    <div className="text-3xl font-bold text-accent mb-1">{event.priceLabel}</div>
+                  )}
+                  {event.totalSpots > 0 && (
+                    <div className={`inline-block text-xs px-2.5 py-1 rounded-full font-medium ${spotsColor} mb-4`}>
+                      {event.spotsLeft === 0
+                        ? "Мест нет"
+                        : event.spotsLeft <= 2
+                          ? `Последние ${event.spotsLeft} места`
+                          : `Осталось ${event.spotsLeft} из ${event.totalSpots} мест`}
+                    </div>
+                  )}
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <Icon name="Calendar" size={14} />
                       {format(dateObj, "d MMMM", { locale: ru })}, {event.timeStart}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Icon name="MapPin" size={14} />
-                      {event.bathName}
-                    </div>
+                    {event.bathName && (
+                      <div className="flex items-center gap-2">
+                        <Icon name="MapPin" size={14} />
+                        {event.bathName}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
 
-              <SignUpForm eventTitle={event.title} spotsLeft={event.spotsLeft} />
+              {event.id && (
+                <SignUpForm eventId={event.id} eventTitle={event.title} spotsLeft={event.spotsLeft} />
+              )}
             </div>
           </div>
         </div>

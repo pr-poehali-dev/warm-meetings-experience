@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { Link } from "react-router-dom";
-import { EventItem, EVENT_TYPE_CONFIG } from "@/data/events";
+import { EventItem, getTypeColors } from "@/data/events";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -12,7 +12,7 @@ interface EventCardProps {
 }
 
 export default function EventCard({ event, compact = false }: EventCardProps) {
-  const typeConfig = EVENT_TYPE_CONFIG[event.type];
+  const typeColors = getTypeColors(event.type);
   const dateObj = parseISO(event.date);
   const spotsColor =
     event.spotsLeft === 0
@@ -27,12 +27,14 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
         <Card className="bg-card border-0 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
           <CardContent className="p-5">
             <div className="flex items-start justify-between mb-3">
-              <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeConfig.bg} ${typeConfig.color}`}>
-                {typeConfig.label}
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeColors.bg} ${typeColors.color}`}>
+                {event.type}
               </span>
-              <span className={`text-xs font-medium ${spotsColor}`}>
-                {event.spotsLeft === 0 ? "Мест нет" : `Осталось ${event.spotsLeft}`}
-              </span>
+              {event.totalSpots > 0 && (
+                <span className={`text-xs font-medium ${spotsColor}`}>
+                  {event.spotsLeft === 0 ? "Мест нет" : `Осталось ${event.spotsLeft}`}
+                </span>
+              )}
             </div>
             <h3 className="text-base font-semibold mb-2 group-hover:text-accent transition-colors line-clamp-2">
               {event.title}
@@ -47,7 +49,9 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
                 {event.timeStart}
               </span>
             </div>
-            <div className="mt-2 text-sm font-medium text-accent">{event.priceLabel}</div>
+            {event.priceLabel && (
+              <div className="mt-2 text-sm font-medium text-accent">{event.priceLabel}</div>
+            )}
           </CardContent>
         </Card>
       </Link>
@@ -57,23 +61,39 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
   return (
     <Link to={`/events/${event.slug}`}>
       <Card className="bg-card border-0 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group">
-        <div className="relative h-48 overflow-hidden">
-          <img
-            src={event.image}
-            alt={event.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-          <div className="absolute top-3 left-3">
-            <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${typeConfig.bg} ${typeConfig.color}`}>
-              {typeConfig.label}
-            </span>
+        {event.image && (
+          <div className="relative h-48 overflow-hidden">
+            <img
+              src={event.image}
+              alt={event.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+            <div className="absolute top-3 left-3">
+              <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${typeColors.bg} ${typeColors.color}`}>
+                {event.type}
+              </span>
+            </div>
+            {event.totalSpots > 0 && (
+              <div className="absolute top-3 right-3">
+                <span className={`text-xs px-3 py-1.5 rounded-full font-medium bg-white/90 ${spotsColor}`}>
+                  {event.spotsLeft === 0 ? "Мест нет" : `Осталось ${event.spotsLeft}`}
+                </span>
+              </div>
+            )}
           </div>
-          <div className="absolute top-3 right-3">
-            <span className={`text-xs px-3 py-1.5 rounded-full font-medium bg-white/90 ${spotsColor}`}>
-              {event.spotsLeft === 0 ? "Мест нет" : `Осталось ${event.spotsLeft}`}
+        )}
+        {!event.image && (
+          <div className="px-6 pt-6 flex items-center justify-between">
+            <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${typeColors.bg} ${typeColors.color}`}>
+              {event.type}
             </span>
+            {event.totalSpots > 0 && (
+              <span className={`text-xs font-medium ${spotsColor}`}>
+                {event.spotsLeft === 0 ? "Мест нет" : `Осталось ${event.spotsLeft}`}
+              </span>
+            )}
           </div>
-        </div>
+        )}
         <CardContent className="p-6">
           <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
             <span className="flex items-center gap-1.5">
@@ -92,14 +112,18 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
 
           <p className="text-muted-foreground text-sm mb-4 line-clamp-2">{event.description}</p>
 
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-            <Icon name="MapPin" size={14} />
-            <span>{event.bathName}</span>
-          </div>
+          {event.bathName && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+              <Icon name="MapPin" size={14} />
+              <span>{event.bathName}</span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
-            <div className="text-lg font-semibold text-accent">{event.priceLabel}</div>
-            <Button size="sm" className="rounded-full">
+            {event.priceLabel && (
+              <div className="text-lg font-semibold text-accent">{event.priceLabel}</div>
+            )}
+            <Button size="sm" className="rounded-full ml-auto">
               Подробнее
             </Button>
           </div>
