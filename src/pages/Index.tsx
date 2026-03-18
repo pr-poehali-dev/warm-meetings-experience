@@ -17,7 +17,10 @@ export default function Index() {
 
   useEffect(() => {
     eventsApi.getAll(true).then((data) => {
-      setEvents(data.map(mapApiEvent));
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const upcoming = data.map(mapApiEvent).filter((e) => new Date(e.date) >= today);
+      setEvents(upcoming);
     }).catch(() => {});
   }, []);
 
