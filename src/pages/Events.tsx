@@ -8,6 +8,7 @@ import EventFilters from "@/components/events/EventFilters";
 import EventCalendar from "@/components/events/EventCalendar";
 import { EventItem, mapApiEvent } from "@/data/events";
 import { eventsApi } from "@/lib/api";
+import Footer from "@/components/Footer";
 import { parseISO, isSameDay } from "date-fns";
 
 export default function Events() {
@@ -173,6 +174,8 @@ export default function Events() {
           )}
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 }

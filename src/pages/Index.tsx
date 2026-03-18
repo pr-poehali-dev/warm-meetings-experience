@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import EventCard from "@/components/events/EventCard";
 import { EventItem, mapApiEvent } from "@/data/events";
 import { eventsApi } from "@/lib/api";
+import Footer from "@/components/Footer";
 
 const TELEGRAM_URL = "https://t.me/sparcom_ru";
 
@@ -400,6 +401,8 @@ export default function Index() {
           </div>
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 }
