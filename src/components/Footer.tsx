@@ -44,7 +44,7 @@ export default function Footer() {
                 +7 (926) 537-02-00
               </a>
               <a
-                href="mailto:privacy@sparcom.ru"
+                href="mailto:club@sparcom.ru"
                 className="flex items-center gap-2 text-sm text-background/60 hover:text-background transition-colors"
               >club@sparcom.ru</a>
               <a
