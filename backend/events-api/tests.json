@@ -25,6 +25,24 @@
       "method": "GET",
       "path": "/?resource=signups",
       "expectedStatus": 200
+    },
+    {
+      "name": "Create signup without consent returns 400",
+      "method": "POST",
+      "path": "/?resource=signups",
+      "body": {"event_id": 1, "name": "Test", "phone": "+79991234567", "email": "test@test.ru", "consent_pd": false},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Create signup without email returns 400",
+      "method": "POST",
+      "path": "/?resource=signups",
+      "body": {"event_id": 1, "name": "Test", "phone": "+79991234567"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

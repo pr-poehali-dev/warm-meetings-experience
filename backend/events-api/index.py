@@ -1,8 +1,11 @@
 import json
 import os
 import re
+import hashlib
+import secrets
 import psycopg2
 import psycopg2.extras
+import requests
 
 def get_conn():
     """Подключение к БД"""
@@ -217,14 +220,20 @@ def handle_signups(event, method, params, schema, headers):
         body = json.loads(event.get('body', '{}'))
         name = body.get('name', '').replace("'", "''")
         phone = body.get('phone', '').replace("'", "''")
+        email = (body.get('email') or '').strip().replace("'", "''")
         telegram = (body.get('telegram') or '').replace("'", "''")
+        consent_pd = body.get('consent_pd', False)
         event_id = body.get('event_id')
 
-        if not name or not phone or not event_id:
+        if not name or not phone or not event_id or not email:
             conn.close()
-            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'name, phone, event_id required'})}
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'name, phone, email, event_id required'})}
 
-        cur.execute(f"SELECT spots_left FROM {schema}.events WHERE id = {event_id}")
+        if not consent_pd:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Необходимо согласие на обработку персональных данных'})}
+
+        cur.execute(f"SELECT id, title, event_date, start_time, end_time, bath_name, bath_address, spots_left FROM {schema}.events WHERE id = {event_id}")
         ev = cur.fetchone()
         if not ev:
             conn.close()
@@ -233,15 +242,20 @@ def handle_signups(event, method, params, schema, headers):
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'No spots left'})}
 
+        user_id = find_or_create_user(cur, schema, email, name, phone, telegram)
+
         cur.execute(f"""
-            INSERT INTO {schema}.event_signups (event_id, name, phone, telegram)
-            VALUES ({event_id}, '{name}', '{phone}', '{telegram}')
+            INSERT INTO {schema}.event_signups (event_id, name, phone, email, telegram, consent_pd, user_id)
+            VALUES ({event_id}, '{name}', '{phone}', '{email}', '{telegram}', true, {user_id})
             RETURNING *
         """)
         row = cur.fetchone()
         cur.execute(f"UPDATE {schema}.events SET spots_left = spots_left - 1 WHERE id = {event_id}")
         conn.commit()
         conn.close()
+
+        send_signup_confirmation(email, name, ev)
+
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(dict(row), default=str)}
 
     if method == 'PUT':
@@ -261,6 +275,90 @@ def handle_signups(event, method, params, schema, headers):
 
     conn.close()
     return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+
+
+def find_or_create_user(cur, schema, email, name, phone, telegram):
+    email_lower = email.lower().replace("'", "''")
+    cur.execute(f"SELECT id FROM {schema}.users WHERE email = '{email_lower}'")
+    user = cur.fetchone()
+    if user:
+        return user['id']
+
+    temp_password = secrets.token_urlsafe(12)
+    password_hash = hashlib.sha256(temp_password.encode()).hexdigest()
+    cur.execute(f"""
+        INSERT INTO {schema}.users (email, name, phone, telegram, password_hash)
+        VALUES ('{email_lower}', '{name}', '{phone}', '{telegram}', '{password_hash}')
+        RETURNING id
+    """)
+    return cur.fetchone()['id']
+
+
+def send_signup_confirmation(to_email, name, event_data):
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
+    if not api_key or not sender_email:
+        return
+
+    event_title = event_data.get('title', '')
+    event_date = str(event_data.get('event_date', ''))
+    start_time = str(event_data.get('start_time', ''))[:5]
+    end_time = str(event_data.get('end_time', ''))[:5]
+    bath_name = event_data.get('bath_name', '')
+    bath_address = event_data.get('bath_address', '')
+
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fafafa;">
+        <div style="background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="width: 56px; height: 56px; background: #dcfce7; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 28px;">✓</div>
+            </div>
+            <h1 style="color: #1a1a1a; font-size: 22px; text-align: center; margin: 0 0 8px;">Вы записаны!</h1>
+            <p style="color: #666; text-align: center; margin: 0 0 28px; font-size: 15px;">
+                {name}, ваша заявка на участие принята
+            </p>
+            <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+                <h2 style="color: #1a1a1a; font-size: 17px; margin: 0 0 12px;">{event_title}</h2>
+                <table style="width: 100%; font-size: 14px; color: #444;">
+                    <tr><td style="padding: 4px 0; color: #888; width: 90px;">Дата:</td><td style="padding: 4px 0; font-weight: 600;">{event_date}</td></tr>
+                    <tr><td style="padding: 4px 0; color: #888;">Время:</td><td style="padding: 4px 0; font-weight: 600;">{start_time} — {end_time}</td></tr>
+                    <tr><td style="padding: 4px 0; color: #888;">Место:</td><td style="padding: 4px 0; font-weight: 600;">{bath_name}</td></tr>
+                    <tr><td style="padding: 4px 0; color: #888;">Адрес:</td><td style="padding: 4px 0;">{bath_address}</td></tr>
+                </table>
+            </div>
+            <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 0 0 20px;">
+                Организатор свяжется с вами для подтверждения. Если у вас есть вопросы — напишите нам в <a href="https://t.me/sparcom_ru" style="color: #2563eb;">Telegram</a>.
+            </p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">
+                Это автоматическое письмо. Отвечать на него не нужно.
+            </p>
+        </div>
+    </div>
+    """
+
+    message = {
+        "recipients": [{"email": to_email, "name": name}],
+        "from_email": sender_email,
+        "subject": f"Подтверждение записи: {event_title}",
+        "body": {"html": html},
+        "track_links": 1,
+        "track_read": 1,
+        "tags": ["signup-confirmation"],
+    }
+    if sender_name:
+        message["from_name"] = sender_name
+
+    try:
+        requests.post(
+            "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
+            headers={"Content-Type": "application/json", "X-API-KEY": api_key},
+            json={"message": message},
+            timeout=10
+        )
+    except Exception:
+        pass
 
 
 def serialize_event(row):

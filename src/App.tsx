@@ -10,6 +10,7 @@ import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import Privacy from "./pages/Privacy";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ const AppContent = () => {
         <Route path="/events" element={<Events />} />
         <Route path="/events/:slug" element={<EventDetail />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

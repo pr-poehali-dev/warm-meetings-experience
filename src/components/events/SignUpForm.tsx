@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { signupsApi } from "@/lib/api";
@@ -16,21 +17,27 @@ interface SignUpFormProps {
 export default function SignUpForm({ eventId, eventTitle, spotsLeft }: SignUpFormProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [telegram, setTelegram] = useState("");
+  const [consent, setConsent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim()) {
-      toast.error("Заполните имя и телефон");
+    if (!name.trim() || !phone.trim() || !email.trim()) {
+      toast.error("Заполните имя, телефон и email");
+      return;
+    }
+    if (!consent) {
+      toast.error("Необходимо дать согласие на обработку персональных данных");
       return;
     }
     setLoading(true);
     try {
-      await signupsApi.create({ event_id: eventId, name, phone, telegram });
+      await signupsApi.create({ event_id: eventId, name, phone, email, telegram, consent_pd: true });
       setSubmitted(true);
-      toast.success("Заявка отправлена!");
+      toast.success("Заявка отправлена! Проверьте почту.");
     } catch (err) {
       toast.error("Не удалось отправить заявку. Попробуйте позже.");
     } finally {
@@ -69,7 +76,7 @@ export default function SignUpForm({ eventId, eventTitle, spotsLeft }: SignUpFor
           </div>
           <h3 className="text-lg font-semibold mb-2">Заявка отправлена!</h3>
           <p className="text-muted-foreground text-sm">
-            Организатор свяжется с вами для подтверждения записи на «{eventTitle}».
+            На <span className="font-medium">{email}</span> отправлено подтверждение записи на «{eventTitle}».
           </p>
         </CardContent>
       </Card>
@@ -95,6 +102,17 @@ export default function SignUpForm({ eventId, eventTitle, spotsLeft }: SignUpFor
             />
           </div>
           <div>
+            <Label htmlFor="email" className="text-sm">Email *</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="your@email.ru"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1.5 rounded-lg"
+            />
+          </div>
+          <div>
             <Label htmlFor="phone" className="text-sm">Телефон *</Label>
             <Input
               id="phone"
@@ -115,7 +133,31 @@ export default function SignUpForm({ eventId, eventTitle, spotsLeft }: SignUpFor
               className="mt-1.5 rounded-lg"
             />
           </div>
-          <Button type="submit" className="w-full rounded-full" size="lg" disabled={loading}>
+          <div className="flex items-start space-x-3 pt-1">
+            <Checkbox
+              id="consent"
+              checked={consent}
+              onCheckedChange={(checked) => setConsent(checked === true)}
+              className="mt-0.5"
+            />
+            <label htmlFor="consent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+              Даю согласие на обработку персональных данных в соответствии с{" "}
+              <a
+                href="/privacy"
+                target="_blank"
+                className="underline hover:text-foreground"
+              >
+                Политикой конфиденциальности
+              </a>{" "}
+              и Федеральным законом №152-ФЗ «О персональных данных»
+            </label>
+          </div>
+          <Button
+            type="submit"
+            className="w-full rounded-full"
+            size="lg"
+            disabled={loading || !consent}
+          >
             <Icon name="Send" size={16} className="mr-2" />
             {loading ? "Отправка..." : "Отправить заявку"}
           </Button>

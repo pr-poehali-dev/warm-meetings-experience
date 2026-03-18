@@ -79,7 +79,7 @@ export const signupsApi = {
   getAll: (eventId?: number): Promise<SignupFromAPI[]> =>
     request(`${EVENTS_API}/?resource=signups${eventId ? `&event_id=${eventId}` : ""}`),
 
-  create: (data: { event_id: number; name: string; phone: string; telegram?: string }): Promise<SignupFromAPI> =>
+  create: (data: { event_id: number; name: string; phone: string; email: string; telegram?: string; consent_pd: boolean }): Promise<SignupFromAPI> =>
     request(`${EVENTS_API}/?resource=signups`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
