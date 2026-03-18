@@ -273,7 +273,7 @@ export default function Index() {
               <Button 
                 size="lg" 
                 className="rounded-full text-base sm:text-lg px-6 sm:px-8 w-full sm:w-auto"
-                onClick={() => window.open(TELEGRAM_URL, '_blank')}
+                onClick={() => window.open(ORGANIZER_URL, '_blank')}
               >
                 Начать общение
               </Button>
