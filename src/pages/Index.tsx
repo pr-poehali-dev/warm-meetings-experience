@@ -9,7 +9,7 @@ import { EventItem, mapApiEvent } from "@/data/events";
 import { eventsApi } from "@/lib/api";
 import Footer from "@/components/Footer";
 
-const TELEGRAM_URL = "https://t.me/sparcom_ru";
+const TELEGRAM_URL = "https://t.me/banya_live";
 
 export default function Index() {
   const { user } = useAuth();
