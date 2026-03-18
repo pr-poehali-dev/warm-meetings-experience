@@ -46,10 +46,7 @@ export default function Footer() {
               <a
                 href="mailto:privacy@sparcom.ru"
                 className="flex items-center gap-2 text-sm text-background/60 hover:text-background transition-colors"
-              >
-                <Icon name="Mail" size={14} />
-                privacy@sparcom.ru
-              </a>
+              >club@sparcom.ru</a>
               <a
                 href="https://t.me/DmitryChikin"
                 target="_blank"
