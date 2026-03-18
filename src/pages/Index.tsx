@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import EventCard from "@/components/events/EventCard";
 import { EventItem, mapApiEvent } from "@/data/events";
 import { eventsApi } from "@/lib/api";
@@ -10,6 +11,7 @@ import { eventsApi } from "@/lib/api";
 const TELEGRAM_URL = "https://t.me/sparcom_ru";
 
 export default function Index() {
+  const { user } = useAuth();
   const [events, setEvents] = useState<EventItem[]>([]);
 
   useEffect(() => {
@@ -26,7 +28,16 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Блок 1: Разрешение */}
+      <div className="fixed top-4 right-4 z-50">
+        <Link
+          to={user ? "/account" : "/login"}
+          className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-white px-4 py-2 rounded-full hover:bg-white/20 transition-colors text-sm font-medium"
+        >
+          <Icon name={user ? "User" : "LogIn"} size={16} />
+          <span className="hidden sm:inline">{user ? user.name : "Войти"}</span>
+        </Link>
+      </div>
+
       <section className="relative h-screen flex items-center justify-center">
         <img 
           src="https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/69533be6-e8cd-4137-89eb-a06d187922f4.jpg"

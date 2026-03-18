@@ -1,0 +1,35 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS returns 200",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get profile without token returns 401",
+      "method": "GET",
+      "path": "/?resource=profile",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get signups without token returns 401",
+      "method": "GET",
+      "path": "/?resource=signups",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Change password without token returns 401",
+      "method": "PUT",
+      "path": "/?resource=password",
+      "body": {"current_password": "old", "new_password": "newpass123"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

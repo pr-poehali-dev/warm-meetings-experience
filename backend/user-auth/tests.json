@@ -1,0 +1,73 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS returns 200",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Login without credentials returns 400",
+      "method": "POST",
+      "path": "/?action=login",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Login with wrong email returns 401",
+      "method": "POST",
+      "path": "/?action=login",
+      "body": {"email": "nonexistent@test.ru", "password": "wrong12345"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Register without consent returns 400",
+      "method": "POST",
+      "path": "/?action=register",
+      "body": {"email": "test@test.ru", "name": "Test", "password": "123456", "consent_pd": false},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Check without token returns 401",
+      "method": "POST",
+      "path": "/?action=check",
+      "body": {},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Forgot with empty email returns 400",
+      "method": "POST",
+      "path": "/?action=forgot",
+      "body": {"email": ""},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Reset with invalid token returns 400",
+      "method": "POST",
+      "path": "/?action=reset",
+      "body": {"token": "invalid-token-12345", "password": "newpass123"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Unknown action returns 400",
+      "method": "POST",
+      "path": "/?action=unknown",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

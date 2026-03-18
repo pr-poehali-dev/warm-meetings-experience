@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
+import { useAuth } from "@/contexts/AuthContext";
 import EventCard from "@/components/events/EventCard";
 import EventFilters from "@/components/events/EventFilters";
 import EventCalendar from "@/components/events/EventCalendar";
@@ -10,6 +11,7 @@ import { eventsApi } from "@/lib/api";
 import { parseISO, isSameDay } from "date-fns";
 
 export default function Events() {
+  const { user } = useAuth();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState("all");
@@ -63,7 +65,10 @@ export default function Events() {
             <span className="text-sm font-medium">Главная</span>
           </Link>
           <h1 className="text-lg font-semibold">События</h1>
-          <div className="w-20" />
+          <Link to={user ? "/account" : "/login"} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+            <Icon name={user ? "User" : "LogIn"} size={18} />
+            <span className="text-sm font-medium hidden sm:inline">{user ? user.name : "Войти"}</span>
+          </Link>
         </div>
       </header>
 
