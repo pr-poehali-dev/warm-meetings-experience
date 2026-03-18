@@ -35,7 +35,7 @@ export default function Footer() {
 
           <div>
             <div className="text-background font-semibold text-sm mb-3 uppercase tracking-wider">Контакты</div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 mb-5">
               <a
                 href="tel:+79265370200"
                 className="flex items-center gap-2 text-sm text-background/60 hover:text-background transition-colors"
@@ -46,7 +46,10 @@ export default function Footer() {
               <a
                 href="mailto:privacy@sparcom.ru"
                 className="flex items-center gap-2 text-sm text-background/60 hover:text-background transition-colors"
-              >club@sparcom.ru</a>
+              >
+                <Icon name="Mail" size={14} />
+                privacy@sparcom.ru
+              </a>
               <a
                 href="https://t.me/DmitryChikin"
                 target="_blank"
@@ -55,6 +58,36 @@ export default function Footer() {
               >
                 <Icon name="Send" size={14} />
                 @DmitryChikin
+              </a>
+            </div>
+            <div className="text-background font-semibold text-sm mb-3 uppercase tracking-wider">Мы в сетях</div>
+            <div className="flex items-center gap-3">
+              <a
+                href="http://t.me/banya_live"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Telegram"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-background/10 hover:bg-background/20 text-background/60 hover:text-background transition-colors"
+              >
+                <Icon name="Send" size={16} />
+              </a>
+              <a
+                href="https://vk.ru/sparcom"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="ВКонтакте"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-background/10 hover:bg-background/20 text-background/60 hover:text-background transition-colors text-sm font-bold"
+              >
+                ВК
+              </a>
+              <a
+                href="https://max.ru/join/t71ZcnlfuCESMrQtoECowhw-SLuwDrERP6GR5LNMj0Y"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="MAX"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-background/10 hover:bg-background/20 text-background/60 hover:text-background transition-colors text-xs font-bold"
+              >
+                MAX
               </a>
             </div>
           </div>
