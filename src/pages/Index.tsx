@@ -10,6 +10,7 @@ import { eventsApi } from "@/lib/api";
 import Footer from "@/components/Footer";
 
 const TELEGRAM_URL = "https://t.me/banya_live";
+const ORGANIZER_URL = "https://t.me/sparcom_ru";
 
 export default function Index() {
   const { user } = useAuth();
@@ -166,7 +167,7 @@ export default function Index() {
               <Button 
                 size="lg" 
                 className="rounded-full text-base sm:text-lg px-6 sm:px-8 w-full sm:w-auto"
-                onClick={() => window.open(TELEGRAM_URL, '_blank')}
+                onClick={() => window.open(ORGANIZER_URL, '_blank')}
               >
                 <Icon name="MessageCircle" className="mr-2" size={20} />
                 Написать организатору
