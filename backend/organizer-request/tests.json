@@ -1,0 +1,44 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET not allowed",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 405,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST without name fails",
+      "method": "POST",
+      "path": "/",
+      "body": {"telegram": "@test", "email": "test@test.com"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST valid request",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "name": "Тест Организатор",
+        "telegram": "@test_org",
+        "email": "test@organizer.com",
+        "city": "Москва",
+        "has_own_bath": "no",
+        "event_format": "Тестовый формат",
+        "additional_info": "Тест"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {"success": true},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
