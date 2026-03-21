@@ -255,6 +255,7 @@ def handle_signups(event, method, params, schema, headers):
         conn.close()
 
         send_signup_confirmation(email, name, ev)
+        send_signup_telegram(name, phone, email, telegram, ev)
 
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(dict(row), default=str)}
 
@@ -356,6 +357,41 @@ def send_signup_confirmation(to_email, name, event_data):
             headers={"Content-Type": "application/json", "X-API-KEY": api_key},
             json={"message": message},
             timeout=10
+        )
+    except Exception:
+        pass
+
+
+def send_signup_telegram(signup_name, signup_phone, signup_email, signup_telegram, event_data):
+    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+    if not bot_token or not chat_id:
+        return
+
+    title = event_data.get('title', '')
+    date = str(event_data.get('event_date', ''))
+    start = str(event_data.get('start_time', ''))[:5]
+    bath = event_data.get('bath_name', '')
+    spots = event_data.get('spots_left', 0) - 1
+
+    text = (
+        f"🎫 <b>Новая запись на событие</b>\n\n"
+        f"📌 {title}\n"
+        f"📅 {date}, {start}\n"
+        f"🏠 {bath}\n\n"
+        f"👤 {signup_name}\n"
+        f"📞 {signup_phone}\n"
+        f"📧 {signup_email}\n"
+    )
+    if signup_telegram:
+        text += f"✈️ {signup_telegram}\n"
+    text += f"\n🪑 Осталось мест: {max(spots, 0)}"
+
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+            json={'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'},
+            timeout=5
         )
     except Exception:
         pass
