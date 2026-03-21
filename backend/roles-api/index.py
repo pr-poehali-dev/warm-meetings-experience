@@ -123,8 +123,8 @@ def handle_all_roles():
                    'description', rr.description
                ) ORDER BY rr.sort_order) FILTER (WHERE rr.id IS NOT NULL) as requirements
         FROM {schema}.roles r
-        LEFT JOIN {schema}.role_requirements rr ON rr.role_id = r.id
-        WHERE r.is_active = true
+        LEFT JOIN {schema}.role_requirements rr ON rr.role_id = r.id AND rr.is_active = true
+        WHERE r.is_active = true AND r.slug != 'admin'
         GROUP BY r.id
         ORDER BY r.sort_order
     """)
@@ -166,9 +166,9 @@ def handle_progress(cur, conn, schema, user):
                COALESCE(ua.progress, 0) as progress,
                ua.completed_at
         FROM {schema}.roles r
-        JOIN {schema}.role_requirements rr ON rr.role_id = r.id
+        JOIN {schema}.role_requirements rr ON rr.role_id = r.id AND rr.is_active = true
         LEFT JOIN {schema}.user_achievements ua ON ua.requirement_id = rr.id AND ua.user_id = {user['id']}
-        WHERE r.is_active = true
+        WHERE r.is_active = true AND r.slug != 'admin'
         ORDER BY r.sort_order, rr.sort_order
     """)
     rows = cur.fetchall()
@@ -226,6 +226,10 @@ def handle_apply(cur, conn, schema, user, body):
     if not role_slug:
         conn.close()
         return respond(400, {'error': 'Укажите роль'})
+
+    if role_slug == 'admin':
+        conn.close()
+        return respond(403, {'error': 'Эту роль может назначить только администратор'})
 
     rs = role_slug.replace("'", "''")
     cur.execute(f"SELECT id, name FROM {schema}.roles WHERE slug = '{rs}' AND is_active = true")

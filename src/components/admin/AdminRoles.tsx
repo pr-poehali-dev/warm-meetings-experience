@@ -272,14 +272,13 @@ export default function AdminRoles() {
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      {["master", "organizer", "partner", "editor"].map((slug) => {
+                      {["parmaster", "partner", "admin"].map((slug) => {
                         const hasRole = u.roles.some((r) => r.slug === slug && r.status === "active");
                         if (hasRole) return null;
                         const names: Record<string, string> = {
-                          master: "🔥",
-                          organizer: "📅",
-                          partner: "🏢",
-                          editor: "✍️",
+                          parmaster: "🔥",
+                          partner: "🏠",
+                          admin: "⚙️",
                         };
                         return (
                           <Button
