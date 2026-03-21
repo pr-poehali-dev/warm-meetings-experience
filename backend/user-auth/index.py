@@ -110,6 +110,14 @@ def handle_register(body):
         INSERT INTO {schema}.user_sessions (user_id, token, expires_at)
         VALUES ({user['id']}, '{token}', '{expires}')
     """)
+
+    cur.execute(f"""
+        INSERT INTO {schema}.user_roles (user_id, role_id, status, verified_at)
+        SELECT {user['id']}, r.id, 'active', CURRENT_TIMESTAMP
+        FROM {schema}.roles r WHERE r.slug = 'member'
+        ON CONFLICT (user_id, role_id) DO NOTHING
+    """)
+
     conn.commit()
     conn.close()
 

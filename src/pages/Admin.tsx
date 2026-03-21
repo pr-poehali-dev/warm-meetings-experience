@@ -14,6 +14,7 @@ import AdminPromoCodes from "@/components/admin/AdminPromoCodes";
 import AdminSettings from "@/components/admin/AdminSettings";
 import AdminAvailability from "@/components/admin/AdminAvailability";
 import AdminEventSignups from "@/components/admin/AdminEventSignups";
+import AdminRoles from "@/components/admin/AdminRoles";
 import { eventsApi, EventFromAPI } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,7 +31,8 @@ type ViewType =
   | "promo-codes"
   | "settings"
   | "availability"
-  | "event-signups";
+  | "event-signups"
+  | "roles";
 
 interface Event {
   id?: number;
@@ -283,6 +285,8 @@ export default function Admin() {
         );
       case "event-signups":
         return <AdminEventSignups />;
+      case "roles":
+        return <AdminRoles />;
       case "packages":
         return <AdminPackages />;
       case "addons":

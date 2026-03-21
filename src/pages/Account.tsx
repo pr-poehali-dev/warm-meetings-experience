@@ -8,6 +8,8 @@ import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserSignup, userProfileApi } from "@/lib/user-api";
 import { toast } from "sonner";
+import GrowthSection from "@/components/account/GrowthSection";
+import BadgesSection from "@/components/account/BadgesSection";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
@@ -243,6 +245,10 @@ export default function Account() {
             )}
           </CardContent>
         </Card>
+
+        <GrowthSection />
+
+        <BadgesSection />
 
         <Card className="border-0 shadow-sm">
           <CardHeader>

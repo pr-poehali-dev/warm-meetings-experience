@@ -1,4 +1,5 @@
 {
+  "roles-api": "https://functions.poehali.dev/ccd16473-f2d9-40af-a82e-4e348402aa29",
   "organizer-request": "https://functions.poehali.dev/cbba37cf-198f-471c-a8c0-d295b03845aa",
   "user-profile": "https://functions.poehali.dev/5322ffd0-7079-40ce-9d4e-8d7fee29624c",
   "user-auth": "https://functions.poehali.dev/d5d9f568-ba92-4605-9b95-646ba409fd8d",

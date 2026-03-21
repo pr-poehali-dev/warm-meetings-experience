@@ -1,0 +1,52 @@
+{
+  "tests": [
+    {
+      "name": "Get all roles (public)",
+      "method": "GET",
+      "path": "/?resource=all-roles",
+      "expectedStatus": 200,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "My roles requires auth",
+      "method": "GET",
+      "path": "/?resource=my-roles",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Progress requires auth",
+      "method": "GET",
+      "path": "/?resource=progress",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Badges requires auth",
+      "method": "GET",
+      "path": "/?resource=badges",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Apply requires auth",
+      "method": "POST",
+      "path": "/?resource=apply",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
