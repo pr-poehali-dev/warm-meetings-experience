@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import PrinciplesPreview from "@/components/PrinciplesPreview";
 import EventCard from "@/components/events/EventCard";
 import { EventItem, mapApiEvent } from "@/data/events";
 import { eventsApi } from "@/lib/api";
@@ -176,6 +177,8 @@ export default function Index() {
           </div>
         </div>
       </section>
+
+      <PrinciplesPreview />
 
       {/* Блок 4: Ближайшие встречи */}
       <section className="py-24 md:py-32 bg-accent/5">
