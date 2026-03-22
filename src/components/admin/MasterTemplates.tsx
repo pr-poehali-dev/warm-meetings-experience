@@ -2,48 +2,14 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { masterCalendarApi } from "@/lib/master-calendar-api";
 import type { ScheduleTemplate, TemplateRule, MasterService } from "@/lib/master-calendar-api";
+import TemplateCard from "./templates/TemplateCard";
+import TemplateEditDialog from "./templates/TemplateEditDialog";
+import type { RuleForm } from "./templates/TemplateEditDialog";
+import TemplateApplyDialog, { TemplateDeleteDialog } from "./templates/TemplateApplyDialog";
 
 const MASTER_ID = 1;
-
-const DAY_NAMES = [
-  "Понедельник",
-  "Вторник",
-  "Среда",
-  "Четверг",
-  "Пятница",
-  "Суббота",
-  "Воскресенье",
-];
-
-const DAY_NAMES_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-
-interface RuleForm {
-  day_of_week: number;
-  time_start: string;
-  time_end: string;
-  service_id: string;
-  max_clients: number;
-  is_day_off: boolean;
-}
 
 const createEmptyRules = (): RuleForm[] =>
   Array.from({ length: 7 }, (_, i) => ({
@@ -264,12 +230,6 @@ const MasterTemplates = () => {
     }
   };
 
-  const getServiceName = (serviceId: number | null | undefined): string => {
-    if (!serviceId) return "";
-    const svc = services.find((s) => s.id === serviceId);
-    return svc ? svc.name : "";
-  };
-
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -308,314 +268,49 @@ const MasterTemplates = () => {
       ) : (
         <div className="space-y-4">
           {templates.map((template) => (
-            <div
+            <TemplateCard
               key={template.id}
-              className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition-shadow"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-nature-forest/10 flex items-center justify-center shrink-0">
-                    <Icon name="LayoutTemplate" size={20} className="text-nature-forest" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
-                    <p className="text-xs text-gray-500">
-                      {template.rules?.length || 0} правил
-                      {template.created_at && (
-                        <span>
-                          {" \u00B7 "}создан {new Date(template.created_at).toLocaleDateString("ru-RU")}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-                <span
-                  className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${
-                    template.is_active
-                      ? "bg-green-100 text-green-800"
-                      : "bg-gray-100 text-gray-500"
-                  }`}
-                >
-                  {template.is_active ? "Активен" : "Неактивен"}
-                </span>
-              </div>
-
-              {template.rules && template.rules.length > 0 && (
-                <div className="mb-4 bg-gray-50 rounded-lg p-3 border border-gray-100">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-                    {DAY_NAMES_SHORT.map((dayName, dayIdx) => {
-                      const rule = template.rules?.find((r) => r.day_of_week === dayIdx);
-                      if (!rule) {
-                        return (
-                          <div key={dayIdx} className="text-center">
-                            <div className="text-xs font-medium text-gray-400">{dayName}</div>
-                            <div className="text-[10px] text-gray-300 mt-0.5">-</div>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div key={dayIdx} className="text-center">
-                          <div className={`text-xs font-medium ${rule.is_day_off ? "text-red-400" : "text-gray-700"}`}>
-                            {dayName}
-                          </div>
-                          {rule.is_day_off ? (
-                            <div className="text-[10px] text-red-400 mt-0.5">Выходной</div>
-                          ) : (
-                            <div className="text-[10px] text-gray-500 mt-0.5">
-                              {rule.time_start}-{rule.time_end}
-                              {rule.max_clients > 1 && (
-                                <span className="block text-gray-400">до {rule.max_clients}</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  className="bg-nature-forest hover:bg-nature-forest/90 text-white"
-                  onClick={() => openApply(template)}
-                >
-                  <Icon name="Play" size={14} className="mr-1" />
-                  Применить
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openEdit(template)}
-                >
-                  <Icon name="Pencil" size={14} className="mr-1" />
-                  Редактировать
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={() => template.id && confirmDelete(template.id)}
-                >
-                  <Icon name="Trash2" size={14} className="mr-1" />
-                  Удалить
-                </Button>
-              </div>
-            </div>
+              template={template}
+              onApply={openApply}
+              onEdit={openEdit}
+              onDelete={confirmDelete}
+            />
           ))}
         </div>
       )}
 
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Icon
-                name={editingTemplate ? "Pencil" : "Plus"}
-                size={20}
-                className="text-nature-forest"
-              />
-              {editingTemplate ? "Редактировать шаблон" : "Новый шаблон"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <Label>Название шаблона <span className="text-red-500">*</span></Label>
-              <Input
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="Основное расписание"
-                className="mt-1"
-              />
-            </div>
+      <TemplateEditDialog
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        editingTemplate={editingTemplate}
+        templateName={templateName}
+        onTemplateNameChange={setTemplateName}
+        rules={rules}
+        onUpdateRule={updateRule}
+        services={services}
+        saving={saving}
+        onSave={handleSave}
+      />
 
-            <div>
-              <Label className="mb-2 block">Расписание по дням</Label>
-              <div className="space-y-3">
-                {rules.map((rule, idx) => (
-                  <div
-                    key={idx}
-                    className={`rounded-lg border p-3 ${
-                      rule.is_day_off
-                        ? "border-red-200 bg-red-50/50"
-                        : "border-gray-200 bg-white"
-                    }`}
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <div className="flex items-center gap-3 sm:w-[140px] shrink-0">
-                        <span className="text-sm font-medium text-gray-900 w-[100px]">
-                          {DAY_NAMES[idx]}
-                        </span>
-                      </div>
+      <TemplateApplyDialog
+        open={isApplyOpen}
+        onOpenChange={setIsApplyOpen}
+        template={applyingTemplate}
+        weeks={applyWeeks}
+        onWeeksChange={setApplyWeeks}
+        startDate={applyStartDate}
+        onStartDateChange={setApplyStartDate}
+        services={services}
+        saving={saving}
+        onApply={handleApply}
+      />
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Switch
-                          checked={rule.is_day_off}
-                          onCheckedChange={(v) => updateRule(idx, { is_day_off: v })}
-                        />
-                        <span className="text-xs text-gray-500 whitespace-nowrap">Выходной</span>
-                      </div>
-
-                      {!rule.is_day_off && (
-                        <div className="flex flex-wrap items-center gap-2 flex-1">
-                          <Input
-                            type="time"
-                            value={rule.time_start}
-                            onChange={(e) => updateRule(idx, { time_start: e.target.value })}
-                            className="w-[110px] h-8 text-sm"
-                          />
-                          <span className="text-gray-400 text-sm">-</span>
-                          <Input
-                            type="time"
-                            value={rule.time_end}
-                            onChange={(e) => updateRule(idx, { time_end: e.target.value })}
-                            className="w-[110px] h-8 text-sm"
-                          />
-                          <Select
-                            value={rule.service_id}
-                            onValueChange={(v) => updateRule(idx, { service_id: v })}
-                          >
-                            <SelectTrigger className="w-[130px] h-8 text-xs">
-                              <SelectValue placeholder="Услуга" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Без услуги</SelectItem>
-                              {services.map((s) => (
-                                <SelectItem key={s.id} value={String(s.id)}>
-                                  {s.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={50}
-                            value={rule.max_clients}
-                            onChange={(e) => updateRule(idx, { max_clients: Number(e.target.value) || 1 })}
-                            className="w-[60px] h-8 text-sm"
-                            title="Макс. клиентов"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
-              Отмена
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={saving}
-              className="bg-nature-forest hover:bg-nature-forest/90 text-white"
-            >
-              {saving && <Icon name="Loader2" size={16} className="animate-spin" />}
-              Сохранить
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isApplyOpen} onOpenChange={setIsApplyOpen}>
-        <DialogContent className="sm:max-w-[440px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Icon name="Play" size={20} className="text-nature-forest" />
-              Применить шаблон
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            {applyingTemplate && (
-              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                <span className="text-xs text-gray-500">Шаблон</span>
-                <p className="text-sm font-semibold text-gray-900">{applyingTemplate.name}</p>
-                {applyingTemplate.rules && applyingTemplate.rules.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {applyingTemplate.rules
-                      .filter((r) => !r.is_day_off)
-                      .map((rule, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-xs text-gray-600">
-                          <span className="font-medium w-5">{DAY_NAMES_SHORT[rule.day_of_week]}</span>
-                          <span>
-                            {rule.time_start} - {rule.time_end}
-                          </span>
-                          {getServiceName(rule.service_id) && (
-                            <span className="text-gray-400">({getServiceName(rule.service_id)})</span>
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </div>
-            )}
-            <div>
-              <Label>Количество недель</Label>
-              <Input
-                type="number"
-                min={1}
-                max={12}
-                value={applyWeeks}
-                onChange={(e) => setApplyWeeks(Number(e.target.value) || 1)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label>Дата начала</Label>
-              <Input
-                type="date"
-                value={applyStartDate}
-                onChange={(e) => setApplyStartDate(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsApplyOpen(false)}>
-              Отмена
-            </Button>
-            <Button
-              onClick={handleApply}
-              disabled={saving}
-              className="bg-nature-forest hover:bg-nature-forest/90 text-white"
-            >
-              {saving && <Icon name="Loader2" size={16} className="animate-spin" />}
-              Применить
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Icon name="Trash2" size={20} className="text-red-500" />
-              Удалить шаблон
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-gray-600 py-2">
-            Вы уверены, что хотите удалить этот шаблон? Уже созданные слоты останутся без изменений.
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>
-              Отмена
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={saving}
-            >
-              {saving && <Icon name="Loader2" size={16} className="animate-spin" />}
-              Удалить
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TemplateDeleteDialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        saving={saving}
+        onDelete={handleDelete}
+      />
     </div>
   );
 };
