@@ -17,7 +17,12 @@ type ViewType =
   | "event-signups"
   | "roles"
   | "blog"
-  | "users";
+  | "users"
+  | "master-calendar"
+  | "master-bookings"
+  | "master-services"
+  | "master-templates"
+  | "master-settings";
 
 interface AdminSidebarProps {
   currentView: ViewType;
@@ -26,9 +31,35 @@ interface AdminSidebarProps {
   onLogout?: () => void;
 }
 
+const SidebarButton = ({
+  view,
+  currentView,
+  onClick,
+  icon,
+  label,
+}: {
+  view: ViewType;
+  currentView: ViewType;
+  onClick: () => void;
+  icon: string;
+  label: string;
+}) => (
+  <button
+    onClick={onClick}
+    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
+      currentView === view
+        ? "bg-gray-900 text-white"
+        : "text-gray-700 hover:bg-gray-100"
+    }`}
+  >
+    <Icon name={icon} size={18} />
+    <span className="text-sm">{label}</span>
+  </button>
+);
+
 const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: AdminSidebarProps) => {
   return (
-    <aside className="w-64 lg:w-64 w-64 bg-white border-r border-gray-200 min-h-screen p-4 lg:p-6 overflow-y-auto">
+    <aside className="w-64 bg-white border-r border-gray-200 min-h-screen p-4 lg:p-6 overflow-y-auto">
       <div className="mb-8">
         <h2 className="text-xl font-bold text-gray-800">Админ-панель</h2>
         <p className="text-sm text-gray-500">Управление системой</p>
@@ -36,32 +67,21 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
 
       <nav className="space-y-6">
         <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Календарь мастера</p>
+          <div className="space-y-1">
+            <SidebarButton view="master-calendar" currentView={currentView} onClick={() => onViewChange("master-calendar")} icon="CalendarDays" label="Расписание" />
+            <SidebarButton view="master-bookings" currentView={currentView} onClick={() => onViewChange("master-bookings")} icon="ClipboardCheck" label="Записи клиентов" />
+            <SidebarButton view="master-services" currentView={currentView} onClick={() => onViewChange("master-services")} icon="Sparkles" label="Услуги" />
+            <SidebarButton view="master-templates" currentView={currentView} onClick={() => onViewChange("master-templates")} icon="Copy" label="Шаблоны" />
+            <SidebarButton view="master-settings" currentView={currentView} onClick={() => onViewChange("master-settings")} icon="SlidersHorizontal" label="Настройки" />
+          </div>
+        </div>
+
+        <div>
           <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Мероприятия</p>
           <div className="space-y-1">
-            <button
-              onClick={() => onViewChange("overview")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "overview"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="LayoutDashboard" size={18} />
-              <span className="text-sm">Обзор</span>
-            </button>
-
-            <button
-              onClick={() => onViewChange("list")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "list"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="List" size={18} />
-              <span className="text-sm">Все мероприятия</span>
-            </button>
-
+            <SidebarButton view="overview" currentView={currentView} onClick={() => onViewChange("overview")} icon="LayoutDashboard" label="Обзор" />
+            <SidebarButton view="list" currentView={currentView} onClick={() => onViewChange("list")} icon="List" label="Все мероприятия" />
             <button
               onClick={() => {
                 onNewEvent();
@@ -76,180 +96,43 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
               <Icon name="Plus" size={18} />
               <span className="text-sm">Добавить</span>
             </button>
-
-            <button
-              onClick={() => onViewChange("event-signups")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "event-signups"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="ClipboardList" size={18} />
-              <span className="text-sm">Заявки на события</span>
-            </button>
+            <SidebarButton view="event-signups" currentView={currentView} onClick={() => onViewChange("event-signups")} icon="ClipboardList" label="Заявки на события" />
           </div>
         </div>
 
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Калькулятор</p>
           <div className="space-y-1">
-            <button
-              onClick={() => onViewChange("packages")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "packages"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="Package" size={18} />
-              <span className="text-sm">Пакеты</span>
-            </button>
-
-            <button
-              onClick={() => onViewChange("addons")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "addons"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="ShoppingBag" size={18} />
-              <span className="text-sm">Дополнения</span>
-            </button>
-
-            <button
-              onClick={() => onViewChange("bookings")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "bookings"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="FileText" size={18} />
-              <span className="text-sm">Заявки</span>
-            </button>
+            <SidebarButton view="packages" currentView={currentView} onClick={() => onViewChange("packages")} icon="Package" label="Пакеты" />
+            <SidebarButton view="addons" currentView={currentView} onClick={() => onViewChange("addons")} icon="ShoppingBag" label="Дополнения" />
+            <SidebarButton view="bookings" currentView={currentView} onClick={() => onViewChange("bookings")} icon="FileText" label="Заявки" />
           </div>
         </div>
 
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Настройки цен</p>
           <div className="space-y-1">
-            <button
-              onClick={() => onViewChange("service-areas")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "service-areas"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="MapPin" size={18} />
-              <span className="text-sm">Зоны</span>
-            </button>
-
-            <button
-              onClick={() => onViewChange("multipliers")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "multipliers"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="TrendingUp" size={18} />
-              <span className="text-sm">Множители</span>
-            </button>
-
-            <button
-              onClick={() => onViewChange("holidays")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "holidays"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="Calendar" size={18} />
-              <span className="text-sm">Праздники</span>
-            </button>
-
-            <button
-              onClick={() => onViewChange("promo-codes")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "promo-codes"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="Tag" size={18} />
-              <span className="text-sm">Промо-коды</span>
-            </button>
-
-            <button
-              onClick={() => onViewChange("settings")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "settings"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="Settings" size={18} />
-              <span className="text-sm">Настройки</span>
-            </button>
+            <SidebarButton view="service-areas" currentView={currentView} onClick={() => onViewChange("service-areas")} icon="MapPin" label="Зоны" />
+            <SidebarButton view="multipliers" currentView={currentView} onClick={() => onViewChange("multipliers")} icon="TrendingUp" label="Множители" />
+            <SidebarButton view="holidays" currentView={currentView} onClick={() => onViewChange("holidays")} icon="Calendar" label="Праздники" />
+            <SidebarButton view="promo-codes" currentView={currentView} onClick={() => onViewChange("promo-codes")} icon="Tag" label="Промо-коды" />
+            <SidebarButton view="settings" currentView={currentView} onClick={() => onViewChange("settings")} icon="Settings" label="Настройки" />
           </div>
         </div>
 
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Сообщество</p>
           <div className="space-y-1">
-            <button
-              onClick={() => onViewChange("roles")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "roles"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="Shield" size={18} />
-              <span className="text-sm">Роли</span>
-            </button>
-            <button
-              onClick={() => onViewChange("blog")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "blog"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="BookOpen" size={18} />
-              <span className="text-sm">Блог</span>
-            </button>
-            <button
-              onClick={() => onViewChange("users")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "users"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="Users" size={18} />
-              <span className="text-sm">Пользователи</span>
-            </button>
+            <SidebarButton view="roles" currentView={currentView} onClick={() => onViewChange("roles")} icon="Shield" label="Роли" />
+            <SidebarButton view="blog" currentView={currentView} onClick={() => onViewChange("blog")} icon="BookOpen" label="Блог" />
+            <SidebarButton view="users" currentView={currentView} onClick={() => onViewChange("users")} icon="Users" label="Пользователи" />
           </div>
         </div>
 
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Занятость</p>
           <div className="space-y-1">
-            <button
-              onClick={() => onViewChange("availability")}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
-                currentView === "availability"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <Icon name="CalendarOff" size={18} />
-              <span className="text-sm">Мои выходные</span>
-            </button>
+            <SidebarButton view="availability" currentView={currentView} onClick={() => onViewChange("availability")} icon="CalendarOff" label="Мои выходные" />
           </div>
         </div>
 

@@ -14,7 +14,12 @@ export type ViewType =
   | "event-signups"
   | "roles"
   | "blog"
-  | "users";
+  | "users"
+  | "master-calendar"
+  | "master-bookings"
+  | "master-services"
+  | "master-templates"
+  | "master-settings";
 
 export interface AdminEvent {
   id?: number;

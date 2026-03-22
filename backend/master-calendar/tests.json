@@ -1,0 +1,58 @@
+{
+  "tests": [
+    {
+      "name": "Get slots",
+      "method": "GET",
+      "path": "/?resource=slots&master_id=1",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get services",
+      "method": "GET",
+      "path": "/?resource=services&master_id=1",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get settings",
+      "method": "GET",
+      "path": "/?resource=settings&master_id=1",
+      "expectedStatus": 200,
+      "expectedBody": {"default_slot_duration": 60},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get blocks",
+      "method": "GET",
+      "path": "/?resource=blocks&master_id=1",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get templates",
+      "method": "GET",
+      "path": "/?resource=templates&master_id=1",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get week view",
+      "method": "GET",
+      "path": "/?resource=week-view&master_id=1",
+      "expectedStatus": 200,
+      "expectedBody": {"slots": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "OPTIONS CORS",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    }
+  ]
+}

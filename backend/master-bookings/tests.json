@@ -1,0 +1,34 @@
+{
+  "tests": [
+    {
+      "name": "Get bookings",
+      "method": "GET",
+      "path": "/?resource=bookings&master_id=1",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get public slots",
+      "method": "GET",
+      "path": "/?resource=public-slots&master_id=1",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get stats",
+      "method": "GET",
+      "path": "/?resource=stats&master_id=1",
+      "expectedStatus": 200,
+      "expectedBody": {"occupancy_percent": 0},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "OPTIONS CORS",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export function useAdmin() {
   const [token, setToken] = useState<string | null>(null);
-  const [currentView, setCurrentView] = useState<ViewType>("overview");
+  const [currentView, setCurrentView] = useState<ViewType>("master-calendar");
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [formData, setFormData] = useState<AdminEvent>({ ...emptyEvent });
   const [loading, setLoading] = useState(false);
