@@ -1,15 +1,26 @@
-import { useParams, Navigate } from "react-router-dom";
+import { useParams, Navigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import BlogHeader from "@/components/blog/BlogHeader";
 import BlogCard from "@/components/blog/BlogCard";
 import Footer from "@/components/Footer";
-import { getCategoryBySlug, getArticlesByCategory, categories } from "@/lib/blog-data";
-import { Link } from "react-router-dom";
+import { getCategoryBySlug, categories } from "@/lib/blog-data";
+import { blogApi, ApiBlogArticle } from "@/lib/blog-api";
 
 export default function BlogCategory() {
   const { slug } = useParams<{ slug: string }>();
   const category = slug ? getCategoryBySlug(slug) : undefined;
-  const categoryArticles = slug ? getArticlesByCategory(slug) : [];
+  const [articles, setArticles] = useState<ApiBlogArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!slug) return;
+    blogApi
+      .getAll(slug)
+      .then((d) => setArticles(d.articles))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [slug]);
 
   if (!category) return <Navigate to="/blog" replace />;
 
@@ -29,9 +40,14 @@ export default function BlogCategory() {
             </div>
           </div>
 
-          {categoryArticles.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-20">
+              <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Загрузка...</p>
+            </div>
+          ) : articles.length > 0 ? (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-              {categoryArticles.map((article) => (
+              {articles.map((article) => (
                 <BlogCard key={article.slug} article={article} />
               ))}
             </div>

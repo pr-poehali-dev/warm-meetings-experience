@@ -1,0 +1,53 @@
+{
+  "tests": [
+    {
+      "name": "GET published articles",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"articles": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET articles by category",
+      "method": "GET",
+      "path": "/?category=rituals",
+      "expectedStatus": 200,
+      "expectedBody": {"articles": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET 404 for unknown slug",
+      "method": "GET",
+      "path": "/?slug=nonexistent-slug",
+      "expectedStatus": 404,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET my articles without auth",
+      "method": "GET",
+      "path": "/?action=my",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET admin articles without auth",
+      "method": "GET",
+      "path": "/?action=admin",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST create without auth",
+      "method": "POST",
+      "path": "/?action=create",
+      "body": {"title": "Test", "content": "Test content"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -1,14 +1,16 @@
 import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
-import { BlogArticle, getCategoryBySlug } from "@/lib/blog-data";
+import { getCategoryBySlug } from "@/lib/blog-data";
+import { ApiBlogArticle } from "@/lib/blog-api";
 
 interface BlogCardProps {
-  article: BlogArticle;
+  article: ApiBlogArticle;
   featured?: boolean;
 }
 
 export default function BlogCard({ article, featured }: BlogCardProps) {
   const category = getCategoryBySlug(article.category);
+  const dateStr = article.published_at || article.created_at;
 
   if (featured) {
     return (
@@ -17,12 +19,14 @@ export default function BlogCard({ article, featured }: BlogCardProps) {
         className="group block overflow-hidden border border-border hover:border-foreground/20 transition-colors"
       >
         <div className="grid md:grid-cols-2">
-          <div className="aspect-[4/3] md:aspect-auto overflow-hidden">
-            <img
-              src={article.image}
-              alt={article.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
+          <div className="aspect-[4/3] md:aspect-auto overflow-hidden bg-muted">
+            {article.image_url && (
+              <img
+                src={article.image_url}
+                alt={article.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            )}
           </div>
           <div className="p-6 md:p-8 flex flex-col justify-center">
             {category && (
@@ -40,9 +44,9 @@ export default function BlogCard({ article, featured }: BlogCardProps) {
             <div className="flex items-center gap-4 text-sm text-muted-foreground mt-auto">
               <span className="flex items-center gap-1.5">
                 <Icon name="Clock" size={14} />
-                {article.readTime} мин
+                {article.read_time} мин
               </span>
-              <span>{formatDate(article.date)}</span>
+              <span>{formatDate(dateStr)}</span>
             </div>
           </div>
         </div>
@@ -55,12 +59,14 @@ export default function BlogCard({ article, featured }: BlogCardProps) {
       to={`/blog/${article.slug}`}
       className="group block overflow-hidden border border-border hover:border-foreground/20 transition-colors"
     >
-      <div className="aspect-[16/10] overflow-hidden">
-        <img
-          src={article.image}
-          alt={article.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
+      <div className="aspect-[16/10] overflow-hidden bg-muted">
+        {article.image_url && (
+          <img
+            src={article.image_url}
+            alt={article.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        )}
       </div>
       <div className="p-5">
         {category && (
@@ -78,9 +84,9 @@ export default function BlogCard({ article, featured }: BlogCardProps) {
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <Icon name="Clock" size={12} />
-            {article.readTime} мин
+            {article.read_time} мин
           </span>
-          <span>{formatDate(article.date)}</span>
+          <span>{formatDate(dateStr)}</span>
         </div>
       </div>
     </Link>
@@ -88,6 +94,7 @@ export default function BlogCard({ article, featured }: BlogCardProps) {
 }
 
 function formatDate(dateStr: string): string {
+  if (!dateStr) return "";
   const date = new Date(dateStr);
   return date.toLocaleDateString("ru-RU", {
     day: "numeric",

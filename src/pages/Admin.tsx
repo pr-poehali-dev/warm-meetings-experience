@@ -15,6 +15,7 @@ import AdminSettings from "@/components/admin/AdminSettings";
 import AdminAvailability from "@/components/admin/AdminAvailability";
 import AdminEventSignups from "@/components/admin/AdminEventSignups";
 import AdminRoles from "@/components/admin/AdminRoles";
+import AdminBlog from "@/components/admin/AdminBlog";
 
 export default function Admin() {
   const {
@@ -75,6 +76,8 @@ export default function Admin() {
         return <AdminEventSignups />;
       case "roles":
         return <AdminRoles />;
+      case "blog":
+        return <AdminBlog />;
       case "packages":
         return <AdminPackages />;
       case "addons":

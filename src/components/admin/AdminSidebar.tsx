@@ -15,7 +15,8 @@ type ViewType =
   | "settings"
   | "availability"
   | "event-signups"
-  | "roles";
+  | "roles"
+  | "blog";
 
 interface AdminSidebarProps {
   currentView: ViewType;
@@ -208,6 +209,17 @@ const AdminSidebar = ({ currentView, onViewChange, onNewEvent, onLogout }: Admin
             >
               <Icon name="Shield" size={18} />
               <span className="text-sm">Роли</span>
+            </button>
+            <button
+              onClick={() => onViewChange("blog")}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
+                currentView === "blog"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Icon name="BookOpen" size={18} />
+              <span className="text-sm">Блог</span>
             </button>
           </div>
         </div>

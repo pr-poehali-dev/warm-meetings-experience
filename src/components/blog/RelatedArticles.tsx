@@ -1,8 +1,8 @@
-import { BlogArticle } from "@/lib/blog-data";
+import { ApiBlogArticle } from "@/lib/blog-api";
 import BlogCard from "./BlogCard";
 
 interface RelatedArticlesProps {
-  articles: BlogArticle[];
+  articles: ApiBlogArticle[];
 }
 
 export default function RelatedArticles({ articles }: RelatedArticlesProps) {

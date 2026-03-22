@@ -1,24 +1,50 @@
-import { useParams, Navigate, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import BlogHeader from "@/components/blog/BlogHeader";
 import RelatedArticles from "@/components/blog/RelatedArticles";
 import Footer from "@/components/Footer";
-import {
-  getArticleBySlug,
-  getCategoryBySlug,
-  getRelatedArticles,
-} from "@/lib/blog-data";
+import { getCategoryBySlug } from "@/lib/blog-data";
+import { blogApi, ApiBlogArticle } from "@/lib/blog-api";
 
 export default function BlogArticle() {
   const { slug } = useParams<{ slug: string }>();
-  const article = slug ? getArticleBySlug(slug) : undefined;
+  const navigate = useNavigate();
+  const [article, setArticle] = useState<ApiBlogArticle | null>(null);
+  const [related, setRelated] = useState<ApiBlogArticle[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!article) return <Navigate to="/blog" replace />;
+  useEffect(() => {
+    if (!slug) return;
+    blogApi
+      .getBySlug(slug)
+      .then((d) => {
+        setArticle(d.article);
+        return blogApi.getAll(d.article.category);
+      })
+      .then((d) => {
+        setRelated(d.articles.filter((a) => a.slug !== slug).slice(0, 3));
+      })
+      .catch(() => navigate("/blog", { replace: true }))
+      .finally(() => setLoading(false));
+  }, [slug, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <BlogHeader title="Статья" backTo="/blog" backLabel="Энциклопедия" />
+        <div className="flex items-center justify-center py-32">
+          <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!article) return null;
 
   const category = getCategoryBySlug(article.category);
-  const related = getRelatedArticles(article.slug, article.category);
-
-  const date = new Date(article.date).toLocaleDateString("ru-RU", {
+  const dateStr = article.published_at || article.created_at;
+  const date = new Date(dateStr).toLocaleDateString("ru-RU", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -43,7 +69,7 @@ export default function BlogArticle() {
               )}
               <span className="text-muted-foreground flex items-center gap-1.5">
                 <Icon name="Clock" size={14} />
-                {article.readTime} мин чтения
+                {article.read_time} мин чтения
               </span>
               <span className="text-muted-foreground">{date}</span>
             </div>
@@ -52,28 +78,30 @@ export default function BlogArticle() {
               {article.title}
             </h1>
 
-            <p className="text-lg text-muted-foreground mb-8">
-              {article.excerpt}
-            </p>
+            {article.excerpt && (
+              <p className="text-lg text-muted-foreground mb-8">{article.excerpt}</p>
+            )}
 
             <div className="flex items-center gap-3 mb-10 pb-8 border-b border-border">
               <div className="w-10 h-10 bg-muted flex items-center justify-center">
                 <Icon name="User" size={18} className="text-muted-foreground" />
               </div>
               <div>
-                <div className="font-medium text-sm">{article.author}</div>
+                <div className="font-medium text-sm">{article.author_name}</div>
                 <div className="text-xs text-muted-foreground">Автор</div>
               </div>
             </div>
           </div>
 
-          <div className="max-w-4xl mx-auto mb-10">
-            <img
-              src={article.image}
-              alt={article.title}
-              className="w-full aspect-[21/9] object-cover"
-            />
-          </div>
+          {article.image_url && (
+            <div className="max-w-4xl mx-auto mb-10">
+              <img
+                src={article.image_url}
+                alt={article.title}
+                className="w-full aspect-[21/9] object-cover"
+              />
+            </div>
+          )}
 
           <div className="max-w-3xl mx-auto">
             <div className="prose prose-neutral max-w-none prose-headings:font-semibold prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4 prose-p:text-foreground/80 prose-p:leading-relaxed prose-li:text-foreground/80 prose-strong:text-foreground prose-a:text-foreground prose-a:underline">
@@ -111,14 +139,9 @@ export default function BlogArticle() {
 
 function renderMarkdown(content: string) {
   const blocks = content.split("\n\n");
-
   return blocks.map((block, i) => {
     const trimmed = block.trim();
-
-    if (trimmed.startsWith("## ")) {
-      return <h2 key={i}>{trimmed.slice(3)}</h2>;
-    }
-
+    if (trimmed.startsWith("## ")) return <h2 key={i}>{trimmed.slice(3)}</h2>;
     if (trimmed.startsWith("- **") || trimmed.startsWith("- ")) {
       const items = trimmed.split("\n").filter((l) => l.startsWith("- "));
       return (
@@ -129,7 +152,6 @@ function renderMarkdown(content: string) {
         </ul>
       );
     }
-
     if (/^\d+\.\s/.test(trimmed)) {
       const items = trimmed.split("\n").filter((l) => /^\d+\.\s/.test(l));
       return (
@@ -140,7 +162,6 @@ function renderMarkdown(content: string) {
         </ol>
       );
     }
-
     return <p key={i}>{renderInline(trimmed)}</p>;
   });
 }
@@ -148,9 +169,8 @@ function renderMarkdown(content: string) {
 function renderInline(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
+    if (part.startsWith("**") && part.endsWith("**"))
       return <strong key={i}>{part.slice(2, -2)}</strong>;
-    }
     return part;
   });
 }

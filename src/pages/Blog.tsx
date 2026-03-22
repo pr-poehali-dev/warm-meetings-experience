@@ -1,27 +1,40 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import BlogHeader from "@/components/blog/BlogHeader";
 import BlogCard from "@/components/blog/BlogCard";
 import CategoryFilter from "@/components/blog/CategoryFilter";
 import Footer from "@/components/Footer";
-import {
-  articles,
-  categories,
-  getPopularArticles,
-} from "@/lib/blog-data";
+import { categories } from "@/lib/blog-data";
+import { blogApi, ApiBlogArticle } from "@/lib/blog-api";
 
 export default function Blog() {
+  const [articles, setArticles] = useState<ApiBlogArticle[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const filteredArticles = useMemo(() => {
-    if (!selectedCategory) return articles;
-    return articles.filter((a) => a.category === selectedCategory);
-  }, [selectedCategory]);
+  useEffect(() => {
+    blogApi
+      .getAll()
+      .then((d) => setArticles(d.articles))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
-  const popularArticles = getPopularArticles();
-  const featuredArticle = filteredArticles[0];
-  const restArticles = filteredArticles.slice(1);
+  const filtered = useMemo(
+    () =>
+      selectedCategory
+        ? articles.filter((a) => a.category === selectedCategory)
+        : articles,
+    [articles, selectedCategory]
+  );
+
+  const popularArticles = articles.filter((a) => a.popular);
+  const featuredArticle = filtered[0];
+  const restArticles = filtered.slice(1);
+
+  const countByCategory = (slug: string) =>
+    articles.filter((a) => a.category === slug).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -46,7 +59,9 @@ export default function Blog() {
                 to={`/blog/category/${cat.slug}`}
                 className="group flex items-center gap-3 p-4 border border-border hover:border-foreground/20 transition-colors"
               >
-                <div className={`w-10 h-10 flex items-center justify-center ${cat.color}`}>
+                <div
+                  className={`w-10 h-10 flex items-center justify-center ${cat.color}`}
+                >
                   <Icon name={cat.icon} size={20} />
                 </div>
                 <div className="min-w-0">
@@ -54,7 +69,7 @@ export default function Blog() {
                     {cat.name}
                   </div>
                   <div className="text-xs text-muted-foreground truncate">
-                    {articles.filter((a) => a.category === cat.slug).length} статей
+                    {countByCategory(cat.slug)} статей
                   </div>
                 </div>
               </Link>
@@ -69,32 +84,58 @@ export default function Blog() {
             />
           </div>
 
-          {featuredArticle && !selectedCategory && (
-            <div className="mb-8">
-              <BlogCard article={featuredArticle} featured />
+          {loading ? (
+            <div className="text-center py-20">
+              <Icon
+                name="Loader2"
+                size={32}
+                className="animate-spin text-muted-foreground mx-auto mb-4"
+              />
+              <p className="text-muted-foreground">Загрузка статей...</p>
             </div>
-          )}
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-20">
+              <Icon
+                name="FileText"
+                size={48}
+                className="text-muted-foreground/40 mx-auto mb-4"
+              />
+              <p className="text-muted-foreground text-lg">Статей пока нет</p>
+            </div>
+          ) : (
+            <>
+              {featuredArticle && !selectedCategory && (
+                <div className="mb-8">
+                  <BlogCard article={featuredArticle} featured />
+                </div>
+              )}
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-            {(selectedCategory ? filteredArticles : restArticles).map(
-              (article) => (
-                <BlogCard key={article.slug} article={article} />
-              )
-            )}
-          </div>
-
-          {!selectedCategory && popularArticles.length > 0 && (
-            <section className="border-t border-border pt-12">
-              <div className="flex items-center gap-2 mb-8">
-                <Icon name="TrendingUp" size={20} className="text-muted-foreground" />
-                <h2 className="text-2xl font-semibold">Популярные материалы</h2>
-              </div>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {popularArticles.map((article) => (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+                {(selectedCategory ? filtered : restArticles).map((article) => (
                   <BlogCard key={article.slug} article={article} />
                 ))}
               </div>
-            </section>
+
+              {!selectedCategory && popularArticles.length > 0 && (
+                <section className="border-t border-border pt-12">
+                  <div className="flex items-center gap-2 mb-8">
+                    <Icon
+                      name="TrendingUp"
+                      size={20}
+                      className="text-muted-foreground"
+                    />
+                    <h2 className="text-2xl font-semibold">
+                      Популярные материалы
+                    </h2>
+                  </div>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {popularArticles.map((article) => (
+                      <BlogCard key={article.slug} article={article} />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
           )}
         </div>
       </section>
