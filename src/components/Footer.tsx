@@ -36,6 +36,9 @@ export default function Footer() {
               <Link to="/principles" className="text-sm text-background/60 hover:text-background transition-colors">
                 Принципы
               </Link>
+              <Link to="/blog" className="text-sm text-background/60 hover:text-background transition-colors">
+                Энциклопедия
+              </Link>
             </nav>
           </div>
 
