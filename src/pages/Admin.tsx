@@ -29,6 +29,8 @@ export default function Admin() {
     loading,
     handleSubmit,
     handleEdit,
+    handleDuplicate,
+    handleRepeat,
     handleDelete,
     handleToggleVisibility,
     handleLogout,
@@ -54,12 +56,15 @@ export default function Admin() {
           <AdminEventsList
             events={events}
             onEdit={handleEdit}
+            onDuplicate={handleDuplicate}
+            onRepeat={handleRepeat}
             onDelete={handleDelete}
             onToggleVisibility={handleToggleVisibility}
             onNewEvent={() => {
               resetFormData();
               setCurrentView("add");
             }}
+            repeatLoading={loading}
           />
         );
       case "add":

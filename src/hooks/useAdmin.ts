@@ -135,6 +135,67 @@ export function useAdmin() {
     setCurrentView("add");
   };
 
+  const handleDuplicate = (event: AdminEvent) => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateStr = tomorrow.toISOString().split("T")[0];
+    setFormData({
+      ...event,
+      id: undefined,
+      title: `${event.title} (копия)`,
+      event_date: dateStr,
+      is_visible: false,
+      slug: undefined,
+      spots_left: event.total_spots || 0,
+    });
+    setCurrentView("add");
+    toast({ title: "Мероприятие скопировано — отредактируйте и сохраните" });
+  };
+
+  const handleRepeat = async (
+    event: AdminEvent,
+    dates: string[]
+  ) => {
+    setLoading(true);
+    let created = 0;
+    for (const date of dates) {
+      try {
+        await eventsApi.create({
+          title: event.title,
+          short_description: event.short_description,
+          full_description: event.full_description,
+          description: event.description || event.short_description,
+          event_date: date,
+          start_time: event.start_time || "19:00",
+          end_time: event.end_time || "23:00",
+          event_type: event.event_type,
+          event_type_icon: event.event_type_icon,
+          occupancy: event.occupancy,
+          bath_name: event.bath_name || "",
+          bath_address: event.bath_address || "",
+          image_url: event.image_url,
+          price: event.price,
+          price_amount: event.price_amount || 0,
+          price_label: event.price_label || event.price,
+          total_spots: event.total_spots || 0,
+          spots_left: event.total_spots || 0,
+          featured: event.featured || false,
+          is_visible: event.is_visible,
+          program: event.program || [],
+          rules: event.rules || [],
+        } as Partial<EventFromAPI>);
+        created++;
+      } catch {
+        /* skip failed */
+      }
+    }
+    await fetchEvents();
+    setLoading(false);
+    toast({
+      title: `Создано ${created} из ${dates.length} мероприятий`,
+    });
+  };
+
   const handleDelete = async (id: number) => {
     try {
       await eventsApi.remove(id);
@@ -176,6 +237,8 @@ export function useAdmin() {
     loading,
     handleSubmit,
     handleEdit,
+    handleDuplicate,
+    handleRepeat,
     handleDelete,
     handleToggleVisibility,
     handleLogout,

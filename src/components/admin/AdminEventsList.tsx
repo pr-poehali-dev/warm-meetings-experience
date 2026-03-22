@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Icon from "@/components/ui/icon";
+import RepeatEventDialog from "./RepeatEventDialog";
 
 interface Event {
   id?: number;
@@ -27,19 +28,26 @@ interface Event {
 interface AdminEventsListProps {
   events: Event[];
   onEdit: (event: Event) => void;
+  onDuplicate: (event: Event) => void;
+  onRepeat: (event: Event, dates: string[]) => void;
   onDelete: (id: number) => void;
   onToggleVisibility: (event: Event) => void;
   onNewEvent: () => void;
+  repeatLoading?: boolean;
 }
 
 const AdminEventsList = ({
   events,
   onEdit,
+  onDuplicate,
+  onRepeat,
   onDelete,
   onToggleVisibility,
   onNewEvent,
+  repeatLoading,
 }: AdminEventsListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [repeatEvent, setRepeatEvent] = useState<Event | null>(null);
 
   const filtered = events.filter((e) =>
     e.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -92,6 +100,24 @@ const AdminEventsList = ({
                     title="Редактировать"
                   >
                     <Icon name="Edit" size={16} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onDuplicate(event)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
+                    title="Дублировать"
+                  >
+                    <Icon name="Copy" size={16} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setRepeatEvent(event)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
+                    title="Повторить"
+                  >
+                    <Icon name="Repeat" size={16} />
                   </Button>
                   <Button
                     size="sm"
@@ -170,6 +196,18 @@ const AdminEventsList = ({
             </Card>
           ))}
         </div>
+      )}
+      {repeatEvent && (
+        <RepeatEventDialog
+          eventTitle={repeatEvent.title}
+          eventDate={repeatEvent.event_date}
+          loading={!!repeatLoading}
+          onConfirm={(dates) => {
+            onRepeat(repeatEvent, dates);
+            setRepeatEvent(null);
+          }}
+          onCancel={() => setRepeatEvent(null)}
+        />
       )}
     </div>
   );
