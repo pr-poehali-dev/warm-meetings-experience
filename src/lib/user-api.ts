@@ -1,3 +1,5 @@
+import { request as authRequest, authenticatedRequest as profileRequest } from "@/lib/http";
+
 const USER_AUTH_API = "https://functions.poehali.dev/d5d9f568-ba92-4605-9b95-646ba409fd8d";
 const USER_PROFILE_API = "https://functions.poehali.dev/5322ffd0-7079-40ce-9d4e-8d7fee29624c";
 
@@ -26,27 +28,6 @@ export interface UserSignup {
   bath_address: string;
   event_slug: string;
   image_url: string;
-}
-
-async function authRequest(url: string, options?: RequestInit) {
-  const res = await fetch(url, options);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Request failed");
-  return data;
-}
-
-async function profileRequest(url: string, options?: RequestInit) {
-  const token = localStorage.getItem("user_token");
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      ...options?.headers,
-      "X-Session-Token": token || "",
-    },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Request failed");
-  return data;
 }
 
 export const userAuthApi = {

@@ -1,93 +1,61 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { Link } from "react-router-dom";
+import EventCard from "@/components/events/EventCard";
+import { EventItem } from "@/data/events";
+import { TELEGRAM_URL } from "@/lib/constants";
 
-export default function UpcomingEventsSection() {
+interface UpcomingEventsSectionProps {
+  events: EventItem[];
+}
+
+export default function UpcomingEventsSection({ events }: UpcomingEventsSectionProps) {
   return (
-    <section className="py-20 px-6 bg-nature-beige">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-serif font-light text-nature-forest mb-6">
+    <section className="py-24 md:py-32 bg-accent/5">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <Icon name="Calendar" className="text-accent mx-auto mb-6" size={48} />
+          <h2 className="text-3xl md:text-4xl font-semibold mb-4">
             Ближайшие события
           </h2>
-          <p className="text-xl text-nature-forest/80 max-w-2xl mx-auto">
-            Присоединяйтесь к нашим мероприятиям, где каждая встреча — это возможность для трансформации.
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Банные встречи, мастер-классы и практики — выберите подходящее и запишитесь
           </p>
         </div>
-        
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
-          {/* Event 1 */}
-          <Card className="bg-nature-cream/95 border-nature-brown/20 hover:shadow-lg transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Icon name="Users" size={20} className="text-nature-brown" />
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
-                    Знакомства
-                  </span>
-                </div>
-                <div className="text-right text-sm text-nature-forest/60">
-                  <div>30 сентября</div>
-                  <div>19:00 — 23:00</div>
-                </div>
-              </div>
-              
-              <h3 className="text-lg font-serif text-nature-forest mb-2">Тёплые Знакомства: Осенний лес с высоты 30 этажа</h3>
-              
-              <p className="text-nature-forest/70 text-sm mb-4">Камерная встреча для 12 человек через ритуалы парения и чайные церемонии.</p>
-              
-              <div className="flex items-center justify-between">
-                <div className="text-nature-brown font-medium mx-0">от 5 000 ₽</div>
-                <div className="text-xs text-green-600">Осталось 3 места</div>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Event 2 */}
-          <Card className="bg-nature-cream/95 border-nature-brown/20 hover:shadow-lg transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Icon name="Heart" size={20} className="text-nature-brown" />
-                  <span className="text-xs bg-pink-100 text-pink-800 px-2 py-1 rounded-full font-medium">
-                    Свидания
-                  </span>
-                </div>
-                <div className="text-right text-sm text-nature-forest/60">
-                  <div>12 октября</div>
-                  <div>20:00 — 23:00</div>
-                </div>
-              </div>
-              
-              <h3 className="text-lg font-serif text-nature-forest mb-2">
-                Романтический вечер: Пары под паром
-              </h3>
-              
-              <p className="text-nature-forest/70 text-sm mb-4">
-                Особый формат для трёх пар. Углубляем близость через совместные практики.
-              </p>
-              
-              <div className="flex items-center justify-between">
-                <div className="text-nature-brown font-medium">18 000 ₽ за пару</div>
-                <div className="text-xs text-orange-600">Последнее место</div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <div className="text-center">
-          <Link to="/events">
-            <Button 
-              size="lg"
+        {events.length > 0 ? (
+          <>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto mb-12">
+              {events.slice(0, 3).map((event) => (
+                <EventCard key={event.slug} event={event} />
+              ))}
+            </div>
+            <div className="text-center">
+              <Link to="/events">
+                <Button size="lg" variant="outline" className="rounded-full text-base px-8">
+                  <Icon name="CalendarDays" className="mr-2" size={20} />
+                  Все события и расписание
+                </Button>
+              </Link>
+            </div>
+          </>
+        ) : (
+          <div className="max-w-lg mx-auto text-center py-12 px-8 border border-dashed border-border rounded-2xl bg-card">
+            <Icon name="CalendarClock" size={48} className="text-muted-foreground/40 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Скоро здесь появятся события</h3>
+            <p className="text-muted-foreground mb-6">
+              Мы готовим новые встречи. Подпишитесь на Telegram-канал, чтобы не пропустить анонс.
+            </p>
+            <Button
               variant="outline"
-              className="border-nature-brown text-nature-brown hover:bg-nature-brown hover:text-nature-cream px-8 py-4 rounded-full transition-all duration-300 hover:scale-105"
+              className="rounded-full"
+              onClick={() => window.open(TELEGRAM_URL, '_blank')}
             >
-              <Icon name="Calendar" size={20} className="mr-2" />
-              Все события и расписание
+              <Icon name="Send" size={16} className="mr-2" />
+              Подписаться на канал
             </Button>
-          </Link>
-        </div>
+          </div>
+        )}
       </div>
     </section>
   );

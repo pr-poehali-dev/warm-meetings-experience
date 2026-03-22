@@ -1,3 +1,5 @@
+import { authenticatedRequest as rolesRequest } from "@/lib/http";
+
 const ROLES_API = "https://functions.poehali.dev/ccd16473-f2d9-40af-a82e-4e348402aa29";
 
 export interface RoleRequirement {
@@ -69,20 +71,6 @@ export interface Badge {
   condition_type: string;
   condition_value: number;
   earned_at: string | null;
-}
-
-async function rolesRequest(url: string, options?: RequestInit) {
-  const token = localStorage.getItem("user_token");
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      ...options?.headers,
-      "X-Session-Token": token || "",
-    },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Request failed");
-  return data;
 }
 
 export const rolesApi = {
