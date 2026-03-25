@@ -363,6 +363,14 @@ export default function Organizer() {
                     <label className="text-sm font-medium mb-1.5 block">Дополнительная информация</label>
                     <Textarea placeholder="Что ещё хотите рассказать" rows={2} value={form.additional_info} onChange={(e) => setForm({ ...form, additional_info: e.target.value })} />
                   </div>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" required className="mt-1 accent-primary" />
+                    <span className="text-xs text-muted-foreground leading-relaxed">
+                      Я даю согласие на обработку{" "}
+                      <Link to="/privacy" target="_blank" className="underline hover:text-foreground">персональных данных</Link>{" "}
+                      в соответствии с политикой конфиденциальности
+                    </span>
+                  </label>
                   {error && <p className="text-sm text-red-600">{error}</p>}
                   <Button type="submit" size="lg" className="w-full rounded-full" disabled={sending}>
                     {sending ? "Отправка..." : "Отправить заявку"}
