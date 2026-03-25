@@ -226,7 +226,7 @@ export default function Organizer() {
           <Card className="max-w-xl mx-auto p-8 border-0 shadow-sm">
             <div className="space-y-6">
               <div>
-                <label className="text-sm font-medium mb-2 block">Стоимость билета: {ticketPrice.toLocaleString("ru-RU")} ₽</label>
+                <label className="text-sm font-medium mb-2 block">Стоимость участия: {ticketPrice.toLocaleString("ru-RU")} ₽</label>
                 <input type="range" min={500} max={10000} step={100} value={ticketPrice} onChange={(e) => setTicketPrice(+e.target.value)} className="w-full accent-foreground" />
                 <div className="flex justify-between text-xs text-muted-foreground mt-1"><span>500 ₽</span><span>10 000 ₽</span></div>
               </div>
