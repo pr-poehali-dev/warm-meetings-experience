@@ -56,6 +56,7 @@ export default function Organizer() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [accountData, setAccountData] = useState<{ email: string; password: string; token: string } | null>(null);
 
   const income = Math.round(ticketPrice * participants * (1 - commission / 100));
 
@@ -77,6 +78,10 @@ export default function Organizer() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ошибка отправки");
+      setAccountData({ email: data.user?.email || form.email, password: data.generated_password || "", token: data.token || "" });
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
       setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось отправить заявку");
@@ -117,7 +122,7 @@ export default function Organizer() {
       <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground/95 to-foreground/85" />
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center py-32">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">Проводи события вместе со СПАРКОМом</h1>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">Проводи события вместе со{"\u00A0"}СПАРКОМом</h1>
           <p className="text-xl md:text-2xl text-white/80 mb-10 font-light max-w-2xl mx-auto leading-relaxed">
             Платформа, которая помогает организовать банные встречи, находить участников и развивать своё дело
           </p>
@@ -287,12 +292,33 @@ export default function Organizer() {
             <p className="text-center text-muted-foreground mb-10">Заполни заявку — мы свяжемся в течение 24 часов</p>
 
             {sent ? (
-              <Card className="p-10 text-center border-0 shadow-sm">
-                <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Icon name="Check" size={32} className="text-green-600" />
+              <Card className="p-10 border-0 shadow-sm">
+                <div className="text-center mb-8">
+                  <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Icon name="Check" size={32} className="text-green-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Заявка отправлена, аккаунт создан!</h3>
+                  <p className="text-muted-foreground">Мы свяжемся с вами в течение 24 часов. А пока — сохраните данные для входа.</p>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Заявка отправлена</h3>
-                <p className="text-muted-foreground">Мы свяжемся с вами в течение 24 часов</p>
+                {accountData && (
+                  <div className="bg-muted/50 rounded-xl p-6 space-y-3 mb-6">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Email</span>
+                      <span className="font-medium">{accountData.email}</span>
+                    </div>
+                    <div className="border-t border-border" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Пароль</span>
+                      <span className="font-mono font-medium bg-white px-3 py-1 rounded-lg border">{accountData.password}</span>
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground text-center mb-6">Данные для входа также отправлены на вашу почту</p>
+                <div className="flex gap-3">
+                  <Button asChild className="flex-1 rounded-full" size="lg">
+                    <Link to="/login">Войти в кабинет</Link>
+                  </Button>
+                </div>
               </Card>
             ) : (
               <Card className="p-8 border-0 shadow-sm">

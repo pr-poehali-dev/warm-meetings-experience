@@ -24,20 +24,38 @@
       "bodyMatcher": "partial"
     },
     {
-      "name": "POST valid request",
+      "name": "POST without telegram fails",
+      "method": "POST",
+      "path": "/",
+      "body": {"name": "Тест", "email": "test@test.com"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST without email fails",
+      "method": "POST",
+      "path": "/",
+      "body": {"name": "Тест", "telegram": "@test"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST valid request creates account",
       "method": "POST",
       "path": "/",
       "body": {
         "name": "Тест Организатор",
-        "telegram": "@test_org",
-        "email": "test@organizer.com",
+        "telegram": "@test_org_auto",
+        "email": "test_auto_org_reg@organizer.com",
         "city": "Москва",
         "has_own_bath": "no",
         "event_format": "Тестовый формат",
         "additional_info": "Тест"
       },
       "expectedStatus": 200,
-      "expectedBody": {"success": true},
+      "expectedBody": {"success": true, "token": "string", "generated_password": "string"},
       "bodyMatcher": "partial"
     }
   ]
