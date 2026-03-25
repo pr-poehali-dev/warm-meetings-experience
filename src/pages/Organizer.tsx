@@ -117,9 +117,7 @@ export default function Organizer() {
       <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground/95 to-foreground/85" />
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center py-32">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-            Проводи события вместе с&nbsp;СПАРКОМом
-          </h1>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">Проводи события вместе со СПАРКОМом</h1>
           <p className="text-xl md:text-2xl text-white/80 mb-10 font-light max-w-2xl mx-auto leading-relaxed">
             Платформа, которая помогает организовать банные встречи, находить участников и развивать своё дело
           </p>
