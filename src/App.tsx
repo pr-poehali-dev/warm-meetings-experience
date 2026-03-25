@@ -22,6 +22,7 @@ import Organizer from "./pages/Organizer";
 import Blog from "./pages/Blog";
 import BlogCategory from "./pages/BlogCategory";
 import BlogArticle from "./pages/BlogArticle";
+import SteamMasterGuide from "./pages/SteamMasterGuide";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const AppContent = () => {
         <Route path="/admin" element={<Admin />} />
         <Route path="/principles" element={<Principles />} />
         <Route path="/organizer" element={<Organizer />} />
+        <Route path="/steam-master-guide" element={<SteamMasterGuide />} />
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/category/:slug" element={<BlogCategory />} />
         <Route path="/blog/:slug" element={<BlogArticle />} />
