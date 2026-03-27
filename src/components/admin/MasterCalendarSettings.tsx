@@ -8,8 +8,6 @@ import { Switch } from "@/components/ui/switch";
 import { masterCalendarApi } from "@/lib/master-calendar-api";
 import type { CalendarSettings } from "@/lib/master-calendar-api";
 
-const MASTER_ID = 1;
-
 interface SettingsForm {
   default_slot_duration: number;
   break_between_slots: number;
@@ -32,7 +30,7 @@ const defaultSettings: SettingsForm = {
   notify_cancellation: true,
 };
 
-const MasterCalendarSettings = () => {
+const MasterCalendarSettings = ({ masterId }: { masterId: number }) => {
   const [form, setForm] = useState<SettingsForm>({ ...defaultSettings });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -47,7 +45,7 @@ const MasterCalendarSettings = () => {
   const fetchSettings = async () => {
     setLoading(true);
     try {
-      const data = await masterCalendarApi.getSettings(MASTER_ID);
+      const data = await masterCalendarApi.getSettings(masterId);
       setForm({
         default_slot_duration: data.default_slot_duration ?? defaultSettings.default_slot_duration,
         break_between_slots: data.break_between_slots ?? defaultSettings.break_between_slots,
@@ -70,7 +68,7 @@ const MasterCalendarSettings = () => {
     setSaving(true);
     try {
       await masterCalendarApi.saveSettings({
-        master_id: MASTER_ID,
+        master_id: masterId,
         default_slot_duration: form.default_slot_duration,
         break_between_slots: form.break_between_slots,
         prep_time: form.prep_time,

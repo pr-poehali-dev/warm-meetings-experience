@@ -16,8 +16,6 @@ import {
 import { masterCalendarApi } from "@/lib/master-calendar-api";
 import type { MasterService } from "@/lib/master-calendar-api";
 
-const MASTER_ID = 1;
-
 interface ServiceFormData {
   name: string;
   description: string;
@@ -40,7 +38,7 @@ const formatPrice = (price: number): string => {
   return price.toLocaleString("ru-RU") + " \u20BD";
 };
 
-const MasterServices = () => {
+const MasterServices = ({ masterId }: { masterId: number }) => {
   const [services, setServices] = useState<MasterService[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -59,7 +57,7 @@ const MasterServices = () => {
   const fetchServices = async () => {
     setLoading(true);
     try {
-      const data = await masterCalendarApi.getServices(MASTER_ID);
+      const data = await masterCalendarApi.getServices(masterId);
       setServices(data);
     } catch {
       toast({
@@ -110,7 +108,7 @@ const MasterServices = () => {
       if (editingService?.id) {
         await masterCalendarApi.updateService({
           id: editingService.id,
-          master_id: MASTER_ID,
+          master_id: masterId,
           name: form.name.trim(),
           description: form.description.trim() || undefined,
           duration_minutes: Number(form.duration_minutes),
@@ -121,7 +119,7 @@ const MasterServices = () => {
         toast({ title: "Готово", description: "Услуга обновлена" });
       } else {
         await masterCalendarApi.createService({
-          master_id: MASTER_ID,
+          master_id: masterId,
           name: form.name.trim(),
           description: form.description.trim() || undefined,
           duration_minutes: Number(form.duration_minutes),
@@ -177,7 +175,7 @@ const MasterServices = () => {
     try {
       await masterCalendarApi.updateService({
         id: service.id,
-        master_id: MASTER_ID,
+        master_id: masterId,
         name: service.name,
         duration_minutes: service.duration_minutes,
         price: service.price,

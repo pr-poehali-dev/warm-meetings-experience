@@ -17,11 +17,7 @@ import AdminEventSignups from "@/components/admin/AdminEventSignups";
 import AdminRoles from "@/components/admin/AdminRoles";
 import AdminBlog from "@/components/admin/AdminBlog";
 import AdminUsers from "@/components/admin/AdminUsers";
-import MasterCalendar from "@/components/admin/MasterCalendar";
-import MasterBookingsList from "@/components/admin/MasterBookingsList";
-import MasterServices from "@/components/admin/MasterServices";
-import MasterTemplates from "@/components/admin/MasterTemplates";
-import MasterCalendarSettings from "@/components/admin/MasterCalendarSettings";
+
 
 export default function Admin() {
   const {
@@ -109,16 +105,6 @@ export default function Admin() {
         return <AdminSettings />;
       case "availability":
         return <AdminAvailability />;
-      case "master-calendar":
-        return <MasterCalendar />;
-      case "master-bookings":
-        return <MasterBookingsList />;
-      case "master-services":
-        return <MasterServices />;
-      case "master-templates":
-        return <MasterTemplates />;
-      case "master-settings":
-        return <MasterCalendarSettings />;
       default:
         return null;
     }

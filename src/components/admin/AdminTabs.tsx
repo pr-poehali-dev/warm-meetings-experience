@@ -21,19 +21,6 @@ interface AdminTabsProps {
 
 const tabs: Tab[] = [
   {
-    id: "master",
-    label: "Календарь",
-    icon: "CalendarDays",
-    badgeKey: "master",
-    items: [
-      { view: "master-calendar", label: "Расписание", icon: "CalendarDays" },
-      { view: "master-bookings", label: "Записи", icon: "ClipboardCheck" },
-      { view: "master-services", label: "Услуги", icon: "Sparkles" },
-      { view: "master-templates", label: "Шаблоны", icon: "Copy" },
-      { view: "master-settings", label: "Настройки", icon: "SlidersHorizontal" },
-    ],
-  },
-  {
     id: "events",
     label: "Мероприятия",
     icon: "PartyPopper",

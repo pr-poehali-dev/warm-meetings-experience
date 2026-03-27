@@ -9,8 +9,6 @@ import TemplateEditDialog from "./templates/TemplateEditDialog";
 import type { RuleForm } from "./templates/TemplateEditDialog";
 import TemplateApplyDialog, { TemplateDeleteDialog } from "./templates/TemplateApplyDialog";
 
-const MASTER_ID = 1;
-
 const createEmptyRules = (): RuleForm[] =>
   Array.from({ length: 7 }, (_, i) => ({
     day_of_week: i,
@@ -37,7 +35,7 @@ const getMonday = (date: Date): Date => {
   return d;
 };
 
-const MasterTemplates = () => {
+const MasterTemplates = ({ masterId }: { masterId: number }) => {
   const [templates, setTemplates] = useState<ScheduleTemplate[]>([]);
   const [services, setServices] = useState<MasterService[]>([]);
   const [loading, setLoading] = useState(false);
@@ -66,7 +64,7 @@ const MasterTemplates = () => {
   const fetchTemplates = async () => {
     setLoading(true);
     try {
-      const data = await masterCalendarApi.getTemplates(MASTER_ID);
+      const data = await masterCalendarApi.getTemplates(masterId);
       setTemplates(data);
     } catch {
       toast({
@@ -81,7 +79,7 @@ const MasterTemplates = () => {
 
   const fetchServices = async () => {
     try {
-      const data = await masterCalendarApi.getServices(MASTER_ID);
+      const data = await masterCalendarApi.getServices(masterId);
       setServices(data);
     } catch {
       // non-critical
@@ -163,7 +161,7 @@ const MasterTemplates = () => {
         toast({ title: "Готово", description: "Шаблон обновлён" });
       } else {
         await masterCalendarApi.createTemplate({
-          master_id: MASTER_ID,
+          master_id: masterId,
           name: templateName.trim(),
           rules: apiRules,
         });
@@ -209,7 +207,7 @@ const MasterTemplates = () => {
     try {
       const result = await masterCalendarApi.applyTemplate({
         template_id: applyingTemplate.id,
-        master_id: MASTER_ID,
+        master_id: masterId,
         weeks: applyWeeks,
         start_date: applyStartDate || undefined,
       });

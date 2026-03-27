@@ -17,9 +17,7 @@ import BookingsTable from "./bookings/BookingsTable";
 import BookingDetailDialog from "./bookings/BookingDetailDialog";
 import BookingCreateDialog from "./bookings/BookingCreateDialog";
 
-const MASTER_ID = 1;
-
-const MasterBookingsList = () => {
+const MasterBookingsList = ({ masterId }: { masterId: number }) => {
   const [bookings, setBookings] = useState<MasterBooking[]>([]);
   const [loading, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -48,7 +46,7 @@ const MasterBookingsList = () => {
     setLoading(true);
     try {
       const statusParam = filterStatus === "all" ? undefined : filterStatus;
-      const data = await masterBookingsApi.getBookings(MASTER_ID, statusParam);
+      const data = await masterBookingsApi.getBookings(masterId, statusParam);
       setBookings(data);
     } catch {
       toast({
@@ -63,7 +61,7 @@ const MasterBookingsList = () => {
 
   const fetchStats = async () => {
     try {
-      const data = await masterBookingsApi.getStats(MASTER_ID);
+      const data = await masterBookingsApi.getStats(masterId);
       setStats(data);
     } catch {
       // non-critical
@@ -72,7 +70,7 @@ const MasterBookingsList = () => {
 
   const fetchServices = async () => {
     try {
-      const data = await masterCalendarApi.getServices(MASTER_ID);
+      const data = await masterCalendarApi.getServices(masterId);
       setServices(data);
     } catch {
       // non-critical
@@ -113,7 +111,7 @@ const MasterBookingsList = () => {
     setSaving(true);
     try {
       await masterBookingsApi.createBooking({
-        master_id: MASTER_ID,
+        master_id: masterId,
         client_name: form.client_name,
         client_phone: form.client_phone,
         client_email: form.client_email || undefined,
