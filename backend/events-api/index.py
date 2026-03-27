@@ -262,11 +262,24 @@ def handle_signups(event, method, params, schema, headers):
     if method == 'PUT':
         body = json.loads(event.get('body', '{}'))
         signup_id = body.get('id')
-        status = body.get('status')
-        if not signup_id or not status:
+        if not signup_id:
             conn.close()
-            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id and status required'})}
-        cur.execute(f"UPDATE {schema}.event_signups SET status = '{status}' WHERE id = {signup_id} RETURNING *")
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id required'})}
+        updates = []
+        if 'status' in body:
+            updates.append(f"status = '{body['status'].replace(chr(39), chr(39)*2)}'")
+        if 'name' in body:
+            updates.append(f"name = '{body['name'].replace(chr(39), chr(39)*2)}'")
+        if 'phone' in body:
+            updates.append(f"phone = '{body['phone'].replace(chr(39), chr(39)*2)}'")
+        if 'telegram' in body:
+            updates.append(f"telegram = '{body['telegram'].replace(chr(39), chr(39)*2)}'")
+        if 'comment' in body:
+            updates.append(f"comment = '{body['comment'].replace(chr(39), chr(39)*2)}'")
+        if not updates:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'nothing to update'})}
+        cur.execute(f"UPDATE {schema}.event_signups SET {', '.join(updates)} WHERE id = {signup_id} RETURNING *")
         row = cur.fetchone()
         conn.commit()
         conn.close()

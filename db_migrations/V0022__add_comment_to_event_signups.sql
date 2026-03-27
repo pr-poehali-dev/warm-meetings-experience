@@ -1,0 +1,1 @@
+ALTER TABLE t_p99966623_warm_meetings_experi.event_signups ADD COLUMN IF NOT EXISTS comment text NULL;

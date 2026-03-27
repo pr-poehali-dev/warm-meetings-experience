@@ -38,8 +38,10 @@ export interface SignupFromAPI {
   event_id: number;
   name: string;
   phone: string;
+  email?: string;
   telegram: string;
   status: string;
+  comment?: string;
   created_at: string;
   event_title?: string;
   event_date?: string;
@@ -86,6 +88,13 @@ export const signupsApi = {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status }),
+    }),
+
+  update: (id: number, data: Partial<Pick<SignupFromAPI, "name" | "phone" | "telegram" | "status" | "comment">>): Promise<SignupFromAPI> =>
+    request(`${EVENTS_API}/?resource=signups`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...data }),
     }),
 };
 
