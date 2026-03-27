@@ -1,6 +1,6 @@
 import { useAdmin } from "@/hooks/useAdmin";
 import AdminLogin from "@/components/admin/AdminLogin";
-import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminTabs from "@/components/admin/AdminTabs";
 import AdminOverview from "@/components/admin/AdminOverview";
 import AdminEventsList from "@/components/admin/AdminEventsList";
 import AdminEventForm from "@/components/admin/AdminEventForm";
@@ -125,8 +125,8 @@ export default function Admin() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <AdminSidebar
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <AdminTabs
         currentView={currentView}
         onViewChange={setCurrentView}
         onNewEvent={resetFormData}
