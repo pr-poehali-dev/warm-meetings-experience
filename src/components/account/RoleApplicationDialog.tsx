@@ -10,23 +10,23 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
-import { rolesApi, RoleProgress } from "@/lib/roles-api";
+import { rolesApi, Role } from "@/lib/roles-api";
 import { toast } from "sonner";
 
 interface Props {
-  roleProgress: RoleProgress;
+  role: Role;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function RoleApplicationDialog({ roleProgress, onClose, onSuccess }: Props) {
+export default function RoleApplicationDialog({ role, onClose, onSuccess }: Props) {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const result = await rolesApi.applyForRole(roleProgress.role_slug, message);
+      const result = await rolesApi.applyForRole(role.slug, message);
       toast.success(result.message);
       onSuccess();
     } catch (err) {
@@ -41,21 +41,18 @@ export default function RoleApplicationDialog({ roleProgress, onClose, onSuccess
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <span className="text-2xl">{roleProgress.role_icon}</span>
-            Заявка на роль «{roleProgress.role_name}»
+            <span className="text-2xl">{role.icon}</span>
+            Заявка на роль «{role.name}»
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-            <div className="text-sm font-medium text-green-800">Все требования выполнены</div>
-            <div className="text-xs text-green-600 mt-1">
-              Вы можете подать заявку на получение этой роли
-            </div>
+          <div className="text-sm text-muted-foreground">
+            {role.description}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="message">Расскажите о себе (необязательно)</Label>
+            <Label htmlFor="message">Расскажите о себе</Label>
             <Textarea
               id="message"
               placeholder="Почему вы хотите получить эту роль? Ваш опыт..."

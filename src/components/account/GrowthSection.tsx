@@ -1,18 +1,17 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import Icon from "@/components/ui/icon";
-import { rolesApi, RoleProgress, UserRole, RoleApplication } from "@/lib/roles-api";
+import { rolesApi, UserRole, RoleApplication, Role } from "@/lib/roles-api";
 import { toast } from "sonner";
 import RoleApplicationDialog from "./RoleApplicationDialog";
 
 export default function GrowthSection() {
   const [myRoles, setMyRoles] = useState<UserRole[]>([]);
   const [applications, setApplications] = useState<RoleApplication[]>([]);
-  const [progress, setProgress] = useState<RoleProgress[]>([]);
+  const [allRoles, setAllRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
-  const [applyRole, setApplyRole] = useState<RoleProgress | null>(null);
+  const [applyRole, setApplyRole] = useState<Role | null>(null);
 
   useEffect(() => {
     loadData();
@@ -20,13 +19,13 @@ export default function GrowthSection() {
 
   const loadData = async () => {
     try {
-      const [rolesData, progressData] = await Promise.all([
+      const [rolesData, allRolesData] = await Promise.all([
         rolesApi.getMyRoles(),
-        rolesApi.getProgress(),
+        rolesApi.getAllRoles(),
       ]);
       setMyRoles(rolesData.roles);
       setApplications(rolesData.applications);
-      setProgress(progressData.progress);
+      setAllRoles(allRolesData.roles);
     } catch {
       toast.error("Не удалось загрузить данные о ролях");
     } finally {
@@ -36,6 +35,10 @@ export default function GrowthSection() {
 
   const activeRoleSlugs = myRoles.filter((r) => r.status === "active").map((r) => r.slug);
   const pendingAppSlugs = applications.filter((a) => a.status === "pending").map((a) => a.role_slug);
+
+  const availableRoles = allRoles.filter(
+    (r) => !activeRoleSlugs.includes(r.slug) && r.slug !== "member"
+  );
 
   if (loading) {
     return (
@@ -52,7 +55,7 @@ export default function GrowthSection() {
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
-            <span>Мой рост в сообществе</span>
+            <span>Мои роли</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -71,78 +74,43 @@ export default function GrowthSection() {
               ))}
           </div>
 
-          <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Доступные пути развития
-          </div>
+          {availableRoles.length > 0 && (
+            <>
+              <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Доступные роли
+              </div>
 
-          <div className="space-y-4">
-            {progress.map((roleProgress) => {
-              const isActive = activeRoleSlugs.includes(roleProgress.role_slug);
-              const hasPendingApp = pendingAppSlugs.includes(roleProgress.role_slug);
-              const percent = roleProgress.total > 0
-                ? Math.round((roleProgress.completed / roleProgress.total) * 100)
-                : 0;
-              const allDone = roleProgress.completed === roleProgress.total;
+              <div className="space-y-3">
+                {availableRoles.map((role) => {
+                  const hasPendingApp = pendingAppSlugs.includes(role.slug);
 
-              if (isActive) return null;
-
-              return (
-                <div
-                  key={roleProgress.role_slug}
-                  className="border rounded-xl p-4 space-y-3 hover:border-primary/30 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{roleProgress.role_icon}</span>
-                      <div>
-                        <div className="font-semibold">{roleProgress.role_name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {roleProgress.completed}/{roleProgress.total} выполнено
+                  return (
+                    <div
+                      key={role.slug}
+                      className="flex items-center justify-between border rounded-xl px-4 py-3 hover:border-primary/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{role.icon}</span>
+                        <div>
+                          <div className="font-semibold">{role.name}</div>
+                          <div className="text-sm text-muted-foreground">{role.description}</div>
                         </div>
                       </div>
+                      {hasPendingApp ? (
+                        <span className="text-xs px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full font-medium whitespace-nowrap">
+                          На рассмотрении
+                        </span>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => setApplyRole(role)}>
+                          Подать заявку
+                        </Button>
+                      )}
                     </div>
-                    {hasPendingApp ? (
-                      <span className="text-xs px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full font-medium">
-                        Заявка на рассмотрении
-                      </span>
-                    ) : allDone ? (
-                      <Button size="sm" onClick={() => setApplyRole(roleProgress)}>
-                        Подать заявку
-                      </Button>
-                    ) : (
-                      <span className="text-xs px-2.5 py-1 bg-muted text-muted-foreground rounded-full">
-                        {percent}%
-                      </span>
-                    )}
-                  </div>
-
-                  <Progress value={percent} className="h-2" />
-
-                  <div className="space-y-2">
-                    {roleProgress.requirements.map((req) => (
-                      <div key={req.id} className="flex items-start gap-2.5 text-sm">
-                        {req.completed ? (
-                          <span className="text-green-500 mt-0.5 flex-shrink-0">✅</span>
-                        ) : (
-                          <span className="text-muted-foreground mt-0.5 flex-shrink-0">⏳</span>
-                        )}
-                        <div className="flex-1">
-                          <span className={req.completed ? "text-muted-foreground line-through" : ""}>
-                            {req.description}
-                          </span>
-                          {!req.completed && req.required_value > 1 && (
-                            <span className="text-muted-foreground ml-1">
-                              ({req.progress}/{req.required_value})
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
           {applications.length > 0 && (
             <div className="space-y-3">
@@ -173,7 +141,7 @@ export default function GrowthSection() {
 
       {applyRole && (
         <RoleApplicationDialog
-          roleProgress={applyRole}
+          role={applyRole}
           onClose={() => setApplyRole(null)}
           onSuccess={() => {
             setApplyRole(null);
