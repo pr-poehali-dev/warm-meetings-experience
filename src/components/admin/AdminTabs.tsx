@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { ViewType } from "@/types/admin";
+import { useAdminBadges, AdminBadges } from "@/hooks/useAdminBadges";
 
 interface Tab {
   id: string;
   label: string;
   icon: string;
-  items: { view: ViewType; label: string; icon: string; action?: () => void }[];
+  badgeKey?: keyof AdminBadges;
+  items: { view: ViewType; label: string; icon: string }[];
 }
 
 interface AdminTabsProps {
@@ -22,6 +24,7 @@ const tabs: Tab[] = [
     id: "master",
     label: "Календарь",
     icon: "CalendarDays",
+    badgeKey: "master",
     items: [
       { view: "master-calendar", label: "Расписание", icon: "CalendarDays" },
       { view: "master-bookings", label: "Записи", icon: "ClipboardCheck" },
@@ -34,6 +37,7 @@ const tabs: Tab[] = [
     id: "events",
     label: "Мероприятия",
     icon: "PartyPopper",
+    badgeKey: "events",
     items: [
       { view: "overview", label: "Обзор", icon: "LayoutDashboard" },
       { view: "list", label: "Все", icon: "List" },
@@ -45,6 +49,7 @@ const tabs: Tab[] = [
     id: "calculator",
     label: "Калькулятор",
     icon: "Calculator",
+    badgeKey: "calculator",
     items: [
       { view: "packages", label: "Пакеты", icon: "Package" },
       { view: "addons", label: "Дополнения", icon: "ShoppingBag" },
@@ -68,6 +73,7 @@ const tabs: Tab[] = [
     id: "community",
     label: "Сообщество",
     icon: "Users",
+    badgeKey: "community",
     items: [
       { view: "roles", label: "Роли", icon: "Shield" },
       { view: "blog", label: "Блог", icon: "BookOpen" },
@@ -85,15 +91,23 @@ function getActiveTab(currentView: ViewType): string {
   return tabs[0].id;
 }
 
+const Badge = ({ count }: { count: number }) => {
+  if (!count) return null;
+  return (
+    <span className="ml-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+};
+
 const AdminTabs = ({ currentView, onViewChange, onNewEvent, onLogout }: AdminTabsProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { badges } = useAdminBadges();
   const activeTabId = getActiveTab(currentView);
   const activeTab = tabs.find((t) => t.id === activeTabId)!;
 
   const handleItemClick = (view: ViewType) => {
-    if (view === "add") {
-      onNewEvent();
-    }
+    if (view === "add") onNewEvent();
     onViewChange(view);
     setMobileMenuOpen(false);
   };
@@ -113,20 +127,24 @@ const AdminTabs = ({ currentView, onViewChange, onNewEvent, onLogout }: AdminTab
           </div>
 
           <nav className="hidden lg:flex items-center gap-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => handleItemClick(tab.items[0].view)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeTabId === tab.id
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-              >
-                <Icon name={tab.icon} size={16} />
-                {tab.label}
-              </button>
-            ))}
+            {tabs.map((tab) => {
+              const badgeCount = tab.badgeKey ? badges[tab.badgeKey] : 0;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleItemClick(tab.items[0].view)}
+                  className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    activeTabId === tab.id
+                      ? "bg-gray-900 text-white"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  }`}
+                >
+                  <Icon name={tab.icon} size={16} />
+                  {tab.label}
+                  <Badge count={badgeCount} />
+                </button>
+              );
+            })}
           </nav>
 
           <div className="flex items-center gap-2">
@@ -169,29 +187,37 @@ const AdminTabs = ({ currentView, onViewChange, onNewEvent, onLogout }: AdminTab
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-gray-100 bg-white shadow-lg max-h-[70vh] overflow-y-auto">
           <div className="p-3 space-y-3">
-            {tabs.map((tab) => (
-              <div key={tab.id}>
-                <p className="text-xs font-semibold text-gray-400 uppercase px-2 mb-1">
-                  {tab.label}
-                </p>
-                <div className="space-y-0.5">
-                  {tab.items.map((item) => (
-                    <button
-                      key={item.view}
-                      onClick={() => handleItemClick(item.view)}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
-                        currentView === item.view
-                          ? "bg-gray-900 text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <Icon name={item.icon} size={16} />
-                      {item.label}
-                    </button>
-                  ))}
+            {tabs.map((tab) => {
+              const badgeCount = tab.badgeKey ? badges[tab.badgeKey] : 0;
+              return (
+                <div key={tab.id}>
+                  <div className="flex items-center gap-2 px-2 mb-1">
+                    <p className="text-xs font-semibold text-gray-400 uppercase">{tab.label}</p>
+                    {badgeCount > 0 && (
+                      <span className="min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                        {badgeCount > 99 ? "99+" : badgeCount}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-0.5">
+                    {tab.items.map((item) => (
+                      <button
+                        key={item.view}
+                        onClick={() => handleItemClick(item.view)}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                          currentView === item.view
+                            ? "bg-gray-900 text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <Icon name={item.icon} size={16} />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
