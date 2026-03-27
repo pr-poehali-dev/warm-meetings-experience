@@ -29,12 +29,11 @@ def respond(status, body):
 def verify_admin_token(token):
     if not token:
         return False
-    from datetime import datetime
+    import time
     admin_pwd = os.environ.get('ADMIN_PASSWORD', '')
     if not admin_pwd:
         return False
-    today = datetime.utcnow().strftime('%Y-%m-%d')
-    expected = hashlib.sha256(f"{admin_pwd}:{today}".encode()).hexdigest()
+    expected = hashlib.sha256(f"{admin_pwd}:{int(time.time() // 86400)}".encode()).hexdigest()
     return token == expected
 
 
