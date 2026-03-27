@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useAccount } from "@/hooks/useAccount";
+import { rolesApi } from "@/lib/roles-api";
 import AccountHeader from "@/components/account/AccountHeader";
 import ProfileCard from "@/components/account/ProfileCard";
 import GrowthSection from "@/components/account/GrowthSection";
@@ -8,11 +9,20 @@ import BadgesSection from "@/components/account/BadgesSection";
 import SignupsList from "@/components/account/SignupsList";
 import PasswordChangeForm from "@/components/account/PasswordChangeForm";
 import MyArticles from "@/components/account/MyArticles";
+import MyCalendar from "@/components/account/MyCalendar";
 
-type Tab = "main" | "articles";
+type Tab = "main" | "articles" | "calendar";
 
 export default function Account() {
   const [tab, setTab] = useState<Tab>("main");
+  const [isParmaster, setIsParmaster] = useState(false);
+
+  useEffect(() => {
+    rolesApi.getMyRoles().then(({ roles }) => {
+      setIsParmaster(roles.some((r) => r.slug === "parmaster" && r.status === "active"));
+    }).catch(() => {});
+  }, []);
+
   const {
     user,
     authLoading,
@@ -54,7 +64,7 @@ export default function Account() {
     <div className="min-h-screen bg-background">
       <AccountHeader handleLogout={handleLogout} />
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-2xl">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         <div className="flex gap-1 bg-muted rounded-full p-1 mb-8 w-fit">
           <button
             onClick={() => setTab("main")}
@@ -69,9 +79,20 @@ export default function Account() {
             <Icon name="FileText" size={14} />
             Статьи
           </button>
+          {isParmaster && (
+            <button
+              onClick={() => setTab("calendar")}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${tab === "calendar" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Icon name="Calendar" size={14} />
+              Календарь
+            </button>
+          )}
         </div>
+      </div>
 
-        {tab === "main" ? (
+      {tab === "main" && (
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl">
           <div className="space-y-6">
             <ProfileCard
               user={user}
@@ -101,10 +122,20 @@ export default function Account() {
               handleChangePassword={handleChangePassword}
             />
           </div>
-        ) : (
+        </div>
+      )}
+
+      {tab === "articles" && (
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl">
           <MyArticles />
-        )}
-      </div>
+        </div>
+      )}
+
+      {tab === "calendar" && (
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+          <MyCalendar />
+        </div>
+      )}
     </div>
   );
 }

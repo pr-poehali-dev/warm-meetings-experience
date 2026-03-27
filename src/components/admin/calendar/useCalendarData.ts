@@ -11,7 +11,6 @@ import type {
   ScheduleTemplate,
 } from "@/lib/master-calendar-api";
 import {
-  MASTER_ID,
   HOURS_START,
   HOURS_END,
   formatDateISO,
@@ -19,7 +18,7 @@ import {
 } from "./calendarUtils";
 import type { ViewMode, SlotFormData, BlockFormData, TemplateFormData } from "./calendarUtils";
 
-export const useCalendarData = () => {
+export const useCalendarData = (masterId: number) => {
   const { toast } = useToast();
 
   const [viewMode, setViewMode] = useState<ViewMode>("week");
@@ -84,7 +83,7 @@ export const useCalendarData = () => {
   const fetchWeekData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await masterCalendarApi.getWeekView(MASTER_ID, formatDateISO(weekStart));
+      const data = await masterCalendarApi.getWeekView(masterId, formatDateISO(weekStart));
       setWeekData(data);
     } catch (error) {
       toast({
@@ -95,34 +94,34 @@ export const useCalendarData = () => {
     } finally {
       setLoading(false);
     }
-  }, [weekStart, toast]);
+  }, [weekStart, toast, masterId]);
 
   const fetchStats = useCallback(async () => {
     try {
-      const data = await masterBookingsApi.getStats(MASTER_ID);
+      const data = await masterBookingsApi.getStats(masterId);
       setStats(data);
     } catch {
       // stats are non-critical
     }
-  }, []);
+  }, [masterId]);
 
   const fetchServices = useCallback(async () => {
     try {
-      const data = await masterCalendarApi.getServices(MASTER_ID);
+      const data = await masterCalendarApi.getServices(masterId);
       setServices(data);
     } catch {
       // non-critical
     }
-  }, []);
+  }, [masterId]);
 
   const fetchTemplates = useCallback(async () => {
     try {
-      const data = await masterCalendarApi.getTemplates(MASTER_ID);
+      const data = await masterCalendarApi.getTemplates(masterId);
       setTemplates(data);
     } catch {
       // non-critical
     }
-  }, []);
+  }, [masterId]);
 
   useEffect(() => {
     fetchWeekData();
@@ -189,7 +188,7 @@ export const useCalendarData = () => {
     setSaving(true);
     try {
       await masterCalendarApi.createSlot({
-        master_id: MASTER_ID,
+        master_id: masterId,
         datetime_start: `${slotForm.date}T${slotForm.time_start}:00`,
         datetime_end: `${slotForm.date}T${slotForm.time_end}:00`,
         service_id: slotForm.service_id ? Number(slotForm.service_id) : null,
@@ -239,7 +238,7 @@ export const useCalendarData = () => {
     setSaving(true);
     try {
       await masterCalendarApi.createBlock({
-        master_id: MASTER_ID,
+        master_id: masterId,
         block_date: blockForm.date_from,
         block_end_date: blockForm.date_to || blockForm.date_from,
         reason: blockForm.reason || undefined,
@@ -265,7 +264,7 @@ export const useCalendarData = () => {
     try {
       const result = await masterCalendarApi.applyTemplate({
         template_id: Number(templateForm.template_id),
-        master_id: MASTER_ID,
+        master_id: masterId,
         weeks: templateForm.weeks,
         start_date: templateForm.start_date || undefined,
       });
@@ -309,7 +308,7 @@ export const useCalendarData = () => {
   const handleDeleteBlock = async (blockId: number) => {
     setSaving(true);
     try {
-      await masterCalendarApi.deleteBlock(blockId, MASTER_ID);
+      await masterCalendarApi.deleteBlock(blockId, masterId);
       toast({ title: "Готово", description: "Блокировка снята" });
       fetchWeekData();
     } catch (error) {

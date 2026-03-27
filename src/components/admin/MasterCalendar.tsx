@@ -5,8 +5,13 @@ import SlotDetailDialog from "./calendar/SlotDetailDialog";
 import CalendarHeader from "./calendar/CalendarHeader";
 import CalendarStatsPanel from "./calendar/CalendarStatsPanel";
 import { useCalendarData } from "./calendar/useCalendarData";
+import { MASTER_ID } from "./calendar/calendarUtils";
 
-const MasterCalendar = () => {
+interface MasterCalendarProps {
+  masterId?: number;
+}
+
+const MasterCalendar = ({ masterId = MASTER_ID }: MasterCalendarProps) => {
   const {
     viewMode,
     setViewMode,
@@ -55,7 +60,7 @@ const MasterCalendar = () => {
     handleApplyTemplate,
     handleBookingAction,
     handleDeleteBlock,
-  } = useCalendarData();
+  } = useCalendarData(masterId);
 
   return (
     <div className="min-h-screen bg-gray-50">
