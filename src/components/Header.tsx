@@ -43,7 +43,9 @@ export default function Header({ transparent = false }: HeaderProps) {
   const [open, setOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -119,9 +121,16 @@ export default function Header({ transparent = false }: HeaderProps) {
           {/* User area */}
           <div className="flex items-center gap-2">
             {user ? (
-              <div className="relative" ref={dropdownRef}>
+              <div ref={dropdownRef}>
                 <button
-                  onClick={() => setOpen((v) => !v)}
+                  ref={buttonRef}
+                  onClick={() => {
+                    if (!open && buttonRef.current) {
+                      const r = buttonRef.current.getBoundingClientRect();
+                      setDropdownPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
+                    }
+                    setOpen((v) => !v);
+                  }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors ${
                     transparent
                       ? "bg-white/10 border border-white/20 text-white hover:bg-white/20"
@@ -136,7 +145,10 @@ export default function Header({ transparent = false }: HeaderProps) {
                 </button>
 
                 {open && (
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-xl shadow-lg py-1 z-50">
+                  <div
+                    style={{ top: dropdownPos.top, right: dropdownPos.right }}
+                    className="fixed w-56 bg-card border border-border rounded-xl shadow-xl py-1 z-[200]"
+                  >
                     <div className="px-4 py-2.5 border-b border-border">
                       <div className="text-sm font-semibold text-foreground truncate">{user.name}</div>
                       <div className="text-xs text-muted-foreground truncate">{user.email}</div>
@@ -193,8 +205,17 @@ export default function Header({ transparent = false }: HeaderProps) {
 
       {/* Mobile nav — fullscreen overlay */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-40 bg-foreground/60 backdrop-blur-md flex flex-col pt-20 px-4 pb-8">
-          <nav className="flex flex-col gap-1">
+        <div className="md:hidden fixed inset-0 z-[200] bg-foreground/70 backdrop-blur-md flex flex-col px-4 pb-8">
+          <div className="flex items-center justify-between h-16 flex-shrink-0">
+            <span className="font-bold text-lg text-white tracking-wide">СПАРКОМ</span>
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            >
+              <Icon name="X" size={22} />
+            </button>
+          </div>
+          <nav className="flex flex-col gap-1 mt-2">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.to}
