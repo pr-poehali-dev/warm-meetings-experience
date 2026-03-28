@@ -27,7 +27,8 @@ function StarRating({ rating }: { rating: number }) {
 
 function BathCard({ bath }: { bath: Bath }) {
   const placeholder = `https://placehold.co/600x400/e8dac0/8b7355?text=${encodeURIComponent(bath.name)}`;
-  const cover = bath.photos?.[0] || placeholder;
+  const firstPhoto = bath.photos?.[0];
+  const cover = firstPhoto ? (typeof firstPhoto === "string" ? firstPhoto : firstPhoto.url) : placeholder;
 
   return (
     <Link to={`/baths/${bath.slug}`} className="group block bg-card rounded-2xl overflow-hidden border border-border hover:shadow-lg transition-all hover:-translate-y-0.5">

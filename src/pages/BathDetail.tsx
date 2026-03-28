@@ -59,7 +59,11 @@ export default function BathDetail() {
   }
 
   const placeholder = `https://placehold.co/800x500/e8dac0/8b7355?text=${encodeURIComponent(bath.name)}`;
-  const photos = bath.photos?.length ? bath.photos : [placeholder];
+  const photoUrls = bath.photos?.length
+    ? bath.photos.map((p) => (typeof p === "string" ? p : p.url))
+    : [placeholder];
+  const videos = (bath.videos || []).filter((v) => v.type === "video_horizontal");
+  const vertVideos = (bath.videos || []).filter((v) => v.type === "video_vertical");
 
   return (
     <div className="min-h-screen bg-background">
@@ -68,13 +72,13 @@ export default function BathDetail() {
       {/* Gallery */}
       <div className="relative bg-muted">
         <img
-          src={photos[activePhoto]}
+          src={photoUrls[activePhoto]}
           alt={bath.name}
           className="w-full h-64 md:h-96 object-cover"
         />
-        {photos.length > 1 && (
+        {photoUrls.length > 1 && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-            {photos.map((_, i) => (
+            {photoUrls.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setActivePhoto(i)}
@@ -143,6 +147,30 @@ export default function BathDetail() {
                       </div>
                       <span className="text-sm font-medium">{f}</span>
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Горизонтальные видео */}
+            {videos.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-lg font-semibold mb-4">Видеообзор</h2>
+                <div className="space-y-3">
+                  {videos.map((v) => (
+                    <video key={v.key} src={v.url} controls className="w-full rounded-xl aspect-video bg-black" />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Вертикальные видео */}
+            {vertVideos.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-lg font-semibold mb-4">Shorts</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {vertVideos.map((v) => (
+                    <video key={v.key} src={v.url} controls className="w-full rounded-xl aspect-[9/16] object-cover bg-black" />
                   ))}
                 </div>
               </div>

@@ -13,7 +13,8 @@ export interface Bath {
   lng: number | null;
   phone: string;
   website: string;
-  photos: string[];
+  photos: Array<{ key: string; url: string; type: string; mime: string } | string>;
+  videos: Array<{ key: string; url: string; type: string; mime: string }>;
   features: string[];
   bath_types: string[];
   capacity_min: number;
@@ -22,6 +23,7 @@ export interface Bath {
   price_per_hour: number;
   rating: number;
   reviews_count: number;
+  is_active?: boolean;
 }
 
 export interface BathFilters {

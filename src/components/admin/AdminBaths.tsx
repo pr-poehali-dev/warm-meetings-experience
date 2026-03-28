@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { bathsApi, Bath } from "@/lib/baths-api";
+import BathMediaUpload, { MediaItem } from "@/components/admin/BathMediaUpload";
 import func2url from "../../../backend/func2url.json";
 
 const BATHS_API = func2url["baths-api"];
@@ -41,7 +42,10 @@ export default function AdminBaths() {
   const [baths, setBaths] = useState<Bath[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [formTab, setFormTab] = useState<"info" | "media">("info");
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingSlug, setEditingSlug] = useState<string>("");
+  const [editingBath, setEditingBath] = useState<Bath | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -59,10 +63,16 @@ export default function AdminBaths() {
   const openNew = () => {
     setForm(emptyForm);
     setEditingId(null);
+    setEditingSlug("");
+    setEditingBath(null);
+    setFormTab("info");
     setShowForm(true);
   };
 
   const openEdit = (bath: Bath) => {
+    setEditingBath(bath);
+    setEditingSlug(bath.slug);
+    setFormTab("info");
     setForm({
       name: bath.name,
       slug: bath.slug,
@@ -140,6 +150,40 @@ export default function AdminBaths() {
           </button>
           <h2 className="text-xl font-bold">{editingId ? "Редактировать баню" : "Добавить баню"}</h2>
         </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
+          {[
+            { id: "info", label: "Информация", icon: "FileText" },
+            { id: "media", label: "Фото и видео", icon: "Image", disabled: !editingId },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => !tab.disabled && setFormTab(tab.id as "info" | "media")}
+              disabled={tab.disabled}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                formTab === tab.id ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
+              } disabled:opacity-40 disabled:cursor-not-allowed`}
+            >
+              <Icon name={tab.icon} size={15} />
+              {tab.label}
+              {tab.disabled && <span className="text-xs">(сохраните сначала)</span>}
+            </button>
+          ))}
+        </div>
+
+        {formTab === "media" && editingBath ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <BathMediaUpload
+              slug={editingSlug}
+              photos={(editingBath.photos || []) as unknown as MediaItem[]}
+              videos={(editingBath.videos || []) as unknown as MediaItem[]}
+              onUpdate={() => {
+                bathsApi.getBySlug(editingSlug).then((b) => setEditingBath(b)).catch(() => {});
+              }}
+            />
+          </div>
+        ) : (
 
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -315,6 +359,7 @@ export default function AdminBaths() {
             </button>
           </div>
         </div>
+        )} {/* end else media */}
       </div>
     );
   }
