@@ -36,8 +36,15 @@ def cors_headers():
     }
 
 def row_to_dict(row, cursor):
+    import datetime
     cols = [d[0] for d in cursor.description]
-    return dict(zip(cols, row))
+    result = {}
+    for col, val in zip(cols, row):
+        if isinstance(val, (datetime.datetime, datetime.date)):
+            result[col] = val.isoformat()
+        else:
+            result[col] = val
+    return result
 
 def handler(event, context):
     """API для управления банями — список, детали, CRUD, фильтрация"""
