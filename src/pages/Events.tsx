@@ -8,6 +8,7 @@ import { EventItem, mapApiEvent } from "@/data/events";
 import { eventsApi } from "@/lib/api";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
+import { Link } from "react-router-dom";
 import { parseISO, isSameDay } from "date-fns";
 
 export default function Events() {
@@ -61,13 +62,21 @@ export default function Events() {
 
       <section className="py-12 md:py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mb-10">
-            <h2 className="text-3xl md:text-4xl font-semibold mb-4">
-              Афиша встреч
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Банные встречи, мастер-классы и практики. Выберите подходящую и запишитесь.
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
+            <div className="max-w-3xl">
+              <h2 className="text-3xl md:text-4xl font-semibold mb-4">
+                Афиша встреч
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Банные встречи, мастер-классы и практики. Выберите подходящую и запишитесь.
+              </p>
+            </div>
+            <Button asChild variant="outline" className="shrink-0">
+              <Link to="/organizer">
+                <Icon name="CalendarPlus" size={16} />
+                Провести свою встречу
+              </Link>
+            </Button>
           </div>
 
           {loading ? (
