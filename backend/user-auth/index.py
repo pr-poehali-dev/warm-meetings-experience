@@ -87,11 +87,16 @@ def handle_register(body):
 
     e = email.replace("'", "''")
     cur.execute(f"SELECT id FROM {schema}.users WHERE email = '{e}'")
-    existing = cur.fetchone()
-
-    if existing:
+    if cur.fetchone():
         conn.close()
         return respond(400, {'error': 'Пользователь с таким email уже зарегистрирован'})
+
+    if phone:
+        p_check = phone.replace("'", "''")
+        cur.execute(f"SELECT id FROM {schema}.users WHERE phone = '{p_check}'")
+        if cur.fetchone():
+            conn.close()
+            return respond(400, {'error': 'Пользователь с таким номером телефона уже зарегистрирован'})
 
     n = name.replace("'", "''")
     p = phone.replace("'", "''")

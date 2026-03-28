@@ -84,6 +84,13 @@ def handler(event, context):
 
 
 def handle_update_profile(cur, conn, schema, user, body):
+    if 'phone' in body and body['phone']:
+        p = str(body['phone']).replace("'", "''")
+        cur.execute(f"SELECT id FROM {schema}.users WHERE phone = '{p}' AND id != {user['id']}")
+        if cur.fetchone():
+            conn.close()
+            return respond(400, {'error': 'Этот номер телефона уже используется другим аккаунтом'})
+
     sets = []
     for field in ['name', 'phone', 'telegram']:
         if field in body:
