@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "Get all baths",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"baths": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get bath by slug",
+      "method": "GET",
+      "path": "/?slug=banya-v-centre",
+      "expectedStatus": 200,
+      "expectedBody": {"bath": {}},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Search baths",
+      "method": "GET",
+      "path": "/?search=баня",
+      "expectedStatus": 200,
+      "expectedBody": {"baths": []},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
