@@ -24,10 +24,10 @@ export default function SignupsList({ signups, signupsLoading }: SignupsListProp
         ) : signups.length === 0 ? (
           <div className="text-center py-8">
             <Icon name="Calendar" size={40} className="mx-auto text-muted-foreground/40 mb-3" />
-            <p className="text-muted-foreground">У вас пока нет записей на события</p>
+            <p className="text-muted-foreground">У вас пока нет записей на встречи</p>
             <Link to="/events">
               <Button variant="outline" size="sm" className="mt-4">
-                Посмотреть события
+                Посмотреть встречи
               </Button>
             </Link>
           </div>

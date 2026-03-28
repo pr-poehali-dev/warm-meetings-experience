@@ -55,7 +55,7 @@ export default function RepeatEventDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white border border-gray-200 rounded-lg p-6 w-full max-w-md mx-4 max-h-[85vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold mb-1">Повторить мероприятие</h3>
+        <h3 className="text-lg font-semibold mb-1">Повторить встречу</h3>
         <p className="text-sm text-gray-500 mb-5 line-clamp-1">{eventTitle}</p>
 
         <div className="space-y-4">
@@ -106,7 +106,7 @@ export default function RepeatEventDialog({
           {mode === "custom" && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Даты мероприятий
+                Даты встреч
               </label>
               <div className="space-y-2">
                 {customDates.map((d, i) => (
@@ -141,7 +141,7 @@ export default function RepeatEventDialog({
           {dates.length > 0 && mode !== "custom" && (
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-xs font-medium text-gray-500 uppercase mb-2">
-                Будут созданы мероприятия на:
+                Будут созданы встречи на:
               </p>
               <div className="flex flex-wrap gap-2">
                 {dates.map((d) => (
@@ -171,7 +171,7 @@ export default function RepeatEventDialog({
             ) : (
               <Icon name="Copy" size={14} className="mr-2" />
             )}
-            Создать {dates.length} мероприятий
+            Создать {dates.length} встреч
           </Button>
           <Button variant="outline" onClick={onCancel} disabled={loading}>
             Отмена

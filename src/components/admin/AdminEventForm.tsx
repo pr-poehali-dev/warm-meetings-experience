@@ -95,7 +95,7 @@ const AdminEventForm = ({
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-800 mb-6">
-        {formData.id ? "Редактировать мероприятие" : "Добавить мероприятие"}
+        {formData.id ? "Редактировать встречу" : "Добавить встречу"}
       </h1>
 
       <Card>

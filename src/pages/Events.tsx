@@ -63,17 +63,17 @@ export default function Events() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mb-10">
             <h2 className="text-3xl md:text-4xl font-semibold mb-4">
-              Афиша событий
+              Афиша встреч
             </h2>
             <p className="text-lg text-muted-foreground">
-              Банные встречи, мастер-классы и практики. Выберите подходящее событие и запишитесь.
+              Банные встречи, мастер-классы и практики. Выберите подходящую и запишитесь.
             </p>
           </div>
 
           {loading ? (
             <div className="text-center py-20">
               <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Загрузка событий...</p>
+              <p className="text-muted-foreground">Загрузка встреч...</p>
             </div>
           ) : (
             <div className="flex flex-col lg:flex-row gap-8">
@@ -121,7 +121,7 @@ export default function Events() {
                     ) : (
                       <div className="text-center py-16">
                         <Icon name="CalendarX" size={48} className="text-muted-foreground/40 mx-auto mb-4" />
-                        <p className="text-muted-foreground text-lg mb-2">Событий не найдено</p>
+                        <p className="text-muted-foreground text-lg mb-2">Встреч не найдено</p>
                         <p className="text-sm text-muted-foreground mb-4">Попробуйте изменить фильтры</p>
                         <Button variant="outline" className="rounded-full" onClick={resetFilters}>
                           Сбросить фильтры
@@ -148,7 +148,7 @@ export default function Events() {
                       ) : (
                         <div className="text-center py-12">
                           <p className="text-muted-foreground">
-                            {calendarDate ? "Нет событий на эту дату" : "Выберите дату в календаре"}
+                            {calendarDate ? "Нет встреч на эту дату" : "Выберите дату в календаре"}
                           </p>
                         </div>
                       )}

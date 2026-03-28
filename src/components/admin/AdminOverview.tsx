@@ -50,7 +50,7 @@ const AdminOverview = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onViewChange("list")}>
           <CardHeader>
-            <CardTitle className="text-sm text-gray-600">Всего мероприятий</CardTitle>
+            <CardTitle className="text-sm text-gray-600">Всего встреч</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-gray-800">{events.length}</p>
@@ -82,11 +82,11 @@ const AdminOverview = ({
 
       <Card>
         <CardHeader>
-          <CardTitle>Последние мероприятия</CardTitle>
+          <CardTitle>Последние встречи</CardTitle>
         </CardHeader>
         <CardContent>
           {events.length === 0 ? (
-            <p className="text-gray-500 py-4 text-center">Мероприятий пока нет</p>
+            <p className="text-gray-500 py-4 text-center">Встреч пока нет</p>
           ) : (
             events.slice(0, 5).map((event) => (
               <div

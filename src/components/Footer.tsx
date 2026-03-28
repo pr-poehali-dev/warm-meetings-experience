@@ -22,7 +22,7 @@ export default function Footer() {
                 Главная
               </Link>
               <Link to="/events" className="text-sm text-background/60 hover:text-background transition-colors">
-                Мероприятия
+                Встречи
               </Link>
               <Link to="/register" className="text-sm text-background/60 hover:text-background transition-colors">
                 Регистрация

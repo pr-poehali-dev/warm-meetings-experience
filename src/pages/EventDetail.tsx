@@ -113,7 +113,7 @@ export default function EventDetail() {
 
             {event.fullDescription && (
               <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-4">О событии</h2>
+                <h2 className="text-xl font-semibold mb-4">О встрече</h2>
                 <div className="text-muted-foreground leading-relaxed whitespace-pre-line">{event.fullDescription}</div>
               </div>
             )}

@@ -22,7 +22,7 @@ interface AdminTabsProps {
 const tabs: Tab[] = [
   {
     id: "events",
-    label: "Мероприятия",
+    label: "Встречи",
     icon: "PartyPopper",
     badgeKey: "events",
     items: [

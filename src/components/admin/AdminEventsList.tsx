@@ -56,7 +56,7 @@ const AdminEventsList = ({
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Все мероприятия</h1>
+        <h1 className="text-3xl font-bold text-gray-800">Все встречи</h1>
         <Button onClick={onNewEvent}>
           <Icon name="Plus" size={16} className="mr-2" />
           Добавить
@@ -76,7 +76,7 @@ const AdminEventsList = ({
       {filtered.length === 0 ? (
         <div className="text-center py-12">
           <Icon name="Inbox" size={48} className="text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">Мероприятий не найдено</p>
+          <p className="text-gray-500">Встреч не найдено</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

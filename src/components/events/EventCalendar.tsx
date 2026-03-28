@@ -66,7 +66,7 @@ export default function EventCalendar({ events, onDateSelect, selectedDate }: Ev
 
       {selectedDate && eventsForSelectedDate.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-4">
-          Нет событий на эту дату
+          Нет встреч на эту дату
         </p>
       )}
     </div>

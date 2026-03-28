@@ -105,7 +105,7 @@ const AdminEventSignups = () => {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Заявки на события</h1>
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">Заявки на встречи</h1>
 
       {signups.length === 0 ? (
         <Card>

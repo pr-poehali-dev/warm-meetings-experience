@@ -103,7 +103,7 @@ const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => 
 
   return (
     <div className="space-y-4">
-      <Label>Изображение мероприятия</Label>
+      <Label>Изображение встречи</Label>
       
       <div className="flex gap-4">
         <div className="relative">

@@ -26,7 +26,7 @@ const DeleteConfirmDialog = ({
         <DialogHeader>
           <DialogTitle>Подтверждение удаления</DialogTitle>
           <DialogDescription>
-            Вы уверены, что хотите удалить это мероприятие? Это действие нельзя отменить.
+            Вы уверены, что хотите удалить эту встречу? Это действие нельзя отменить.
           </DialogDescription>
         </DialogHeader>
         <div className="flex gap-3 justify-end">
