@@ -193,7 +193,7 @@ export default function Header({ transparent = false }: HeaderProps) {
 
       {/* Mobile nav — fullscreen overlay */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-40 bg-background/95 backdrop-blur-md flex flex-col pt-20 px-4 pb-8">
+        <div className="md:hidden fixed inset-0 z-40 bg-foreground/60 backdrop-blur-md flex flex-col pt-20 px-4 pb-8">
           <nav className="flex flex-col gap-1">
             {NAV_LINKS.map((link) => (
               <Link
@@ -201,19 +201,19 @@ export default function Header({ transparent = false }: HeaderProps) {
                 to={link.to}
                 className={`px-4 py-3.5 rounded-xl text-base font-medium transition-colors ${
                   isActive(link.to)
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground hover:bg-muted"
+                    ? "bg-white/25 text-white"
+                    : "text-white/90 hover:bg-white/15 hover:text-white"
                 }`}
               >
                 {link.label}
               </Link>
             ))}
           </nav>
-          <div className="mt-auto pt-6 border-t border-border">
+          <div className="mt-auto pt-6 border-t border-white/20">
             {user ? (
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-destructive hover:bg-destructive/5 rounded-xl transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
               >
                 <Icon name="LogOut" size={16} />
                 Выйти
@@ -221,7 +221,7 @@ export default function Header({ transparent = false }: HeaderProps) {
             ) : (
               <Link
                 to="/login"
-                className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-medium"
+                className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-white/20 hover:bg-white/30 text-white rounded-xl text-sm font-medium transition-colors"
               >
                 <Icon name="LogIn" size={16} />
                 Войти
