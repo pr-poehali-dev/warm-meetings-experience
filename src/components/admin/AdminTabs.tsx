@@ -67,6 +67,14 @@ const tabs: Tab[] = [
       { view: "users", label: "Пользователи", icon: "Users" },
     ],
   },
+  {
+    id: "baths",
+    label: "Бани",
+    icon: "Home",
+    items: [
+      { view: "baths", label: "Все бани", icon: "List" },
+    ],
+  },
 ];
 
 function getActiveTab(currentView: ViewType): string {

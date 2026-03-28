@@ -17,6 +17,7 @@ import AdminEventSignups from "@/components/admin/AdminEventSignups";
 import AdminRoles from "@/components/admin/AdminRoles";
 import AdminBlog from "@/components/admin/AdminBlog";
 import AdminUsers from "@/components/admin/AdminUsers";
+import AdminBaths from "@/components/admin/AdminBaths";
 
 
 export default function Admin() {
@@ -105,6 +106,8 @@ export default function Admin() {
         return <AdminSettings />;
       case "availability":
         return <AdminAvailability />;
+      case "baths":
+        return <AdminBaths />;
       default:
         return null;
     }
