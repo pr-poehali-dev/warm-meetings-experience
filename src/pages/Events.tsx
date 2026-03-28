@@ -160,8 +160,17 @@ export default function Events() {
             </div>
           )}
 
-          <div className="text-center mt-12">
-            <Button asChild variant="outline" size="lg">
+        </div>
+      </section>
+
+      <section className="py-12 bg-muted/50">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 max-w-4xl mx-auto">
+            <div>
+              <h3 className="text-xl font-semibold mb-1">Хотите провести свою встречу?</h3>
+              <p className="text-muted-foreground">Станьте организатором — создавайте события и собирайте свою аудиторию</p>
+            </div>
+            <Button asChild size="lg" className="shrink-0">
               <Link to="/organizer">
                 <Icon name="CalendarPlus" size={16} />
                 Провести свою встречу
