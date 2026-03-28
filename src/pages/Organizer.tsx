@@ -45,15 +45,13 @@ const CHECKLIST = [
   "Желание делиться теплом и собирать людей",
 ];
 
-const CITIES = ["Москва", "Санкт-Петербург", "Другой город"];
-
 export default function Organizer() {
   const formRef = useRef<HTMLDivElement>(null);
   const [ticketPrice, setTicketPrice] = useState(2000);
   const [participants, setParticipants] = useState(10);
   const [commission, setCommission] = useState(15);
 
-  const [form, setForm] = useState({ name: "", telegram: "", email: "", city: "Москва", has_own_bath: "no", event_format: "", additional_info: "" });
+  const [form, setForm] = useState({ name: "", telegram: "", email: "", has_own_bath: "no", event_format: "", additional_info: "" });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
@@ -331,16 +329,7 @@ export default function Organizer() {
                     <label className="text-sm font-medium mb-1.5 block">Email *</label>
                     <Input type="email" placeholder="email@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                   </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">Город</label>
-                    <div className="flex gap-2 flex-wrap">
-                      {CITIES.map((c) => (
-                        <Button key={c} type="button" variant={form.city === c ? "default" : "outline"} size="sm" onClick={() => setForm({ ...form, city: c })}>
-                          {c}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
+
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">Есть своя баня?</label>
                     <div className="flex gap-2">
