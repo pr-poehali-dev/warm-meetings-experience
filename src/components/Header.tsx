@@ -189,29 +189,47 @@ export default function Header({ transparent = false }: HeaderProps) {
           </div>
         </div>
 
-        {/* Mobile nav */}
-        {mobileOpen && (
-          <nav className="md:hidden border-t border-border/40 py-3 flex flex-col gap-1">
+      </div>
+
+      {/* Mobile nav — fullscreen overlay */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-40 bg-background/95 backdrop-blur-md flex flex-col pt-20 px-4 pb-8">
+          <nav className="flex flex-col gap-1">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                  transparent
-                    ? isActive(link.to)
-                      ? "bg-white/20 text-white"
-                      : "text-white/80 hover:text-white hover:bg-white/10"
-                    : isActive(link.to)
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                className={`px-4 py-3.5 rounded-xl text-base font-medium transition-colors ${
+                  isActive(link.to)
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground hover:bg-muted"
                 }`}
               >
                 {link.label}
               </Link>
             ))}
           </nav>
-        )}
-      </div>
+          <div className="mt-auto pt-6 border-t border-border">
+            {user ? (
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-destructive hover:bg-destructive/5 rounded-xl transition-colors"
+              >
+                <Icon name="LogOut" size={16} />
+                Выйти
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-medium"
+              >
+                <Icon name="LogIn" size={16} />
+                Войти
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }
