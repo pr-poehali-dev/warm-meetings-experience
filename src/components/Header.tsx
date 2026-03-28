@@ -89,6 +89,7 @@ export default function Header({ transparent = false }: HeaderProps) {
     : "sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b border-border";
 
   return (
+    <>
     <header className={headerBase}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -203,9 +204,11 @@ export default function Header({ transparent = false }: HeaderProps) {
 
       </div>
 
-      {/* Mobile nav — fullscreen overlay */}
+    </header>
+
+      {/* Mobile nav — вынесено за header чтобы не обрезалось */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-[200] bg-foreground/70 backdrop-blur-md flex flex-col px-4 pb-8">
+        <div className="md:hidden fixed inset-0 z-[200] bg-foreground/80 backdrop-blur-md flex flex-col px-4 pb-8" style={{position:"fixed",top:0,left:0,right:0,bottom:0}}>
           <div className="flex items-center justify-between h-16 flex-shrink-0">
             <span className="font-bold text-lg text-white tracking-wide">СПАРКОМ</span>
             <button
@@ -251,6 +254,6 @@ export default function Header({ transparent = false }: HeaderProps) {
           </div>
         </div>
       )}
-    </header>
+    </>
   );
 }
