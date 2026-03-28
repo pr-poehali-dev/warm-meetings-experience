@@ -1,6 +1,5 @@
-import { Link } from "react-router-dom";
-import Icon from "@/components/ui/icon";
 import Footer from "@/components/Footer";
+import Header from "@/components/Header";
 
 const principles = [
   {
@@ -142,17 +141,9 @@ const iconNames = [
 export default function Principles() {
   return (
     <div className="min-h-screen bg-background">
-      <div className="fixed top-4 left-4 z-50">
-        <Link
-          to="/"
-          className="flex items-center gap-2 bg-foreground/5 backdrop-blur-md border border-foreground/10 text-foreground px-4 py-2 rounded-full hover:bg-foreground/10 transition-colors text-sm font-medium"
-        >
-          <Icon name="ArrowLeft" size={16} />
-          <span className="hidden sm:inline">Главная</span>
-        </Link>
-      </div>
+      <Header />
 
-      <header className="pt-24 pb-16 md:pt-32 md:pb-20">
+      <header className="pt-12 pb-16 md:pt-16 md:pb-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
           <h1 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">
             Принципы клуба СПАРКОМ

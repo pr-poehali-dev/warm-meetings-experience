@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import Header from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -112,12 +112,7 @@ export default function Organizer() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="fixed top-4 left-4 z-50">
-        <Link to="/" className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-white px-4 py-2 rounded-full hover:bg-white/20 transition-colors text-sm font-medium">
-          <Icon name="ArrowLeft" size={16} />
-          <span className="hidden sm:inline">Главная</span>
-        </Link>
-      </div>
+      <Header transparent />
 
       <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground/95 to-foreground/85" />

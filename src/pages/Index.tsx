@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import Icon from "@/components/ui/icon";
-import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import PrinciplesPreview from "@/components/PrinciplesPreview";
 import { EventItem, mapApiEvent } from "@/data/events";
 import { eventsApi } from "@/lib/api";
 import Footer from "@/components/Footer";
+import Header from "@/components/Header";
 import HeroSection from "@/components/sections/HeroSection";
 import FormatSection from "@/components/sections/FormatSection";
 import AudienceSection from "@/components/sections/AudienceSection";
@@ -35,16 +34,7 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="fixed top-4 right-4 z-50">
-        <Link
-          to={user ? "/account" : "/login"}
-          className="flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 text-white px-4 py-2 rounded-full hover:bg-white/20 transition-colors text-sm font-medium"
-        >
-          <Icon name={user ? "User" : "LogIn"} size={16} />
-          <span className="hidden sm:inline">{user ? user.name : "Войти"}</span>
-        </Link>
-      </div>
-
+      <Header transparent />
       <HeroSection user={user} onScrollDown={scrollDown} />
       <FormatSection />
       <AudienceSection />

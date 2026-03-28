@@ -1,16 +1,15 @@
-import { useParams, Link, Navigate } from "react-router-dom";
+import { useParams, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
-import { useAuth } from "@/contexts/AuthContext";
 import SignUpForm from "@/components/events/SignUpForm";
 import { EventItem, mapApiEvent, getTypeColors } from "@/data/events";
 import { eventsApi } from "@/lib/api";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
+import Header from "@/components/Header";
 
 export default function EventDetail() {
-  const { user } = useAuth();
   const { slug } = useParams<{ slug: string }>();
   const [event, setEvent] = useState<EventItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,18 +50,7 @@ export default function EventDetail() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <Link to="/events" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-            <Icon name="ArrowLeft" size={20} />
-            <span className="text-sm font-medium">Все события</span>
-          </Link>
-          <Link to={user ? "/account" : "/login"} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-            <Icon name={user ? "User" : "LogIn"} size={18} />
-            <span className="text-sm font-medium hidden sm:inline">{user ? user.name : "Войти"}</span>
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       {event.image ? (
         <div className="relative h-64 md:h-80 overflow-hidden">
