@@ -43,7 +43,13 @@ export default function ConsentModal({ trigger }: ConsentModalProps) {
               Согласие на обработку персональных данных
             </DialogTitle>
             <DialogDescription>
-              Приложение №1 к Пользовательскому соглашению
+              Приложение №1 к{" "}
+              <Link
+                to="/terms"
+                className="text-primary underline underline-offset-2 hover:text-primary/80"
+              >
+                Пользовательскому соглашению
+              </Link>
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="px-6 pb-6 max-h-[65vh]">
