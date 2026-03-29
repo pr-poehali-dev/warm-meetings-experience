@@ -30,6 +30,9 @@ export default function Footer() {
               <Link to="/login" className="text-sm text-background/60 hover:text-background transition-colors">
                 Личный кабинет
               </Link>
+              <Link to="/about" className="text-sm text-background/60 hover:text-background transition-colors">
+                О клубе
+              </Link>
               <Link to="/organizer" className="text-sm text-background/60 hover:text-background transition-colors">
                 Организаторам
               </Link>

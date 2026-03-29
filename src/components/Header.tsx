@@ -14,7 +14,7 @@ const NAV_LINKS: NavLink[] = [
   { label: "Бани", to: "/baths" },
   { label: "Мастера", to: "/steam-master-guide" },
   { label: "Блог", to: "/blog" },
-  { label: "О нас", to: "/organizer" },
+  { label: "О нас", to: "/about" },
 ];
 
 interface HeaderProps {

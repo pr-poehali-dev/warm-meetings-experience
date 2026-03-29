@@ -26,6 +26,7 @@ import BlogArticle from "./pages/BlogArticle";
 import SteamMasterGuide from "./pages/SteamMasterGuide";
 import Baths from "./pages/Baths";
 import BathDetail from "./pages/BathDetail";
+import About from "./pages/About";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const AppContent = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/principles" element={<Principles />} />
+        <Route path="/about" element={<About />} />
         <Route path="/organizer" element={<Organizer />} />
         <Route path="/steam-master-guide" element={<SteamMasterGuide />} />
         <Route path="/baths" element={<Baths />} />
