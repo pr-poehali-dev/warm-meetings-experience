@@ -35,6 +35,7 @@ export default function Terms() {
             <li><a href="#part6" className="hover:text-foreground transition-colors">Часть VI. Ответственность, арбитраж, блокировки</a></li>
             <li><a href="#part7" className="hover:text-foreground transition-colors">Часть VII. Интеллектуальная собственность</a></li>
             <li><a href="#part8" className="hover:text-foreground transition-colors">Часть VIII. Заключительные положения</a></li>
+            <li><a href="#appendix1" className="hover:text-foreground transition-colors">Приложение №1. Согласие на обработку персональных данных</a></li>
           </ol>
         </nav>
 
@@ -395,11 +396,87 @@ export default function Terms() {
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-4">Приложения (являются неотъемлемой частью Правил)</h3>
                 <div className="bg-muted rounded-lg p-4 text-sm space-y-2">
-                  <p><strong>Приложение №1</strong> — Форма согласия на обработку персональных данных (включая передачу третьим лицам)</p>
+                  <p><strong>Приложение №1</strong> —{" "}
+                    <a href="#appendix1" className="text-primary underline underline-offset-2 hover:text-primary/80">Согласие на обработку персональных данных</a>{" "}
+                    (включая передачу третьим лицам)</p>
                   <p><strong>Приложение №2</strong> — Соглашение об использовании простой электронной подписи (ПЭП)</p>
                   <p><strong>Приложение №3</strong> — Договор поручения обработки персональных данных (для Организаторов, Мастеров, Партнёров)</p>
                   <p><strong>Приложение №4</strong> — Согласие на использование и обнародование фотоизображения (для участников мероприятий)</p>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ПРИЛОЖЕНИЕ №1 */}
+          <section id="appendix1">
+            <h2 className="text-2xl font-bold text-foreground mb-6 pb-2 border-b border-border">
+              Приложение №1. Согласие на обработку персональных данных (для Участников)
+            </h2>
+
+            <div className="space-y-6 text-sm">
+              <p className="leading-relaxed">
+                Я, нижеподписавшийся(ая), свободно, своей волей и в своём интересе даю согласие{" "}
+                <strong>ИП Чикин Дмитрий Сергеевич</strong> (ОГРНИП 321774600501510, ИНН 771916365140) (далее — Оператор)
+                на обработку моих персональных данных на следующих условиях:
+              </p>
+
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-3">1. Перечень персональных данных</h3>
+                <p className="leading-relaxed">
+                  Фамилия, имя, отчество (при наличии), номер телефона, адрес электронной почты,
+                  дата рождения (при необходимости), ссылка на аккаунт в Telegram / VK ID / Яндекс ID / MAX
+                  (при их использовании).
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-3">2. Цели обработки</h3>
+                <ul className="list-disc list-outside ml-5 space-y-1 leading-relaxed">
+                  <li>регистрация и авторизация на Сайте sparcom.ru;</li>
+                  <li>запись на мероприятия и оплата;</li>
+                  <li>связь с Организаторами и Мастерами по вопросам мероприятия;</li>
+                  <li>направление уведомлений (напоминания, изменения, отмена);</li>
+                  <li>сбор обратной связи (отзывы);</li>
+                  <li>соблюдение требований законодательства РФ.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-3">3. Передача третьим лицам</h3>
+                <p className="leading-relaxed">
+                  Я согласен(на) на передачу моих персональных данных (в объёме, указанном в п. 1) Организаторам
+                  мероприятий, Мастерам, Партнёрам (владельцам бань) на основании договора поручения обработки.
+                  Получатели данных обязаны использовать их только для целей, определённых Оператором,
+                  и обеспечивать конфиденциальность.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-3">4. Срок согласия</h3>
+                <p className="leading-relaxed">
+                  С момента регистрации до отзыва. Отзыв согласия направляется на{" "}
+                  <a href="mailto:privacy@sparcom.ru" className="text-primary underline underline-offset-2 hover:text-primary/80">
+                    privacy@sparcom.ru
+                  </a>.
+                  При отзыве Оператор вправе продолжить обработку при наличии иных законных оснований.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-3">5. Подтверждение</h3>
+                <p className="leading-relaxed">
+                  Я ознакомлен(а) с{" "}
+                  <Link to="/privacy" className="text-primary underline underline-offset-2 hover:text-primary/80">
+                    Политикой конфиденциальности
+                  </Link>{" "}
+                  (<a href="https://sparcom.ru/privacy" className="text-primary underline underline-offset-2 hover:text-primary/80">sparcom.ru/privacy</a>)
+                  и настоящим Согласием.
+                </p>
+              </div>
+
+              <div className="bg-muted rounded-lg p-4 space-y-2">
+                <p><strong>Дата:</strong> проставляется автоматически при регистрации</p>
+                <p><strong>Подпись (цифровая / галочка):</strong> подтверждается отметкой в чекбоксе при регистрации на Сайте</p>
               </div>
             </div>
           </section>

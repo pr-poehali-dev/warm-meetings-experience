@@ -139,7 +139,15 @@ export default function Register() {
                   onCheckedChange={(checked) => setConsent(checked === true)}
                 />
                 <Label htmlFor="consent" className="text-sm leading-relaxed font-normal cursor-pointer">
-                  Даю согласие на обработку персональных данных в соответствии с{" "}
+                  Даю{" "}
+                  <Link
+                    to="/terms#appendix1"
+                    className="text-primary hover:text-primary/80 underline underline-offset-2"
+                    target="_blank"
+                  >
+                    согласие на обработку персональных данных
+                  </Link>{" "}
+                  в соответствии с{" "}
                   <Link
                     to="/privacy"
                     className="text-primary hover:text-primary/80 underline underline-offset-2"
