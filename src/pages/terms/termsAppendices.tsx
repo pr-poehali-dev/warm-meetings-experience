@@ -161,37 +161,43 @@ export const appendices: Appendix[] = [
     content: (
       <div className="space-y-6 text-sm">
         <p className="leading-relaxed">
-          Я, нижеподписавшийся(ая), даю согласие ИП Чикин Дмитрий Сергеевич (Оператор) на использование
-          и обнародование моего фотоизображения, видеозаписей с моим участием, сделанных в ходе мероприятий
-          Сообщества «СПАРКОМ».
+          Я, нижеподписавшийся(ая), на основании ст. 152.1 ГК РФ даю согласие{" "}
+          <strong>ИП Чикин Дмитрий Сергеевич</strong> на использование и обнародование моих фотоизображений
+          (включая видео), сделанных в ходе мероприятий Сообщества.
         </p>
         <div>
-          <h3 className="text-base font-semibold text-foreground mb-3">1. Объём согласия</h3>
-          <ul className="list-disc list-outside ml-5 space-y-1 leading-relaxed">
-            <li>размещение на Сайте sparcom.ru и в официальных социальных сетях Сообщества;</li>
-            <li>использование в рекламных и информационных материалах;</li>
-            <li>публикация в Telegram-канале и иных официальных каналах коммуникации.</li>
-          </ul>
-        </div>
-        <div>
-          <h3 className="text-base font-semibold text-foreground mb-3">2. Ограничения</h3>
+          <h3 className="text-base font-semibold text-foreground mb-3">1. Цели использования</h3>
           <p className="leading-relaxed">
-            Оператор обязуется не использовать изображения в целях, унижающих честь и достоинство,
-            не передавать их третьим лицам для коммерческого использования без отдельного согласия.
+            Размещение на Сайте sparcom.ru, в социальных сетях (Telegram, VK), в рекламных и маркетинговых
+            материалах Оператора.
           </p>
         </div>
         <div>
-          <h3 className="text-base font-semibold text-foreground mb-3">3. Отзыв согласия</h3>
+          <h3 className="text-base font-semibold text-foreground mb-3">2. Способы использования</h3>
           <p className="leading-relaxed">
-            Отзыв направляется на{" "}
+            Воспроизведение, копирование, доведение до всеобщего сведения, хранение, переработка
+            (кадрирование, цветокоррекция), использование как полностью, так и фрагментарно.
+          </p>
+        </div>
+        <div>
+          <h3 className="text-base font-semibold text-foreground mb-3">3. Территория и срок</h3>
+          <p className="leading-relaxed">Территория: весь мир. Срок: бессрочно.</p>
+        </div>
+        <div>
+          <h3 className="text-base font-semibold text-foreground mb-3">4. Отзыв согласия</h3>
+          <p className="leading-relaxed">
+            Письменное уведомление на{" "}
             <a href="mailto:privacy@sparcom.ru" className="text-primary underline underline-offset-2 hover:text-primary/80">
               privacy@sparcom.ru
-            </a>{" "}
-            с указанием конкретных материалов. Уже опубликованные материалы удаляются в течение 10 рабочих дней.
+            </a>.
+            После отзыва Оператор обязуется прекратить использование и удалить изображения в течение 30 дней.
           </p>
         </div>
         <div className="bg-muted rounded-lg p-4 space-y-2">
-          <p><strong>Акцепт:</strong> участие в мероприятии после ознакомления с настоящим Согласием</p>
+          <p>Вознаграждение за использование не выплачивается.</p>
+          <p>Подтверждаю, что мне более 18 лет.</p>
+          <p><strong>Дата:</strong> проставляется автоматически при регистрации</p>
+          <p><strong>Подпись:</strong> подтверждается отметкой в чекбоксе при регистрации на Сайте</p>
         </div>
       </div>
     ),
