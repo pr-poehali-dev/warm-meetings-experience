@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import ConsentModal from "@/components/ConsentModal";
 
 interface Step4BookingProps {
   name: string;
@@ -83,22 +84,17 @@ const Step4Booking: React.FC<Step4BookingProps> = ({
           onCheckedChange={onConsentChange}
         />
         <Label htmlFor="consent" className="text-sm text-nature-forest/80 cursor-pointer leading-relaxed">
-          Я согласен на обработку персональных данных в соответствии с{" "}
+          Даю{" "}
+          <ConsentModal trigger="согласие на обработку персональных данных" />
+          {" "}в соответствии с{" "}
           <Link 
-            to="/personal-data-consent" 
-            target="_blank"
-            className="text-nature-brown hover:underline"
-          >
-            Согласием
-          </Link>
-          {" "}и{" "}
-          <Link 
-            to="/privacy-policy" 
+            to="/privacy" 
             target="_blank"
             className="text-nature-brown hover:underline"
           >
             Политикой конфиденциальности
-          </Link>
+          </Link>{" "}
+          и ФЗ №152-ФЗ
         </Label>
       </div>
 

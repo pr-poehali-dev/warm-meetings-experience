@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import ConsentModal from "@/components/ConsentModal";
 
 export default function Register() {
   const { user, loading: authLoading, register } = useAuth();
@@ -140,14 +141,8 @@ export default function Register() {
                 />
                 <Label htmlFor="consent" className="text-sm leading-relaxed font-normal cursor-pointer">
                   Даю{" "}
-                  <Link
-                    to="/terms"
-                    className="text-primary hover:text-primary/80 underline underline-offset-2"
-                    target="_blank"
-                  >
-                    согласие на обработку персональных данных
-                  </Link>{" "}
-                  в соответствии с{" "}
+                  <ConsentModal trigger="согласие на обработку персональных данных" />
+                  {" "}в соответствии с{" "}
                   <Link
                     to="/privacy"
                     className="text-primary hover:text-primary/80 underline underline-offset-2"

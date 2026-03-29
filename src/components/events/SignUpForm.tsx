@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { signupsApi } from "@/lib/api";
+import ConsentModal from "@/components/ConsentModal";
 
 interface SignUpFormProps {
   eventId: number;
@@ -141,7 +142,9 @@ export default function SignUpForm({ eventId, eventTitle, spotsLeft }: SignUpFor
               className="mt-0.5"
             />
             <label htmlFor="consent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
-              Даю согласие на обработку персональных данных в соответствии с{" "}
+              Даю{" "}
+              <ConsentModal trigger="согласие на обработку персональных данных" />
+              {" "}в соответствии с{" "}
               <a
                 href="/privacy"
                 target="_blank"
@@ -149,7 +152,7 @@ export default function SignUpForm({ eventId, eventTitle, spotsLeft }: SignUpFor
               >
                 Политикой конфиденциальности
               </a>{" "}
-              и Федеральным законом №152-ФЗ «О персональных данных»
+              и ФЗ №152-ФЗ
             </label>
           </div>
           <Button
