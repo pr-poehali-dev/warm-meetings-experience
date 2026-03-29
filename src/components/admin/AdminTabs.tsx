@@ -153,9 +153,10 @@ const AdminTabs = ({ currentView, onViewChange, onNewEvent, onLogout }: AdminTab
             {onLogout && (
               <button
                 onClick={onLogout}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 rounded-lg transition-colors"
               >
                 <Icon name="LogOut" size={16} />
+                <span className="hidden sm:inline">Выйти</span>
               </button>
             )}
           </div>

@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 
 interface AccountHeaderProps {
@@ -20,10 +19,13 @@ export default function AccountHeader({ handleLogout }: AccountHeaderProps) {
           </Link>
           <h1 className="text-lg font-semibold">Личный кабинет</h1>
         </div>
-        <Button variant="outline" size="sm" onClick={handleLogout}>
-          <Icon name="LogOut" size={16} className="mr-2" />
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 rounded-lg transition-colors"
+        >
+          <Icon name="LogOut" size={16} />
           Выйти
-        </Button>
+        </button>
       </div>
     </header>
   );
