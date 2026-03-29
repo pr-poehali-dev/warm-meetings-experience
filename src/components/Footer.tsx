@@ -109,12 +109,20 @@ export default function Footer() {
           <p className="text-xs text-background/40">
             © {currentYear} ИП Чикин Дмитрий Сергеевич. ИНН 771916365140
           </p>
-          <Link
-            to="/privacy"
-            className="text-xs text-background/40 hover:text-background/70 transition-colors underline underline-offset-2"
-          >
-            Политика конфиденциальности
-          </Link>
+          <div className="flex gap-4">
+            <Link
+              to="/privacy"
+              className="text-xs text-background/40 hover:text-background/70 transition-colors underline underline-offset-2"
+            >
+              Политика конфиденциальности
+            </Link>
+            <Link
+              to="/terms"
+              className="text-xs text-background/40 hover:text-background/70 transition-colors underline underline-offset-2"
+            >
+              Правила сообщества
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
