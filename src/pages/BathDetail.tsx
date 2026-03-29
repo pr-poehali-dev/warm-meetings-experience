@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { bathsApi, Bath } from "@/lib/baths-api";
+import { mastersApi, Master, Specialization } from "@/lib/masters-api";
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -36,6 +37,8 @@ function YandexMap({ lat, lng, name }: { lat: number; lng: number; name: string 
 export default function BathDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [bath, setBath] = useState<Bath | null>(null);
+  const [masters, setMasters] = useState<Master[]>([]);
+  const [specializations, setSpecializations] = useState<Specialization[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
@@ -43,7 +46,17 @@ export default function BathDetail() {
   useEffect(() => {
     if (!slug) return;
     bathsApi.getBySlug(slug)
-      .then(setBath)
+      .then((b) => {
+        setBath(b);
+        return Promise.all([
+          mastersApi.getAll({ bath_id: b.id }),
+          mastersApi.getSpecializations(),
+        ]);
+      })
+      .then(([m, s]) => {
+        setMasters(m);
+        setSpecializations(s);
+      })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [slug]);
@@ -172,6 +185,56 @@ export default function BathDetail() {
                   {vertVideos.map((v) => (
                     <video key={v.key} src={v.url} controls className="w-full rounded-xl aspect-[9/16] object-cover bg-black" />
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Мастера */}
+            {masters.length > 0 && (
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold">Мастера этой бани</h2>
+                  <Link to="/masters" className="text-sm text-primary hover:underline flex items-center gap-1">
+                    Все мастера
+                    <Icon name="ChevronRight" size={14} />
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {masters.map((m) => {
+                    const masterSpecs = specializations.filter((s) =>
+                      (m.specialization_ids || []).includes(s.id)
+                    );
+                    const avatar = m.avatar || `https://placehold.co/80x80/e8dac0/8b7355?text=${encodeURIComponent(m.name[0])}`;
+                    return (
+                      <Link
+                        key={m.id}
+                        to={`/masters/${m.slug}`}
+                        className="group flex gap-3 p-3 border border-border rounded-xl hover:bg-muted/50 transition-colors"
+                      >
+                        <img
+                          src={avatar}
+                          alt={m.name}
+                          className="w-14 h-14 rounded-full object-cover object-top flex-shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm group-hover:text-primary transition-colors flex items-center gap-1">
+                            {m.name}
+                            {m.is_verified && <Icon name="BadgeCheck" size={13} className="text-primary flex-shrink-0" />}
+                          </div>
+                          {masterSpecs.length > 0 && (
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {masterSpecs.map((s) => s.name).join(", ")}
+                            </div>
+                          )}
+                          {m.experience_years > 0 && (
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {m.experience_years} лет опыта
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             )}
