@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
-import { rolesApi, UserRole } from "@/lib/roles-api";
+import ProfileDropdown from "@/components/ProfileDropdown";
 
 interface NavLink {
   label: string;
@@ -17,21 +17,6 @@ const NAV_LINKS: NavLink[] = [
   { label: "О нас", to: "/organizer" },
 ];
 
-interface MenuItem {
-  label: string;
-  to: string;
-  icon: string;
-  roleSlug?: string;
-}
-
-const CABINET_ITEMS: MenuItem[] = [
-  { label: "Мой профиль", to: "/account", icon: "User" },
-  { label: "Кабинет участника", to: "/account", icon: "Users", roleSlug: "member" },
-  { label: "Кабинет мастера", to: "/account", icon: "Sparkles", roleSlug: "parmaster" },
-  { label: "Кабинет организатора", to: "/organizer", icon: "Calendar", roleSlug: "organizer" },
-  { label: "Кабинет партнёра", to: "/account", icon: "Home", roleSlug: "partner" },
-];
-
 interface HeaderProps {
   transparent?: boolean;
 }
@@ -40,35 +25,9 @@ export default function Header({ transparent = false }: HeaderProps) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (user) {
-      rolesApi.getMyRoles().then(({ roles }) => {
-        setUserRoles(roles.filter((r) => r.status === "active"));
-      }).catch(() => {});
-    } else {
-      setUserRoles([]);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  useEffect(() => {
-    setOpen(false);
     setMobileOpen(false);
   }, [location.pathname]);
 
@@ -76,11 +35,6 @@ export default function Header({ transparent = false }: HeaderProps) {
     await logout();
     navigate("/");
   };
-
-  const visibleCabinets = CABINET_ITEMS.filter((item) => {
-    if (!item.roleSlug) return true;
-    return userRoles.some((r) => r.slug === item.roleSlug);
-  });
 
   const isActive = (to: string) => location.pathname === to;
 
@@ -93,12 +47,10 @@ export default function Header({ transparent = false }: HeaderProps) {
     <header className={headerBase}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <Link to="/" className={`font-bold text-lg tracking-wide ${transparent ? "text-white" : "text-foreground"}`}>
             СПАРКОМ
           </Link>
 
-          {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1">
             {NAV_LINKS.map((link) => (
               <Link
@@ -119,65 +71,9 @@ export default function Header({ transparent = false }: HeaderProps) {
             ))}
           </nav>
 
-          {/* User area */}
           <div className="flex items-center gap-2">
             {user ? (
-              <div ref={dropdownRef}>
-                <button
-                  ref={buttonRef}
-                  onClick={() => {
-                    if (!open && buttonRef.current) {
-                      const r = buttonRef.current.getBoundingClientRect();
-                      setDropdownPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
-                    }
-                    setOpen((v) => !v);
-                  }}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors ${
-                    transparent
-                      ? "bg-white/10 border border-white/20 text-white hover:bg-white/20"
-                      : "bg-muted/60 hover:bg-muted text-foreground"
-                  }`}
-                >
-                  <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Icon name="User" size={13} className={transparent ? "text-white" : "text-primary"} />
-                  </div>
-                  <span className="hidden sm:inline max-w-[120px] truncate">{user.name}</span>
-                  <Icon name="ChevronDown" size={14} className={`transition-transform ${open ? "rotate-180" : ""} ${transparent ? "text-white/70" : "text-muted-foreground"}`} />
-                </button>
-
-                {open && (
-                  <div
-                    style={{ top: dropdownPos.top, right: dropdownPos.right }}
-                    className="fixed w-56 bg-card border border-border rounded-xl shadow-xl py-1 z-[200]"
-                  >
-                    <div className="px-4 py-2.5 border-b border-border">
-                      <div className="text-sm font-semibold text-foreground truncate">{user.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">{user.email}</div>
-                    </div>
-
-                    {visibleCabinets.map((item) => (
-                      <Link
-                        key={item.label}
-                        to={item.to}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted/60 transition-colors"
-                      >
-                        <Icon name={item.icon} size={16} className="text-muted-foreground flex-shrink-0" />
-                        {item.label}
-                      </Link>
-                    ))}
-
-                    <div className="border-t border-border mt-1 pt-1">
-                      <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-destructive hover:bg-destructive/5 transition-colors"
-                      >
-                        <Icon name="LogOut" size={16} className="flex-shrink-0" />
-                        Выйти
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <ProfileDropdown variant={transparent ? "transparent" : "default"} />
             ) : (
               <Link
                 to="/login"
@@ -192,7 +88,6 @@ export default function Header({ transparent = false }: HeaderProps) {
               </Link>
             )}
 
-            {/* Mobile burger */}
             <button
               className={`md:hidden p-2 rounded-md transition-colors ${transparent ? "text-white hover:bg-white/10" : "text-foreground hover:bg-muted"}`}
               onClick={() => setMobileOpen((v) => !v)}
@@ -206,7 +101,6 @@ export default function Header({ transparent = false }: HeaderProps) {
 
     </header>
 
-      {/* Mobile nav — вынесено за header чтобы не обрезалось */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-[200] bg-foreground/80 backdrop-blur-md flex flex-col px-4 pb-8" style={{position:"fixed",top:0,left:0,right:0,bottom:0}}>
           <div className="flex items-center justify-between h-16 flex-shrink-0">

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { ViewType } from "@/types/admin";
 import { useAdminBadges, AdminBadges } from "@/hooks/useAdminBadges";
+import ProfileDropdown from "@/components/ProfileDropdown";
 
 interface Tab {
   id: string;
@@ -150,15 +151,7 @@ const AdminTabs = ({ currentView, onViewChange, onNewEvent, onLogout }: AdminTab
               <Icon name="ArrowLeft" size={16} />
               <span className="hidden sm:inline">На сайт</span>
             </Link>
-            {onLogout && (
-              <button
-                onClick={onLogout}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/5 rounded-lg transition-colors"
-              >
-                <Icon name="LogOut" size={16} />
-                Выйти
-              </button>
-            )}
+            <ProfileDropdown variant="compact" onLogout={onLogout} />
           </div>
         </div>
 
