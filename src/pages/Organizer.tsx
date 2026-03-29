@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
 import Footer from "@/components/Footer";
+import ConsentModal from "@/components/ConsentModal";
 import func2url from "../../backend/func2url.json";
 
 const BENEFITS = [
@@ -351,9 +352,10 @@ export default function Organizer() {
                   <label className="flex items-start gap-2 cursor-pointer">
                     <input type="checkbox" required className="mt-1 accent-primary" />
                     <span className="text-xs text-muted-foreground leading-relaxed">
-                      Я даю согласие на обработку{" "}
-                      <Link to="/privacy" target="_blank" className="underline hover:text-foreground">персональных данных</Link>{" "}
-                      в соответствии с политикой конфиденциальности
+                      Я даю{" "}
+                      <ConsentModal trigger="согласие" />{" "}
+                      на обработку персональных данных в соответствии с{" "}
+                      <Link to="/privacy" target="_blank" className="underline hover:text-foreground">политикой конфиденциальности</Link>
                     </span>
                   </label>
                   {error && <p className="text-sm text-red-600">{error}</p>}
