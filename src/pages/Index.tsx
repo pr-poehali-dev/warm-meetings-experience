@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import PrinciplesPreview from "@/components/PrinciplesPreview";
 import { EventItem, mapApiEvent } from "@/data/events";
 import { eventsApi } from "@/lib/api";
 import Footer from "@/components/Footer";
@@ -38,7 +37,6 @@ export default function Index() {
       <HeroSection user={user} onScrollDown={scrollDown} />
       <FormatSection />
       <AudienceSection />
-      <PrinciplesPreview />
       <UpcomingEventsSection events={events} />
       <HowItWorksSection />
       <RulesSection />
