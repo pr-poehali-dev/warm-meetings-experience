@@ -224,23 +224,20 @@ const AdminEventForm = ({
                         />
                       </div>
                       <div>
-                        <Label htmlFor="custom_type_icon">Иконка (lucide-react)</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="custom_type_icon"
-                            placeholder="Например: Sparkles, Star, Flame"
-                            value={customTypeIcon}
-                            onChange={(e) => setCustomTypeIcon(e.target.value)}
-                          />
-                          {customTypeIcon && (
-                            <div className="flex items-center justify-center w-10 h-10 border rounded">
-                              <Icon name={customTypeIcon} size={20} fallback="Circle" />
-                            </div>
-                          )}
+                        <Label>Иконка</Label>
+                        <div className="grid grid-cols-7 gap-2 mt-2">
+                          {["Users", "Heart", "GraduationCap", "Coffee", "PartyPopper", "Dumbbell", "Sparkles", "Star", "Flame", "Zap", "Music", "Leaf", "Sun", "Moon", "Wind", "Droplets", "Shield", "Award", "Gift", "Camera"].map((icon) => (
+                            <button
+                              key={icon}
+                              type="button"
+                              title={icon}
+                              onClick={() => setCustomTypeIcon(icon)}
+                              className={`flex items-center justify-center w-10 h-10 rounded border-2 transition-colors ${customTypeIcon === icon ? "border-blue-500 bg-blue-100" : "border-gray-200 hover:border-gray-400"}`}
+                            >
+                              <Icon name={icon} size={20} fallback="Circle" />
+                            </button>
+                          ))}
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Доступные иконки: Users, Heart, GraduationCap, Coffee, PartyPopper, Dumbbell, Sparkles, Star, Flame и др.
-                        </p>
                       </div>
                       <div className="flex gap-2">
                         <Button type="button" size="sm" onClick={handleCustomTypeApply}>
