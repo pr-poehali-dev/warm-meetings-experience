@@ -141,7 +141,7 @@ export default function Register() {
                 <Label htmlFor="consent" className="text-sm leading-relaxed font-normal cursor-pointer">
                   Даю{" "}
                   <Link
-                    to="/terms#appendix1"
+                    to="/terms"
                     className="text-primary hover:text-primary/80 underline underline-offset-2"
                     target="_blank"
                   >
