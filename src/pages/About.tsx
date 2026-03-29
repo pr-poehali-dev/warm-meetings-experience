@@ -260,7 +260,7 @@ export default function About() {
               </Button>
             </Link>
             <a href="http://t.me/banya_live" target="_blank" rel="noopener noreferrer">
-              <Button size="lg" variant="outline" className="rounded-full gap-2 border-background/20 text-background hover:bg-background/10 w-full sm:w-auto">
+              <Button size="lg" variant="outline" className="rounded-full gap-2 border-white/40 text-white hover:bg-white/10 w-full sm:w-auto">
                 <Icon name="Send" size={16} />
                 Telegram-канал
               </Button>
