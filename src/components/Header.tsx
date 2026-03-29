@@ -12,7 +12,7 @@ interface NavLink {
 const NAV_LINKS: NavLink[] = [
   { label: "Встречи", to: "/events" },
   { label: "Бани", to: "/baths" },
-  { label: "Мастера", to: "/steam-master-guide" },
+  { label: "Мастера", to: "/masters" },
   { label: "Блог", to: "/blog" },
   { label: "О нас", to: "/about" },
 ];
