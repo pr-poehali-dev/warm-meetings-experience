@@ -1,9 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
 import func2url from "../../../backend/func2url.json";
 
 const MEDIA_API = func2url["bath-media"];
+
+const ASPECT_W = 16;
+const ASPECT_H = 9;
 
 export type MediaType = "photo" | "video_horizontal" | "video_vertical";
 
@@ -59,6 +62,12 @@ const MEDIA_CONFIG: Record<MediaType, {
   },
 };
 
+interface CropState {
+  x: number;
+  y: number;
+  size: number;
+}
+
 function UploadZone({ type, slug, onUploaded, disabled }: {
   type: MediaType;
   slug: string;
@@ -71,41 +80,235 @@ function UploadZone({ type, slug, onUploaded, disabled }: {
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  // Crop state — only used when type === "photo"
+  const [cropMode, setCropMode] = useState(false);
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState<CropState>({ x: 0, y: 0, size: 100 });
+  const [dragging, setDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0, cx: 0, cy: 0 });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+
+  const drawCrop = useCallback(() => {
+    const canvas = canvasRef.current;
+    const img = imgRef.current;
+    if (!canvas || !img) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const cw = container.clientWidth;
+    const ch = Math.round(cw * ASPECT_H / ASPECT_W);
+    canvas.width = cw;
+    canvas.height = ch;
+
+    const ctx = canvas.getContext("2d")!;
+
+    const imgAspect = img.naturalWidth / img.naturalHeight;
+    const canvasAspect = cw / ch;
+
+    let drawW: number, drawH: number, drawX: number, drawY: number;
+    if (imgAspect > canvasAspect) {
+      drawH = ch;
+      drawW = ch * imgAspect;
+      drawX = (cw - drawW) / 2;
+      drawY = 0;
+    } else {
+      drawW = cw;
+      drawH = cw / imgAspect;
+      drawX = 0;
+      drawY = (ch - drawH) / 2;
+    }
+
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.drawImage(img, drawX + crop.x, drawY + crop.y, drawW, drawH);
+
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(0, 0, cw, ch);
+
+    const cropW = cw * (crop.size / 100);
+    const cropH = Math.round(cropW * ASPECT_H / ASPECT_W);
+    const cx = (cw - cropW) / 2;
+    const cy = (ch - cropH) / 2;
+
+    ctx.clearRect(cx, cy, cropW, cropH);
+    ctx.drawImage(img, drawX + crop.x, drawY + crop.y, drawW, drawH);
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cx, cy, cropW, cropH);
+
+    const third_w = cropW / 3;
+    const third_h = cropH / 3;
+    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx + third_w * i, cy);
+      ctx.lineTo(cx + third_w * i, cy + cropH);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + third_h * i);
+      ctx.lineTo(cx + cropW, cy + third_h * i);
+      ctx.stroke();
+    }
+  }, [crop]);
+
+  useEffect(() => {
+    if (cropMode) drawCrop();
+  }, [crop, cropMode, drawCrop]);
+
+  const openCrop = (src: string) => {
+    setOriginalImage(src);
+    setCrop({ x: 0, y: 0, size: 100 });
+    setCropMode(true);
+    const img = new Image();
+    img.onload = () => {
+      imgRef.current = img;
+      setTimeout(drawCrop, 50);
+    };
+    img.src = src;
+  };
+
+  const applyCrop = () => {
+    const canvas = canvasRef.current;
+    const img = imgRef.current;
+    if (!canvas || !img) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const cw = container.clientWidth;
+    const ch = Math.round(cw * ASPECT_H / ASPECT_W);
+
+    const imgAspect = img.naturalWidth / img.naturalHeight;
+    const canvasAspect = cw / ch;
+
+    let drawW: number, drawH: number, drawX: number, drawY: number;
+    if (imgAspect > canvasAspect) {
+      drawH = ch;
+      drawW = ch * imgAspect;
+      drawX = (cw - drawW) / 2;
+      drawY = 0;
+    } else {
+      drawW = cw;
+      drawH = cw / imgAspect;
+      drawX = 0;
+      drawY = (ch - drawH) / 2;
+    }
+
+    const cropW = cw * (crop.size / 100);
+    const cropH = Math.round(cropW * ASPECT_H / ASPECT_W);
+    const cx = (cw - cropW) / 2;
+    const cy = (ch - cropH) / 2;
+
+    const scaleX = img.naturalWidth / drawW;
+    const scaleY = img.naturalHeight / drawH;
+
+    const srcX = (cx - drawX - crop.x) * scaleX;
+    const srcY = (cy - drawY - crop.y) * scaleY;
+    const srcW = cropW * scaleX;
+    const srcH = cropH * scaleY;
+
+    const outputW = 1280;
+    const outputH = 720;
+    const out = document.createElement("canvas");
+    out.width = outputW;
+    out.height = outputH;
+    const octx = out.getContext("2d")!;
+    octx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, outputW, outputH);
+
+    const croppedDataUrl = out.toDataURL("image/jpeg", 0.9);
+    setCropMode(false);
+    uploadBase64(croppedDataUrl, "image/jpeg");
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setDragging(true);
+    setDragStart({ x: e.clientX, y: e.clientY, cx: crop.x, cy: crop.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!dragging) return;
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    setCrop(c => ({ ...c, x: dragStart.cx + dx, y: dragStart.cy + dy }));
+  };
+
+  const handleMouseUp = () => setDragging(false);
+
+  const uploadBase64 = async (base64: string, mimeType: string) => {
+    setUploading(true);
+    setProgress(40);
+    try {
+      const res = await fetch(`${MEDIA_API}/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file: base64, file_type: mimeType, slug, media_type: type }),
+      });
+      setProgress(90);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Ошибка загрузки");
+      }
+      toast({ title: "Загружено!", description: `${cfg.label} добавлено` });
+      onUploaded();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Не удалось загрузить файл";
+      toast({ title: "Ошибка", description: msg, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      setProgress(0);
+    }
+  };
+
   const handleFile = async (file: File) => {
     if (file.size > cfg.maxMb * 1024 * 1024) {
       toast({ title: "Файл слишком большой", description: `Максимум ${cfg.maxMb} МБ`, variant: "destructive" });
       return;
     }
 
-    setUploading(true);
-    setProgress(10);
+    if (type === "photo") {
+      // For photos: read the file and open crop UI
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const src = e.target?.result as string;
+        openCrop(src);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // For videos: upload directly as before
+      setUploading(true);
+      setProgress(10);
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = e.target?.result as string;
-      setProgress(40);
-      try {
-        const res = await fetch(`${MEDIA_API}/`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ file: base64, file_type: file.type, slug, media_type: type }),
-        });
-        setProgress(90);
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || "Ошибка загрузки");
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target?.result as string;
+        setProgress(40);
+        try {
+          const res = await fetch(`${MEDIA_API}/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ file: base64, file_type: file.type, slug, media_type: type }),
+          });
+          setProgress(90);
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error || "Ошибка загрузки");
+          }
+          toast({ title: "Загружено!", description: `${cfg.label} добавлено` });
+          onUploaded();
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "Не удалось загрузить файл";
+          toast({ title: "Ошибка", description: msg, variant: "destructive" });
+        } finally {
+          setUploading(false);
+          setProgress(0);
         }
-        toast({ title: "Загружено!", description: `${cfg.label} добавлено` });
-        onUploaded();
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Не удалось загрузить файл";
-        toast({ title: "Ошибка", description: msg, variant: "destructive" });
-      } finally {
-        setUploading(false);
-        setProgress(0);
-      }
-    };
-    reader.readAsDataURL(file);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -113,6 +316,54 @@ function UploadZone({ type, slug, onUploaded, disabled }: {
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
   };
+
+  // Crop UI — shown inline inside the zone when cropping a photo
+  if (type === "photo" && cropMode && originalImage) {
+    return (
+      <div className="border-2 border-dashed border-blue-300 rounded-xl p-3 space-y-3 bg-blue-50/30">
+        <p className="text-xs text-gray-500">Перетащите изображение, чтобы выбрать нужный фрагмент (16:9)</p>
+        <div
+          ref={containerRef}
+          className="w-full cursor-move select-none rounded-lg overflow-hidden"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          <canvas ref={canvasRef} className="w-full rounded-lg" style={{ display: "block" }} />
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs text-gray-400">Масштаб кадрирования</p>
+          <input
+            type="range"
+            min={30}
+            max={100}
+            value={crop.size}
+            onChange={e => setCrop(c => ({ ...c, size: Number(e.target.value) }))}
+            className="w-full"
+          />
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={applyCrop}
+            disabled={uploading}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <Icon name="Check" size={14} />
+            {uploading ? "Загрузка..." : "Применить"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setCropMode(false); setOriginalImage(null); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-300 hover:bg-gray-100 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+          >
+            Отмена
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
