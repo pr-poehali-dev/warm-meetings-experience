@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { organizerApi, OrgEvent, OrgParticipant, DashboardData } from "@/lib/organizer-api";
 import OrgDashboard from "@/components/organizer/OrgDashboard";
 import OrgEventsList from "@/components/organizer/OrgEventsList";
-import OrgEventForm from "@/components/organizer/OrgEventForm";
+import AdminEventForm from "@/components/admin/AdminEventForm";
 import OrgParticipants from "@/components/organizer/OrgParticipants";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
@@ -26,6 +26,7 @@ export default function OrganizerCabinet() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [formData, setFormData] = useState<OrgEvent>({} as OrgEvent);
 
   const loadDashboard = useCallback(async () => {
     setDashLoading(true);
@@ -79,13 +80,27 @@ export default function OrganizerCabinet() {
     if (view === "events") loadEvents();
   }, [view, loadEvents]);
 
+  const emptyForm = (): OrgEvent => ({
+    id: 0, title: "", short_description: "", full_description: "", description: "",
+    event_date: "", start_time: "19:00", end_time: "23:00",
+    event_type: "знакомство", event_type_icon: "Users",
+    bath_name: "", bath_address: "",
+    price: "", price_amount: 0, price_label: "",
+    total_spots: 10, spots_left: 10, occupancy: "low",
+    image_url: "", is_visible: false, featured: false,
+    program: [], rules: [], slug: "", organizer_id: 0,
+    signups_count: 0, paid_count: 0, created_at: "",
+  });
+
   const handleCreateEvent = () => {
     setSelectedEvent(null);
+    setFormData(emptyForm());
     setView("create");
   };
 
   const handleEditEvent = (event: OrgEvent) => {
     setSelectedEvent(event);
+    setFormData({ ...emptyForm(), ...event });
     setView("edit");
   };
 
@@ -118,13 +133,15 @@ export default function OrganizerCabinet() {
   const handleDuplicateEvent = (event: OrgEvent) => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    setSelectedEvent({
-      ...event,
+    const dup = {
+      ...emptyForm(), ...event,
       id: 0,
       event_date: tomorrow.toISOString().split("T")[0],
       is_visible: false,
       spots_left: event.total_spots,
-    } as OrgEvent);
+    };
+    setSelectedEvent(null);
+    setFormData(dup);
     setView("create");
     toast({ title: "Событие скопировано — измените дату и сохраните" });
   };
@@ -238,11 +255,15 @@ export default function OrganizerCabinet() {
         )}
 
         {(view === "create" || view === "edit") && (
-          <OrgEventForm
-            initial={selectedEvent && view === "edit" ? selectedEvent : (selectedEvent && view === "create" ? selectedEvent : undefined)}
-            onSave={handleSaveEvent}
-            onCancel={() => setView(events.length ? "events" : "dashboard")}
+          <AdminEventForm
+            formData={formData}
             loading={formLoading}
+            onFormChange={(data) => setFormData(data as OrgEvent)}
+            onSubmit={async (e, _saveAndNew) => {
+              e.preventDefault();
+              await handleSaveEvent(formData);
+            }}
+            onCancel={() => setView(events.length ? "events" : "dashboard")}
           />
         )}
 
