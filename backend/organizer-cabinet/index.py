@@ -13,7 +13,7 @@ def cors_headers():
     return {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, X-Authorization',
+        'Access-Control-Allow-Headers': 'Content-Type, X-Authorization, X-Session-Token',
         'Content-Type': 'application/json'
     }
 
