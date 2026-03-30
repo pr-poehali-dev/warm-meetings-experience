@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAccount } from "@/hooks/useAccount";
 import { rolesApi } from "@/lib/roles-api";
@@ -14,12 +15,15 @@ import MyCalendar from "@/components/account/MyCalendar";
 type Tab = "main" | "articles" | "calendar";
 
 export default function Account() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("main");
   const [isParmaster, setIsParmaster] = useState(false);
+  const [isOrganizer, setIsOrganizer] = useState(false);
 
   useEffect(() => {
     rolesApi.getMyRoles().then(({ roles }) => {
       setIsParmaster(roles.some((r) => r.slug === "parmaster" && r.status === "active"));
+      setIsOrganizer(roles.some((r) => ["organizer", "admin"].includes(r.slug) && r.status === "active"));
     }).catch(() => {});
   }, []);
 
@@ -86,6 +90,15 @@ export default function Account() {
             >
               <Icon name="Calendar" size={14} />
               Календарь
+            </button>
+          )}
+          {isOrganizer && (
+            <button
+              onClick={() => navigate("/organizer-cabinet")}
+              className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <Icon name="LayoutDashboard" size={14} />
+              Кабинет организатора
             </button>
           )}
         </div>

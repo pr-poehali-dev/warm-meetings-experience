@@ -29,6 +29,7 @@ import BathDetail from "./pages/BathDetail";
 import Masters from "./pages/Masters";
 import MasterDetail from "./pages/MasterDetail";
 import About from "./pages/About";
+import OrganizerCabinet from "./pages/OrganizerCabinet";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const AppContent = () => {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/organizer-cabinet" element={<OrganizerCabinet />} />
         <Route path="/principles" element={<Principles />} />
         <Route path="/about" element={<About />} />
         <Route path="/organizer" element={<Organizer />} />
