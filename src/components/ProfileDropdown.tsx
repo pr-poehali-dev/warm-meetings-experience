@@ -15,7 +15,7 @@ const CABINET_ITEMS: MenuItem[] = [
   { label: "Мой профиль", to: "/account", icon: "User" },
   { label: "Кабинет участника", to: "/account", icon: "Users", roleSlug: "member" },
   { label: "Кабинет мастера", to: "/account", icon: "Sparkles", roleSlug: "parmaster" },
-  { label: "Кабинет организатора", to: "/organizer", icon: "Calendar", roleSlug: "organizer" },
+  { label: "Кабинет организатора", to: "/organizer-cabinet", icon: "Calendar", roleSlug: "organizer" },
   { label: "Кабинет партнёра", to: "/account", icon: "Home", roleSlug: "partner" },
 ];
 
