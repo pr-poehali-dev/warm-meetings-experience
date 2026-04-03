@@ -108,8 +108,10 @@ const AdminEventForm = ({
                   id="title"
                   value={formData.title}
                   onChange={(e) => onFormChange({ ...formData, title: e.target.value })}
+                  maxLength={255}
                   required
                 />
+                <p className="text-xs text-muted-foreground mt-1">{(formData.title || '').length}/255</p>
               </div>
 
               <div>
@@ -221,6 +223,7 @@ const AdminEventForm = ({
                           placeholder="Например: Мастер-класс"
                           value={customTypeName}
                           onChange={(e) => setCustomTypeName(e.target.value)}
+                          maxLength={100}
                         />
                       </div>
                       <div>
@@ -285,6 +288,7 @@ const AdminEventForm = ({
                     onChange={(e) =>
                       onFormChange({ ...formData, price: e.target.value })
                     }
+                    maxLength={100}
                   />
                 </div>
               </div>
@@ -297,6 +301,7 @@ const AdminEventForm = ({
                     placeholder="Например: Высота 30"
                     value={formData.bath_name || ''}
                     onChange={(e) => onFormChange({ ...formData, bath_name: e.target.value })}
+                    maxLength={255}
                   />
                 </div>
                 <div>
@@ -306,6 +311,7 @@ const AdminEventForm = ({
                     placeholder="Москва, ул. ..."
                     value={formData.bath_address || ''}
                     onChange={(e) => onFormChange({ ...formData, bath_address: e.target.value })}
+                    maxLength={500}
                   />
                 </div>
               </div>
@@ -327,7 +333,9 @@ const AdminEventForm = ({
                     placeholder="от 5 000 ₽"
                     value={formData.price_label || ''}
                     onChange={(e) => onFormChange({ ...formData, price_label: e.target.value })}
+                    maxLength={100}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">макс. 100 символов</p>
                 </div>
                 <div>
                   <Label htmlFor="total_spots">Кол-во мест</Label>

@@ -224,7 +224,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             result = re.sub(r'[^a-z0-9-]', '', result)
             return re.sub(r'-+', '-', result).strip('-')
 
-        slug = slugify(body.get('title', ''))
+        slug = slugify(body.get('title', ''))[:200]
         base_slug = slug
         counter = 1
         while True:
@@ -246,26 +246,36 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         program_sql = "ARRAY[" + ",".join(f"'{p.replace(chr(39), chr(39)*2)}'" for p in program) + "]::text[]" if program else "ARRAY[]::text[]"
         rules_sql = "ARRAY[" + ",".join(f"'{r.replace(chr(39), chr(39)*2)}'" for r in rules) + "]::text[]" if rules else "ARRAY[]::text[]"
 
-        cur.execute(f"""
-            INSERT INTO {schema}.events (
-                title, slug, short_description, full_description, description,
-                event_date, start_time, end_time,
-                event_type, event_type_icon, occupancy,
-                bath_name, bath_address, image_url,
-                price, price_amount, price_label,
-                total_spots, spots_left, featured, is_visible,
-                program, rules, organizer_id
-            ) VALUES (
-                '{title}', '{slug}', '{short_desc}', '{full_desc}', '{description}',
-                '{body.get('event_date')}', '{body.get('start_time', '19:00')}', '{body.get('end_time', '23:00')}',
-                '{body.get('event_type', 'знакомство')}', '{body.get('event_type_icon', 'Users')}', '{body.get('occupancy', 'low')}',
-                '{bath_name}', '{bath_address}', '{body.get('image_url', '')}',
-                '{price_label}', {body.get('price_amount', 0)}, '{price_label}',
-                {body.get('total_spots', 10)}, {body.get('spots_left', body.get('total_spots', 10))},
-                {body.get('featured', False)}, {body.get('is_visible', False)},
-                {program_sql}, {rules_sql}, {user_id}
-            ) RETURNING *
-        """)
+        try:
+            cur.execute(f"""
+                INSERT INTO {schema}.events (
+                    title, slug, short_description, full_description, description,
+                    event_date, start_time, end_time,
+                    event_type, event_type_icon, occupancy,
+                    bath_name, bath_address, image_url,
+                    price, price_amount, price_label,
+                    total_spots, spots_left, featured, is_visible,
+                    program, rules, organizer_id
+                ) VALUES (
+                    '{title}', '{slug}', '{short_desc}', '{full_desc}', '{description}',
+                    '{body.get('event_date')}', '{body.get('start_time', '19:00')}', '{body.get('end_time', '23:00')}',
+                    '{body.get('event_type', 'знакомство')}', '{body.get('event_type_icon', 'Users')}', '{body.get('occupancy', 'low')}',
+                    '{bath_name}', '{bath_address}', '{body.get('image_url', '')}',
+                    '{price_label}', {body.get('price_amount', 0)}, '{price_label}',
+                    {body.get('total_spots', 10)}, {body.get('spots_left', body.get('total_spots', 10))},
+                    {body.get('featured', False)}, {body.get('is_visible', False)},
+                    {program_sql}, {rules_sql}, {user_id}
+                ) RETURNING *
+            """)
+        except Exception as e:
+            conn.rollback()
+            conn.close()
+            err = str(e)
+            if 'value too long' in err:
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+                    'error': 'Одно из текстовых полей слишком длинное. Проверьте: название (макс. 255), тип мероприятия (макс. 100), цена/цена-текст (макс. 100), название бани (макс. 255), адрес (макс. 500).'
+                })}
+            return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': err})}
         row = cur.fetchone()
         conn.commit()
         conn.close()
@@ -306,7 +316,17 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             sets.append(f"rules = {'ARRAY[' + ','.join(chr(39)+x.replace(chr(39),chr(39)*2)+chr(39) for x in r) + ']::text[]' if r else 'ARRAY[]::text[]'}")
         sets.append("updated_at = CURRENT_TIMESTAMP")
 
-        cur.execute(f"UPDATE {schema}.events SET {', '.join(sets)} WHERE id = {event_id} RETURNING *")
+        try:
+            cur.execute(f"UPDATE {schema}.events SET {', '.join(sets)} WHERE id = {event_id} RETURNING *")
+        except Exception as e:
+            conn.rollback()
+            conn.close()
+            err = str(e)
+            if 'value too long' in err:
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+                    'error': 'Одно из текстовых полей слишком длинное. Проверьте: название (макс. 255), тип мероприятия (макс. 100), цена/цена-текст (макс. 100), название бани (макс. 255), адрес (макс. 500).'
+                })}
+            return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': err})}
         row = cur.fetchone()
         conn.commit()
         conn.close()

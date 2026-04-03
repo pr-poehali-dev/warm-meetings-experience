@@ -125,8 +125,9 @@ export default function OrganizerCabinet() {
       await loadDashboard();
       setView("events");
       await loadEvents();
-    } catch {
-      toast({ title: "Ошибка сохранения", variant: "destructive" });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Ошибка сохранения";
+      toast({ title: "Ошибка сохранения", description: msg, variant: "destructive" });
     } finally {
       setFormLoading(false);
     }
