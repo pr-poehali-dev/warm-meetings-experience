@@ -2,6 +2,15 @@ import { authenticatedRequest } from "@/lib/http";
 
 const BASE = "https://functions.poehali.dev/730d60f4-a9cf-4f56-90d9-f48caaa9007d";
 
+export interface PricingTier {
+  id?: number;
+  event_id?: number;
+  label: string;
+  price_amount: number;
+  valid_until: string | null;
+  sort_order?: number;
+}
+
 export interface OrgEvent {
   id: number;
   title: string;
@@ -28,6 +37,8 @@ export interface OrgEvent {
   program: string[];
   rules: string[];
   pricing_lines: string[];
+  pricing_type: 'fixed' | 'dynamic';
+  pricing_tiers?: PricingTier[];
   featured: boolean;
   occupancy: string;
   created_at: string;
@@ -101,5 +112,15 @@ export const organizerApi = {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, ...data }),
+    }),
+
+  getPricingTiers: (eventId: number): Promise<PricingTier[]> =>
+    authenticatedRequest(`${BASE}/?resource=pricing_tiers&event_id=${eventId}`),
+
+  savePricingTiers: (eventId: number, tiers: PricingTier[]): Promise<PricingTier[]> =>
+    authenticatedRequest(`${BASE}/?resource=pricing_tiers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_id: eventId, tiers }),
     }),
 };

@@ -30,6 +30,8 @@ export interface EventFromAPI {
   program: string[];
   rules: string[];
   pricing_lines: string[];
+  pricing_type?: 'fixed' | 'dynamic';
+  pricing_tiers?: import('@/lib/organizer-api').PricingTier[];
   created_at: string;
   updated_at: string;
 }

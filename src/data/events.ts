@@ -19,6 +19,8 @@ export interface EventItem {
   program: string[];
   rules: string[];
   pricingLines: string[];
+  pricingType?: 'fixed' | 'dynamic';
+  pricingTiers?: import('@/lib/organizer-api').PricingTier[];
   price: number;
   priceLabel: string;
   totalSpots: number;
@@ -64,6 +66,8 @@ export function mapApiEvent(e: EventFromAPI): EventItem {
     program: e.program || [],
     rules: e.rules || [],
     pricingLines: e.pricing_lines || [],
+    pricingType: e.pricing_type || 'fixed',
+    pricingTiers: e.pricing_tiers || [],
     price: e.price_amount || 0,
     priceLabel: e.price_label || e.price || "",
     totalSpots: e.total_spots || 0,

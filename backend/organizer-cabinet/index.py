@@ -80,6 +80,8 @@ def handler(event, context):
         return handle_participants(event, method, params, cur, conn, user_id, schema, headers)
     elif resource == 'profile':
         return handle_profile(event, method, cur, conn, user_id, schema, headers)
+    elif resource == 'pricing_tiers':
+        return handle_pricing_tiers(event, method, params, cur, conn, user_id, schema, headers)
 
     conn.close()
     return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Resource not found'})}
@@ -175,10 +177,15 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                 GROUP BY e.id
             """)
             row = cur.fetchone()
-            conn.close()
             if not row:
+                conn.close()
                 return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Not found'})}
-            return {'statusCode': 200, 'headers': headers, 'body': json.dumps(dict(row), default=str)}
+            cur.execute(f"SELECT * FROM event_pricing_tiers WHERE event_id = {event_id} ORDER BY sort_order, valid_until NULLS LAST")
+            tiers = [dict(t) for t in cur.fetchall()]
+            result = dict(row)
+            result['pricing_tiers'] = tiers
+            conn.close()
+            return {'statusCode': 200, 'headers': headers, 'body': json.dumps(result, default=str)}
 
         where_parts = [f"({owner_filter})"]
         if status_filter == 'active':
@@ -248,6 +255,10 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         rules_sql = "ARRAY[" + ",".join(f"'{r.replace(chr(39), chr(39)*2)}'" for r in rules) + "]::text[]" if rules else "ARRAY[]::text[]"
         pricing_sql = "ARRAY[" + ",".join(f"'{x.replace(chr(39), chr(39)*2)}'" for x in pricing_lines) + "]::text[]" if pricing_lines else "ARRAY[]::text[]"
 
+        pricing_type = body.get('pricing_type', 'fixed')
+        if pricing_type not in ('fixed', 'dynamic'):
+            pricing_type = 'fixed'
+
         try:
             cur.execute(f"""
                 INSERT INTO {schema}.events (
@@ -257,7 +268,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                     bath_name, bath_address, image_url,
                     price, price_amount, price_label,
                     total_spots, spots_left, featured, is_visible,
-                    program, rules, pricing_lines, organizer_id
+                    program, rules, pricing_lines, pricing_type, organizer_id
                 ) VALUES (
                     '{title}', '{slug}', '{short_desc}', '{full_desc}', '{description}',
                     '{body.get('event_date')}', '{body.get('start_time', '19:00')}', '{body.get('end_time', '23:00')}',
@@ -266,7 +277,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                     '{price_label}', {body.get('price_amount', 0)}, '{price_label}',
                     {body.get('total_spots', 10)}, {body.get('spots_left', body.get('total_spots', 10))},
                     {body.get('featured', False)}, {body.get('is_visible', False)},
-                    {program_sql}, {rules_sql}, {pricing_sql}, {user_id}
+                    {program_sql}, {rules_sql}, {pricing_sql}, '{pricing_type}', {user_id}
                 ) RETURNING *
             """)
         except Exception as e:
@@ -319,6 +330,8 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         if 'pricing_lines' in body:
             pl = [x for x in body['pricing_lines'] if x.strip()]
             sets.append(f"pricing_lines = {'ARRAY[' + ','.join(chr(39)+x.replace(chr(39),chr(39)*2)+chr(39) for x in pl) + ']::text[]' if pl else 'ARRAY[]::text[]'}")
+        if 'pricing_type' in body and body['pricing_type'] in ('fixed', 'dynamic'):
+            sets.append(f"pricing_type = '{body['pricing_type']}'")
         sets.append("updated_at = CURRENT_TIMESTAMP")
 
         try:
@@ -415,6 +428,56 @@ def handle_participants(event, method, params, cur, conn, user_id, schema, heade
         conn.commit()
         conn.close()
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps(dict(row) if row else {}, default=str)}
+
+    conn.close()
+    return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+
+
+def handle_pricing_tiers(event, method, params, cur, conn, user_id, schema, headers):
+    """Управление ступенями динамического ценообразования"""
+    admin = is_admin(cur, user_id, schema)
+
+    if method == 'GET':
+        event_id = params.get('event_id')
+        if not event_id:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'event_id required'})}
+        cur.execute(f"SELECT organizer_id FROM {schema}.events WHERE id = {event_id}")
+        ev = cur.fetchone()
+        if not ev or (not admin and ev['organizer_id'] != user_id):
+            conn.close()
+            return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Forbidden'})}
+        cur.execute(f"SELECT * FROM event_pricing_tiers WHERE event_id = {event_id} ORDER BY sort_order, valid_until NULLS LAST")
+        tiers = [dict(t) for t in cur.fetchall()]
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps(tiers, default=str)}
+
+    if method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        event_id = body.get('event_id')
+        cur.execute(f"SELECT organizer_id FROM {schema}.events WHERE id = {event_id}")
+        ev = cur.fetchone()
+        if not ev or (not admin and ev['organizer_id'] != user_id):
+            conn.close()
+            return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Forbidden'})}
+
+        tiers = body.get('tiers', [])
+        cur.execute(f"DELETE FROM event_pricing_tiers WHERE event_id = {event_id}")
+        for i, tier in enumerate(tiers):
+            label = str(tier.get('label', '')).replace("'", "''")
+            price = int(tier.get('price_amount', 0))
+            valid_until = tier.get('valid_until')
+            valid_until_sql = f"'{valid_until}'" if valid_until else 'NULL'
+            cur.execute(f"""
+                INSERT INTO event_pricing_tiers (event_id, label, price_amount, valid_until, sort_order)
+                VALUES ({event_id}, '{label}', {price}, {valid_until_sql}, {i})
+            """)
+        conn.commit()
+
+        cur.execute(f"SELECT * FROM event_pricing_tiers WHERE event_id = {event_id} ORDER BY sort_order")
+        result = [dict(t) for t in cur.fetchall()]
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps(result, default=str)}
 
     conn.close()
     return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}

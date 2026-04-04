@@ -90,7 +90,7 @@ export default function OrganizerCabinet() {
     price: "", price_amount: 0, price_label: "",
     total_spots: 10, spots_left: 10, occupancy: "low",
     image_url: "", is_visible: false, featured: false,
-    program: [], rules: [], pricing_lines: [], slug: "", organizer_id: 0,
+    program: [], rules: [], pricing_lines: [], pricing_type: 'fixed', pricing_tiers: [], slug: "", organizer_id: 0,
     signups_count: 0, paid_count: 0, created_at: "",
   });
 
@@ -100,9 +100,13 @@ export default function OrganizerCabinet() {
     setView("create");
   };
 
-  const handleEditEvent = (event: OrgEvent) => {
+  const handleEditEvent = async (event: OrgEvent) => {
     setSelectedEvent(event);
-    setFormData({ ...emptyForm(), ...event });
+    let tiers = event.pricing_tiers || [];
+    if (event.pricing_type === 'dynamic' && event.id && !tiers.length) {
+      try { tiers = await organizerApi.getPricingTiers(event.id); } catch (_) { /* ignore */ }
+    }
+    setFormData({ ...emptyForm(), ...event, pricing_tiers: tiers });
     setView("edit");
   };
 
@@ -115,12 +119,16 @@ export default function OrganizerCabinet() {
   const handleSaveEvent = async (data: Partial<OrgEvent>) => {
     setFormLoading(true);
     try {
+      let savedEvent: OrgEvent;
       if (selectedEvent?.id) {
-        await organizerApi.updateEvent({ ...data, id: selectedEvent.id } as OrgEvent & { id: number });
+        savedEvent = await organizerApi.updateEvent({ ...data, id: selectedEvent.id } as OrgEvent & { id: number });
         toast({ title: "Событие обновлено" });
       } else {
-        await organizerApi.createEvent(data);
+        savedEvent = await organizerApi.createEvent(data);
         toast({ title: data.is_visible ? "Событие опубликовано" : "Черновик сохранён" });
+      }
+      if (data.pricing_type === 'dynamic' && data.pricing_tiers) {
+        await organizerApi.savePricingTiers(savedEvent.id, data.pricing_tiers);
       }
       await loadDashboard();
       setView("events");

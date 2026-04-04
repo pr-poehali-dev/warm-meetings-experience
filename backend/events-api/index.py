@@ -73,10 +73,15 @@ def handle_events(event, method, params, schema, headers):
                     f"SELECT * FROM {schema}.events WHERE slug = '{slug}' AND is_visible = true"
                 )
             row = cur.fetchone()
-            conn.close()
             if not row:
+                conn.close()
                 return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Not found'})}
-            return {'statusCode': 200, 'headers': headers, 'body': json.dumps(serialize_event(row), default=str)}
+            event_data = serialize_event(row)
+            if row.get('pricing_type') == 'dynamic':
+                cur.execute(f"SELECT * FROM event_pricing_tiers WHERE event_id = {row['id']} ORDER BY sort_order, valid_until NULLS LAST")
+                event_data['pricing_tiers'] = [dict(t) for t in cur.fetchall()]
+            conn.close()
+            return {'statusCode': 200, 'headers': headers, 'body': json.dumps(event_data, default=str)}
 
         only_visible = params.get('visible', 'true')
         where = f"WHERE is_visible = true" if only_visible == 'true' else ""
