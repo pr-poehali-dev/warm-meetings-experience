@@ -243,8 +243,10 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         price_label = (body.get('price_label') or body.get('price') or '').replace("'", "''")
         program = body.get('program', [])
         rules = body.get('rules', [])
+        pricing_lines = [x for x in body.get('pricing_lines', []) if x.strip()]
         program_sql = "ARRAY[" + ",".join(f"'{p.replace(chr(39), chr(39)*2)}'" for p in program) + "]::text[]" if program else "ARRAY[]::text[]"
         rules_sql = "ARRAY[" + ",".join(f"'{r.replace(chr(39), chr(39)*2)}'" for r in rules) + "]::text[]" if rules else "ARRAY[]::text[]"
+        pricing_sql = "ARRAY[" + ",".join(f"'{x.replace(chr(39), chr(39)*2)}'" for x in pricing_lines) + "]::text[]" if pricing_lines else "ARRAY[]::text[]"
 
         try:
             cur.execute(f"""
@@ -255,7 +257,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                     bath_name, bath_address, image_url,
                     price, price_amount, price_label,
                     total_spots, spots_left, featured, is_visible,
-                    program, rules, organizer_id
+                    program, rules, pricing_lines, organizer_id
                 ) VALUES (
                     '{title}', '{slug}', '{short_desc}', '{full_desc}', '{description}',
                     '{body.get('event_date')}', '{body.get('start_time', '19:00')}', '{body.get('end_time', '23:00')}',
@@ -264,7 +266,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                     '{price_label}', {body.get('price_amount', 0)}, '{price_label}',
                     {body.get('total_spots', 10)}, {body.get('spots_left', body.get('total_spots', 10))},
                     {body.get('featured', False)}, {body.get('is_visible', False)},
-                    {program_sql}, {rules_sql}, {user_id}
+                    {program_sql}, {rules_sql}, {pricing_sql}, {user_id}
                 ) RETURNING *
             """)
         except Exception as e:
@@ -314,6 +316,9 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         if 'rules' in body:
             r = body['rules']
             sets.append(f"rules = {'ARRAY[' + ','.join(chr(39)+x.replace(chr(39),chr(39)*2)+chr(39) for x in r) + ']::text[]' if r else 'ARRAY[]::text[]'}")
+        if 'pricing_lines' in body:
+            pl = [x for x in body['pricing_lines'] if x.strip()]
+            sets.append(f"pricing_lines = {'ARRAY[' + ','.join(chr(39)+x.replace(chr(39),chr(39)*2)+chr(39) for x in pl) + ']::text[]' if pl else 'ARRAY[]::text[]'}")
         sets.append("updated_at = CURRENT_TIMESTAMP")
 
         try:

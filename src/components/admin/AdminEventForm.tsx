@@ -280,10 +280,10 @@ const AdminEventForm = ({
                 </div>
 
                 <div>
-                  <Label htmlFor="price">Стоимость</Label>
+                  <Label htmlFor="price">Стоимость (краткая)</Label>
                   <Input
                     id="price"
-                    placeholder="Например: 500₽, Бесплатно"
+                    placeholder="Например: от 500₽, Бесплатно"
                     value={formData.price}
                     onChange={(e) =>
                       onFormChange({ ...formData, price: e.target.value })
@@ -291,6 +291,18 @@ const AdminEventForm = ({
                     maxLength={100}
                   />
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="pricing_lines">Стоимость участия (подробно)</Label>
+                <Textarea
+                  id="pricing_lines"
+                  placeholder={"10 738 ₽ — раннее бронирование (до 31 марта)\n12 738 ₽ — плановое бронирование (с 1 по 7 апреля)\nДетям до 16 лет — скидка 50%"}
+                  value={(formData.pricing_lines || []).join('\n')}
+                  onChange={(e) => onFormChange({ ...formData, pricing_lines: e.target.value.split('\n') })}
+                  rows={6}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Каждый пункт с новой строки — будет показан со значком 🔹 на сайте</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -27,6 +27,7 @@ export interface OrgEvent {
   description: string;
   program: string[];
   rules: string[];
+  pricing_lines: string[];
   featured: boolean;
   occupancy: string;
   created_at: string;

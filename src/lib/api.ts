@@ -29,6 +29,7 @@ export interface EventFromAPI {
   is_visible: boolean;
   program: string[];
   rules: string[];
+  pricing_lines: string[];
   created_at: string;
   updated_at: string;
 }

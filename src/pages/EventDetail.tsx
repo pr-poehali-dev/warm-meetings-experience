@@ -157,8 +157,21 @@ export default function EventDetail() {
             <div className="lg:sticky lg:top-24 space-y-4">
               <Card className="border-0 shadow-sm">
                 <CardContent className="p-6">
-                  {event.priceLabel && (
+                  {event.priceLabel && !event.pricingLines?.length && (
                     <div className="text-3xl font-bold text-accent mb-1">{event.priceLabel}</div>
+                  )}
+                  {event.pricingLines && event.pricingLines.length > 0 && (
+                    <div className="mb-3">
+                      <div className="text-sm font-semibold text-foreground mb-2">СТОИМОСТЬ УЧАСТИЯ</div>
+                      <ul className="space-y-1.5">
+                        {event.pricingLines.map((line, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                            <span className="mt-0.5 flex-shrink-0">🔹</span>
+                            <span>{line}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                   {event.totalSpots > 0 && (
                     <div className={`inline-block text-xs px-2.5 py-1 rounded-full font-medium ${spotsColor} mb-4`}>

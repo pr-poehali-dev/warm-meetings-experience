@@ -18,6 +18,7 @@ export interface EventItem {
   fullDescription: string;
   program: string[];
   rules: string[];
+  pricingLines: string[];
   price: number;
   priceLabel: string;
   totalSpots: number;
@@ -62,6 +63,7 @@ export function mapApiEvent(e: EventFromAPI): EventItem {
     fullDescription: e.full_description || e.description || "",
     program: e.program || [],
     rules: e.rules || [],
+    pricingLines: e.pricing_lines || [],
     price: e.price_amount || 0,
     priceLabel: e.price_label || e.price || "",
     totalSpots: e.total_spots || 0,

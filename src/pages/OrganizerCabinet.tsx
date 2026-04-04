@@ -90,7 +90,7 @@ export default function OrganizerCabinet() {
     price: "", price_amount: 0, price_label: "",
     total_spots: 10, spots_left: 10, occupancy: "low",
     image_url: "", is_visible: false, featured: false,
-    program: [], rules: [], slug: "", organizer_id: 0,
+    program: [], rules: [], pricing_lines: [], slug: "", organizer_id: 0,
     signups_count: 0, paid_count: 0, created_at: "",
   });
 
