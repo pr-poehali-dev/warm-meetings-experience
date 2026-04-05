@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import { OrgEvent } from "@/lib/organizer-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,14 @@ export default function OrgEventsList({
 }: Props) {
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
+  const { toast } = useToast();
+
+  const handleShare = (ev: OrgEvent) => {
+    const url = `${window.location.origin}/events/${ev.slug}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast({ title: "Ссылка скопирована", description: url });
+    });
+  };
 
   const now = new Date().toISOString().split("T")[0];
 
@@ -164,6 +173,10 @@ export default function OrgEventsList({
                       <Button size="sm" variant="outline" onClick={() => onManageParticipants(ev)} className="h-7 text-xs gap-1">
                         <Icon name="Users" size={12} />
                         Участники ({ev.signups_count})
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleShare(ev)} className="h-7 text-xs gap-1">
+                        <Icon name="Share2" size={12} />
+                        Поделиться
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => onDuplicateEvent(ev)} className="h-7 text-xs gap-1">
                         <Icon name="Copy" size={12} />

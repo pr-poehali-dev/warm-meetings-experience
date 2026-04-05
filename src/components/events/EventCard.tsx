@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { EventItem, getTypeColors } from "@/data/events";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
 
 interface EventCardProps {
   event: EventItem;
@@ -13,6 +14,16 @@ interface EventCardProps {
 
 export default function EventCard({ event, compact = false }: EventCardProps) {
   const typeColors = getTypeColors(event.type);
+  const { toast } = useToast();
+
+  const handleShare = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/events/${event.slug}`;
+    navigator.clipboard.writeText(url).then(() => {
+      toast({ title: "Ссылка скопирована" });
+    });
+  };
   const dateObj = parseISO(event.date);
   const spotsColor =
     event.spotsLeft === 0
@@ -123,9 +134,14 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
             {event.priceLabel && (
               <div className="text-lg font-semibold text-accent">{event.priceLabel}</div>
             )}
-            <Button size="sm" className="rounded-full ml-auto">
-              Подробнее
-            </Button>
+            <div className="flex items-center gap-2 ml-auto">
+              <Button size="sm" variant="ghost" onClick={handleShare} className="rounded-full w-8 h-8 p-0">
+                <Icon name="Share2" size={15} />
+              </Button>
+              <Button size="sm" className="rounded-full">
+                Подробнее
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
