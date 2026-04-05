@@ -398,9 +398,12 @@ def handle_participants(event, method, params, cur, conn, user_id, schema, heade
         email = (body.get('email') or '').replace("'", "''")
         telegram = (body.get('telegram') or '').replace("'", "''")
         status = body.get('status', 'confirmed')
+        payment_type = body.get('payment_type')
+        payment_amount = int(body.get('payment_amount', 0))
+        pt_sql = f"'{payment_type}'" if payment_type else 'NULL'
         cur.execute(f"""
-            INSERT INTO {schema}.event_signups (event_id, name, phone, email, telegram, status)
-            VALUES ({event_id}, '{name}', '{phone}', '{email}', '{telegram}', '{status}')
+            INSERT INTO {schema}.event_signups (event_id, name, phone, email, telegram, status, payment_type, payment_amount)
+            VALUES ({event_id}, '{name}', '{phone}', '{email}', '{telegram}', '{status}', {pt_sql}, {payment_amount})
             RETURNING *
         """)
         row = cur.fetchone()
@@ -420,6 +423,14 @@ def handle_participants(event, method, params, cur, conn, user_id, schema, heade
             sets.append(f"status = '{body['status']}'")
         if 'attended' in body:
             sets.append(f"attended = {bool(body['attended'])}")
+        if 'payment_type' in body:
+            pt = body['payment_type']
+            if pt:
+                sets.append(f"payment_type = '{pt}'")
+            else:
+                sets.append("payment_type = NULL")
+        if 'payment_amount' in body:
+            sets.append(f"payment_amount = {int(body['payment_amount'])}")
         if not sets:
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Nothing to update'})}

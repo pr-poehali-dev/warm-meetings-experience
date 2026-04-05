@@ -54,6 +54,8 @@ export interface OrgParticipant {
   status: string;
   comment: string;
   attended: boolean | null;
+  payment_type: string | null;
+  payment_amount: number;
   created_at: string;
 }
 
@@ -100,7 +102,7 @@ export const organizerApi = {
   getParticipants: (eventId: number): Promise<OrgParticipant[]> =>
     authenticatedRequest(`${BASE}/?resource=participants&event_id=${eventId}`),
 
-  addParticipant: (data: { event_id: number; name: string; phone: string; email?: string; telegram?: string; status?: string }): Promise<OrgParticipant> =>
+  addParticipant: (data: { event_id: number; name: string; phone: string; email?: string; telegram?: string; status?: string; payment_type?: string; payment_amount?: number }): Promise<OrgParticipant> =>
     authenticatedRequest(`${BASE}/?resource=participants`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
