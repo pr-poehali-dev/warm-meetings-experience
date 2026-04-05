@@ -230,7 +230,7 @@ export default function OrganizerCabinet() {
                   onClick={() => setView(v)}
                   className={`px-3 py-1.5 rounded-md text-sm transition-colors ${view === v || (view === "create" && v === "events") || (view === "edit" && v === "events") || (view === "participants" && v === "events") ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  {v === "dashboard" ? "Дашборд" : "События"}
+                  {v === "dashboard" ? "Дашборд" : "Встречи"}
                 </button>
               ))}
             </nav>
