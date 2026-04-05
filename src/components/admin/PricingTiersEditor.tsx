@@ -31,9 +31,21 @@ export default function PricingTiersEditor({ tiers, onChange }: Props) {
         <p className="text-sm text-muted-foreground">Добавьте хотя бы одну ступень цены</p>
       )}
       {tiers.map((tier, i) => (
-        <div key={i} className="grid grid-cols-[1fr_140px_150px_36px] gap-2 items-end">
+        <div key={i} className="border rounded-md p-3 space-y-2 bg-background">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Ступень {i + 1}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              onClick={() => remove(i)}
+            >
+              <Icon name="Trash2" size={15} />
+            </Button>
+          </div>
           <div>
-            {i === 0 && <Label className="text-xs mb-1 block">Название ступени</Label>}
+            <Label className="text-xs mb-1 block">Название ступени</Label>
             <Input
               placeholder="Раннее бронирование"
               value={tier.label}
@@ -41,33 +53,24 @@ export default function PricingTiersEditor({ tiers, onChange }: Props) {
               maxLength={200}
             />
           </div>
-          <div>
-            {i === 0 && <Label className="text-xs mb-1 block">Цена, ₽</Label>}
-            <Input
-              type="number"
-              placeholder="10000"
-              value={tier.price_amount || ""}
-              onChange={(e) => update(i, { price_amount: parseInt(e.target.value) || 0 })}
-            />
-          </div>
-          <div>
-            {i === 0 && <Label className="text-xs mb-1 block">Действует до</Label>}
-            <Input
-              type="date"
-              value={tier.valid_until || ""}
-              onChange={(e) => update(i, { valid_until: e.target.value || null })}
-            />
-          </div>
-          <div className={i === 0 ? "mt-5" : ""}>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-destructive"
-              onClick={() => remove(i)}
-            >
-              <Icon name="Trash2" size={16} />
-            </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-xs mb-1 block">Цена, ₽</Label>
+              <Input
+                type="number"
+                placeholder="10000"
+                value={tier.price_amount || ""}
+                onChange={(e) => update(i, { price_amount: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">Действует до</Label>
+              <Input
+                type="date"
+                value={tier.valid_until || ""}
+                onChange={(e) => update(i, { valid_until: e.target.value || null })}
+              />
+            </div>
           </div>
         </div>
       ))}
