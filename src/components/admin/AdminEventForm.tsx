@@ -49,7 +49,7 @@ interface AdminEventFormProps {
   onCancel: () => void;
 }
 
-const eventTypes = [
+const BASE_EVENT_TYPES = [
   { value: 'знакомство', label: 'Знакомство', icon: 'Users' },
   { value: 'свидание', label: 'Свидание', icon: 'Heart' },
   { value: 'обучение', label: 'Обучение', icon: 'GraduationCap' },
@@ -59,6 +59,20 @@ const eventTypes = [
   { value: 'другое', label: 'Другое', icon: 'Circle' },
 ];
 
+const STORAGE_KEY = 'org_custom_event_types';
+
+function loadCustomTypes(): { value: string; label: string; icon: string }[] {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomTypes(types: { value: string; label: string; icon: string }[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(types));
+}
+
 const AdminEventForm = ({
   formData,
   loading,
@@ -67,11 +81,16 @@ const AdminEventForm = ({
   onCancel,
 }: AdminEventFormProps) => {
   const [customTypeName, setCustomTypeName] = useState('');
-  const [customTypeIcon, setCustomTypeIcon] = useState('');
+  const [customTypeIcon, setCustomTypeIcon] = useState('Circle');
   const [showCustomFields, setShowCustomFields] = useState(false);
+  const [customTypes, setCustomTypes] = useState<{ value: string; label: string; icon: string }[]>(loadCustomTypes);
+
+  const eventTypes = [...BASE_EVENT_TYPES, ...customTypes];
 
   const handleTypeChange = (value: string) => {
     if (value === 'custom') {
+      setCustomTypeName('');
+      setCustomTypeIcon('Circle');
       setShowCustomFields(true);
       return;
     }
@@ -87,13 +106,28 @@ const AdminEventForm = ({
   };
 
   const handleCustomTypeApply = () => {
-    if (customTypeName.trim()) {
-      onFormChange({ 
-        ...formData, 
-        event_type: customTypeName,
-        event_type_icon: customTypeIcon || 'Circle'
-      });
-      setShowCustomFields(false);
+    if (!customTypeName.trim()) return;
+    const newType = { value: customTypeName.trim(), label: customTypeName.trim(), icon: customTypeIcon || 'Circle' };
+    const exists = eventTypes.find(t => t.value === newType.value);
+    if (!exists) {
+      const updated = [...customTypes, newType];
+      setCustomTypes(updated);
+      saveCustomTypes(updated);
+    }
+    onFormChange({ 
+      ...formData, 
+      event_type: newType.value,
+      event_type_icon: newType.icon
+    });
+    setShowCustomFields(false);
+  };
+
+  const handleDeleteCustomType = (value: string) => {
+    const updated = customTypes.filter(t => t.value !== value);
+    setCustomTypes(updated);
+    saveCustomTypes(updated);
+    if (formData.event_type === value) {
+      onFormChange({ ...formData, event_type: 'другое', event_type_icon: 'Circle' });
     }
   };
 
@@ -199,7 +233,7 @@ const AdminEventForm = ({
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {eventTypes.map((type) => (
+                    {BASE_EVENT_TYPES.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         <div className="flex items-center gap-2">
                           <Icon name={type.icon} size={18} />
@@ -207,10 +241,33 @@ const AdminEventForm = ({
                         </div>
                       </SelectItem>
                     ))}
-                    <SelectItem value="custom">
-                      <div className="flex items-center gap-2">
+                    {customTypes.length > 0 && (
+                      <>
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground font-medium border-t mt-1 pt-2">Мои типы</div>
+                        {customTypes.map((type) => (
+                          <div key={type.value} className="flex items-center pr-1">
+                            <SelectItem value={type.value} className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <Icon name={type.icon} size={18} />
+                                <span>{type.label}</span>
+                              </div>
+                            </SelectItem>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteCustomType(type.value); }}
+                              className="ml-1 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex-shrink-0"
+                              title="Удалить тип"
+                            >
+                              <Icon name="X" size={13} />
+                            </button>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    <SelectItem value="custom" className="border-t mt-1">
+                      <div className="flex items-center gap-2 text-primary">
                         <Icon name="Plus" size={18} />
-                        <span>Свой тип...</span>
+                        <span>Добавить свой тип...</span>
                       </div>
                     </SelectItem>
                   </SelectContent>
