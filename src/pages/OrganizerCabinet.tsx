@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { organizerApi, OrgEvent, OrgParticipant, DashboardData } from "@/lib/organizer-api";
@@ -28,6 +28,8 @@ export default function OrganizerCabinet() {
   const [formLoading, setFormLoading] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
   const [formData, setFormData] = useState<OrgEvent>({} as OrgEvent);
+  const formDataRef = React.useRef(formData);
+  formDataRef.current = formData;
   const [mobileTab, setMobileTab] = useState<"form" | "preview">("form");
 
   const loadDashboard = useCallback(async () => {
@@ -296,9 +298,9 @@ export default function OrganizerCabinet() {
                   formData={formData}
                   loading={formLoading}
                   onFormChange={(data) => setFormData(data as OrgEvent)}
-                  onSubmit={async (e, _saveAndNew) => {
+                  onSubmit={async (e) => {
                     e.preventDefault();
-                    await handleSaveEvent(formData);
+                    await handleSaveEvent(formDataRef.current);
                   }}
                   onCancel={() => setView(events.length ? "events" : "dashboard")}
                 />

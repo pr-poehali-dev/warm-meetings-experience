@@ -7,9 +7,6 @@ interface Event {
   title: string;
   short_description: string;
   full_description: string;
-  event_date: string;
-  start_time: string;
-  end_time: string;
   [key: string]: unknown;
 }
 
@@ -20,69 +17,54 @@ interface Props {
 
 export default function EventFormBasicFields({ formData, onFormChange }: Props) {
   return (
-    <>
+    <div className="space-y-4">
       <div>
         <Label htmlFor="title">Название мероприятия *</Label>
         <Input
           id="title"
+          placeholder="Например: Вечер знакомств в бане"
           value={formData.title}
           onChange={(e) => onFormChange({ ...formData, title: e.target.value })}
           maxLength={255}
           required
         />
-        <p className="text-xs text-muted-foreground mt-1">{(formData.title || '').length}/255</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          {(formData.title || "").length}/255
+        </p>
       </div>
 
       <div>
-        <Label htmlFor="short_description">Краткое описание (до 200 символов)</Label>
+        <Label htmlFor="short_description">Краткое описание</Label>
         <Input
           id="short_description"
+          placeholder="Привлеките внимание одной фразой"
           value={formData.short_description}
-          onChange={(e) => onFormChange({ ...formData, short_description: e.target.value })}
+          onChange={(e) =>
+            onFormChange({ ...formData, short_description: e.target.value })
+          }
           maxLength={200}
         />
+        <p className="text-xs text-muted-foreground mt-1">
+          Привлеките внимание кратким описанием — его увидят в карточке.{" "}
+          {(formData.short_description || "").length}/200
+        </p>
       </div>
 
       <div>
         <Label htmlFor="full_description">Полное описание</Label>
         <Textarea
           id="full_description"
+          placeholder="Расскажите, что ждёт участников, какая будет атмосфера..."
           value={formData.full_description}
-          onChange={(e) => onFormChange({ ...formData, full_description: e.target.value })}
-          rows={6}
+          onChange={(e) =>
+            onFormChange({ ...formData, full_description: e.target.value })
+          }
+          rows={5}
         />
+        <p className="text-xs text-muted-foreground mt-1">
+          Расскажите подробнее — что ждёт участников, какая атмосфера
+        </p>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <Label htmlFor="event_date">Дата мероприятия *</Label>
-          <Input
-            id="event_date"
-            type="date"
-            value={formData.event_date}
-            onChange={(e) => onFormChange({ ...formData, event_date: e.target.value })}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="start_time">Время начала</Label>
-          <Input
-            id="start_time"
-            type="time"
-            value={formData.start_time}
-            onChange={(e) => onFormChange({ ...formData, start_time: e.target.value })}
-          />
-        </div>
-        <div>
-          <Label htmlFor="end_time">Время окончания</Label>
-          <Input
-            id="end_time"
-            type="time"
-            value={formData.end_time}
-            onChange={(e) => onFormChange({ ...formData, end_time: e.target.value })}
-          />
-        </div>
-      </div>
-    </>
+    </div>
   );
 }
