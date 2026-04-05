@@ -166,6 +166,8 @@ export default function OrgParticipants({ event, participants, onBack, onRefresh
   const [addForm, setAddForm] = useState({ name: "", phone: "", email: "", telegram: "", status: "confirmed", payment_type: "", payment_amount: 0 });
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", telegram: "" });
 
   const handleAddParticipant = async () => {
     if (!addForm.name || !addForm.phone) {
@@ -223,6 +225,30 @@ export default function OrgParticipants({ event, participants, onBack, onRefresh
       onRefresh();
     } catch {
       toast({ title: "Ошибка сохранения оплаты", variant: "destructive" });
+    }
+  };
+
+  const startEditing = (p: OrgParticipant) => {
+    setEditingId(p.id);
+    setEditForm({ name: p.name, phone: p.phone, email: p.email || "", telegram: p.telegram || "" });
+  };
+
+  const handleEditSave = async () => {
+    if (!editingId) return;
+    if (!editForm.name || !editForm.phone) {
+      toast({ title: "Имя и телефон обязательны", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      await organizerApi.updateParticipant(editingId, editForm as Partial<OrgParticipant>);
+      toast({ title: "Данные обновлены" });
+      setEditingId(null);
+      onRefresh();
+    } catch {
+      toast({ title: "Ошибка сохранения", variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -385,72 +411,112 @@ export default function OrgParticipants({ event, participants, onBack, onRefresh
         <div className="space-y-2">
           {participants.map((p) => {
             const isExpanded = expandedId === p.id;
+            const isEditing = editingId === p.id;
             return (
               <Card key={p.id} className={p.attended === false ? "opacity-60" : ""}>
                 <CardContent className="p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-sm font-semibold shrink-0">
-                        {p.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-medium text-sm">{p.name}</div>
-                        <div className="text-xs text-muted-foreground flex gap-2 flex-wrap items-center">
-                          <span>{p.phone}</span>
-                          {p.telegram && <span>{p.telegram}</span>}
-                          {p.email && <span className="hidden sm:inline">{p.email}</span>}
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs">Имя *</Label>
+                          <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Имя" />
                         </div>
-                        {p.payment_type && (
-                          <div className="mt-1">
-                            <PaymentBadge type={p.payment_type} amount={p.payment_amount} />
-                          </div>
-                        )}
+                        <div>
+                          <Label className="text-xs">Телефон *</Label>
+                          <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="+7 999 000 00 00" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Email</Label>
+                          <Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="ivan@example.com" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Telegram</Label>
+                          <Input value={editForm.telegram} onChange={(e) => setEditForm({ ...editForm, telegram: e.target.value })} placeholder="@username" />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleEditSave} disabled={saving}>
+                          {saving ? <Icon name="Loader2" size={14} className="animate-spin mr-1" /> : <Icon name="Save" size={14} className="mr-1" />}
+                          Сохранить
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Отмена</Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <StatusBadge status={p.status} />
-                      <Select value={p.status} onValueChange={(v) => handleStatusChange(p.id, v)}>
-                        <SelectTrigger className="h-7 w-7 border-0 bg-transparent p-0 [&>svg]:hidden">
-                          <Icon name="ChevronDown" size={14} className="text-muted-foreground" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new">Новый</SelectItem>
-                          <SelectItem value="confirmed">Подтверждён</SelectItem>
-                          <SelectItem value="paid">Оплачен</SelectItem>
-                          <SelectItem value="cancelled">Отменён</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <button
-                        onClick={() => setExpandedId(isExpanded ? null : p.id)}
-                        title="Оплата"
-                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
-                          p.payment_type
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-muted text-muted-foreground hover:bg-amber-50 hover:text-amber-600"
-                        }`}
-                      >
-                        <Icon name="Wallet" size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleAttendance(p.id, p.attended !== true)}
-                        title={p.attended === true ? "Пришёл" : "Не пришёл"}
-                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${p.attended === true ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground hover:bg-green-50"}`}
-                      >
-                        <Icon name="Check" size={14} />
-                      </button>
-                    </div>
-                  </div>
-                  {p.comment && (
-                    <div className="mt-2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-md">
-                      {p.comment}
-                    </div>
-                  )}
-                  {isExpanded && (
-                    <PaymentEditor
-                      participant={p}
-                      eventPrice={event.price_amount || 0}
-                      onSave={handlePaymentSave}
-                    />
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-sm font-semibold shrink-0">
+                            {p.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-medium text-sm">{p.name}</div>
+                            <div className="text-xs text-muted-foreground flex gap-2 flex-wrap items-center">
+                              <span>{p.phone}</span>
+                              {p.telegram && <span>{p.telegram}</span>}
+                              {p.email && <span className="hidden sm:inline">{p.email}</span>}
+                            </div>
+                            {p.payment_type && (
+                              <div className="mt-1">
+                                <PaymentBadge type={p.payment_type} amount={p.payment_amount} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <StatusBadge status={p.status} />
+                          <Select value={p.status} onValueChange={(v) => handleStatusChange(p.id, v)}>
+                            <SelectTrigger className="h-7 w-7 border-0 bg-transparent p-0 [&>svg]:hidden">
+                              <Icon name="ChevronDown" size={14} className="text-muted-foreground" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="new">Новый</SelectItem>
+                              <SelectItem value="confirmed">Подтверждён</SelectItem>
+                              <SelectItem value="paid">Оплачен</SelectItem>
+                              <SelectItem value="cancelled">Отменён</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <button
+                            onClick={() => startEditing(p)}
+                            title="Редактировать"
+                            className="w-7 h-7 rounded-full flex items-center justify-center transition-colors bg-muted text-muted-foreground hover:bg-blue-50 hover:text-blue-600"
+                          >
+                            <Icon name="Pencil" size={14} />
+                          </button>
+                          <button
+                            onClick={() => setExpandedId(isExpanded ? null : p.id)}
+                            title="Оплата"
+                            className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+                              p.payment_type
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-muted text-muted-foreground hover:bg-amber-50 hover:text-amber-600"
+                            }`}
+                          >
+                            <Icon name="Wallet" size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleAttendance(p.id, p.attended !== true)}
+                            title={p.attended === true ? "Пришёл" : "Не пришёл"}
+                            className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${p.attended === true ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground hover:bg-green-50"}`}
+                          >
+                            <Icon name="Check" size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      {p.comment && (
+                        <div className="mt-2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-md">
+                          {p.comment}
+                        </div>
+                      )}
+                      {isExpanded && (
+                        <PaymentEditor
+                          participant={p}
+                          eventPrice={event.price_amount || 0}
+                          onSave={handlePaymentSave}
+                        />
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
