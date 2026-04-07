@@ -30,7 +30,7 @@ function InviteByLink({ eventId, query }: { eventId: number; query: string }) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
-  const inviteUrl = `${window.location.origin}/register?redirect=${encodeURIComponent("/organizer-cabinet")}&invite_event=${eventId}`;
+  const inviteUrl = `${window.location.origin}/invite?invite_event=${eventId}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(inviteUrl).then(() => {

@@ -30,6 +30,7 @@ import Masters from "./pages/Masters";
 import MasterDetail from "./pages/MasterDetail";
 import About from "./pages/About";
 import OrganizerCabinet from "./pages/OrganizerCabinet";
+import InviteRegister from "./pages/InviteRegister";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const AppContent = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/organizer-cabinet" element={<OrganizerCabinet />} />
+        <Route path="/invite" element={<InviteRegister />} />
         <Route path="/principles" element={<Principles />} />
         <Route path="/about" element={<About />} />
         <Route path="/organizer" element={<Organizer />} />
