@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { organizerApi, OrgEvent, OrgParticipant, DashboardData } from "@/lib/organizer-api";
 import OrgDashboard from "@/components/organizer/OrgDashboard";
@@ -15,6 +15,7 @@ type View = "dashboard" | "events" | "create" | "edit" | "participants";
 export default function OrganizerCabinet() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
 
   const [view, setView] = useState<View>("dashboard");
@@ -82,6 +83,32 @@ export default function OrganizerCabinet() {
   useEffect(() => {
     if (view === "events") loadEvents();
   }, [view, loadEvents]);
+
+  // Обработка инвайт-ссылки: ?invite_event=<id>
+  useEffect(() => {
+    const inviteEventId = searchParams.get("invite_event");
+    if (!inviteEventId || !user || dashLoading) return;
+
+    const eventId = parseInt(inviteEventId);
+    if (!eventId) return;
+
+    // Убираем параметр из URL сразу, чтобы не срабатывал повторно
+    const newUrl = window.location.pathname;
+    window.history.replaceState({}, "", newUrl);
+
+    organizerApi.joinByInvite(eventId)
+      .then((res) => {
+        if (!res.already) {
+          toast({
+            title: "Вы добавлены как соорганизатор",
+            description: "Теперь вы можете управлять этой встречей",
+          });
+        }
+      })
+      .catch(() => {
+        // Событие не найдено или уже добавлен — игнорируем тихо
+      });
+  }, [searchParams, user, dashLoading, toast]);
 
   const emptyForm = (): OrgEvent => ({
     id: 0, title: "", short_description: "", full_description: "", description: "",

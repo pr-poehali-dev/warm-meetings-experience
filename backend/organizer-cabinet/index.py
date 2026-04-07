@@ -568,6 +568,36 @@ def handle_co_organizers(event, method, params, cur, conn, user_id, schema, head
 
     if method == 'POST':
         body = json.loads(event.get('body', '{}'))
+        action = body.get('action')
+
+        # Пользователь добавляет себя по инвайт-ссылке
+        if action == 'join_by_invite':
+            event_id = body.get('event_id')
+            if not event_id:
+                conn.close()
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'event_id required'})}
+            cur.execute(f"SELECT id, organizer_id FROM {schema}.events WHERE id = {event_id}")
+            ev = cur.fetchone()
+            if not ev:
+                conn.close()
+                return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'event_not_found'})}
+            if ev['organizer_id'] == user_id:
+                conn.close()
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'already_main_organizer'})}
+            existing = None
+            cur.execute(f"SELECT id, added_by FROM {schema}.event_co_organizers WHERE event_id = {event_id} AND user_id = {user_id}")
+            existing = cur.fetchone()
+            if existing and existing['added_by'] != 0:
+                conn.close()
+                return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'already': True})}
+            if existing:
+                cur.execute(f"UPDATE {schema}.event_co_organizers SET added_by = {user_id} WHERE event_id = {event_id} AND user_id = {user_id}")
+            else:
+                cur.execute(f"INSERT INTO {schema}.event_co_organizers (event_id, user_id, added_by) VALUES ({event_id}, {user_id}, {user_id})")
+            conn.commit()
+            conn.close()
+            return {'statusCode': 201, 'headers': headers, 'body': json.dumps({'ok': True})}
+
         event_id = body.get('event_id')
         target_user_id = body.get('user_id')
         if not event_id or not target_user_id:
