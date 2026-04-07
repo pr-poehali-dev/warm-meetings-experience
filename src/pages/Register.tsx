@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,8 @@ import ConsentModal from "@/components/ConsentModal";
 export default function Register() {
   const { user, loading: authLoading, register } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/account";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -23,9 +25,9 @@ export default function Register() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate("/account", { replace: true });
+      navigate(redirectTo, { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, redirectTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +40,7 @@ export default function Register() {
     setSubmitting(true);
     try {
       await register({ email, name, phone, password, consent_pd: consent });
-      navigate("/account");
+      navigate(redirectTo);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Ошибка регистрации");
     } finally {

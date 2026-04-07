@@ -26,6 +26,42 @@ function Avatar({ name, photo }: { name: string; photo?: string | null }) {
   );
 }
 
+function InviteByLink({ eventId, query }: { eventId: number; query: string }) {
+  const { toast } = useToast();
+  const [copied, setCopied] = useState(false);
+
+  const inviteUrl = `${window.location.origin}/register?redirect=${encodeURIComponent("/organizer-cabinet")}&invite_event=${eventId}`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(inviteUrl).then(() => {
+      setCopied(true);
+      toast({ title: "Ссылка скопирована", description: "Отправьте её тому, кого хотите пригласить" });
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
+
+  return (
+    <div className="rounded-lg border border-dashed bg-muted/30 p-3 space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Пользователь <span className="font-medium text-foreground">«{query}»</span> не найден на сайте.
+        Отправьте ему ссылку для регистрации — после входа он автоматически попадёт в эту встречу как соорганизатор.
+      </p>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-md border transition-colors w-full ${
+          copied
+            ? "bg-green-50 border-green-200 text-green-700"
+            : "bg-background border-border hover:bg-muted text-foreground"
+        }`}
+      >
+        <Icon name={copied ? "Check" : "Copy"} size={13} />
+        {copied ? "Скопировано!" : "Скопировать ссылку-приглашение"}
+      </button>
+    </div>
+  );
+}
+
 export default function CoOrganizersPanel({ eventId }: Props) {
   const { toast } = useToast();
   const [coOrganizers, setCoOrganizers] = useState<CoOrganizer[]>([]);
@@ -204,7 +240,7 @@ export default function CoOrganizersPanel({ eventId }: Props) {
           )}
 
           {query.trim().length >= 2 && !searching && results.length === 0 && (
-            <p className="text-xs text-muted-foreground px-1">Пользователи не найдены</p>
+            <InviteByLink eventId={eventId} query={query} />
           )}
 
           <button
