@@ -59,6 +59,29 @@ export interface OrgParticipant {
   created_at: string;
 }
 
+export interface CoOrganizer {
+  id: number;
+  event_id: number;
+  user_id: number;
+  added_by: number;
+  created_at: string;
+  name: string;
+  email: string;
+  telegram: string;
+  display_name: string | null;
+  photo_url: string | null;
+}
+
+export interface UserSearchResult {
+  id: number;
+  name: string;
+  email: string;
+  telegram: string;
+  display_name: string | null;
+  photo_url: string | null;
+  is_organizer: boolean;
+}
+
 export interface DashboardData {
   user: { id: number; name: string; email: string; phone: string; telegram: string };
   is_admin: boolean;
@@ -125,4 +148,23 @@ export const organizerApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ event_id: eventId, tiers }),
     }),
+
+  searchUsers: (q: string): Promise<UserSearchResult[]> =>
+    authenticatedRequest(`${BASE}/?resource=user_search&q=${encodeURIComponent(q)}`),
+
+  getCoOrganizers: (eventId: number): Promise<CoOrganizer[]> =>
+    authenticatedRequest(`${BASE}/?resource=co_organizers&event_id=${eventId}`),
+
+  addCoOrganizer: (eventId: number, userId: number): Promise<CoOrganizer> =>
+    authenticatedRequest(`${BASE}/?resource=co_organizers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_id: eventId, user_id: userId }),
+    }),
+
+  removeCoOrganizer: (eventId: number, userId: number): Promise<void> =>
+    authenticatedRequest(
+      `${BASE}/?resource=co_organizers&event_id=${eventId}&user_id=${userId}`,
+      { method: "DELETE" }
+    ),
 };

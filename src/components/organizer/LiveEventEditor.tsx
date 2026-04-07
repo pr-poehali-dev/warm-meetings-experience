@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { OrgEvent, PricingTier } from "@/lib/organizer-api";
+import CoOrganizersPanel from "./CoOrganizersPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -628,6 +629,20 @@ export default function LiveEventEditor({ formData: fd, loading, onFormChange, o
               </Select>
             </div>
           </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t" />
+
+        {/* ── CO-ORGANIZERS ── */}
+        <div className="space-y-3">
+          <div>
+            <h3 className="font-semibold text-sm">Соорганизаторы</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Другие организаторы, которые управляют этой встречей вместе с вами
+            </p>
+          </div>
+          <CoOrganizersPanel eventId={fd.id || 0} />
         </div>
       </div>
 

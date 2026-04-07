@@ -82,6 +82,10 @@ def handler(event, context):
         return handle_profile(event, method, cur, conn, user_id, schema, headers)
     elif resource == 'pricing_tiers':
         return handle_pricing_tiers(event, method, params, cur, conn, user_id, schema, headers)
+    elif resource == 'co_organizers':
+        return handle_co_organizers(event, method, params, cur, conn, user_id, schema, headers)
+    elif resource == 'user_search':
+        return handle_user_search(event, method, params, cur, conn, user_id, schema, headers)
 
     conn.close()
     return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Resource not found'})}
@@ -524,3 +528,147 @@ def handle_profile(event, method, cur, conn, user_id, schema, headers):
 
     conn.close()
     return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+
+
+def handle_co_organizers(event, method, params, cur, conn, user_id, schema, headers):
+    """Соорганизаторы события: GET список, POST добавить, DELETE удалить"""
+    admin = is_admin(cur, user_id, schema)
+
+    def check_event_owner(event_id):
+        cur.execute(f"SELECT organizer_id FROM {schema}.events WHERE id = {event_id}")
+        ev = cur.fetchone()
+        if not ev:
+            return False, 'not_found'
+        if not admin and ev['organizer_id'] != user_id:
+            return False, 'forbidden'
+        return True, None
+
+    if method == 'GET':
+        event_id = params.get('event_id')
+        if not event_id:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'event_id required'})}
+        ok, err = check_event_owner(event_id)
+        if not ok:
+            conn.close()
+            return {'statusCode': 404 if err == 'not_found' else 403, 'headers': headers, 'body': json.dumps({'error': err})}
+        cur.execute(f"""
+            SELECT co.id, co.event_id, co.user_id, co.added_by, co.created_at,
+                   u.name, u.email, u.telegram,
+                   op.display_name, op.photo_url
+            FROM {schema}.event_co_organizers co
+            JOIN {schema}.users u ON u.id = co.user_id
+            LEFT JOIN {schema}.organizer_profiles op ON op.user_id = co.user_id
+            WHERE co.event_id = {event_id} AND co.added_by != 0
+            ORDER BY co.created_at ASC
+        """)
+        rows = cur.fetchall()
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps([dict(r) for r in rows], default=str)}
+
+    if method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        event_id = body.get('event_id')
+        target_user_id = body.get('user_id')
+        if not event_id or not target_user_id:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'event_id and user_id required'})}
+        ok, err = check_event_owner(event_id)
+        if not ok:
+            conn.close()
+            return {'statusCode': 404 if err == 'not_found' else 403, 'headers': headers, 'body': json.dumps({'error': err})}
+        cur.execute(f"SELECT organizer_id FROM {schema}.events WHERE id = {event_id}")
+        ev = cur.fetchone()
+        if ev['organizer_id'] == target_user_id:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'already_main_organizer'})}
+        cur.execute(f"SELECT id, name, email, telegram FROM {schema}.users WHERE id = {target_user_id}")
+        target = cur.fetchone()
+        if not target:
+            conn.close()
+            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'user_not_found'})}
+        # если запись есть но помечена удалённой (added_by=0) — восстанавливаем
+        cur.execute(f"""
+            SELECT id, added_by FROM {schema}.event_co_organizers
+            WHERE event_id = {event_id} AND user_id = {target_user_id}
+        """)
+        existing = cur.fetchone()
+        if existing:
+            cur.execute(f"""
+                UPDATE {schema}.event_co_organizers
+                SET added_by = {user_id}
+                WHERE event_id = {event_id} AND user_id = {target_user_id}
+                RETURNING id, event_id, user_id, added_by, created_at
+            """)
+        else:
+            cur.execute(f"""
+                INSERT INTO {schema}.event_co_organizers (event_id, user_id, added_by)
+                VALUES ({event_id}, {target_user_id}, {user_id})
+                RETURNING id, event_id, user_id, added_by, created_at
+            """)
+        row = cur.fetchone()
+        conn.commit()
+        result = dict(row)
+        result['name'] = target['name']
+        result['email'] = target['email']
+        result['telegram'] = target['telegram']
+        conn.close()
+        return {'statusCode': 201, 'headers': headers, 'body': json.dumps(result, default=str)}
+
+    if method == 'DELETE':
+        event_id = params.get('event_id')
+        target_user_id = params.get('user_id')
+        if not event_id or not target_user_id:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'event_id and user_id required'})}
+        ok, err = check_event_owner(event_id)
+        if not ok:
+            conn.close()
+            return {'statusCode': 404 if err == 'not_found' else 403, 'headers': headers, 'body': json.dumps({'error': err})}
+        # мягкое удаление: added_by = 0 как флаг
+        cur.execute(f"""
+            UPDATE {schema}.event_co_organizers
+            SET added_by = 0
+            WHERE event_id = {event_id} AND user_id = {target_user_id}
+        """)
+        conn.commit()
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True})}
+
+    conn.close()
+    return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed (co_organizers)'})}
+
+
+def handle_user_search(event, method, params, cur, conn, user_id, schema, headers):
+    """Поиск пользователей по имени/email/telegram для добавления соорганизатором"""
+    if method != 'GET':
+        conn.close()
+        return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+
+    query = (params.get('q') or '').strip().replace("'", "''")
+    if len(query) < 2:
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps([])}
+
+    cur.execute(f"""
+        SELECT u.id, u.name, u.email, u.telegram,
+               op.display_name, op.photo_url,
+               EXISTS(
+                   SELECT 1 FROM {schema}.user_roles ur
+                   JOIN {schema}.roles r ON r.id = ur.role_id
+                   WHERE ur.user_id = u.id AND r.slug IN ('organizer','admin') AND ur.status = 'active'
+               ) as is_organizer
+        FROM {schema}.users u
+        LEFT JOIN {schema}.organizer_profiles op ON op.user_id = u.id
+        WHERE u.id != {user_id}
+          AND (
+            u.name ILIKE '%{query}%'
+            OR u.email ILIKE '%{query}%'
+            OR u.telegram ILIKE '%{query}%'
+          )
+        ORDER BY is_organizer DESC, u.name ASC
+        LIMIT 10
+    """)
+    rows = cur.fetchall()
+    conn.close()
+    return {'statusCode': 200, 'headers': headers, 'body': json.dumps([dict(r) for r in rows], default=str)}
