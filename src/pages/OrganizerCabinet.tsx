@@ -130,12 +130,17 @@ export default function OrganizerCabinet() {
 
   const handleEditEvent = async (event: OrgEvent) => {
     setSelectedEvent(event);
-    let tiers = event.pricing_tiers || [];
-    if (event.pricing_type === 'dynamic' && event.id && !tiers.length) {
-      try { tiers = await organizerApi.getPricingTiers(event.id); } catch (_) { /* ignore */ }
-    }
-    setFormData({ ...emptyForm(), ...event, pricing_tiers: tiers });
     setView("edit");
+    // Загружаем полный объект события — дашборд возвращает только краткие поля
+    let fullEvent = event;
+    try {
+      fullEvent = await organizerApi.getEvent(event.id);
+    } catch (_) { /* fallback to passed event */ }
+    let tiers = fullEvent.pricing_tiers || [];
+    if (fullEvent.pricing_type === 'dynamic' && fullEvent.id && !tiers.length) {
+      try { tiers = await organizerApi.getPricingTiers(fullEvent.id); } catch (_) { /* ignore */ }
+    }
+    setFormData({ ...emptyForm(), ...fullEvent, pricing_tiers: tiers });
   };
 
   const handleManageParticipants = async (event: OrgEvent) => {
