@@ -249,6 +249,7 @@ export default function OrganizerCabinet() {
             data={dashboard}
             onCreateEvent={handleCreateEvent}
             onManageEvent={handleManageParticipants}
+            onEditEvent={handleEditEvent}
             onViewAll={() => setView("events")}
           />
         )}
