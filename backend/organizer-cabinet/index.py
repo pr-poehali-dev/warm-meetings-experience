@@ -72,6 +72,16 @@ def handler(event, context):
 
     user_id = user['id']
 
+    # join_by_invite доступен любому авторизованному пользователю
+    if resource == 'co_organizers' and method == 'POST':
+        body_raw = json.loads(event.get('body', '{}'))
+        if body_raw.get('action') == 'join_by_invite':
+            return handle_join_by_invite(body_raw, cur, conn, user_id, schema, headers)
+
+    if not is_organizer(cur, user_id, schema):
+        conn.close()
+        return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Forbidden: organizer role required'})}
+
     if resource == 'dashboard':
         return handle_dashboard(cur, conn, user_id, user, schema, headers)
     elif resource == 'events':
@@ -667,6 +677,74 @@ def handle_co_organizers(event, method, params, cur, conn, user_id, schema, head
 
     conn.close()
     return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed (co_organizers)'})}
+
+
+def handle_join_by_invite(body, cur, conn, user_id, schema, headers):
+    """Пользователь принимает инвайт: получает роль организатора и добавляется в соорганизаторы события"""
+    event_id = body.get('event_id')
+    if not event_id:
+        conn.close()
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'event_id required'})}
+
+    cur.execute(f"SELECT id, organizer_id FROM {schema}.events WHERE id = {event_id}")
+    ev = cur.fetchone()
+    if not ev:
+        conn.close()
+        return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'event_not_found'})}
+
+    if ev['organizer_id'] == user_id:
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'already': True})}
+
+    # Выдаём роль organizer если ещё нет
+    cur.execute(f"""
+        SELECT id, status FROM {schema}.user_roles ur
+        JOIN {schema}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = {user_id} AND r.slug = 'organizer'
+    """)
+    existing_role = cur.fetchone()
+    if not existing_role:
+        cur.execute(f"""
+            INSERT INTO {schema}.user_roles (user_id, role_id, status)
+            SELECT {user_id}, id, 'active' FROM {schema}.roles WHERE slug = 'organizer'
+            ON CONFLICT DO NOTHING
+        """)
+    elif existing_role['status'] != 'active':
+        cur.execute(f"""
+            UPDATE {schema}.user_roles SET status = 'active'
+            WHERE user_id = {user_id}
+              AND role_id = (SELECT id FROM {schema}.roles WHERE slug = 'organizer')
+        """)
+
+    # Создаём organizer_profile если нет
+    cur.execute(f"SELECT id FROM {schema}.organizer_profiles WHERE user_id = {user_id}")
+    if not cur.fetchone():
+        cur.execute(f"INSERT INTO {schema}.organizer_profiles (user_id) VALUES ({user_id}) ON CONFLICT DO NOTHING")
+
+    # Добавляем в соорганизаторы
+    cur.execute(f"""
+        SELECT id, added_by FROM {schema}.event_co_organizers
+        WHERE event_id = {event_id} AND user_id = {user_id}
+    """)
+    existing_co = cur.fetchone()
+
+    already = False
+    if existing_co and existing_co['added_by'] != 0:
+        already = True
+    elif existing_co:
+        cur.execute(f"""
+            UPDATE {schema}.event_co_organizers SET added_by = {user_id}
+            WHERE event_id = {event_id} AND user_id = {user_id}
+        """)
+    else:
+        cur.execute(f"""
+            INSERT INTO {schema}.event_co_organizers (event_id, user_id, added_by)
+            VALUES ({event_id}, {user_id}, {user_id})
+        """)
+
+    conn.commit()
+    conn.close()
+    return {'statusCode': 201, 'headers': headers, 'body': json.dumps({'ok': True, 'already': already})}
 
 
 def handle_user_search(event, method, params, cur, conn, user_id, schema, headers):

@@ -71,44 +71,41 @@ export default function OrganizerCabinet() {
   }, [toast]);
 
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        navigate("/login?redirect=/organizer-cabinet");
-      } else {
-        loadDashboard();
-      }
+    if (authLoading) return;
+    if (!user) {
+      navigate("/login?redirect=/organizer-cabinet");
+      return;
     }
-  }, [user, authLoading, navigate, loadDashboard]);
+
+    const inviteEventId = searchParams.get("invite_event");
+    const eventId = inviteEventId ? parseInt(inviteEventId) : null;
+
+    if (eventId) {
+      // Убираем параметр из URL сразу
+      window.history.replaceState({}, "", window.location.pathname);
+
+      // Сначала принимаем инвайт (выдаёт роль организатора), потом грузим дашборд
+      organizerApi.joinByInvite(eventId)
+        .then((res) => {
+          if (!res.already) {
+            toast({
+              title: "Вы добавлены как соорганизатор",
+              description: "Теперь вы можете управлять этой встречей",
+            });
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          loadDashboard();
+        });
+    } else {
+      loadDashboard();
+    }
+  }, [user, authLoading, navigate, loadDashboard, searchParams, toast]);
 
   useEffect(() => {
     if (view === "events") loadEvents();
   }, [view, loadEvents]);
-
-  // Обработка инвайт-ссылки: ?invite_event=<id>
-  useEffect(() => {
-    const inviteEventId = searchParams.get("invite_event");
-    if (!inviteEventId || !user || dashLoading) return;
-
-    const eventId = parseInt(inviteEventId);
-    if (!eventId) return;
-
-    // Убираем параметр из URL сразу, чтобы не срабатывал повторно
-    const newUrl = window.location.pathname;
-    window.history.replaceState({}, "", newUrl);
-
-    organizerApi.joinByInvite(eventId)
-      .then((res) => {
-        if (!res.already) {
-          toast({
-            title: "Вы добавлены как соорганизатор",
-            description: "Теперь вы можете управлять этой встречей",
-          });
-        }
-      })
-      .catch(() => {
-        // Событие не найдено или уже добавлен — игнорируем тихо
-      });
-  }, [searchParams, user, dashLoading, toast]);
 
   const emptyForm = (): OrgEvent => ({
     id: 0, title: "", short_description: "", full_description: "", description: "",
