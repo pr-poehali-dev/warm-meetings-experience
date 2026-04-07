@@ -4,9 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { organizerApi, OrgEvent, OrgParticipant, DashboardData } from "@/lib/organizer-api";
 import OrgDashboard from "@/components/organizer/OrgDashboard";
 import OrgEventsList from "@/components/organizer/OrgEventsList";
-import AdminEventForm from "@/components/admin/AdminEventForm";
 import OrgParticipants from "@/components/organizer/OrgParticipants";
-import EventPreviewCard from "@/components/organizer/EventPreviewCard";
+import LiveEventEditor from "@/components/organizer/LiveEventEditor";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -30,7 +29,7 @@ export default function OrganizerCabinet() {
   const [formData, setFormData] = useState<OrgEvent>({} as OrgEvent);
   const formDataRef = React.useRef(formData);
   formDataRef.current = formData;
-  const [mobileTab, setMobileTab] = useState<"form" | "preview">("form");
+
 
   const loadDashboard = useCallback(async () => {
     setDashLoading(true);
@@ -268,50 +267,18 @@ export default function OrganizerCabinet() {
         )}
 
         {(view === "create" || view === "edit") && (
-          <>
-            {/* Mobile tab switcher */}
-            <div className="flex lg:hidden mb-4 border rounded-lg overflow-hidden">
-              <button
-                onClick={() => setMobileTab("form")}
-                className={`flex-1 py-2 text-sm font-medium transition-colors ${mobileTab === "form" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
-              >
-                <span className="flex items-center justify-center gap-1.5">
-                  <Icon name="FileEdit" size={14} />
-                  Форма
-                </span>
-              </button>
-              <button
-                onClick={() => setMobileTab("preview")}
-                className={`flex-1 py-2 text-sm font-medium transition-colors ${mobileTab === "preview" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
-              >
-                <span className="flex items-center justify-center gap-1.5">
-                  <Icon name="Eye" size={14} />
-                  Предпросмотр
-                </span>
-              </button>
-            </div>
-
-            <div className="flex gap-8 items-start">
-              {/* Form column */}
-              <div className={`flex-1 min-w-0 ${mobileTab === "preview" ? "hidden lg:block" : ""}`}>
-                <AdminEventForm
-                  formData={formData}
-                  loading={formLoading}
-                  onFormChange={(data) => setFormData(data as OrgEvent)}
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    await handleSaveEvent(formDataRef.current);
-                  }}
-                  onCancel={() => setView(events.length ? "events" : "dashboard")}
-                />
-              </div>
-
-              {/* Preview column */}
-              <div className={`w-80 flex-shrink-0 ${mobileTab === "form" ? "hidden lg:block" : ""}`}>
-                <EventPreviewCard data={formData} />
-              </div>
-            </div>
-          </>
+          <div className="max-w-2xl mx-auto">
+            <LiveEventEditor
+              formData={formData}
+              loading={formLoading}
+              onFormChange={(data) => setFormData(data as OrgEvent)}
+              onSubmit={async (e) => {
+                e.preventDefault();
+                await handleSaveEvent(formDataRef.current);
+              }}
+              onCancel={() => setView(events.length ? "events" : "dashboard")}
+            />
+          </div>
         )}
 
         {view === "participants" && selectedEvent && (
