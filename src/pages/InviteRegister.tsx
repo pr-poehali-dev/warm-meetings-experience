@@ -16,6 +16,7 @@ const EVENTS_API = "https://functions.poehali.dev/a8aa8917-24e9-450a-8ed1-28225a
 
 interface EventPreview {
   id: number;
+  slug: string;
   title: string;
   event_date: string;
   start_time: string;
@@ -152,10 +153,19 @@ export default function InviteRegister() {
               </div>
             )}
             <CardContent className="p-4 space-y-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
                   {eventPreview.event_type}
                 </span>
+                <a
+                  href={`/events/${eventPreview.slug || `event-${eventPreview.id}`}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+                >
+                  Открыть встречу
+                  <Icon name="ExternalLink" size={11} />
+                </a>
               </div>
               <h2 className="font-semibold text-base">{eventPreview.title}</h2>
               <div className="space-y-1 text-xs text-muted-foreground">
