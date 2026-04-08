@@ -148,8 +148,18 @@ export default function InviteRegister() {
         ) : eventPreview ? (
           <Card className="mb-8 overflow-hidden border-primary/20">
             {eventPreview.image_url && (
-              <div className="h-36 overflow-hidden">
+              <div className="relative h-44 overflow-hidden">
                 <img src={eventPreview.image_url} alt={eventPreview.title} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <a
+                  href={`/events/${eventPreview.slug || `event-${eventPreview.id}`}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 bg-white/90 hover:bg-white text-foreground text-xs font-medium px-3 py-1.5 rounded-full shadow transition-colors"
+                >
+                  <Icon name="ExternalLink" size={12} />
+                  Открыть встречу
+                </a>
               </div>
             )}
             <CardContent className="p-4 space-y-2">
@@ -157,15 +167,17 @@ export default function InviteRegister() {
                 <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
                   {eventPreview.event_type}
                 </span>
-                <a
-                  href={`/events/${eventPreview.slug || `event-${eventPreview.id}`}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
-                >
-                  Открыть встречу
-                  <Icon name="ExternalLink" size={11} />
-                </a>
+                {!eventPreview.image_url && (
+                  <a
+                    href={`/events/${eventPreview.slug || `event-${eventPreview.id}`}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+                  >
+                    Открыть встречу
+                    <Icon name="ExternalLink" size={11} />
+                  </a>
+                )}
               </div>
               <h2 className="font-semibold text-base">{eventPreview.title}</h2>
               <div className="space-y-1 text-xs text-muted-foreground">
@@ -186,6 +198,31 @@ export default function InviteRegister() {
             </CardContent>
           </Card>
         ) : null}
+
+        {/* Steps */}
+        <div className="mb-8">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">Как это работает</p>
+          <div className="space-y-0">
+            {[
+              { icon: "UserCheck", label: "Создайте аккаунт", desc: "Заполните форму ниже — это займёт меньше минуты" },
+              { icon: "Key", label: "Получите доступ", desc: "После регистрации вам автоматически откроется роль соорганизатора" },
+              { icon: "LayoutDashboard", label: "Управляйте встречей", desc: "Участники, расписание и настройки — всё в личном кабинете" },
+            ].map((step, i) => (
+              <div key={step.label} className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <Icon name={step.icon} size={16} className="text-primary-foreground" />
+                  </div>
+                  {i < 2 && <div className="w-px flex-1 bg-primary/20 my-1" style={{ minHeight: 24 }} />}
+                </div>
+                <div className="pb-6">
+                  <div className="font-semibold text-sm leading-tight mt-1.5">{step.label}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{step.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Registration form */}
         <Card className="border-0 shadow-sm">
@@ -297,22 +334,7 @@ export default function InviteRegister() {
           </CardContent>
         </Card>
 
-        {/* What happens next */}
-        <div className="mt-8 grid grid-cols-3 gap-4 text-center">
-          {[
-            { icon: "UserCheck", label: "Регистрация", desc: "Создаёте аккаунт" },
-            { icon: "Key", label: "Доступ", desc: "Получаете роль организатора" },
-            { icon: "LayoutDashboard", label: "Кабинет", desc: "Управляете встречей" },
-          ].map((step) => (
-            <div key={step.label} className="space-y-2">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                <Icon name={step.icon} size={18} className="text-primary" />
-              </div>
-              <div className="font-medium text-sm">{step.label}</div>
-              <div className="text-xs text-muted-foreground">{step.desc}</div>
-            </div>
-          ))}
-        </div>
+
       </div>
     </div>
   );
