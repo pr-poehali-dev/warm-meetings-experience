@@ -104,15 +104,14 @@ def handler(event, context):
 
 
 def handle_set_webhook(event):
-    hdrs = event.get('headers') or {}
-    host = hdrs.get('Host', '')
-    path = hdrs.get('X-Request-URI', event.get('requestContext', {}).get('path', ''))
-    if not host:
-        return respond(400, {'error': 'Cannot determine host'})
-    webhook_url = f"https://{host}{path}" if path else f"https://{host}"
-    webhook_url = webhook_url.split('?')[0]
-    result = tg_api('setWebhook', {'url': webhook_url, 'allowed_updates': ['message', 'channel_post']})
-    return respond(200, result)
+    webhook_url = 'https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1'
+    tg_api('deleteWebhook', {'drop_pending_updates': True})
+    result = tg_api('setWebhook', {
+        'url': webhook_url,
+        'allowed_updates': ['message', 'channel_post'],
+        'drop_pending_updates': True
+    })
+    return respond(200, {'webhook_url': webhook_url, 'result': result})
 
 
 def handle_generate_code(params):
