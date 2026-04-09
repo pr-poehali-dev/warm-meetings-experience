@@ -102,13 +102,13 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, onRefresh 
                   <div className="text-sm text-muted-foreground space-y-1">
                     <p>1. Откройте бота в Telegram:</p>
                     <a
-                      href="https://t.me/sparcom_publish_bot"
+                      href="https://t.me/SparcomEventsBot"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
                     >
                       <Icon name="ExternalLink" size={14} />
-                      @sparcom_publish_bot
+                      @SparcomEventsBot
                     </a>
                     <p>2. Отправьте боту команду:</p>
                     <code className="block bg-background border rounded px-3 py-2 text-sm font-mono">/verify {code}</code>
@@ -133,7 +133,7 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, onRefresh 
                 <p>3. Перешлите боту любое сообщение из канала</p>
               </div>
               <a
-                href="https://t.me/sparcom_publish_bot"
+                href="https://t.me/SparcomEventsBot"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors mt-2"
