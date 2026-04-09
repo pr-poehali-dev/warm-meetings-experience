@@ -9,8 +9,9 @@ import LiveEventEditor from "@/components/organizer/LiveEventEditor";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
+import TelegramSettings from "@/components/organizer/TelegramSettings";
 
-type View = "dashboard" | "events" | "create" | "edit" | "participants";
+type View = "dashboard" | "events" | "create" | "edit" | "participants" | "telegram";
 
 export default function OrganizerCabinet() {
   const { user, loading: authLoading } = useAuth();
@@ -261,13 +262,13 @@ export default function OrganizerCabinet() {
             </button>
             <span className="text-muted-foreground">/</span>
             <nav className="flex gap-1">
-              {(["dashboard", "events"] as View[]).map((v) => (
+              {(["dashboard", "events", "telegram"] as View[]).map((v) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
                   className={`px-3 py-1.5 rounded-md text-sm transition-colors ${view === v || (view === "create" && v === "events") || (view === "edit" && v === "events") || (view === "participants" && v === "events") ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  {v === "dashboard" ? "Дашборд" : "Встречи"}
+                  {v === "dashboard" ? "Дашборд" : v === "events" ? "Встречи" : "Telegram"}
                 </button>
               ))}
             </nav>
@@ -325,6 +326,16 @@ export default function OrganizerCabinet() {
             onBack={() => setView("events")}
             onRefresh={() => loadParticipants(selectedEvent.id)}
           />
+        )}
+
+        {view === "telegram" && (
+          <div className="max-w-lg mx-auto">
+            <TelegramSettings
+              tgLinked={dashboard?.tg_linked ?? false}
+              tgChannelsCount={dashboard?.tg_channels_count ?? 0}
+              onRefresh={loadDashboard}
+            />
+          </div>
         )}
       </main>
     </div>

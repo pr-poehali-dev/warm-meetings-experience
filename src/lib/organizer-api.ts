@@ -92,7 +92,9 @@ export interface DashboardData {
     total_participants: number;
   };
   upcoming_events: OrgEvent[];
-  profile: { display_name: string; bio: string; photo_url: string } | null;
+  profile: { display_name: string; bio: string; photo_url: string; telegram_chat_id: number | null } | null;
+  tg_linked: boolean;
+  tg_channels_count: number;
 }
 
 export const organizerApi = {
@@ -188,4 +190,14 @@ export const organizerApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
     }),
+
+  getTelegramCode: (): Promise<{ code: string }> => {
+    const token = localStorage.getItem("session_token") || "";
+    return fetch(`https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1/?action=generate_code&token=${encodeURIComponent(token)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        return data;
+      });
+  },
 };

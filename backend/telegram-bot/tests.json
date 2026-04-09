@@ -1,0 +1,26 @@
+{"tests": [
+  {
+    "name": "OPTIONS preflight",
+    "method": "OPTIONS",
+    "path": "/",
+    "expectedStatus": 200
+  },
+  {
+    "name": "Generate code unauthorized",
+    "method": "GET",
+    "path": "/?action=generate_code",
+    "expectedStatus": 401,
+    "expectedBody": {"error": "string"},
+    "bodyMatcher": "partial"
+  },
+  {
+    "name": "Publish without data",
+    "method": "POST",
+    "path": "/",
+    "headers": {"Content-Type": "application/json"},
+    "body": {"action": "publish_event"},
+    "expectedStatus": 400,
+    "expectedBody": {"error": "string"},
+    "bodyMatcher": "partial"
+  }
+]}

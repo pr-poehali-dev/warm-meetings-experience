@@ -8,6 +8,9 @@ import psycopg2
 import psycopg2.extras
 import requests as http_requests
 
+TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
+
+
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
 
@@ -50,6 +53,17 @@ def is_admin(cur, user_id, schema):
           AND ur.status = 'active'
     """)
     return cur.fetchone() is not None
+
+
+def trigger_tg_publish(event_id, organizer_id):
+    try:
+        http_requests.post(
+            TG_BOT_URL,
+            json={'action': 'publish_event', 'event_id': event_id, 'organizer_id': organizer_id},
+            timeout=10
+        )
+    except Exception:
+        pass
 
 def handler(event, context):
     """Личный кабинет организатора: дашборд, события, участники"""
@@ -164,6 +178,12 @@ def handle_dashboard(cur, conn, user_id, user, schema, headers):
     """)
     profile = cur.fetchone()
 
+    cur.execute(f"SELECT 1 FROM {schema}.tg_linked_accounts WHERE user_id = {user_id}")
+    tg_linked = cur.fetchone() is not None
+
+    cur.execute(f"SELECT COUNT(*) as cnt FROM {schema}.tg_channels WHERE user_id = {user_id} AND is_active = TRUE")
+    tg_channels = cur.fetchone()
+
     conn.close()
     return {
         'statusCode': 200,
@@ -179,6 +199,8 @@ def handle_dashboard(cur, conn, user_id, user, schema, headers):
             },
             'upcoming_events': [dict(e) for e in upcoming],
             'profile': dict(profile) if profile else None,
+            'tg_linked': tg_linked,
+            'tg_channels_count': tg_channels['cnt'] if tg_channels else 0,
         }, default=str)
     }
 
@@ -318,7 +340,10 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         row = cur.fetchone()
         conn.commit()
         conn.close()
-        return {'statusCode': 201, 'headers': headers, 'body': json.dumps(dict(row), default=str)}
+        created = dict(row)
+        if created.get('is_visible'):
+            trigger_tg_publish(created['id'], user_id)
+        return {'statusCode': 201, 'headers': headers, 'body': json.dumps(created, default=str)}
 
     if method == 'PUT':
         body = json.loads(event.get('body', '{}'))
@@ -327,7 +352,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id required'})}
 
-        cur.execute(f"SELECT organizer_id FROM {schema}.events WHERE id = {event_id}")
+        cur.execute(f"SELECT organizer_id, is_visible FROM {schema}.events WHERE id = {event_id}")
         existing = cur.fetchone()
         if not existing:
             conn.close()
@@ -335,6 +360,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         if not admin and existing['organizer_id'] != user_id:
             conn.close()
             return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Forbidden'})}
+        was_hidden = not existing['is_visible']
 
         sets = []
         for field in ['title','short_description','full_description','description','event_date','start_time','end_time','event_type','event_type_icon','occupancy','bath_name','bath_address','image_url','price','price_label','slug']:
@@ -374,7 +400,10 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         row = cur.fetchone()
         conn.commit()
         conn.close()
-        return {'statusCode': 200, 'headers': headers, 'body': json.dumps(dict(row), default=str)}
+        updated = dict(row)
+        if was_hidden and updated.get('is_visible'):
+            trigger_tg_publish(event_id, updated.get('organizer_id') or user_id)
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps(updated, default=str)}
 
     if method == 'DELETE':
         event_id = params.get('id')
