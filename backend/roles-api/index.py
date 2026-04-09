@@ -296,10 +296,13 @@ def handle_admin_applications(cur, conn, schema):
         SELECT ra.id, ra.user_id, u.name as user_name, u.email as user_email,
                r.name as role_name, r.slug as role_slug, r.icon as role_icon,
                ra.status, ra.message, ra.admin_comment,
-               ra.created_at, ra.reviewed_at
+               ra.created_at, ra.reviewed_at,
+               ra.invite_event_id,
+               e.title as invite_event_title
         FROM {schema}.role_applications ra
         JOIN {schema}.users u ON u.id = ra.user_id
         JOIN {schema}.roles r ON r.id = ra.role_id
+        LEFT JOIN {schema}.events e ON e.id = ra.invite_event_id
         ORDER BY
             CASE WHEN ra.status = 'pending' THEN 0 ELSE 1 END,
             ra.created_at DESC

@@ -20,6 +20,8 @@ interface RoleApplication {
   admin_comment: string | null;
   created_at: string;
   reviewed_at: string | null;
+  invite_event_id: number | null;
+  invite_event_title: string | null;
 }
 
 interface UserWithRoles {
@@ -145,20 +147,32 @@ export default function AdminRoles() {
                 {pendingApps.map((app) => (
                   <div key={app.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-start justify-between">
-                      <div>
+                      <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span>{app.role_icon}</span>
                           <span className="font-semibold">{app.role_name}</span>
+                          {app.invite_event_id && (
+                            <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Icon name="Link" size={10} />
+                              по инвайту
+                            </span>
+                          )}
                         </div>
-                        <div className="text-sm text-gray-600 mt-1">
+                        <div className="text-sm text-gray-600">
                           {app.user_name} ({app.user_email})
                         </div>
-                        <div className="text-xs text-gray-400 mt-0.5">
+                        {app.invite_event_id && (
+                          <div className="flex items-center gap-1.5 text-sm font-medium text-gray-800">
+                            <Icon name="CalendarDays" size={13} className="text-gray-400" />
+                            {app.invite_event_title || `Событие #${app.invite_event_id}`}
+                          </div>
+                        )}
+                        <div className="text-xs text-gray-400">
                           {new Date(app.created_at).toLocaleDateString("ru-RU")}
                         </div>
                       </div>
                     </div>
-                    {app.message && (
+                    {app.message && !app.invite_event_id && (
                       <div className="bg-gray-50 rounded-lg p-3 text-sm">{app.message}</div>
                     )}
                     <div className="space-y-2">
@@ -223,7 +237,10 @@ export default function AdminRoles() {
                         <span>{app.role_icon}</span>
                         <div>
                           <div className="text-sm font-medium">{app.user_name}</div>
-                          <div className="text-xs text-gray-500">{app.role_name}</div>
+                          <div className="text-xs text-gray-500">
+                            {app.role_name}
+                            {app.invite_event_title && ` · ${app.invite_event_title}`}
+                          </div>
                         </div>
                       </div>
                       <span
