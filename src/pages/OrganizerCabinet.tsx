@@ -84,14 +84,21 @@ export default function OrganizerCabinet() {
       // Убираем параметр из URL сразу
       window.history.replaceState({}, "", window.location.pathname);
 
-      // Сначала принимаем инвайт (выдаёт роль организатора), потом грузим дашборд
       organizerApi.joinByInvite(eventId)
         .then((res) => {
           if (!res.already) {
-            toast({
-              title: "Вы добавлены как соорганизатор",
-              description: "Теперь вы можете управлять этой встречей",
-            });
+            if (res.status === 'active') {
+              toast({
+                title: "Вы добавлены как соорганизатор",
+                description: "Теперь вы можете управлять этой встречей",
+              });
+            } else if (res.status === 'pending') {
+              toast({
+                title: "Заявка отправлена на рассмотрение",
+                description: "После одобрения администратором вы получите доступ к кабинету организатора.",
+                duration: 8000,
+              });
+            }
           }
         })
         .catch(() => {})

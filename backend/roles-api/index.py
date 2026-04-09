@@ -341,7 +341,7 @@ def handle_admin_review(cur, conn, schema, body):
         return respond(400, {'error': 'Укажите application_id и action (approve/reject)'})
 
     cur.execute(f"""
-        SELECT ra.id, ra.user_id, ra.role_id, ra.status
+        SELECT ra.id, ra.user_id, ra.role_id, ra.status, ra.invite_event_id
         FROM {schema}.role_applications ra
         WHERE ra.id = {app_id}
     """)
@@ -370,6 +370,33 @@ def handle_admin_review(cur, conn, schema, body):
             ON CONFLICT (user_id, role_id)
             DO UPDATE SET status = 'active', verified_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
         """)
+
+        # Если заявка пришла по инвайту — добавляем пользователя в соорганизаторы события
+        if app.get('invite_event_id'):
+            event_id = app['invite_event_id']
+            user_id = app['user_id']
+
+            # Создаём organizer_profile если нет
+            cur.execute(f"SELECT id FROM {schema}.organizer_profiles WHERE user_id = {user_id}")
+            if not cur.fetchone():
+                cur.execute(f"INSERT INTO {schema}.organizer_profiles (user_id) VALUES ({user_id}) ON CONFLICT DO NOTHING")
+
+            # Добавляем в event_co_organizers
+            cur.execute(f"""
+                SELECT id, added_by FROM {schema}.event_co_organizers
+                WHERE event_id = {event_id} AND user_id = {user_id}
+            """)
+            existing_co = cur.fetchone()
+            if existing_co and existing_co['added_by'] == 0:
+                cur.execute(f"""
+                    UPDATE {schema}.event_co_organizers SET added_by = {user_id}
+                    WHERE event_id = {event_id} AND user_id = {user_id}
+                """)
+            elif not existing_co:
+                cur.execute(f"""
+                    INSERT INTO {schema}.event_co_organizers (event_id, user_id, added_by)
+                    VALUES ({event_id}, {user_id}, {user_id})
+                """)
 
     conn.commit()
     conn.close()

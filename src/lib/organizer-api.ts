@@ -162,7 +162,7 @@ export const organizerApi = {
       body: JSON.stringify({ event_id: eventId, user_id: userId }),
     }),
 
-  joinByInvite: (eventId: number): Promise<{ ok: boolean; already?: boolean }> =>
+  joinByInvite: (eventId: number): Promise<{ ok: boolean; already?: boolean; status?: 'active' | 'pending' | 'owner' }> =>
     authenticatedRequest(`${BASE}/?resource=co_organizers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

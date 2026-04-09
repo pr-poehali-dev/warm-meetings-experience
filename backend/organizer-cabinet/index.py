@@ -680,7 +680,7 @@ def handle_co_organizers(event, method, params, cur, conn, user_id, schema, head
 
 
 def handle_join_by_invite(body, cur, conn, user_id, schema, headers):
-    """Пользователь принимает инвайт: получает роль организатора и добавляется в соорганизаторы события"""
+    """Пользователь принимает инвайт: создаётся заявка на роль организатора, привязанная к событию. Роль выдаётся после верификации администратором."""
     event_id = body.get('event_id')
     if not event_id:
         conn.close()
@@ -694,57 +694,78 @@ def handle_join_by_invite(body, cur, conn, user_id, schema, headers):
 
     if ev['organizer_id'] == user_id:
         conn.close()
-        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'already': True})}
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'already': True, 'status': 'owner'})}
 
-    # Выдаём роль organizer если ещё нет
+    # Проверяем, есть ли уже активная роль организатора
     cur.execute(f"""
-        SELECT id, status FROM {schema}.user_roles ur
+        SELECT ur.status FROM {schema}.user_roles ur
         JOIN {schema}.roles r ON r.id = ur.role_id
         WHERE ur.user_id = {user_id} AND r.slug = 'organizer'
     """)
     existing_role = cur.fetchone()
+
+    if existing_role and existing_role['status'] == 'active':
+        # Роль уже есть — сразу добавляем в соорганизаторы
+        cur.execute(f"SELECT id FROM {schema}.organizer_profiles WHERE user_id = {user_id}")
+        if not cur.fetchone():
+            cur.execute(f"INSERT INTO {schema}.organizer_profiles (user_id) VALUES ({user_id}) ON CONFLICT DO NOTHING")
+
+        cur.execute(f"""
+            SELECT id, added_by FROM {schema}.event_co_organizers
+            WHERE event_id = {event_id} AND user_id = {user_id}
+        """)
+        existing_co = cur.fetchone()
+        already = False
+        if existing_co and existing_co['added_by'] != 0:
+            already = True
+        elif existing_co:
+            cur.execute(f"""
+                UPDATE {schema}.event_co_organizers SET added_by = {user_id}
+                WHERE event_id = {event_id} AND user_id = {user_id}
+            """)
+        else:
+            cur.execute(f"""
+                INSERT INTO {schema}.event_co_organizers (event_id, user_id, added_by)
+                VALUES ({event_id}, {user_id}, {user_id})
+            """)
+        conn.commit()
+        conn.close()
+        return {'statusCode': 201, 'headers': headers, 'body': json.dumps({'ok': True, 'already': already, 'status': 'active'})}
+
+    # Проверяем, есть ли уже заявка на роль организатора для этого события
+    cur.execute(f"""
+        SELECT id, status FROM {schema}.role_applications ra
+        JOIN {schema}.roles r ON r.id = ra.role_id
+        WHERE ra.user_id = {user_id} AND r.slug = 'organizer'
+          AND ra.invite_event_id = {event_id} AND ra.status = 'pending'
+    """)
+    existing_req = cur.fetchone()
+    if existing_req:
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'already': True, 'status': 'pending'})}
+
+    # Создаём pending-роль если нет
     if not existing_role:
         cur.execute(f"""
             INSERT INTO {schema}.user_roles (user_id, role_id, status)
-            SELECT {user_id}, id, 'active' FROM {schema}.roles WHERE slug = 'organizer'
-            ON CONFLICT DO NOTHING
-        """)
-    elif existing_role['status'] != 'active':
-        cur.execute(f"""
-            UPDATE {schema}.user_roles SET status = 'active'
-            WHERE user_id = {user_id}
-              AND role_id = (SELECT id FROM {schema}.roles WHERE slug = 'organizer')
+            SELECT {user_id}, id, 'pending' FROM {schema}.roles WHERE slug = 'organizer'
+            ON CONFLICT (user_id, role_id) DO NOTHING
         """)
 
-    # Создаём organizer_profile если нет
-    cur.execute(f"SELECT id FROM {schema}.organizer_profiles WHERE user_id = {user_id}")
-    if not cur.fetchone():
-        cur.execute(f"INSERT INTO {schema}.organizer_profiles (user_id) VALUES ({user_id}) ON CONFLICT DO NOTHING")
-
-    # Добавляем в соорганизаторы
+    # Создаём заявку в role_applications с привязкой к событию
     cur.execute(f"""
-        SELECT id, added_by FROM {schema}.event_co_organizers
-        WHERE event_id = {event_id} AND user_id = {user_id}
+        INSERT INTO {schema}.role_applications (user_id, role_id, invite_event_id, message)
+        SELECT {user_id}, r.id, {event_id},
+               'Заявка от соорганизатора по ссылке-приглашению (событие #{event_id})'
+        FROM {schema}.roles r WHERE r.slug = 'organizer'
+        RETURNING id
     """)
-    existing_co = cur.fetchone()
-
-    already = False
-    if existing_co and existing_co['added_by'] != 0:
-        already = True
-    elif existing_co:
-        cur.execute(f"""
-            UPDATE {schema}.event_co_organizers SET added_by = {user_id}
-            WHERE event_id = {event_id} AND user_id = {user_id}
-        """)
-    else:
-        cur.execute(f"""
-            INSERT INTO {schema}.event_co_organizers (event_id, user_id, added_by)
-            VALUES ({event_id}, {user_id}, {user_id})
-        """)
+    row = cur.fetchone()
+    request_id = row['id'] if row else None
 
     conn.commit()
     conn.close()
-    return {'statusCode': 201, 'headers': headers, 'body': json.dumps({'ok': True, 'already': already})}
+    return {'statusCode': 201, 'headers': headers, 'body': json.dumps({'ok': True, 'already': False, 'status': 'pending', 'request_id': request_id})}
 
 
 def handle_user_search(event, method, params, cur, conn, user_id, schema, headers):
