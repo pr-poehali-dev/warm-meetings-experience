@@ -88,6 +88,8 @@ def handler(event, context):
             return respond(200, {'ok': True})
         if body.get('action') == 'publish_event':
             return handle_publish_event(body)
+        if body.get('action') == 'notify_signup':
+            return handle_notify_signup(body)
 
     return respond(200, {'ok': True})
 
@@ -544,6 +546,56 @@ def handle_help(chat_id):
         "/test — отправить тестовый пост\n"
         "/help — эта справка\n\n"
         "📖 Подробная инструкция: sparcom.ru")
+
+
+def handle_notify_signup(body):
+    organizer_id = body.get('organizer_id')
+    if not organizer_id:
+        return respond(400, {'error': 'organizer_id required'})
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    schema = get_schema()
+
+    cur.execute(f"""
+        SELECT la.telegram_user_id
+        FROM {schema}.tg_linked_accounts la
+        WHERE la.user_id = {organizer_id}
+    """)
+    link = cur.fetchone()
+    conn.close()
+
+    if not link:
+        return respond(200, {'ok': True, 'sent': False, 'reason': 'no_telegram_linked'})
+
+    tg_chat_id = link['telegram_user_id']
+    signup_name = body.get('signup_name', '')
+    signup_phone = body.get('signup_phone', '')
+    signup_email = body.get('signup_email', '')
+    signup_telegram = body.get('signup_telegram', '')
+    event_title = body.get('event_title', '')
+    event_date = body.get('event_date', '')
+    event_time = body.get('event_time', '')
+    bath_name = body.get('bath_name', '')
+    spots_left = body.get('spots_left', '—')
+
+    text = (
+        f"🎫 *Новая запись на событие!*\n\n"
+        f"📌 {event_title}\n"
+        f"📅 {event_date}, {event_time}\n"
+        f"🏠 {bath_name}\n\n"
+        f"👤 {signup_name}\n"
+        f"📞 {signup_phone}\n"
+        f"📧 {signup_email}\n"
+    )
+    if signup_telegram:
+        text += f"✈️ {signup_telegram}\n"
+    text += f"\n🪑 Осталось мест: {spots_left}"
+
+    result = send_message(tg_chat_id, text)
+    sent = result.get('ok', False)
+
+    return respond(200, {'ok': True, 'sent': sent})
 
 
 def handle_publish_event(body):

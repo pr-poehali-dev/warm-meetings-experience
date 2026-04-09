@@ -238,7 +238,7 @@ def handle_signups(event, method, params, schema, headers):
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Необходимо согласие на обработку персональных данных'})}
 
-        cur.execute(f"SELECT id, title, event_date, start_time, end_time, bath_name, bath_address, spots_left FROM {schema}.events WHERE id = {event_id}")
+        cur.execute(f"SELECT id, title, event_date, start_time, end_time, bath_name, bath_address, spots_left, organizer_id FROM {schema}.events WHERE id = {event_id}")
         ev = cur.fetchone()
         if not ev:
             conn.close()
@@ -261,6 +261,7 @@ def handle_signups(event, method, params, schema, headers):
 
         send_signup_confirmation(email, name, ev)
         send_signup_telegram(name, phone, email, telegram, ev)
+        notify_organizer_telegram(ev, name, phone, email, telegram)
 
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(dict(row), default=str)}
 
@@ -409,6 +410,34 @@ def send_signup_telegram(signup_name, signup_phone, signup_email, signup_telegra
         requests.post(
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
             json={'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'},
+            timeout=5
+        )
+    except Exception:
+        pass
+
+
+def notify_organizer_telegram(event_data, signup_name, signup_phone, signup_email, signup_telegram):
+    organizer_id = event_data.get('organizer_id')
+    if not organizer_id:
+        return
+    start_time = str(event_data.get('start_time', ''))[:5]
+    spots = max((event_data.get('spots_left', 1) or 1) - 1, 0)
+    try:
+        requests.post(
+            'https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1',
+            json={
+                'action': 'notify_signup',
+                'organizer_id': organizer_id,
+                'event_title': event_data.get('title', ''),
+                'event_date': str(event_data.get('event_date', '')),
+                'event_time': start_time,
+                'bath_name': event_data.get('bath_name', ''),
+                'spots_left': spots,
+                'signup_name': signup_name,
+                'signup_phone': signup_phone,
+                'signup_email': signup_email,
+                'signup_telegram': signup_telegram,
+            },
             timeout=5
         )
     except Exception:
