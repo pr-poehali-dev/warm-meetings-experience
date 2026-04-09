@@ -1,7 +1,12 @@
 import json
 import os
+import secrets
+import urllib.request
+from datetime import datetime, timedelta
+
 import psycopg2
 import psycopg2.extras
+import requests as http_requests
 
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
@@ -72,11 +77,15 @@ def handler(event, context):
 
     user_id = user['id']
 
-    # join_by_invite доступен любому авторизованному пользователю
+    # join_by_invite и verify_invite доступны любому авторизованному пользователю
     if resource == 'co_organizers' and method == 'POST':
         body_raw = json.loads(event.get('body', '{}'))
         if body_raw.get('action') == 'join_by_invite':
             return handle_join_by_invite(body_raw, cur, conn, user_id, schema, headers)
+
+    if resource == 'verify_invite' and method == 'POST':
+        body_raw = json.loads(event.get('body', '{}'))
+        return handle_verify_invite(body_raw, cur, conn, user_id, schema, headers)
 
     if not is_organizer(cur, user_id, schema):
         conn.close()
@@ -96,6 +105,9 @@ def handler(event, context):
         return handle_co_organizers(event, method, params, cur, conn, user_id, schema, headers)
     elif resource == 'user_search':
         return handle_user_search(event, method, params, cur, conn, user_id, schema, headers)
+    elif resource == 'send_invite' and method == 'POST':
+        body_raw = json.loads(event.get('body', '{}'))
+        return handle_send_invite(body_raw, cur, conn, user_id, schema, headers)
 
     conn.close()
     return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Resource not found'})}
@@ -801,3 +813,244 @@ def handle_user_search(event, method, params, cur, conn, user_id, schema, header
     rows = cur.fetchall()
     conn.close()
     return {'statusCode': 200, 'headers': headers, 'body': json.dumps([dict(r) for r in rows], default=str)}
+
+
+def send_invite_email(to_email, to_name, inviter_name, event_title, invite_url):
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'СПАРКОМ')
+    if not api_key or not sender_email:
+        return
+
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fafafa;">
+        <div style="background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="width: 56px; height: 56px; background: #fef3c7; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 28px;">🤝</div>
+            </div>
+            <h1 style="color: #1a1a1a; font-size: 22px; text-align: center; margin: 0 0 8px;">Приглашение в команду организаторов</h1>
+            <p style="color: #666; text-align: center; margin: 0 0 24px; font-size: 15px;">
+                {inviter_name} приглашает вас стать соорганизатором встречи
+            </p>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 28px; text-align: center;">
+                <p style="color: #1a1a1a; font-size: 16px; font-weight: 600; margin: 0;">📅 {event_title}</p>
+            </div>
+            <p style="color: #555; font-size: 14px; text-align: center; margin: 0 0 24px; line-height: 1.6;">
+                Нажмите кнопку ниже, чтобы подтвердить свой email и отправить заявку.<br>
+                После проверки администратором вы получите доступ к кабинету организатора.
+            </p>
+            <div style="text-align: center; margin-bottom: 24px;">
+                <a href="{invite_url}" style="display: inline-block; background: #1a1a1a; color: #ffffff; padding: 14px 36px; border-radius: 24px; text-decoration: none; font-size: 15px; font-weight: 600;">Подтвердить и принять приглашение</a>
+            </div>
+            <p style="color: #aaa; font-size: 12px; text-align: center; margin: 0 0 8px;">
+                Ссылка действительна 7 дней. Если вы не ожидали это письмо — просто проигнорируйте его.
+            </p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">Это автоматическое письмо. Отвечать на него не нужно.</p>
+        </div>
+    </div>
+    """
+
+    message = {
+        "recipients": [{"email": to_email, "name": to_name or to_email}],
+        "from_email": sender_email,
+        "subject": f"Приглашение стать соорганизатором — {event_title}",
+        "body": {"html": html},
+        "track_links": 0,
+        "track_read": 1,
+        "tags": ["co-organizer-invite"],
+    }
+    if sender_name:
+        message["from_name"] = sender_name
+
+    try:
+        http_requests.post(
+            "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
+            headers={"Content-Type": "application/json", "X-API-KEY": api_key},
+            json={"message": message},
+            timeout=10
+        )
+    except Exception:
+        pass
+
+
+def handle_send_invite(body, cur, conn, user_id, schema, headers):
+    """Отправляет email-приглашение стать соорганизатором события"""
+    event_id = body.get('event_id')
+    invited_email = (body.get('email') or '').strip().lower()
+
+    if not event_id or not invited_email or '@' not in invited_email:
+        conn.close()
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'event_id и email обязательны'})}
+
+    # Проверяем, что текущий пользователь — организатор события
+    cur.execute(f"SELECT id, title, organizer_id FROM {schema}.events WHERE id = {event_id}")
+    ev = cur.fetchone()
+    if not ev:
+        conn.close()
+        return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Событие не найдено'})}
+
+    admin = is_admin(cur, user_id, schema)
+    if not admin and ev['organizer_id'] != user_id:
+        conn.close()
+        return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Нет доступа к этому событию'})}
+
+    # Получаем данные пригласившего
+    cur.execute(f"SELECT name FROM {schema}.users WHERE id = {user_id}")
+    inviter = cur.fetchone()
+    inviter_name = inviter['name'] if inviter else 'Организатор'
+
+    # Проверяем, нет ли уже активного токена для этого email+события
+    e = invited_email.replace("'", "''")
+    cur.execute(f"""
+        SELECT id FROM {schema}.co_organizer_invite_tokens
+        WHERE invited_email = '{e}' AND event_id = {event_id}
+          AND used = FALSE AND expires_at > NOW()
+    """)
+    if cur.fetchone():
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'already_sent': True})}
+
+    token = secrets.token_urlsafe(48)
+    expires = (datetime.utcnow() + timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
+    cur.execute(f"""
+        INSERT INTO {schema}.co_organizer_invite_tokens
+            (token, event_id, invited_email, invited_by, expires_at)
+        VALUES ('{token}', {event_id}, '{e}', {user_id}, '{expires}')
+    """)
+    conn.commit()
+    conn.close()
+
+    invite_url = f"https://sparcom.ru/invite-verify?token={token}"
+
+    # Ищем имя приглашённого если уже зарегистрирован
+    to_name = invited_email
+    send_invite_email(
+        to_email=invited_email,
+        to_name=to_name,
+        inviter_name=inviter_name,
+        event_title=ev['title'],
+        invite_url=invite_url
+    )
+
+    return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True})}
+
+
+def handle_verify_invite(body, cur, conn, user_id, schema, headers):
+    """Верифицирует email через токен из письма и создаёт заявку на соорганизатора"""
+    token = (body.get('token') or '').strip()
+    if not token:
+        conn.close()
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'token обязателен'})}
+
+    t = token.replace("'", "''")
+    cur.execute(f"""
+        SELECT id, event_id, invited_email, used, expires_at
+        FROM {schema}.co_organizer_invite_tokens
+        WHERE token = '{t}'
+    """)
+    invite = cur.fetchone()
+
+    if not invite:
+        conn.close()
+        return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Ссылка недействительна'})}
+
+    if invite['used']:
+        conn.close()
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Приглашение уже использовано'})}
+
+    if invite['expires_at'] < datetime.utcnow():
+        conn.close()
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Срок действия приглашения истёк'})}
+
+    # Проверяем, что email пользователя совпадает с адресом приглашения
+    cur.execute(f"SELECT id, email, name FROM {schema}.users WHERE id = {user_id}")
+    u = cur.fetchone()
+    if not u:
+        conn.close()
+        return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Пользователь не найден'})}
+
+    if u['email'].lower() != invite['invited_email'].lower():
+        conn.close()
+        return {'statusCode': 403, 'headers': headers, 'body': json.dumps({
+            'error': f"Это приглашение отправлено на {invite['invited_email']}. Войдите с этим email."
+        })}
+
+    event_id = invite['event_id']
+
+    # Помечаем токен использованным
+    cur.execute(f"UPDATE {schema}.co_organizer_invite_tokens SET used = TRUE WHERE id = {invite['id']}")
+
+    # Дальше — та же логика что в join_by_invite
+    cur.execute(f"SELECT id, organizer_id FROM {schema}.events WHERE id = {event_id}")
+    ev = cur.fetchone()
+    if not ev:
+        conn.commit()
+        conn.close()
+        return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Событие не найдено'})}
+
+    if ev['organizer_id'] == user_id:
+        conn.commit()
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'status': 'owner'})}
+
+    cur.execute(f"""
+        SELECT ur.status FROM {schema}.user_roles ur
+        JOIN {schema}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = {user_id} AND r.slug = 'organizer'
+    """)
+    existing_role = cur.fetchone()
+
+    if existing_role and existing_role['status'] == 'active':
+        cur.execute(f"SELECT id FROM {schema}.organizer_profiles WHERE user_id = {user_id}")
+        if not cur.fetchone():
+            cur.execute(f"INSERT INTO {schema}.organizer_profiles (user_id) VALUES ({user_id}) ON CONFLICT DO NOTHING")
+        cur.execute(f"""
+            SELECT id, added_by FROM {schema}.event_co_organizers
+            WHERE event_id = {event_id} AND user_id = {user_id}
+        """)
+        existing_co = cur.fetchone()
+        if existing_co and existing_co['added_by'] != 0:
+            conn.commit()
+            conn.close()
+            return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'already': True, 'status': 'active'})}
+        elif existing_co:
+            cur.execute(f"UPDATE {schema}.event_co_organizers SET added_by = {user_id} WHERE event_id = {event_id} AND user_id = {user_id}")
+        else:
+            cur.execute(f"INSERT INTO {schema}.event_co_organizers (event_id, user_id, added_by) VALUES ({event_id}, {user_id}, {user_id})")
+        conn.commit()
+        conn.close()
+        return {'statusCode': 201, 'headers': headers, 'body': json.dumps({'ok': True, 'status': 'active'})}
+
+    # Создаём заявку pending
+    cur.execute(f"""
+        SELECT id FROM {schema}.role_applications ra
+        JOIN {schema}.roles r ON r.id = ra.role_id
+        WHERE ra.user_id = {user_id} AND r.slug = 'organizer'
+          AND ra.invite_event_id = {event_id} AND ra.status = 'pending'
+    """)
+    if cur.fetchone():
+        conn.commit()
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'already': True, 'status': 'pending'})}
+
+    if not existing_role:
+        cur.execute(f"""
+            INSERT INTO {schema}.user_roles (user_id, role_id, status)
+            SELECT {user_id}, id, 'pending' FROM {schema}.roles WHERE slug = 'organizer'
+            ON CONFLICT (user_id, role_id) DO NOTHING
+        """)
+
+    cur.execute(f"""
+        INSERT INTO {schema}.role_applications (user_id, role_id, invite_event_id, message)
+        SELECT {user_id}, r.id, {event_id},
+               'Заявка подтверждена по email-приглашению (событие #{event_id})'
+        FROM {schema}.roles r WHERE r.slug = 'organizer'
+        RETURNING id
+    """)
+    row = cur.fetchone()
+    request_id = row['id'] if row else None
+
+    conn.commit()
+    conn.close()
+    return {'statusCode': 201, 'headers': headers, 'body': json.dumps({'ok': True, 'status': 'pending', 'request_id': request_id})}

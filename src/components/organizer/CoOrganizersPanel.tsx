@@ -29,10 +29,13 @@ function Avatar({ name, photo }: { name: string; photo?: string | null }) {
 function InviteByLink({ eventId, query }: { eventId: number; query: string }) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
-  const inviteUrl = `${window.location.origin}/invite?invite_event=${eventId}`;
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(query.trim());
 
   const handleCopy = () => {
+    const inviteUrl = `${window.location.origin}/invite?invite_event=${eventId}`;
     navigator.clipboard.writeText(inviteUrl).then(() => {
       setCopied(true);
       toast({ title: "Ссылка скопирована", description: "Отправьте её тому, кого хотите пригласить" });
@@ -40,24 +43,62 @@ function InviteByLink({ eventId, query }: { eventId: number; query: string }) {
     });
   };
 
+  const handleSendEmail = async () => {
+    setSendingEmail(true);
+    try {
+      const res = await organizerApi.sendInviteEmail(eventId, query.trim());
+      if (res.already_sent) {
+        toast({ title: "Приглашение уже отправлено", description: `На ${query.trim()} уже выслано активное приглашение` });
+      } else {
+        setEmailSent(true);
+        toast({ title: "Приглашение отправлено!", description: `Письмо с подтверждением выслано на ${query.trim()}` });
+      }
+    } catch (err) {
+      toast({ title: "Ошибка отправки", description: err instanceof Error ? err.message : "Попробуйте ещё раз", variant: "destructive" });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   return (
     <div className="rounded-lg border border-dashed bg-muted/30 p-3 space-y-2">
       <p className="text-xs text-muted-foreground">
-        Пользователь <span className="font-medium text-foreground">«{query}»</span> не найден на сайте.
-        Отправьте ему ссылку для регистрации — после входа он автоматически попадёт в эту встречу как соорганизатор.
+        {isEmail
+          ? <>Email <span className="font-medium text-foreground">{query.trim()}</span> не зарегистрирован. Отправьте приглашение прямо на почту — человек сможет зарегистрироваться и подтвердить участие в команде.</>
+          : <>Пользователь <span className="font-medium text-foreground">«{query}»</span> не найден. Введите email для отправки приглашения или скопируйте ссылку.</>
+        }
       </p>
-      <button
-        type="button"
-        onClick={handleCopy}
-        className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-md border transition-colors w-full ${
-          copied
-            ? "bg-green-50 border-green-200 text-green-700"
-            : "bg-background border-border hover:bg-muted text-foreground"
-        }`}
-      >
-        <Icon name={copied ? "Check" : "Copy"} size={13} />
-        {copied ? "Скопировано!" : "Скопировать ссылку-приглашение"}
-      </button>
+      {isEmail ? (
+        <button
+          type="button"
+          onClick={handleSendEmail}
+          disabled={sendingEmail || emailSent}
+          className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-md border transition-colors w-full ${
+            emailSent
+              ? "bg-green-50 border-green-200 text-green-700"
+              : "bg-background border-border hover:bg-muted text-foreground disabled:opacity-60"
+          }`}
+        >
+          {sendingEmail
+            ? <Icon name="Loader2" size={13} className="animate-spin" />
+            : <Icon name={emailSent ? "Check" : "Mail"} size={13} />
+          }
+          {emailSent ? "Приглашение отправлено!" : sendingEmail ? "Отправляем…" : "Отправить приглашение на email"}
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handleCopy}
+          className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-md border transition-colors w-full ${
+            copied
+              ? "bg-green-50 border-green-200 text-green-700"
+              : "bg-background border-border hover:bg-muted text-foreground"
+          }`}
+        >
+          <Icon name={copied ? "Check" : "Copy"} size={13} />
+          {copied ? "Скопировано!" : "Скопировать ссылку-приглашение"}
+        </button>
+      )}
     </div>
   );
 }

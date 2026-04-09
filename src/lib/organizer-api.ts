@@ -174,4 +174,18 @@ export const organizerApi = {
       `${BASE}/?resource=co_organizers&event_id=${eventId}&user_id=${userId}`,
       { method: "DELETE" }
     ),
+
+  sendInviteEmail: (eventId: number, email: string): Promise<{ ok: boolean; already_sent?: boolean }> =>
+    authenticatedRequest(`${BASE}/?resource=send_invite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_id: eventId, email }),
+    }),
+
+  verifyInvite: (token: string): Promise<{ ok: boolean; status: 'active' | 'pending' | 'owner'; already?: boolean }> =>
+    authenticatedRequest(`${BASE}/?resource=verify_invite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    }),
 };

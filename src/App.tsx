@@ -31,6 +31,7 @@ import MasterDetail from "./pages/MasterDetail";
 import About from "./pages/About";
 import OrganizerCabinet from "./pages/OrganizerCabinet";
 import InviteRegister from "./pages/InviteRegister";
+import InviteVerify from "./pages/InviteVerify";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ const AppContent = () => {
         <Route path="/admin" element={<Admin />} />
         <Route path="/organizer-cabinet" element={<OrganizerCabinet />} />
         <Route path="/invite" element={<InviteRegister />} />
+        <Route path="/invite-verify" element={<InviteVerify />} />
         <Route path="/principles" element={<Principles />} />
         <Route path="/about" element={<About />} />
         <Route path="/organizer" element={<Organizer />} />

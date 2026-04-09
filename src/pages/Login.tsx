@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,22 +11,31 @@ import { toast } from "sonner";
 export default function Login() {
   const { user, loading: authLoading, login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const redirectPath = (() => {
+    const r = searchParams.get("redirect");
+    const token = searchParams.get("token");
+    if (r && token) return `${r}?token=${encodeURIComponent(token)}`;
+    if (r) return r;
+    return "/account";
+  })();
+
   useEffect(() => {
     if (!authLoading && user) {
-      navigate("/account", { replace: true });
+      navigate(redirectPath, { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, redirectPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       await login(email, password);
-      navigate("/account");
+      navigate(redirectPath);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Ошибка входа");
     } finally {
