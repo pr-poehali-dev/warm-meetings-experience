@@ -81,6 +81,15 @@ def handler(event, context):
     if method == 'GET' and params.get('action') == 'set_webhook':
         return handle_set_webhook(event)
 
+    if method == 'GET' and params.get('action') == 'webhook_info':
+        info = tg_api('getWebhookInfo')
+        me = tg_api('getMe')
+        return respond(200, {'webhook': info, 'bot': me})
+
+    if method == 'GET' and params.get('action') == 'delete_webhook':
+        result = tg_api('deleteWebhook', {'drop_pending_updates': True})
+        return respond(200, result)
+
     if method == 'POST':
         body = json.loads(event.get('body', '{}'))
         if 'update_id' in body:
