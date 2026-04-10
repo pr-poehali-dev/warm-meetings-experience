@@ -20,7 +20,7 @@ export default function PageHero({
   return (
     <div
       data-hero
-      className={`relative flex items-end ${minHeight} bg-foreground overflow-hidden`}
+      className={`relative flex items-end ${minHeight} bg-nature-forest overflow-hidden`}
     >
       {image && (
         <>
@@ -29,8 +29,11 @@ export default function PageHero({
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/45 to-black/65" />
+          <div className="absolute inset-0 bg-gradient-to-b from-nature-forest/50 via-nature-forest/40 to-nature-forest/70" />
         </>
+      )}
+      {!image && (
+        <div className="absolute inset-0 bg-gradient-to-br from-nature-forest via-nature-brown/80 to-nature-forest/90" />
       )}
 
       <Header transparent />
