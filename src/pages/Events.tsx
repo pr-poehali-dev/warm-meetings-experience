@@ -9,7 +9,7 @@ import { eventsApi } from "@/lib/api";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { Link } from "react-router-dom";
-import { parseISO, isSameDay } from "date-fns";
+import { parseISO, isSameDay, startOfDay } from "date-fns";
 
 export default function Events() {
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -27,17 +27,24 @@ export default function Events() {
     }).catch(() => setLoading(false));
   }, []);
 
-  const eventTypes = useMemo(() => [...new Set(events.map((e) => e.type))], [events]);
-  const bathNames = useMemo(() => [...new Set(events.map((e) => e.bathName).filter(Boolean))], [events]);
-
   const hasActiveFilters =
     selectedType !== "all" ||
     selectedBath !== "all" ||
     selectedAvailability !== "all" ||
     calendarDate !== undefined;
 
+  const today = startOfDay(new Date());
+
+  const upcomingEvents = useMemo(
+    () => events.filter((e) => parseISO(e.date) >= today),
+    [events]
+  );
+
+  const eventTypes = useMemo(() => [...new Set(upcomingEvents.map((e) => e.type))], [upcomingEvents]);
+  const bathNames = useMemo(() => [...new Set(upcomingEvents.map((e) => e.bathName).filter(Boolean))], [upcomingEvents]);
+
   const filteredEvents = useMemo(() => {
-    return events
+    return upcomingEvents
       .filter((e) => {
         if (selectedType !== "all" && e.type !== selectedType) return false;
         if (selectedBath !== "all" && e.bathName !== selectedBath) return false;
@@ -47,7 +54,7 @@ export default function Events() {
         return true;
       })
       .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-  }, [events, selectedType, selectedBath, selectedAvailability, calendarDate]);
+  }, [upcomingEvents, selectedType, selectedBath, selectedAvailability, calendarDate]);
 
   const resetFilters = () => {
     setSelectedType("all");
@@ -160,6 +167,18 @@ export default function Events() {
             </div>
           )}
 
+        </div>
+      </section>
+
+      <section className="py-10 border-t border-border">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-muted-foreground text-sm mb-3">Хотите посмотреть на прошедшие встречи?</p>
+          <Button asChild variant="outline" className="rounded-full">
+            <Link to="/events/past">
+              <Icon name="History" size={16} />
+              Архив прошедших встреч
+            </Link>
+          </Button>
         </div>
       </section>
 

@@ -32,6 +32,7 @@ import About from "./pages/About";
 import OrganizerCabinet from "./pages/OrganizerCabinet";
 import InviteRegister from "./pages/InviteRegister";
 import InviteVerify from "./pages/InviteVerify";
+import PastEvents from "./pages/PastEvents";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/events" element={<Events />} />
+        <Route path="/events/past" element={<PastEvents />} />
         <Route path="/events/:slug" element={<EventDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
