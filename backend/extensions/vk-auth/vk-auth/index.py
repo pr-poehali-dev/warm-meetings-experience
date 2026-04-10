@@ -408,16 +408,20 @@ def handle_callback(event: dict, origin: str) -> dict:
                 }
             }, origin)
 
-        except Exception:
+        except Exception as db_exc:
             conn.rollback()
-            return error(500, 'Database error', origin)
+            print(f"[VK-AUTH] DB error: {db_exc}")
+            return error(500, f'Database error: {db_exc}', origin)
         finally:
             conn.close()
 
-    except HTTPError:
-        return error(500, 'VK API error', origin)
-    except Exception:
-        return error(500, 'Internal server error', origin)
+    except HTTPError as http_exc:
+        body_bytes = http_exc.read()
+        print(f"[VK-AUTH] VK API HTTP error {http_exc.code}: {body_bytes.decode('utf-8', errors='replace')}")
+        return error(500, f'VK API error: {http_exc.code}', origin)
+    except Exception as exc:
+        print(f"[VK-AUTH] Unexpected error: {exc}")
+        return error(500, f'Internal server error: {exc}', origin)
 
 
 def handle_refresh(event: dict, origin: str) -> dict:
