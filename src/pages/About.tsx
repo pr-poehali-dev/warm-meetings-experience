@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
-import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
+import PageHero from "@/components/ui/PageHero";
 
 const VALUES = [
   {
@@ -70,20 +70,11 @@ const STATS = [
 export default function About() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header />
-
-      <section className="bg-foreground text-background py-20 md:py-28">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl text-center">
-          <p className="text-background/50 uppercase tracking-widest text-xs font-medium mb-4">О клубе</p>
-          <h1 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">
-            СПАРКОМ — банный клуб<br className="hidden sm:block" /> для взрослых людей
-          </h1>
-          <p className="text-background/70 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto">
-            Мы собираем небольшие группы людей, которым важно спокойствие, уважение и порядок. 
-            Есть правила, есть организатор, нет алкоголя и случайных компаний.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        label="О клубе"
+        title="СПАРКОМ — банный клуб для взрослых людей"
+        subtitle="Мы собираем небольшие группы людей, которым важно спокойствие, уважение и порядок. Есть правила, есть организатор, нет алкоголя и случайных компаний."
+      />
 
       <section className="py-14 border-b border-border">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">

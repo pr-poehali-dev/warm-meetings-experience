@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
-import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import PageHero from "@/components/ui/PageHero";
 import { mastersApi, Master, Specialization } from "@/lib/masters-api";
 
 const CITIES = ["Москва", "Санкт-Петербург"];
@@ -144,16 +144,12 @@ export default function Masters() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
-
-      <section className="bg-muted/40 border-b border-border py-12 md:py-16">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl md:text-5xl font-bold mb-3">Мастера пара</h1>
-          <p className="text-lg text-muted-foreground max-w-2xl">
-            Опытные банные мастера и специалисты СПАРКОМ. Выберите по специализации, опыту и городу.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        label="Сообщество"
+        title="Мастера пара"
+        subtitle="Опытные банные мастера и специалисты СПАРКОМ. Выберите по специализации, опыту и городу."
+        minHeight="min-h-[280px] md:min-h-[320px]"
+      />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex gap-3 mb-6">

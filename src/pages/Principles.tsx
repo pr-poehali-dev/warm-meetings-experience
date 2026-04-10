@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import Footer from "@/components/Footer";
-import Header from "@/components/Header";
+import PageHero from "@/components/ui/PageHero";
 
 const principles = [
   {
@@ -143,24 +143,14 @@ const iconNames = [
 export default function Principles() {
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <PageHero
+        label="Документ"
+        title="Принципы клуба СПАРКОМ"
+        subtitle="СПАРКОМ — это не сервис и не развлекательный клуб. Это пространство порядка, тишины и совместного присутствия."
+        minHeight="min-h-[280px] md:min-h-[320px]"
+      />
 
-      <header className="pt-12 pb-16 md:pt-16 md:pb-20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
-          <h1 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">
-            Принципы клуба СПАРКОМ
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
-            СПАРКОМ — это не сервис и не развлекательный клуб.
-            Это пространство порядка, тишины и совместного присутствия.
-          </p>
-          <p className="text-base text-muted-foreground/80 mt-4">
-            Ниже — принципы, на которых держится всё: формат встреч, правила, коммуникация и решения.
-          </p>
-        </div>
-      </header>
-
-      <main className="pb-24 md:pb-32">
+      <main className="pt-16 pb-24 md:pt-20 md:pb-32">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-3xl">
           <div className="space-y-12 md:space-y-16">
             {principles.map((p, i) => (

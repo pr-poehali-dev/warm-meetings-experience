@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
-import BlogHeader from "@/components/blog/BlogHeader";
 import BlogCard from "@/components/blog/BlogCard";
 import CategoryFilter from "@/components/blog/CategoryFilter";
 import Footer from "@/components/Footer";
+import PageHero from "@/components/ui/PageHero";
 import { categories } from "@/lib/blog-data";
 import { blogApi, ApiBlogArticle } from "@/lib/blog-api";
 
@@ -38,19 +38,15 @@ export default function Blog() {
 
   return (
     <div className="min-h-screen bg-background">
-      <BlogHeader />
+      <PageHero
+        label="Блог"
+        title="Банная энциклопедия"
+        subtitle="Полезные статьи о бане — ритуалы, здоровье, стройка и история. Всё, что нужно знать ценителю настоящей бани."
+        minHeight="min-h-[280px] md:min-h-[320px]"
+      />
 
       <section className="py-12 md:py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mb-10">
-            <h2 className="text-3xl md:text-4xl font-semibold mb-4">
-              Банная энциклопедия
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Полезные статьи о бане — ритуалы, здоровье, стройка и история.
-              Всё, что нужно знать ценителю настоящей бани.
-            </p>
-          </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
             {categories.map((cat) => (

@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import {
   OrganizerHero,
@@ -42,7 +41,6 @@ export default function Organizer() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header transparent />
       <OrganizerHero onScrollToForm={scrollToForm} />
       <OrganizerCounters counters={counters} />
       <OrganizerTools />

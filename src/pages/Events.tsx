@@ -7,8 +7,8 @@ import EventCalendar from "@/components/events/EventCalendar";
 import { EventItem, mapApiEvent } from "@/data/events";
 import { eventsApi } from "@/lib/api";
 import Footer from "@/components/Footer";
-import Header from "@/components/Header";
 import { Link } from "react-router-dom";
+import PageHero from "@/components/ui/PageHero";
 import { parseISO, isSameDay, startOfDay } from "date-fns";
 
 export default function Events() {
@@ -65,19 +65,15 @@ export default function Events() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <PageHero
+        label="Афиша"
+        title="Встречи СПАРКОМ"
+        subtitle="Банные встречи, мастер-классы и практики. Выберите подходящую и запишитесь."
+        minHeight="min-h-[280px] md:min-h-[320px]"
+      />
 
       <section className="py-12 md:py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mb-10">
-            <h2 className="text-3xl md:text-4xl font-semibold mb-4">
-              Афиша встреч
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Банные встречи, мастер-классы и практики. Выберите подходящую и запишитесь.
-            </p>
-          </div>
-
           {loading ? (
             <div className="text-center py-20">
               <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground mx-auto mb-4" />

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import Header from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import Footer from "@/components/Footer";
+import PageHero from "@/components/ui/PageHero";
 
 const SCHEDULE_STEPS = [
   {
@@ -113,23 +113,12 @@ const MANAGE_ACTIONS = [
 export default function SteamMasterGuide() {
   return (
     <div className="min-h-screen bg-background">
-      <Header transparent />
-
-      <section className="relative min-h-[50vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground/95 to-foreground/85" />
-        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center py-28">
-          <div className="inline-flex items-center gap-2 bg-white/10 text-white/80 text-sm px-4 py-1.5 rounded-full mb-6">
-            <Icon name="BookOpen" size={16} />
-            Инструкция для парамастера
-          </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-            Как работать с&nbsp;расписанием
-          </h1>
-          <p className="text-xl md:text-2xl text-white/80 font-light max-w-2xl mx-auto leading-relaxed">
-            Пошаговое руководство по созданию, публикации и управлению встречами на платформе СПАРКОМ
-          </p>
-        </div>
-      </section>
+      <PageHero
+        label="Инструкция для парамастера"
+        title="Как работать с расписанием"
+        subtitle="Пошаговое руководство по созданию, публикации и управлению встречами на платформе СПАРКОМ"
+        minHeight="min-h-[320px] md:min-h-[380px]"
+      />
 
       <section className="py-20 md:py-28">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">

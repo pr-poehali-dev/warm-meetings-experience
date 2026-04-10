@@ -3,38 +3,27 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
+import PageHero from "@/components/ui/PageHero";
 import { TOOLS, STEPS, TARIFFS } from "./organizerData";
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
 export function OrganizerHero({ onScrollToForm }: { onScrollToForm: () => void }) {
   return (
-    <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-foreground via-foreground/95 to-foreground/80" />
-      <div className="absolute inset-0 opacity-[0.04]" style={{
-        backgroundImage: "linear-gradient(rgba(255,255,255,.5) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.5) 1px,transparent 1px)",
-        backgroundSize: "48px 48px"
-      }} />
-      <div className="relative z-10 max-w-4xl mx-auto px-6 text-center py-36">
-        <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 text-white/80 text-sm mb-8">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-          Принимаем новых организаторов
-        </div>
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-          Проводи банные встречи.<br className="hidden md:block" /> Зарабатывай на своём деле.
-        </h1>
-        <p className="text-xl md:text-2xl text-white/70 mb-10 font-light max-w-2xl mx-auto leading-relaxed">
-          Платформа со всем нужным: афиша, кабинет, онлайн-запись, оплаты и Telegram-канал — в одном месте
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button size="lg" className="rounded-full text-base px-8 py-6 bg-white text-foreground hover:bg-white/90" onClick={onScrollToForm}>
-            Стать организатором
-          </Button>
-          <Button size="lg" variant="outline" className="rounded-full text-base px-8 py-6 border-white/30 text-white hover:bg-white/10" asChild>
-            <Link to="/organizer-cabinet">Войти в кабинет</Link>
-          </Button>
-        </div>
+    <PageHero
+      label="Для организаторов"
+      title={"Проводи банные встречи.\nЗарабатывай на своём деле."}
+      subtitle="Платформа со всем нужным: афиша, кабинет, онлайн-запись, оплаты и Telegram-канал — в одном месте"
+      minHeight="min-h-[70vh]"
+    >
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Button size="lg" className="rounded-full text-base px-8 bg-white text-foreground hover:bg-white/90" onClick={onScrollToForm}>
+          Стать организатором
+        </Button>
+        <Button size="lg" variant="outline" className="rounded-full text-base px-8 border-white/30 text-white hover:bg-white/10" asChild>
+          <Link to="/organizer-cabinet">Войти в кабинет</Link>
+        </Button>
       </div>
-    </section>
+    </PageHero>
   );
 }
 
