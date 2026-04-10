@@ -19,7 +19,7 @@ export function OrganizerHero({ onScrollToForm }: { onScrollToForm: () => void }
         <Button size="lg" className="rounded-full text-base px-8 bg-white text-foreground hover:bg-white/90" onClick={onScrollToForm}>
           Стать организатором
         </Button>
-        <Button size="lg" variant="outline" className="rounded-full text-base px-8 border-white/30 text-white hover:bg-white/10" asChild>
+        <Button size="lg" variant="outline" className="rounded-full text-base px-8 border-white/60 text-white bg-white/10 hover:bg-white/20" asChild>
           <Link to="/organizer-cabinet">Войти в кабинет</Link>
         </Button>
       </div>
