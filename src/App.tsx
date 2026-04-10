@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import ScrollToTop from "./components/ScrollToTop";
 import Index from "./pages/Index";
@@ -13,6 +13,7 @@ import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import Documents from "./pages/Documents";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Account from "./pages/Account";
@@ -65,8 +66,9 @@ const AppContent = () => {
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/category/:slug" element={<BlogCategory />} />
         <Route path="/blog/:slug" element={<BlogArticle />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/terms" element={<Terms />} />
+        <Route path="/documents" element={<Documents />} />
+        <Route path="/privacy" element={<Navigate to="/documents?tab=privacy" replace />} />
+        <Route path="/terms" element={<Navigate to="/documents?tab=terms" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
