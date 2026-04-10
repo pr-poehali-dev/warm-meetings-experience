@@ -367,16 +367,18 @@ def handle_callback(event: dict, origin: str) -> dict:
                     photo_url = db_avatar or photo_url
                 else:
                     # 3. Create new user
+                    safe_email = vk_email or f"vk_{vk_user_id}@vk.local"
+                    safe_name = full_name or f"VK пользователь {vk_user_id}"
                     cur.execute(
                         f"""INSERT INTO {S}users
                             (vk_id, email, name, avatar_url, email_verified, created_at, updated_at, last_login_at)
                             VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s)
                             RETURNING id""",
-                        (str(vk_user_id), vk_email, full_name, photo_url, now, now, now)
+                        (str(vk_user_id), safe_email, safe_name, photo_url, now, now, now)
                     )
                     user_id = cur.fetchone()[0]
-                    email = vk_email
-                    name = full_name
+                    email = safe_email
+                    name = safe_name
 
             # Create tokens
             access_token, expires_in = create_access_token(user_id, email)
