@@ -63,18 +63,21 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				nature: {
-					brown: '#8B7355',
-					forest: '#2C3E2D',
-					cream: '#F5F1E8',
-					olive: '#4A5D23',
-					'light-brown': '#A58DA8',
-					beige: '#E8DAC0'
+					brown: '#A0522D',
+					forest: '#3D2B1F',
+					cream: '#FAF5ED',
+					olive: '#7A6235',
+					'light-brown': '#C49A6C',
+					beige: '#EFE0C7'
 				}
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+				sm: 'calc(var(--radius) - 4px)',
+				xl: 'calc(var(--radius) + 4px)',
+				'2xl': 'calc(var(--radius) + 8px)',
+				'3xl': 'calc(var(--radius) + 16px)',
 			},
 			keyframes: {
 				'accordion-down': {

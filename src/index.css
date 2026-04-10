@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,35 +6,35 @@
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 0 0% 15%;
+    --background: 36 33% 97%;
+    --foreground: 20 20% 14%;
 
-    --card: 0 0% 98%;
-    --card-foreground: 0 0% 15%;
+    --card: 36 30% 98%;
+    --card-foreground: 20 20% 14%;
 
-    --popover: 0 0% 98%;
-    --popover-foreground: 0 0% 15%;
+    --popover: 36 30% 98%;
+    --popover-foreground: 20 20% 14%;
 
-    --primary: 0 0% 20%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 22 72% 45%;
+    --primary-foreground: 36 40% 97%;
 
-    --secondary: 0 0% 25%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 30 30% 88%;
+    --secondary-foreground: 20 20% 20%;
 
-    --muted: 0 0% 92%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 34 25% 92%;
+    --muted-foreground: 25 15% 46%;
 
-    --accent: 0 0% 25%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 22 72% 45%;
+    --accent-foreground: 36 40% 97%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 0 0% 88%;
-    --input: 0 0% 88%;
-    --ring: 0 0% 20%;
+    --border: 30 20% 86%;
+    --input: 30 20% 86%;
+    --ring: 22 72% 45%;
 
-    --radius: 0rem;
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -100,5 +100,11 @@
   body {
     @apply bg-background text-foreground;
     font-family: "Inter", sans-serif;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: "Playfair Display", serif;
   }
 }
