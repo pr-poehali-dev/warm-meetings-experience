@@ -191,31 +191,54 @@ export function OrganizerTariffs({ onScrollToForm }: { onScrollToForm: () => voi
     <section className="py-20 md:py-28 bg-muted/30">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl md:text-4xl font-semibold mb-4 text-center">Тарифы</h2>
-        <p className="text-center text-muted-foreground mb-16 text-lg">Размещение бесплатно — комиссия только с проданных билетов</p>
+        <p className="text-center text-muted-foreground mb-4 text-lg">Никаких процентов с продаж. Только фиксированная плата за доступ.</p>
+        <p className="text-center text-sm text-muted-foreground mb-16">Все деньги от участников остаются у вас.</p>
         <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
           {TARIFFS.map((t, i) => (
-            <Card key={i} className={`p-8 border-0 shadow-sm relative ${t.highlighted ? "ring-2 ring-primary" : ""}`}>
+            <Card key={i} className={`p-8 border-0 shadow-sm relative flex flex-col ${t.highlighted ? "ring-2 ring-primary" : ""}`}>
               {t.highlighted && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
-                  Выгоднее
+                  Популярный
                 </div>
               )}
-              <div className="text-center mb-6">
+              <div className="mb-6">
                 <div className="text-xs text-muted-foreground mb-1 font-medium uppercase tracking-wide">{t.badge}</div>
-                <div className="text-lg font-semibold mb-2">{t.name}</div>
-                <div className="text-5xl font-bold">{t.commission}</div>
-                <div className="text-sm text-muted-foreground mt-1">комиссия с билета</div>
+                <div className="text-xl font-semibold mb-3">{t.name}</div>
+                <div className="text-4xl font-bold">{t.price}</div>
+                {t.price !== "Бесплатно" && <div className="text-sm text-muted-foreground mt-1">в месяц</div>}
+                {t.priceNote && <div className="text-xs text-muted-foreground mt-2 bg-muted/60 rounded-lg px-3 py-2">{t.priceNote}</div>}
+                <div className="mt-3 inline-flex items-center gap-1.5 bg-green-50 text-green-800 text-sm font-semibold px-3 py-1 rounded-full border border-green-200">
+                  <Icon name="BadgePercent" size={14} />
+                  {t.commission} {t.commissionNote}
+                </div>
               </div>
-              <ul className="space-y-3">
+
+              {t.limits.length > 0 && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-1">
+                  {t.limits.map((l, j) => (
+                    <div key={j} className="flex items-center gap-2 text-xs text-amber-800">
+                      <Icon name="AlertCircle" size={13} className="shrink-0" />
+                      {l}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <ul className="space-y-2.5 flex-1">
                 {t.features.map((f, j) => (
-                  <li key={j} className="flex items-center gap-2 text-sm">
-                    <Icon name="Check" size={15} className="text-green-600 shrink-0" />
+                  <li key={j} className="flex items-start gap-2 text-sm">
+                    <Icon name="Check" size={15} className="text-green-600 shrink-0 mt-0.5" />
                     {f}
                   </li>
                 ))}
               </ul>
-              <Button className="w-full mt-8 rounded-full" variant={t.highlighted ? "default" : "outline"} onClick={onScrollToForm}>
-                Начать
+
+              {t.afterNote && (
+                <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border/60">{t.afterNote}</p>
+              )}
+
+              <Button className="w-full mt-6 rounded-full" variant={t.highlighted ? "default" : "outline"} onClick={onScrollToForm}>
+                {t.price === "Бесплатно" ? "Начать бесплатно" : "Подключить"}
               </Button>
             </Card>
           ))}
