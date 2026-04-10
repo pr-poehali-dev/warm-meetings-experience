@@ -34,6 +34,7 @@ import OrganizerCabinet from "./pages/OrganizerCabinet";
 import InviteRegister from "./pages/InviteRegister";
 import InviteVerify from "./pages/InviteVerify";
 import PastEvents from "./pages/PastEvents";
+import VkCallback from "./pages/VkCallback";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const AppContent = () => {
         <Route path="/events/past" element={<PastEvents />} />
         <Route path="/events/:slug" element={<EventDetail />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/auth/vk/callback" element={<VkCallback />} />
         <Route path="/register" element={<Register />} />
         <Route path="/account" element={<Account />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />

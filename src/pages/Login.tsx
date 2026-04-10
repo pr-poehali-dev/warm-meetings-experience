@@ -7,11 +7,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { VkLoginButton } from "@/components/extensions/vk-auth/VkLoginButton";
+import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
+
+const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 
 export default function Login() {
   const { user, loading: authLoading, login } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  const vkAuth = useVkAuth({
+    apiUrls: {
+      authUrl: `${VK_AUTH_URL}?action=auth-url`,
+      callback: `${VK_AUTH_URL}?action=callback`,
+      refresh: `${VK_AUTH_URL}?action=refresh`,
+      logout: `${VK_AUTH_URL}?action=logout`,
+    },
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -105,6 +118,22 @@ export default function Login() {
                 )}
               </Button>
             </form>
+
+            <div className="mt-4 space-y-3">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">или</span>
+                </div>
+              </div>
+              <VkLoginButton
+                onClick={vkAuth.login}
+                isLoading={vkAuth.isLoading}
+                className="w-full"
+              />
+            </div>
 
             <div className="mt-4 text-center space-y-2">
               <Link
