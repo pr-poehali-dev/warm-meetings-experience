@@ -39,6 +39,23 @@
       "expectedStatus": 401,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Link VK without token returns 401",
+      "method": "POST",
+      "path": "/?resource=link-vk",
+      "body": {"vk_id": "123", "access_token": "token"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Unlink VK without token returns 401",
+      "method": "DELETE",
+      "path": "/?resource=link-vk",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

@@ -105,6 +105,13 @@ def handler(event, context):
             body = json.loads(event.get('body', '{}'))
             return handle_delete_account(cur, conn, schema, user, body, ip)
 
+    if resource == 'link-vk':
+        if method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            return handle_link_vk(cur, conn, schema, user, body, ip)
+        if method == 'DELETE':
+            return handle_unlink_vk(cur, conn, schema, user, ip)
+
     conn.close()
     return respond(400, {'error': 'Unknown resource'})
 
@@ -238,3 +245,46 @@ def handle_delete_account(cur, conn, schema, user, body, ip=None):
     conn.close()
 
     return respond(200, {'message': 'Аккаунт удалён. Ваши персональные данные обезличены.'})
+
+
+def handle_link_vk(cur, conn, schema, user, body, ip=None):
+    vk_id = str(body.get('vk_id') or '').strip()
+    vk_access_token = str(body.get('access_token') or '').strip()
+
+    if not vk_id or not vk_access_token:
+        conn.close()
+        return respond(400, {'error': 'Не передан vk_id или access_token'})
+
+    # Проверяем что vk_id не занят другим пользователем
+    safe_vk_id = vk_id.replace("'", "''")
+    cur.execute(f"SELECT id FROM {schema}.users WHERE vk_id = '{safe_vk_id}' AND id != {user['id']}")
+    if cur.fetchone():
+        conn.close()
+        return respond(400, {'error': 'Этот VK аккаунт уже привязан к другому пользователю'})
+
+    cur.execute(f"""
+        UPDATE {schema}.users SET vk_id = '{safe_vk_id}', updated_at = CURRENT_TIMESTAMP
+        WHERE id = {user['id']}
+    """)
+    write_audit_log(cur, schema, user['id'], 'link_vk', 'users', user['id'], ip)
+    conn.commit()
+    conn.close()
+    return respond(200, {'message': 'ВКонтакте успешно привязан', 'vk_id': vk_id})
+
+
+def handle_unlink_vk(cur, conn, schema, user, ip=None):
+    # Нельзя отвязать VK если нет пароля (единственный способ входа)
+    cur.execute(f"SELECT password_hash, vk_id FROM {schema}.users WHERE id = {user['id']}")
+    row = cur.fetchone()
+    if not row or not row.get('vk_id'):
+        conn.close()
+        return respond(400, {'error': 'VK аккаунт не привязан'})
+    if not row.get('password_hash'):
+        conn.close()
+        return respond(400, {'error': 'Нельзя отвязать VK — установите пароль для входа на сайт'})
+
+    cur.execute(f"UPDATE {schema}.users SET vk_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = {user['id']}")
+    write_audit_log(cur, schema, user['id'], 'unlink_vk', 'users', user['id'], ip)
+    conn.commit()
+    conn.close()
+    return respond(200, {'message': 'VK аккаунт отвязан'})

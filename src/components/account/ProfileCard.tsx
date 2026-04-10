@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { User } from "@/lib/user-api";
+import VkLinkSection from "@/components/account/VkLinkSection";
 
 function maskEmail(email: string): string {
   const [local, domain] = email.split("@");
@@ -39,6 +40,8 @@ interface ProfileCardProps {
   showDeleteConfirm: boolean;
   setShowDeleteConfirm: (v: boolean) => void;
   handleDeleteAccount: (e: React.FormEvent) => void;
+  onVkLinked?: (vkId: string) => void;
+  onVkUnlinked?: () => void;
 }
 
 export default function ProfileCard({
@@ -60,6 +63,8 @@ export default function ProfileCard({
   showDeleteConfirm,
   setShowDeleteConfirm,
   handleDeleteAccount,
+  onVkLinked,
+  onVkUnlinked,
 }: ProfileCardProps) {
   const [showPhone, setShowPhone] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
@@ -180,6 +185,13 @@ export default function ProfileCard({
                 <div className="text-sm text-muted-foreground">Telegram</div>
                 <div className="font-medium">{user.telegram || "Не указан"}</div>
               </div>
+            </div>
+            <div className="pt-1 border-t border-border">
+              <VkLinkSection
+                vkId={user.vk_id}
+                onLinked={onVkLinked || (() => {})}
+                onUnlinked={onVkUnlinked || (() => {})}
+              />
             </div>
           </div>
         )}

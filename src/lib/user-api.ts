@@ -9,6 +9,7 @@ export interface User {
   name: string;
   phone: string;
   telegram?: string;
+  vk_id?: string | null;
   created_at: string;
 }
 
@@ -65,4 +66,10 @@ export const userProfileApi = {
 
   deleteAccount: (password: string): Promise<{ message: string }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=delete-account`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }),
+
+  linkVk: (vk_id: string, access_token: string): Promise<{ message: string; vk_id: string }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=link-vk`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ vk_id, access_token }) }),
+
+  unlinkVk: (): Promise<{ message: string }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=link-vk`, { method: "DELETE" }),
 };

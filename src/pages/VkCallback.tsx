@@ -19,6 +19,16 @@ export default function VkCallback() {
   });
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const isLinkFlow = params.get("vk_link") === "1";
+
+    if (isLinkFlow) {
+      const accountUrl = new URL(`${window.location.origin}/account`);
+      params.forEach((v, k) => accountUrl.searchParams.set(k, v));
+      window.location.replace(accountUrl.toString());
+      return;
+    }
+
     auth.handleCallback().then((success) => {
       if (success) {
         toast.success("Вы вошли через ВКонтакте");

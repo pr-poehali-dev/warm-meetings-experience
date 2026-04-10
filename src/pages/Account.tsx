@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAccount } from "@/hooks/useAccount";
 import { rolesApi } from "@/lib/roles-api";
+import { useAuth } from "@/contexts/AuthContext";
 import AccountHeader from "@/components/account/AccountHeader";
 import ProfileCard from "@/components/account/ProfileCard";
 import GrowthSection from "@/components/account/GrowthSection";
@@ -16,6 +17,7 @@ type Tab = "main" | "articles" | "calendar";
 
 export default function Account() {
   const navigate = useNavigate();
+  const { user: authUser, updateUser } = useAuth();
   const [tab, setTab] = useState<Tab>("main");
   const [isParmaster, setIsParmaster] = useState(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
@@ -132,6 +134,8 @@ export default function Account() {
               showDeleteConfirm={showDeleteConfirm}
               setShowDeleteConfirm={setShowDeleteConfirm}
               handleDeleteAccount={handleDeleteAccount}
+              onVkLinked={(vkId) => authUser && updateUser({ ...authUser, vk_id: vkId })}
+              onVkUnlinked={() => authUser && updateUser({ ...authUser, vk_id: null })}
             />
             <GrowthSection />
             <BadgesSection />
