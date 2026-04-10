@@ -138,30 +138,14 @@ export default function Events() {
                     )}
                   </>
                 ) : (
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div className="sm:col-span-1">
-                      <EventCalendar
-                        events={events}
-                        selectedDate={calendarDate}
-                        onDateSelect={setCalendarDate}
-                      />
-                    </div>
-                    <div className="sm:col-span-1 lg:col-span-2">
-                      {filteredEvents.length > 0 ? (
-                        <div className="space-y-4">
-                          {filteredEvents.map((event) => (
-                            <EventCard key={event.slug} event={event} compact />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-12">
-                          <p className="text-muted-foreground">
-                            {calendarDate ? "Нет встреч на эту дату" : "Выберите дату в календаре"}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <EventCalendar
+                    events={upcomingEvents}
+                    selectedDate={calendarDate}
+                    onDateSelect={setCalendarDate}
+                    filterType={selectedType}
+                    filterBath={selectedBath}
+                    filterAvailability={selectedAvailability}
+                  />
                 )}
               </div>
             </div>
