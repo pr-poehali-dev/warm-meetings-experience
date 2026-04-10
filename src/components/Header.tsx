@@ -65,7 +65,11 @@ export default function Header({ transparent = false }: HeaderProps) {
   const isLight = transparent && !isDarkBg;
 
   const headerBase = transparent
-    ? "fixed top-0 left-0 right-0 z-50 bg-transparent transition-colors duration-300"
+    ? `fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isLight
+          ? "bg-background/80 backdrop-blur-md border-b border-border/60"
+          : "bg-transparent"
+      }`
     : "sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b border-border";
 
   return (
