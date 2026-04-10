@@ -13,15 +13,18 @@ import func2url from "../../../backend/func2url.json";
 export function OrganizerCalculator() {
   const [ticketPrice, setTicketPrice] = useState(2500);
   const [participants, setParticipants] = useState(12);
-  const [commission, setCommission] = useState(15);
+  const [eventsPerMonth, setEventsPerMonth] = useState(4);
 
-  const income = Math.round(ticketPrice * participants * (1 - commission / 100));
+  const totalRevenue = ticketPrice * participants * eventsPerMonth;
+  const platformCost = 2000;
+  const netIncome = totalRevenue - platformCost;
+  const savings = Math.round(totalRevenue * 0.15); // сколько экономит vs 15% комиссии
 
   return (
     <section className="py-20 md:py-28">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl md:text-4xl font-semibold mb-4 text-center">Калькулятор дохода</h2>
-        <p className="text-center text-muted-foreground mb-12 text-lg">Посчитай, сколько можно заработать с одной встречи</p>
+        <p className="text-center text-muted-foreground mb-12 text-lg">Посчитай, сколько остаётся у тебя в месяц</p>
         <Card className="max-w-xl mx-auto p-8 border-0 shadow-sm">
           <div className="space-y-6">
             <div>
@@ -30,32 +33,31 @@ export function OrganizerCalculator() {
               <div className="flex justify-between text-xs text-muted-foreground mt-1"><span>500 ₽</span><span>10 000 ₽</span></div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Участников: <span className="text-primary">{participants}</span></label>
+              <label className="text-sm font-medium mb-2 block">Участников на встрече: <span className="text-primary">{participants}</span></label>
               <input type="range" min={2} max={50} step={1} value={participants} onChange={(e) => setParticipants(+e.target.value)} className="w-full accent-primary" />
               <div className="flex justify-between text-xs text-muted-foreground mt-1"><span>2</span><span>50</span></div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Тариф</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setCommission(15)}
-                  className={`rounded-xl border py-3 px-4 text-sm font-medium transition-all ${commission === 15 ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-border/80"}`}
-                >
-                  Базовый · 15%
-                </button>
-                <button
-                  onClick={() => setCommission(10)}
-                  className={`rounded-xl border py-3 px-4 text-sm font-medium transition-all ${commission === 10 ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-border/80"}`}
-                >
-                  Партнёрский · 10%
-                </button>
-              </div>
+              <label className="text-sm font-medium mb-2 block">Встреч в месяц: <span className="text-primary">{eventsPerMonth}</span></label>
+              <input type="range" min={1} max={20} step={1} value={eventsPerMonth} onChange={(e) => setEventsPerMonth(+e.target.value)} className="w-full accent-primary" />
+              <div className="flex justify-between text-xs text-muted-foreground mt-1"><span>1</span><span>20</span></div>
             </div>
-            <div className="pt-4 border-t border-border">
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground mb-2">Ваш доход с одного события</div>
-                <div className="text-5xl font-bold text-primary">{income.toLocaleString("ru-RU")} ₽</div>
-                <div className="text-xs text-muted-foreground mt-2">= {ticketPrice.toLocaleString()} ₽ × {participants} чел. − {commission}% комиссии</div>
+            <div className="pt-4 border-t border-border space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Выручка за месяц</span>
+                <span className="font-medium">{totalRevenue.toLocaleString("ru-RU")} ₽</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Стоимость тарифа «Активный»</span>
+                <span className="font-medium text-muted-foreground">−{platformCost.toLocaleString("ru-RU")} ₽</span>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <span className="font-semibold">Ваш доход</span>
+                <span className="text-3xl font-bold text-primary">{netIncome.toLocaleString("ru-RU")} ₽</span>
+              </div>
+              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 flex items-center gap-2">
+                <Icon name="TrendingUp" size={16} className="shrink-0" />
+                <span>Экономия vs 15% комиссии: <strong>+{savings.toLocaleString("ru-RU")} ₽/мес</strong></span>
               </div>
             </div>
           </div>

@@ -3,6 +3,7 @@ import Footer from "@/components/Footer";
 import {
   OrganizerHero,
   OrganizerCounters,
+  OrganizerZeroCommission,
   OrganizerTools,
   OrganizerCabinetPreview,
   OrganizerHowItWorks,
@@ -43,6 +44,7 @@ export default function Organizer() {
     <div className="min-h-screen bg-background">
       <OrganizerHero onScrollToForm={scrollToForm} />
       <OrganizerCounters counters={counters} />
+      <OrganizerZeroCommission onScrollToForm={scrollToForm} />
       <OrganizerTools />
       <OrganizerCabinetPreview onScrollToForm={scrollToForm} />
       <OrganizerHowItWorks />

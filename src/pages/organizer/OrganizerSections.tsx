@@ -51,6 +51,43 @@ export function OrganizerCounters({ counters }: { counters: { events: number; vi
   );
 }
 
+// ── Zero Commission Banner ────────────────────────────────────────────────────
+export function OrganizerZeroCommission({ onScrollToForm }: { onScrollToForm: () => void }) {
+  return (
+    <section className="py-14 bg-nature-forest text-white">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-10">
+          <div className="text-center md:text-left flex-1">
+            <div className="text-7xl md:text-8xl font-bold text-white/10 leading-none mb-1">0%</div>
+            <h2 className="text-2xl md:text-3xl font-semibold -mt-6 mb-3">Никакой комиссии с продаж</h2>
+            <p className="text-white/70 text-lg leading-relaxed">
+              Все деньги от участников — ваши. Мы берём только фиксированную плату за доступ к платформе, а не процент с каждого проданного места.
+            </p>
+            <Button className="mt-6 rounded-full bg-white text-nature-forest hover:bg-white/90 font-semibold px-8" size="lg" onClick={onScrollToForm}>
+              Начать бесплатно
+            </Button>
+          </div>
+          <div className="flex-1 w-full max-w-sm">
+            <div className="space-y-3">
+              {[
+                { label: "Цена участия", value: "2 500 ₽" },
+                { label: "Участников", value: "12 чел." },
+                { label: "Комиссия платформы", value: "0 ₽", accent: true },
+                { label: "Ваш доход", value: "30 000 ₽", big: true },
+              ].map(({ label, value, accent, big }) => (
+                <div key={label} className={`flex items-center justify-between rounded-xl px-4 py-3 ${big ? "bg-white/15 border border-white/30" : "bg-white/8"}`}>
+                  <span className={`text-sm ${big ? "font-semibold" : "text-white/70"}`}>{label}</span>
+                  <span className={`font-bold ${big ? "text-xl" : accent ? "text-green-400" : ""}`}>{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Tools ─────────────────────────────────────────────────────────────────────
 export function OrganizerTools() {
   return (
@@ -190,8 +227,8 @@ export function OrganizerTariffs({ onScrollToForm }: { onScrollToForm: () => voi
   return (
     <section className="py-20 md:py-28 bg-muted/30">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 className="text-3xl md:text-4xl font-semibold mb-4 text-center">Тарифы</h2>
-        <p className="text-center text-muted-foreground mb-4 text-lg">Никаких процентов с продаж. Только фиксированная плата за доступ.</p>
+        <h2 className="text-3xl md:text-4xl font-semibold mb-3 text-center">Тарифы</h2>
+        <p className="text-center text-muted-foreground mb-2 text-lg">Никаких процентов с продаж. Только фиксированная плата за доступ.</p>
         <p className="text-center text-sm text-muted-foreground mb-16">Все деньги от участников остаются у вас.</p>
         <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
           {TARIFFS.map((t, i) => (
@@ -251,11 +288,11 @@ export function OrganizerTariffs({ onScrollToForm }: { onScrollToForm: () => voi
 // ── Final CTA ─────────────────────────────────────────────────────────────────
 export function OrganizerFinalCTA() {
   return (
-    <section className="py-16 bg-foreground text-white">
+    <section className="py-16 bg-nature-forest text-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 className="text-2xl md:text-3xl font-semibold mb-3">Уже организатор?</h2>
         <p className="text-white/70 mb-6">Войдите в кабинет и управляйте своими встречами</p>
-        <Button asChild size="lg" className="rounded-full bg-white text-foreground hover:bg-white/90 px-8">
+        <Button asChild size="lg" className="rounded-full bg-white text-nature-forest hover:bg-white/90 font-semibold px-8">
           <Link to="/organizer-cabinet">
             <Icon name="LayoutDashboard" size={18} className="mr-2" />
             Открыть кабинет
