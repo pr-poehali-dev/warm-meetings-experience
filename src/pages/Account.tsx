@@ -52,6 +52,12 @@ export default function Account() {
     handleCancelEdit,
     handleChangePassword,
     handleLogout,
+    deletePassword,
+    setDeletePassword,
+    deletingAccount,
+    showDeleteConfirm,
+    setShowDeleteConfirm,
+    handleDeleteAccount,
   } = useAccount();
 
   if (authLoading) {
@@ -120,6 +126,12 @@ export default function Account() {
               setEditTelegram={setEditTelegram}
               handleSaveProfile={handleSaveProfile}
               handleCancelEdit={handleCancelEdit}
+              deletePassword={deletePassword}
+              setDeletePassword={setDeletePassword}
+              deletingAccount={deletingAccount}
+              showDeleteConfirm={showDeleteConfirm}
+              setShowDeleteConfirm={setShowDeleteConfirm}
+              handleDeleteAccount={handleDeleteAccount}
             />
             <GrowthSection />
             <BadgesSection />

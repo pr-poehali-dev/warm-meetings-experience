@@ -4,6 +4,7 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta
 
+import bcrypt
 import psycopg2
 import psycopg2.extras
 import requests
@@ -30,7 +31,17 @@ def respond(status, body):
     }
 
 def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=12))
+    return hashed.decode('utf-8')
+
+def verify_password(password, stored_hash):
+    if not stored_hash:
+        return False
+    # Плавная миграция: поддержка старых SHA256 хешей
+    if stored_hash.startswith('$2b$') or stored_hash.startswith('$2a$'):
+        return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
+    # Старый SHA256 без соли
+    return hashlib.sha256(password.encode()).hexdigest() == stored_hash
 
 def generate_token():
     return secrets.token_urlsafe(48)
@@ -101,10 +112,11 @@ def handle_register(body):
     n = name.replace("'", "''")
     p = phone.replace("'", "''")
     pw_hash = hash_password(password)
+    pw_hash_escaped = pw_hash.replace("'", "''")
 
     cur.execute(f"""
         INSERT INTO {schema}.users (email, name, phone, password_hash)
-        VALUES ('{e}', '{n}', '{p}', '{pw_hash}')
+        VALUES ('{e}', '{n}', '{p}', '{pw_hash_escaped}')
         RETURNING id, email, name, phone, created_at
     """)
     user = cur.fetchone()
@@ -162,9 +174,16 @@ def handle_login(body):
         conn.close()
         return respond(401, {'error': 'Пароль не установлен. Воспользуйтесь сбросом пароля.'})
 
-    if user['password_hash'] != hash_password(password):
+    if not verify_password(password, user['password_hash']):
         conn.close()
         return respond(401, {'error': 'Неверный email или пароль'})
+
+    # Плавная миграция: если пароль был SHA256 — обновляем на bcrypt
+    stored = user['password_hash']
+    if not (stored.startswith('$2b$') or stored.startswith('$2a$')):
+        new_hash = hash_password(password)
+        new_hash_escaped = new_hash.replace("'", "''")
+        cur.execute(f"UPDATE {schema}.users SET password_hash = '{new_hash_escaped}' WHERE id = {user['id']}")
 
     token = generate_token()
     expires = (datetime.utcnow() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
@@ -235,7 +254,8 @@ def handle_reset(body):
         return respond(400, {'error': 'Ссылка для сброса пароля недействительна или устарела'})
 
     pw_hash = hash_password(new_password)
-    cur.execute(f"UPDATE {schema}.users SET password_hash = '{pw_hash}', updated_at = CURRENT_TIMESTAMP WHERE id = {reset['user_id']}")
+    pw_hash_escaped = pw_hash.replace("'", "''")
+    cur.execute(f"UPDATE {schema}.users SET password_hash = '{pw_hash_escaped}', updated_at = CURRENT_TIMESTAMP WHERE id = {reset['user_id']}")
     cur.execute(f"UPDATE {schema}.password_reset_tokens SET used = true WHERE id = {reset['id']}")
     conn.commit()
     conn.close()

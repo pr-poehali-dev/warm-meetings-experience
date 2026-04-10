@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserSignup, userProfileApi } from "@/lib/user-api";
 import { toast } from "sonner";
+
+const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 60 минут бездействия
 
 export function useAccount() {
   const { user, loading: authLoading, logout, updateUser } = useAuth();
@@ -21,6 +23,32 @@ export function useAccount() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Автовыход при бездействии
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(async () => {
+      toast.info("Сессия завершена из-за бездействия");
+      await logout();
+      navigate("/login");
+    }, IDLE_TIMEOUT_MS);
+  }, [logout, navigate]);
+
+  useEffect(() => {
+    const events = ["mousemove", "keydown", "click", "scroll", "touchstart"];
+    events.forEach((e) => window.addEventListener(e, resetIdleTimer));
+    resetIdleTimer();
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, resetIdleTimer));
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+    };
+  }, [resetIdleTimer]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -93,6 +121,25 @@ export function useAccount() {
     }
   };
 
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deletePassword) {
+      toast.error("Введите пароль для подтверждения");
+      return;
+    }
+    setDeletingAccount(true);
+    try {
+      await userProfileApi.deleteAccount(deletePassword);
+      toast.success("Аккаунт удалён. Ваши данные обезличены.");
+      await logout();
+      navigate("/");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Ошибка удаления аккаунта");
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate("/login");
@@ -123,5 +170,11 @@ export function useAccount() {
     handleCancelEdit,
     handleChangePassword,
     handleLogout,
+    deletePassword,
+    setDeletePassword,
+    deletingAccount,
+    showDeleteConfirm,
+    setShowDeleteConfirm,
+    handleDeleteAccount,
   };
 }

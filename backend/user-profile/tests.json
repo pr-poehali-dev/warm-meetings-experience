@@ -30,6 +30,15 @@
       "expectedStatus": 401,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Delete account without token returns 401",
+      "method": "DELETE",
+      "path": "/?resource=delete-account",
+      "body": {"password": "somepassword"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }
