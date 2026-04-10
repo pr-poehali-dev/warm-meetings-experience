@@ -9,6 +9,7 @@ import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
+import AppendixLinkModal from "@/components/AppendixLinkModal";
 
 export default function Register() {
   const { user, loading: authLoading, register } = useAuth();
@@ -20,8 +21,13 @@ export default function Register() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [consent, setConsent] = useState(false);
+  const [consentTerms, setConsentTerms] = useState(false);
+  const [consentPd, setConsentPd] = useState(false);
+  const [consentRules, setConsentRules] = useState(false);
+  const [consentPhoto, setConsentPhoto] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const allRequired = consentTerms && consentPd && consentRules;
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -37,9 +43,14 @@ export default function Register() {
       return;
     }
 
+    if (!allRequired) {
+      toast.error("Необходимо принять все обязательные условия");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await register({ email, name, phone, password, consent_pd: consent });
+      await register({ email, name, phone, password, consent_pd: consentPd });
       navigate(redirectTo);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Ошибка регистрации");
@@ -135,31 +146,88 @@ export default function Register() {
                 />
               </div>
 
-              <div className="flex items-start gap-3 pt-2">
-                <Checkbox
-                  id="consent"
-                  checked={consent}
-                  onCheckedChange={(checked) => setConsent(checked === true)}
-                />
-                <Label htmlFor="consent" className="text-sm leading-relaxed font-normal cursor-pointer">
-                  Даю{" "}
-                  <ConsentModal trigger="согласие на обработку персональных данных" />
-                  {" "}в соответствии с{" "}
-                  <Link
-                    to="/privacy"
-                    className="text-primary hover:text-primary/80 underline underline-offset-2"
-                    target="_blank"
-                  >
-                    Политикой конфиденциальности
-                  </Link>{" "}
-                  и ФЗ №152-ФЗ
-                </Label>
+              <div className="space-y-3 pt-2 border-t border-border">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Обязательные условия</p>
+
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="consentTerms"
+                    checked={consentTerms}
+                    onCheckedChange={(checked) => setConsentTerms(checked === true)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="consentTerms" className="text-sm leading-relaxed font-normal cursor-pointer">
+                    Я принимаю условия{" "}
+                    <Link
+                      to="/terms"
+                      className="text-primary hover:text-primary/80 underline underline-offset-2"
+                      target="_blank"
+                    >
+                      Пользовательского соглашения
+                    </Link>
+                  </Label>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="consentPd"
+                    checked={consentPd}
+                    onCheckedChange={(checked) => setConsentPd(checked === true)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="consentPd" className="text-sm leading-relaxed font-normal cursor-pointer">
+                    Я даю согласие на{" "}
+                    <ConsentModal trigger="обработку персональных данных" />
+                    {" "}({" "}
+                    <AppendixLinkModal appendixId={1} label="Приложение №1" />
+                    {" "})
+                  </Label>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="consentRules"
+                    checked={consentRules}
+                    onCheckedChange={(checked) => setConsentRules(checked === true)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="consentRules" className="text-sm leading-relaxed font-normal cursor-pointer">
+                    Я ознакомлен(а) с{" "}
+                    <Link
+                      to="/terms#rules"
+                      className="text-primary hover:text-primary/80 underline underline-offset-2"
+                      target="_blank"
+                    >
+                      Правилами сообщества
+                    </Link>
+                    {" "}и обязуюсь их соблюдать
+                  </Label>
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-1 border-t border-border">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Дополнительно</p>
+
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="consentPhoto"
+                    checked={consentPhoto}
+                    onCheckedChange={(checked) => setConsentPhoto(checked === true)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="consentPhoto" className="text-sm leading-relaxed font-normal cursor-pointer text-muted-foreground">
+                    Я согласен(на) на использование моих фото с мероприятий в рекламных целях{" "}
+                    ({" "}
+                    <AppendixLinkModal appendixId={2} label="Приложение №2" />
+                    {" "})
+                  </Label>
+                </div>
               </div>
 
               <Button
                 type="submit"
                 className="w-full"
-                disabled={submitting || !consent}
+                disabled={submitting || !allRequired}
               >
                 {submitting ? (
                   <>

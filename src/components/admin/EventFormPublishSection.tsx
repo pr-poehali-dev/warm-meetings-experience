@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import Icon from "@/components/ui/icon";
 import FormSection from "./FormSection";
 
@@ -14,6 +15,7 @@ interface Event {
   is_visible: boolean;
   featured?: boolean;
   occupancy: string;
+  consent_rules?: boolean;
   [key: string]: unknown;
 }
 
@@ -96,6 +98,22 @@ export default function EventFormPublishSection({
               — выделить мероприятие на главной
             </span>
           </Label>
+        </div>
+
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 space-y-1">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="consentRules"
+              checked={!!formData.consent_rules}
+              onCheckedChange={(checked) =>
+                onFormChange({ ...formData, consent_rules: checked === true })
+              }
+              className="mt-0.5"
+            />
+            <Label htmlFor="consentRules" className="text-sm leading-relaxed font-normal cursor-pointer text-amber-900">
+              Я подтверждаю, что мероприятие не содержит запрещённых элементов (алкоголь, наркотики, оскорбительный контент и т.п.) и будет проведено в соответствии с Правилами сообщества
+            </Label>
+          </div>
         </div>
 
         <div className="max-w-xs">

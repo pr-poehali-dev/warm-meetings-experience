@@ -13,16 +13,23 @@ interface SignUpFormProps {
   eventId: number;
   eventTitle: string;
   spotsLeft: number;
+  registrationDeadline?: string;
+  price?: number;
+  platformFee?: number;
 }
 
-export default function SignUpForm({ eventId, eventTitle, spotsLeft }: SignUpFormProps) {
+export default function SignUpForm({ eventId, eventTitle, spotsLeft, registrationDeadline, price, platformFee }: SignUpFormProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [telegram, setTelegram] = useState("");
-  const [consent, setConsent] = useState(false);
+  const [consentPd, setConsentPd] = useState(false);
+  const [consentCancellation, setConsentCancellation] = useState(false);
+  const [consentDataShare, setConsentDataShare] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const allRequired = consentPd && consentCancellation && consentDataShare;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,8 +37,8 @@ export default function SignUpForm({ eventId, eventTitle, spotsLeft }: SignUpFor
       toast.error("Заполните имя, телефон и email");
       return;
     }
-    if (!consent) {
-      toast.error("Необходимо дать согласие на обработку персональных данных");
+    if (!allRequired) {
+      toast.error("Необходимо принять все условия записи");
       return;
     }
     setLoading(true);
@@ -88,9 +95,25 @@ export default function SignUpForm({ eventId, eventTitle, spotsLeft }: SignUpFor
     <Card className="border-0 shadow-sm">
       <CardContent className="p-6">
         <h3 className="text-lg font-semibold mb-1">Записаться</h3>
-        <p className="text-sm text-muted-foreground mb-5">
-          Оставьте контакты — организатор свяжется с вами
-        </p>
+        {(price !== undefined) && (
+          <div className="mb-4 rounded-lg bg-muted/50 px-4 py-3 text-sm space-y-1">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Стоимость</span>
+              <span className="font-medium">{price.toLocaleString("ru-RU")} ₽</span>
+            </div>
+            {platformFee !== undefined && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Комиссия платформы</span>
+                <span className="text-muted-foreground">{platformFee.toLocaleString("ru-RU")} ₽ (включена)</span>
+              </div>
+            )}
+          </div>
+        )}
+        {!price && (
+          <p className="text-sm text-muted-foreground mb-5">
+            Оставьте контакты — организатор свяжется с вами
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="name" className="text-sm">Имя *</Label>
@@ -134,35 +157,60 @@ export default function SignUpForm({ eventId, eventTitle, spotsLeft }: SignUpFor
               className="mt-1.5 rounded-lg"
             />
           </div>
-          <div className="flex items-start space-x-3 pt-1">
-            <Checkbox
-              id="consent"
-              checked={consent}
-              onCheckedChange={(checked) => setConsent(checked === true)}
-              className="mt-0.5"
-            />
-            <label htmlFor="consent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
-              Даю{" "}
-              <ConsentModal trigger="согласие на обработку персональных данных" />
-              {" "}в соответствии с{" "}
-              <a
-                href="/privacy"
-                target="_blank"
-                className="underline hover:text-foreground"
-              >
-                Политикой конфиденциальности
-              </a>{" "}
-              и ФЗ №152-ФЗ
-            </label>
+
+          <div className="space-y-3 pt-2 border-t border-border">
+            <div className="flex items-start space-x-3">
+              <Checkbox
+                id="consentPd"
+                checked={consentPd}
+                onCheckedChange={(checked) => setConsentPd(checked === true)}
+                className="mt-0.5"
+              />
+              <label htmlFor="consentPd" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                Даю{" "}
+                <ConsentModal trigger="согласие на обработку персональных данных" />
+                {" "}в соответствии с Политикой конфиденциальности и ФЗ №152-ФЗ
+              </label>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <Checkbox
+                id="consentDataShare"
+                checked={consentDataShare}
+                onCheckedChange={(checked) => setConsentDataShare(checked === true)}
+                className="mt-0.5"
+              />
+              <label htmlFor="consentDataShare" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                Согласен(на) на передачу моих контактных данных организатору и мастеру для связи
+              </label>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <Checkbox
+                id="consentCancellation"
+                checked={consentCancellation}
+                onCheckedChange={(checked) => setConsentCancellation(checked === true)}
+                className="mt-0.5"
+              />
+              <label htmlFor="consentCancellation" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                Принимаю условия отмены:{" "}
+                {registrationDeadline ? (
+                  <>после крайней даты регистрации (<span className="font-medium text-foreground">{registrationDeadline}</span>) возврат невозможен</>
+                ) : (
+                  <>после крайней даты регистрации возврат невозможен</>
+                )}
+              </label>
+            </div>
           </div>
+
           <Button
             type="submit"
             className="w-full rounded-full"
             size="lg"
-            disabled={loading || !consent}
+            disabled={loading || !allRequired}
           >
             <Icon name="Send" size={16} className="mr-2" />
-            {loading ? "Отправка..." : "Отправить заявку"}
+            {loading ? "Отправка..." : (price ? "Записаться и оплатить" : "Отправить заявку")}
           </Button>
         </form>
       </CardContent>
