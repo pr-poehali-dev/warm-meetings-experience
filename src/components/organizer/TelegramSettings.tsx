@@ -203,33 +203,67 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, onRefresh 
               Подключите Telegram-канал или чат
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Аккаунт привязан. Теперь укажите, куда бот будет публиковать ваши события.
-            </p>
-            <div className="space-y-2">
-              {[
-                { step: 1, text: "Добавьте бота в администраторы вашего Telegram-канала (или пригласите его в группу)", note: "Бот должен иметь право отправлять сообщения" },
-                { step: 2, text: `Откройте бота ${BOT_NAME} и отправьте ему команду /add` },
-                { step: 3, text: "Перешлите боту любое сообщение из вашего канала — он его запомнит и подтвердит подключение" },
-              ].map(({ step, text, note }) => (
-                <div key={step} className="flex items-start gap-3 p-3 bg-muted/40 rounded-lg">
-                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">{step}</span>
-                  <div>
-                    <p className="text-sm">{text}</p>
-                    {note && <p className="text-xs text-muted-foreground mt-0.5">{note}</p>}
-                  </div>
-                </div>
-              ))}
+          <CardContent className="space-y-4">
+
+            {/* Пояснение */}
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/15 space-y-1.5">
+              <p className="font-medium text-foreground text-sm flex items-center gap-1.5">
+                <Icon name="Info" size={14} className="text-primary flex-shrink-0" />
+                Зачем добавлять бота в канал?
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Чтобы бот мог публиковать посты, он должен быть участником вашего канала или группы с правом отправлять сообщения — как любой другой администратор.
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Если у вас ещё нет Telegram-канала — создайте его: откройте Telegram → «Создать канал» → укажите название. Канал можно сделать публичным или приватным, это не важно.
+              </p>
             </div>
-            <a href={BOT_URL} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
-              <Icon name="ExternalLink" size={14} />
-              Открыть {BOT_NAME}
-            </a>
-            <Button variant="outline" onClick={onRefresh} className="w-full gap-2 mt-2">
+
+            {/* Шаги */}
+            <div className="space-y-2">
+
+              <div className="flex items-start gap-3 p-3 bg-muted/40 rounded-lg">
+                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">1</span>
+                <div className="text-sm">
+                  <p className="font-medium mb-0.5">Добавьте бота в администраторы канала</p>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    Откройте ваш канал в Telegram → «Управление каналом» → «Администраторы» → «Добавить администратора» → найдите <span className="font-mono">{BOT_NAME}</span> → добавьте с правом отправлять сообщения.
+                  </p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">Если у вас группа — просто пригласите бота как обычного участника.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-muted/40 rounded-lg">
+                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">2</span>
+                <div className="text-sm">
+                  <p className="font-medium mb-0.5">Откройте бота и отправьте команду /add</p>
+                  <p className="text-muted-foreground text-xs leading-relaxed mb-2">
+                    Перейдите в чат с ботом — он скажет, что ждёт сообщение из канала.
+                  </p>
+                  <a href={BOT_URL} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                    <Icon name="ExternalLink" size={14} />
+                    Открыть {BOT_NAME}
+                  </a>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 bg-muted/40 rounded-lg">
+                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">3</span>
+                <div className="text-sm">
+                  <p className="font-medium mb-0.5">Перешлите боту любое сообщение из канала</p>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    Зайдите в ваш канал → нажмите на любое сообщение → «Переслать» → выберите {BOT_NAME}. Бот распознает канал и подтвердит подключение.
+                  </p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">Если в канале ещё нет сообщений — напишите туда что угодно, а затем перешлите это боту.</p>
+                </div>
+              </div>
+
+            </div>
+
+            <Button variant="outline" onClick={onRefresh} className="w-full gap-2">
               <Icon name="RefreshCw" size={14} />
-              Обновить статус
+              Проверить — канал подключён
             </Button>
           </CardContent>
         </Card>
@@ -240,28 +274,34 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, onRefresh 
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Icon name="Terminal" size={16} />
-              Управление через бота
+              <Icon name="CheckCircle2" size={16} className="text-green-500" />
+              Всё готово — бот настроен
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-sm text-muted-foreground mb-3">
-              Все настройки каналов и шаблонов публикаций управляются командами в боте:
-            </p>
-            {[
-              { cmd: "/list", desc: "Показать список подключённых каналов" },
-              { cmd: "/template", desc: "Настроить шаблон поста для канала" },
-              { cmd: "/test", desc: "Отправить тестовую публикацию" },
-              { cmd: "/remove", desc: "Отключить канал от бота" },
-              { cmd: "/help", desc: "Полный список команд и справка" },
-            ].map(({ cmd, desc }) => (
-              <div key={cmd} className="flex items-center gap-3 py-1.5">
-                <code className="text-xs bg-muted px-2 py-1 rounded font-mono w-24 flex-shrink-0">{cmd}</code>
-                <span className="text-sm text-muted-foreground">{desc}</span>
-              </div>
-            ))}
+          <CardContent className="space-y-4">
+
+            <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-xs text-green-800 leading-relaxed">
+              Теперь каждый раз, когда вы нажмёте «Опубликовать» при создании события — бот автоматически отправит анонс в подключённый канал. Ничего дополнительно делать не нужно.
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">Дополнительные возможности — через бота:</p>
+              {[
+                { cmd: "/list", desc: "Список подключённых каналов и чатов" },
+                { cmd: "/template", desc: "Изменить шаблон поста (текст, эмодзи, формат)" },
+                { cmd: "/test", desc: "Отправить пробную публикацию и проверить вёрстку" },
+                { cmd: "/remove", desc: "Отключить канал — бот перестанет туда писать" },
+                { cmd: "/help", desc: "Полный список команд" },
+              ].map(({ cmd, desc }) => (
+                <div key={cmd} className="flex items-start gap-3 py-1.5 border-b border-border/40 last:border-0">
+                  <code className="text-xs bg-muted px-2 py-1 rounded font-mono w-24 flex-shrink-0 mt-0.5">{cmd}</code>
+                  <span className="text-xs text-muted-foreground">{desc}</span>
+                </div>
+              ))}
+            </div>
+
             <a href={BOT_URL} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline mt-2">
+              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline">
               <Icon name="ExternalLink" size={14} />
               Открыть {BOT_NAME}
             </a>
