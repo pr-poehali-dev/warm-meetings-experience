@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
 import { useAuth } from "@/contexts/AuthContext";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
@@ -8,18 +7,21 @@ import { toast } from "sonner";
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 const USER_AUTH_URL = "https://functions.poehali.dev/d5d9f568-ba92-4605-9b95-646ba409fd8d";
 
+function getStoredCodeVerifier(): string | null {
+  return sessionStorage.getItem("vk_auth_code_verifier");
+}
+function getStoredState(): string | null {
+  return sessionStorage.getItem("vk_auth_state");
+}
+function clearVkStorage() {
+  sessionStorage.removeItem("vk_auth_code_verifier");
+  sessionStorage.removeItem("vk_auth_state");
+  localStorage.removeItem("vk_auth_refresh_token");
+}
+
 export default function VkCallback() {
   const navigate = useNavigate();
   const { updateUser } = useAuth();
-
-  const auth = useVkAuth({
-    apiUrls: {
-      authUrl: `${VK_AUTH_URL}?action=auth-url`,
-      callback: `${VK_AUTH_URL}?action=callback`,
-      refresh: `${VK_AUTH_URL}?action=refresh`,
-      logout: `${VK_AUTH_URL}?action=logout`,
-    },
-  });
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -32,41 +34,80 @@ export default function VkCallback() {
       return;
     }
 
-    auth.handleCallback().then(async (success) => {
-      if (success && auth.user) {
-        try {
-          // Создаём сессию основной системы по vk_id
-          const res = await fetch(`${USER_AUTH_URL}/?action=vk_session`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ vk_id: String(auth.user.vk_id) }),
-          });
-          const data = await res.json();
+    const code = params.get("code");
+    const device_id = params.get("device_id") || "";
+    const state = params.get("state");
 
-          if (!res.ok) {
-            toast.error(data.error || "Не удалось создать сессию");
-            navigate("/login", { replace: true });
-            return;
-          }
+    if (!code) {
+      toast.error("Не получен код авторизации от ВКонтакте");
+      navigate("/login", { replace: true });
+      return;
+    }
 
-          localStorage.setItem("user_token", data.token);
-          localStorage.setItem("user_data", JSON.stringify(data.user));
-          updateUser(data.user);
+    const storedState = getStoredState();
+    if (storedState && state !== storedState) {
+      toast.error("Ошибка безопасности: неверный state");
+      navigate("/login", { replace: true });
+      return;
+    }
 
-          // Выходим из VK-сессии (она нам больше не нужна)
-          await auth.logout();
+    const code_verifier = getStoredCodeVerifier();
+    if (!code_verifier) {
+      toast.error("Сессия устарела, попробуйте снова");
+      navigate("/login", { replace: true });
+      return;
+    }
 
-          toast.success("Вы вошли через ВКонтакте");
-          navigate("/account", { replace: true });
-        } catch {
-          toast.error("Ошибка при создании сессии");
+    (async () => {
+      try {
+        // 1. Обмениваем code на токены VK — получаем vk_id напрямую из ответа
+        const vkRes = await fetch(`${VK_AUTH_URL}?action=callback`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code, code_verifier, device_id }),
+        });
+        const vkData = await vkRes.json();
+
+        if (!vkRes.ok) {
+          toast.error(vkData.error || "Ошибка авторизации через ВКонтакте");
           navigate("/login", { replace: true });
+          return;
         }
-      } else {
-        toast.error("Не удалось войти через ВКонтакте");
+
+        const vk_id = String(vkData.user?.vk_id || "");
+        if (!vk_id) {
+          toast.error("Не получен VK ID пользователя");
+          navigate("/login", { replace: true });
+          return;
+        }
+
+        // 2. Создаём сессию основной системы по vk_id
+        const sessionRes = await fetch(`${USER_AUTH_URL}/?action=vk_session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vk_id }),
+        });
+        const sessionData = await sessionRes.json();
+
+        if (!sessionRes.ok) {
+          toast.error(sessionData.error || "Не удалось создать сессию");
+          navigate("/login", { replace: true });
+          return;
+        }
+
+        // 3. Сохраняем сессию и входим
+        localStorage.setItem("user_token", sessionData.token);
+        localStorage.setItem("user_data", JSON.stringify(sessionData.user));
+        updateUser(sessionData.user);
+        clearVkStorage();
+
+        toast.success("Вы вошли через ВКонтакте");
+        navigate("/account", { replace: true });
+      } catch {
+        toast.error("Ошибка соединения");
         navigate("/login", { replace: true });
       }
-    });
+    })();
   }, []);
 
   return (
