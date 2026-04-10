@@ -26,7 +26,7 @@ export default function Header({ transparent = false }: HeaderProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isDarkBg, setIsDarkBg] = useState(true);
+  const [heroVisible, setHeroVisible] = useState(true);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -34,26 +34,18 @@ export default function Header({ transparent = false }: HeaderProps) {
 
   useEffect(() => {
     if (!transparent) return;
+    setHeroVisible(true);
 
-    const detect = () => {
-      const headerH = 64;
-      const midX = window.innerWidth / 2;
-      const el = document.elementFromPoint(midX, headerH + 4) as HTMLElement | null;
-      if (!el) return;
-      const bg = window.getComputedStyle(el).backgroundColor;
-      const rgb = bg.match(/\d+/g)?.map(Number) ?? [0, 0, 0];
-      const luminance = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
-      setIsDarkBg(luminance < 0.6);
-    };
+    const hero = document.querySelector("[data-hero]") as HTMLElement | null;
+    if (!hero) { setHeroVisible(false); return; }
 
-    detect();
-    window.addEventListener("scroll", detect, { passive: true });
-    window.addEventListener("resize", detect);
-    return () => {
-      window.removeEventListener("scroll", detect);
-      window.removeEventListener("resize", detect);
-    };
-  }, [transparent]);
+    const obs = new IntersectionObserver(
+      ([e]) => setHeroVisible(e.isIntersecting),
+      { threshold: 0.05 }
+    );
+    obs.observe(hero);
+    return () => obs.disconnect();
+  }, [transparent, location.pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -62,13 +54,15 @@ export default function Header({ transparent = false }: HeaderProps) {
 
   const isActive = (to: string) => location.pathname === to;
 
-  const isLight = transparent && !isDarkBg;
+  // onHero = поверх тёмного hero → белый текст, прозрачный фон
+  // offHero = прокрутили дальше → залипающий хедер с фоном как обычно
+  const onHero = transparent && heroVisible;
 
   const headerBase = transparent
     ? `fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isLight
-          ? "bg-background/80 backdrop-blur-md border-b border-border/60"
-          : "bg-transparent"
+        onHero
+          ? "bg-transparent"
+          : "bg-card/95 backdrop-blur-md border-b border-border"
       }`
     : "sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b border-border";
 
@@ -78,9 +72,7 @@ export default function Header({ transparent = false }: HeaderProps) {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className={`font-bold text-lg tracking-wide transition-colors duration-300 ${
-            transparent
-              ? isLight ? "text-foreground" : "text-white"
-              : "text-foreground"
+            onHero ? "text-white" : "text-foreground"
           }`}>
             СПАРКОМ
           </Link>
@@ -91,14 +83,10 @@ export default function Header({ transparent = false }: HeaderProps) {
                 key={link.to}
                 to={link.to}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300 ${
-                  transparent
-                    ? isLight
-                      ? isActive(link.to)
-                        ? "bg-foreground/10 text-foreground"
-                        : "text-foreground/70 hover:text-foreground hover:bg-foreground/8"
-                      : isActive(link.to)
-                        ? "bg-white/20 text-white"
-                        : "text-white/80 hover:text-white hover:bg-white/10"
+                  onHero
+                    ? isActive(link.to)
+                      ? "bg-white/20 text-white"
+                      : "text-white/80 hover:text-white hover:bg-white/10"
                     : isActive(link.to)
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
@@ -111,15 +99,13 @@ export default function Header({ transparent = false }: HeaderProps) {
 
           <div className="flex items-center gap-2">
             {user ? (
-              <ProfileDropdown variant={transparent && !isLight ? "transparent" : "default"} />
+              <ProfileDropdown variant={onHero ? "transparent" : "default"} />
             ) : (
               <Link
                 to="/login"
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-300 ${
-                  transparent
-                    ? isLight
-                      ? "bg-foreground/10 border border-foreground/20 text-foreground hover:bg-foreground/15"
-                      : "bg-white/10 border border-white/20 text-white hover:bg-white/20"
+                  onHero
+                    ? "bg-white/10 border border-white/20 text-white hover:bg-white/20"
                     : "bg-primary text-primary-foreground hover:bg-primary/90"
                 }`}
               >
@@ -130,9 +116,7 @@ export default function Header({ transparent = false }: HeaderProps) {
 
             <button
               className={`md:hidden p-2 rounded-md transition-colors duration-300 ${
-                transparent
-                  ? isLight ? "text-foreground hover:bg-foreground/10" : "text-white hover:bg-white/10"
-                  : "text-foreground hover:bg-muted"
+                onHero ? "text-white hover:bg-white/10" : "text-foreground hover:bg-muted"
               }`}
               onClick={() => setMobileOpen((v) => !v)}
             >

@@ -10,7 +10,7 @@ interface HeroSectionProps {
 
 export default function HeroSection({ user, onScrollDown }: HeroSectionProps) {
   return (
-    <section className="relative h-screen flex items-center justify-center">
+    <section data-hero className="relative h-screen flex items-center justify-center">
       <img 
         src="https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/69533be6-e8cd-4137-89eb-a06d187922f4.jpg"
         alt="Спокойная пустая баня"
