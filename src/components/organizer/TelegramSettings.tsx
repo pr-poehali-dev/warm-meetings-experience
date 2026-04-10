@@ -92,14 +92,45 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, onRefresh 
           <CardContent className="space-y-4">
             {!code ? (
               <>
-                <div className="text-sm text-muted-foreground space-y-1.5">
-                  <p>Для привязки нужно сделать всего два действия:</p>
-                  <ol className="list-decimal list-inside space-y-1 pl-1">
-                    <li>Нажмите кнопку ниже — система выдаст вам одноразовый код</li>
-                    <li>Откройте бота в Telegram и отправьте ему этот код командой <code className="bg-muted px-1.5 py-0.5 rounded text-xs">/verify КОД</code></li>
-                  </ol>
-                  <p className="text-xs text-muted-foreground pt-1">Код действует 10 минут. Если истёк — просто получите новый.</p>
+                {/* Что такое бот и зачем */}
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/15 text-sm space-y-1.5">
+                  <p className="font-medium text-foreground flex items-center gap-1.5">
+                    <Icon name="Info" size={14} className="text-primary flex-shrink-0" />
+                    Что такое бот и зачем он нужен?
+                  </p>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    Бот СПАРКОМ — это официальный Telegram-бот (<span className="font-mono">{BOT_NAME}</span>), который умеет публиковать ваши события в ваш канал или группу автоматически — как только вы нажмёте «Опубликовать» в кабинете.
+                  </p>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    Чтобы это заработало, нужно один раз: привязать бота к своему аккаунту (шаг 1) и добавить его в ваш канал (шаг 2). Дальше всё будет происходить само.
+                  </p>
                 </div>
+
+                {/* Как привязать */}
+                <div className="text-sm space-y-2">
+                  <p className="font-medium">Как привязать — два простых шага:</p>
+                  <div className="space-y-2">
+                    <div className="flex gap-3 p-3 bg-muted/40 rounded-lg">
+                      <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">1</span>
+                      <div className="text-sm text-muted-foreground">
+                        Нажмите кнопку ниже — система выдаст вам одноразовый цифровой код
+                      </div>
+                    </div>
+                    <div className="flex gap-3 p-3 bg-muted/40 rounded-lg">
+                      <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">2</span>
+                      <div className="text-sm text-muted-foreground">
+                        Откройте бота в Telegram по ссылке{" "}
+                        <a href={BOT_URL} target="_blank" rel="noopener noreferrer"
+                          className="font-medium text-primary hover:underline">{BOT_NAME}</a>{" "}
+                        и отправьте ему команду{" "}
+                        <code className="bg-muted px-1.5 py-0.5 rounded text-xs">/verify ВАШ_КОД</code>
+                        <p className="text-xs mt-1 text-muted-foreground/70">Точную команду для копирования вы увидите сразу после получения кода</p>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground pl-1">Код действует 10 минут. Если истёк — просто нажмите «Получить код» снова.</p>
+                </div>
+
                 <Button onClick={handleGetCode} disabled={loading} className="w-full gap-2">
                   {loading ? <Icon name="Loader2" size={16} className="animate-spin" /> : <Icon name="Key" size={16} />}
                   Получить код привязки
