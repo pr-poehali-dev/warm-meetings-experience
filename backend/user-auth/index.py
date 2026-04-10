@@ -72,6 +72,8 @@ def handler(event, context):
         return handle_check(body)
     elif action == 'logout':
         return handle_logout(body)
+    elif action == 'vk_session':
+        return handle_vk_session(body)
 
     return respond(400, {'error': 'Unknown action'})
 
@@ -303,6 +305,41 @@ def handle_logout(body):
     conn.close()
 
     return respond(200, {'ok': True})
+
+
+def handle_vk_session(body):
+    """Создаёт сессию основной системы для пользователя, вошедшего через VK."""
+    vk_id = str(body.get('vk_id') or '').strip()
+    if not vk_id:
+        return respond(400, {'error': 'vk_id обязателен'})
+
+    schema = get_schema()
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    safe_vk_id = vk_id.replace("'", "''")
+    cur.execute(f"SELECT id, email, name, phone, telegram, created_at, is_active FROM {schema}.users WHERE vk_id = '{safe_vk_id}'")
+    user = cur.fetchone()
+
+    if not user:
+        conn.close()
+        return respond(404, {'error': 'Пользователь с таким VK ID не найден'})
+
+    if not user.get('is_active'):
+        conn.close()
+        return respond(403, {'error': 'Аккаунт заблокирован'})
+
+    token = generate_token()
+    expires = (datetime.utcnow() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+    cur.execute(f"""
+        INSERT INTO {schema}.user_sessions (user_id, token, expires_at)
+        VALUES ({user['id']}, '{token}', '{expires}')
+    """)
+    conn.commit()
+    conn.close()
+
+    user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'created_at']}
+    return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
 
 
 def send_welcome_email(to_email, name):

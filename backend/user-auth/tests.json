@@ -68,6 +68,24 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "VK session without vk_id returns 400",
+      "method": "POST",
+      "path": "/?action=vk_session",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "VK session with unknown vk_id returns 404",
+      "method": "POST",
+      "path": "/?action=vk_session",
+      "body": {"vk_id": "999999999999"},
+      "expectedStatus": 404,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

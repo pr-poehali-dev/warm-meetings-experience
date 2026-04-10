@@ -1,13 +1,16 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
+const USER_AUTH_URL = "https://functions.poehali.dev/d5d9f568-ba92-4605-9b95-646ba409fd8d";
 
 export default function VkCallback() {
   const navigate = useNavigate();
+  const { updateUser } = useAuth();
 
   const auth = useVkAuth({
     apiUrls: {
@@ -29,10 +32,36 @@ export default function VkCallback() {
       return;
     }
 
-    auth.handleCallback().then((success) => {
-      if (success) {
-        toast.success("Вы вошли через ВКонтакте");
-        navigate("/account", { replace: true });
+    auth.handleCallback().then(async (success) => {
+      if (success && auth.user) {
+        try {
+          // Создаём сессию основной системы по vk_id
+          const res = await fetch(`${USER_AUTH_URL}/?action=vk_session`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ vk_id: String(auth.user.vk_id) }),
+          });
+          const data = await res.json();
+
+          if (!res.ok) {
+            toast.error(data.error || "Не удалось создать сессию");
+            navigate("/login", { replace: true });
+            return;
+          }
+
+          localStorage.setItem("user_token", data.token);
+          localStorage.setItem("user_data", JSON.stringify(data.user));
+          updateUser(data.user);
+
+          // Выходим из VK-сессии (она нам больше не нужна)
+          await auth.logout();
+
+          toast.success("Вы вошли через ВКонтакте");
+          navigate("/account", { replace: true });
+        } catch {
+          toast.error("Ошибка при создании сессии");
+          navigate("/login", { replace: true });
+        }
       } else {
         toast.error("Не удалось войти через ВКонтакте");
         navigate("/login", { replace: true });
