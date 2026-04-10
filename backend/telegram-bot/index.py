@@ -117,7 +117,7 @@ def handle_set_webhook(event):
 def handle_generate_code(params):
     token = params.get('token', '')
     if not token:
-        return respond(401, {'error': 'Unauthorized'})
+        return respond(401, {'error': 'Необходимо войти в аккаунт. Пожалуйста, авторизуйтесь на сайте и попробуйте снова.'})
 
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -131,7 +131,7 @@ def handle_generate_code(params):
     user = cur.fetchone()
     if not user:
         conn.close()
-        return respond(401, {'error': 'Invalid token'})
+        return respond(401, {'error': 'Сессия устарела или недействительна. Выйдите из аккаунта и войдите снова, затем повторите попытку.'})
 
     user_id = user['id']
 
@@ -559,7 +559,7 @@ def handle_help(chat_id):
 def handle_notify_signup(body):
     organizer_id = body.get('organizer_id')
     if not organizer_id:
-        return respond(400, {'error': 'organizer_id required'})
+        return respond(400, {'error': 'Не указан идентификатор организатора. Пожалуйста, обратитесь в поддержку.'})
 
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -610,7 +610,7 @@ def handle_publish_event(body):
     event_id = body.get('event_id')
     organizer_id = body.get('organizer_id')
     if not event_id or not organizer_id:
-        return respond(400, {'error': 'event_id and organizer_id required'})
+        return respond(400, {'error': 'Не указан идентификатор события или организатора. Пожалуйста, обратитесь в поддержку.'})
 
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -636,7 +636,7 @@ def handle_publish_event(body):
     ev = cur.fetchone()
     if not ev:
         conn.close()
-        return respond(404, {'error': 'Event not found'})
+        return respond(404, {'error': 'Событие не найдено. Возможно, оно было удалено.'})
 
     ev = dict(ev)
     date_str = ''
