@@ -10,6 +10,7 @@ export interface User {
   phone: string;
   telegram?: string;
   vk_id?: string | null;
+  has_password?: boolean;
   created_at: string;
 }
 
@@ -64,8 +65,8 @@ export const userProfileApi = {
   changePassword: (current_password: string, new_password: string): Promise<{ message: string }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=password`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ current_password, new_password }) }),
 
-  deleteAccount: (password: string): Promise<{ message: string }> =>
-    profileRequest(`${USER_PROFILE_API}/?resource=delete-account`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }),
+  deleteAccount: (data: { password?: string; confirm_text?: string }): Promise<{ message: string }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=delete-account`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
 
   linkVk: (vk_id: string, access_token: string): Promise<{ message: string; vk_id: string }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=link-vk`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ vk_id, access_token }) }),

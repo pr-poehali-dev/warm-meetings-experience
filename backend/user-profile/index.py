@@ -53,7 +53,7 @@ def get_user_from_token(cur, schema, token):
         return None
     t = token.replace("'", "''")
     cur.execute(f"""
-        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.vk_id, u.created_at
+        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.vk_id, u.password_hash, u.created_at
         FROM {schema}.user_sessions s
         JOIN {schema}.users u ON u.id = s.user_id
         WHERE s.token = '{t}' AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true
@@ -86,7 +86,9 @@ def handler(event, context):
     if resource == 'profile':
         if method == 'GET':
             conn.close()
-            return respond(200, {'user': dict(user)})
+            user_data = dict(user)
+            user_data['has_password'] = bool(user_data.pop('password_hash', None))
+            return respond(200, {'user': user_data})
         if method == 'PUT':
             body = json.loads(event.get('body', '{}'))
             return handle_update_profile(cur, conn, schema, user, body, ip)
@@ -140,13 +142,15 @@ def handle_update_profile(cur, conn, schema, user, body, ip=None):
     cur.execute(f"""
         UPDATE {schema}.users SET {', '.join(sets)}
         WHERE id = {user['id']}
-        RETURNING id, email, name, phone, telegram, created_at
+        RETURNING id, email, name, phone, telegram, vk_id, password_hash, created_at
     """)
     updated = cur.fetchone()
+    updated_data = dict(updated)
+    updated_data['has_password'] = bool(updated_data.pop('password_hash', None))
     write_audit_log(cur, schema, user['id'], 'profile_update', 'users', user['id'], ip, {'changed_fields': changed_fields})
     conn.commit()
     conn.close()
-    return respond(200, {'user': dict(updated)})
+    return respond(200, {'user': updated_data})
 
 
 def handle_get_signups(cur, conn, schema, user, ip=None):
@@ -209,21 +213,28 @@ def handle_change_password(cur, conn, schema, user, body, token, ip=None):
 
 def handle_delete_account(cur, conn, schema, user, body, ip=None):
     password = (body.get('password') or '')
+    confirm_text = (body.get('confirm_text') or '').strip()
 
-    if not password:
-        conn.close()
-        return respond(400, {'error': 'Введите пароль для подтверждения удаления'})
-
-    cur.execute(f"SELECT password_hash FROM {schema}.users WHERE id = {user['id']}")
+    cur.execute(f"SELECT password_hash, vk_id FROM {schema}.users WHERE id = {user['id']}")
     row = cur.fetchone()
 
-    if not row or not verify_password(password, row.get('password_hash', '')):
-        conn.close()
-        return respond(400, {'error': 'Неверный пароль'})
+    has_password = bool(row and row.get('password_hash'))
+    has_vk = bool(row and row.get('vk_id'))
+
+    if has_password:
+        if not password:
+            conn.close()
+            return respond(400, {'error': 'Введите пароль для подтверждения удаления'})
+        if not verify_password(password, row.get('password_hash', '')):
+            conn.close()
+            return respond(400, {'error': 'Неверный пароль'})
+    else:
+        if confirm_text != 'УДАЛИТЬ':
+            conn.close()
+            return respond(400, {'error': 'Введите слово УДАЛИТЬ для подтверждения'})
 
     uid = user['id']
 
-    # Обезличиваем данные (soft delete с анонимизацией)
     anon_email = f"deleted_{uid}@deleted.sparcom.ru"
     cur.execute(f"""
         UPDATE {schema}.users SET
@@ -231,13 +242,13 @@ def handle_delete_account(cur, conn, schema, user, body, ip=None):
             name = 'Удалённый пользователь',
             phone = '',
             telegram = NULL,
+            vk_id = NULL,
             password_hash = '',
             is_active = false,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = {uid}
     """)
 
-    # Завершаем все сессии
     cur.execute(f"UPDATE {schema}.user_sessions SET expires_at = CURRENT_TIMESTAMP WHERE user_id = {uid}")
 
     write_audit_log(cur, schema, uid, 'account_deleted', 'users', uid, ip, {'anonymized': True})
@@ -279,10 +290,6 @@ def handle_unlink_vk(cur, conn, schema, user, ip=None):
     if not row or not row.get('vk_id'):
         conn.close()
         return respond(400, {'error': 'VK аккаунт не привязан'})
-    if not row.get('password_hash'):
-        conn.close()
-        return respond(400, {'error': 'Нельзя отвязать VK — установите пароль для входа на сайт'})
-
     cur.execute(f"UPDATE {schema}.users SET vk_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = {user['id']}")
     write_audit_log(cur, schema, user['id'], 'unlink_vk', 'users', user['id'], ip)
     conn.commit()

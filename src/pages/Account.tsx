@@ -115,6 +115,19 @@ export default function Account() {
       {tab === "main" && (
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl">
           <div className="space-y-6">
+            {user.email?.includes("@vk.local") && (
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Icon name="AlertTriangle" size={20} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-sm">Укажите настоящий email</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Вы вошли через ВКонтакте. Чтобы получать уведомления и иметь возможность восстановить доступ — укажите email и установите пароль.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             <ProfileCard
               user={user}
               editing={editing}
@@ -141,6 +154,7 @@ export default function Account() {
             <BadgesSection />
             <SignupsList signups={signups} signupsLoading={signupsLoading} />
             <PasswordChangeForm
+              hasPassword={user.has_password !== false}
               currentPassword={currentPassword}
               newPassword={newPassword}
               confirmNewPassword={confirmNewPassword}

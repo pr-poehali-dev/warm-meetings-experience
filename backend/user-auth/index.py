@@ -197,6 +197,7 @@ def handle_login(body):
     conn.close()
 
     user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'created_at']}
+    user_data['has_password'] = bool(user.get('password_hash'))
     return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
 
 
@@ -276,7 +277,7 @@ def handle_check(body):
 
     t = token.replace("'", "''")
     cur.execute(f"""
-        SELECT u.id, u.email, u.name, u.phone, u.vk_id, u.created_at
+        SELECT u.id, u.email, u.name, u.phone, u.vk_id, u.password_hash, u.created_at
         FROM {schema}.user_sessions s
         JOIN {schema}.users u ON u.id = s.user_id
         WHERE s.token = '{t}' AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true
@@ -287,7 +288,9 @@ def handle_check(body):
     if not user:
         return respond(401, {'error': 'Сессия истекла'})
 
-    return respond(200, {'user': dict(user)})
+    user_data = dict(user)
+    user_data['has_password'] = bool(user_data.pop('password_hash', None))
+    return respond(200, {'user': user_data})
 
 
 def handle_logout(body):
@@ -321,11 +324,11 @@ def handle_vk_session(body):
     user = None
     if vk_id:
         safe_vk_id = vk_id.replace("'", "''")
-        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, created_at, is_active FROM {schema}.users WHERE vk_id = '{safe_vk_id}'")
+        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, password_hash, created_at, is_active FROM {schema}.users WHERE vk_id = '{safe_vk_id}'")
         user = cur.fetchone()
 
     if not user and user_id:
-        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, created_at, is_active FROM {schema}.users WHERE id = {int(user_id)}")
+        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, password_hash, created_at, is_active FROM {schema}.users WHERE id = {int(user_id)}")
         user = cur.fetchone()
 
     if not user:
@@ -346,6 +349,7 @@ def handle_vk_session(body):
     conn.close()
 
     user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'created_at']}
+    user_data['has_password'] = bool(user.get('password_hash'))
     return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
 
 

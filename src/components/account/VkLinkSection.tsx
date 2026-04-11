@@ -10,11 +10,12 @@ const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238b
 
 interface VkLinkSectionProps {
   vkId?: string | null;
+  hasPassword?: boolean;
   onLinked: (vkId: string) => void;
   onUnlinked: () => void;
 }
 
-export default function VkLinkSection({ vkId, onLinked, onUnlinked }: VkLinkSectionProps) {
+export default function VkLinkSection({ vkId, hasPassword, onLinked, onUnlinked }: VkLinkSectionProps) {
   const [unlinking, setUnlinking] = useState(false);
 
   const vkAuth = useVkAuth({
@@ -70,11 +71,20 @@ export default function VkLinkSection({ vkId, onLinked, onUnlinked }: VkLinkSect
   };
 
   const handleUnlink = async () => {
+    if (!hasPassword) {
+      const confirmed = window.confirm(
+        "У вас не установлен пароль. После отвязки VK единственным способом входа останется восстановление пароля через email. Продолжить?"
+      );
+      if (!confirmed) return;
+    }
     setUnlinking(true);
     try {
       await userProfileApi.unlinkVk();
       onUnlinked();
       toast.success("VK аккаунт отвязан");
+      if (!hasPassword) {
+        toast.info("Рекомендуем установить пароль для входа на сайт", { duration: 5000 });
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Не удалось отвязать VK");
     } finally {

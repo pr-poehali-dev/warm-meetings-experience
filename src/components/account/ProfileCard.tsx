@@ -96,6 +96,7 @@ export default function ProfileCard({
             <div className="space-y-2">
               <Label>Email</Label>
               <Input value={user.email} disabled />
+              <p className="text-xs text-muted-foreground">Email нельзя изменить</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="editPhone">Телефон</Label>
@@ -143,18 +144,22 @@ export default function ProfileCard({
               <Icon name="Mail" size={16} className="text-muted-foreground flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="text-sm text-muted-foreground">Email</div>
-                <div className="flex items-center gap-2">
-                  <div className="font-medium">
-                    {showEmail ? user.email : maskEmail(user.email)}
+                {user.email?.includes("@vk.local") ? (
+                  <div className="font-medium text-muted-foreground">Не указан</div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="font-medium">
+                      {showEmail ? user.email : maskEmail(user.email)}
+                    </div>
+                    <button
+                      onClick={() => setShowEmail(!showEmail)}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                      title={showEmail ? "Скрыть" : "Показать"}
+                    >
+                      <Icon name={showEmail ? "EyeOff" : "Eye"} size={14} />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setShowEmail(!showEmail)}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    title={showEmail ? "Скрыть" : "Показать"}
-                  >
-                    <Icon name={showEmail ? "EyeOff" : "Eye"} size={14} />
-                  </button>
-                </div>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -189,6 +194,7 @@ export default function ProfileCard({
             <div className="pt-1 border-t border-border">
               <VkLinkSection
                 vkId={user.vk_id}
+                hasPassword={user.has_password !== false}
                 onLinked={onVkLinked || (() => {})}
                 onUnlinked={onVkUnlinked || (() => {})}
               />
@@ -213,14 +219,28 @@ export default function ProfileCard({
                   Все ваши персональные данные будут обезличены. Это действие необратимо.
                 </p>
                 <div className="space-y-2">
-                  <Label htmlFor="deletePassword">Введите пароль для подтверждения</Label>
-                  <Input
-                    id="deletePassword"
-                    type="password"
-                    value={deletePassword}
-                    onChange={(e) => setDeletePassword(e.target.value)}
-                    placeholder="Ваш текущий пароль"
-                  />
+                  {user.has_password !== false ? (
+                    <>
+                      <Label htmlFor="deletePassword">Введите пароль для подтверждения</Label>
+                      <Input
+                        id="deletePassword"
+                        type="password"
+                        value={deletePassword}
+                        onChange={(e) => setDeletePassword(e.target.value)}
+                        placeholder="Ваш текущий пароль"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Label htmlFor="deletePassword">Введите слово УДАЛИТЬ для подтверждения</Label>
+                      <Input
+                        id="deletePassword"
+                        value={deletePassword}
+                        onChange={(e) => setDeletePassword(e.target.value)}
+                        placeholder="УДАЛИТЬ"
+                      />
+                    </>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Button

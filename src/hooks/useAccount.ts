@@ -110,7 +110,11 @@ export function useAccount() {
     setChangingPassword(true);
     try {
       await userProfileApi.changePassword(currentPassword, newPassword);
-      toast.success("Пароль успешно изменён");
+      const hasPassword = user?.has_password !== false;
+      toast.success(hasPassword ? "Пароль успешно изменён" : "Пароль установлен");
+      if (user && !hasPassword) {
+        updateUser({ ...user, has_password: true });
+      }
       setCurrentPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
@@ -123,13 +127,21 @@ export function useAccount() {
 
   const handleDeleteAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!deletePassword) {
+    const hasPassword = user?.has_password !== false;
+    if (hasPassword && !deletePassword) {
       toast.error("Введите пароль для подтверждения");
+      return;
+    }
+    if (!hasPassword && deletePassword !== "УДАЛИТЬ") {
+      toast.error('Введите слово УДАЛИТЬ для подтверждения');
       return;
     }
     setDeletingAccount(true);
     try {
-      await userProfileApi.deleteAccount(deletePassword);
+      const data = hasPassword
+        ? { password: deletePassword }
+        : { confirm_text: deletePassword };
+      await userProfileApi.deleteAccount(data);
       toast.success("Аккаунт удалён. Ваши данные обезличены.");
       await logout();
       navigate("/");
