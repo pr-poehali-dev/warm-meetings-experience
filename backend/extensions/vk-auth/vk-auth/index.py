@@ -232,7 +232,7 @@ def handle_auth_url(event: dict, origin: str) -> dict:
     redirect_uri = os.environ.get('VK_REDIRECT_URI', '')
 
     if not client_id or not redirect_uri:
-        return error(500, 'Server configuration error', origin)
+        return error(500, 'Ошибка конфигурации сервера', origin)
 
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(16)
@@ -276,23 +276,22 @@ def handle_callback(event: dict, origin: str) -> dict:
         device_id = query.get('device_id', '')
 
     if not code:
-        return error(400, 'Authorization code is required', origin)
+        return error(400, 'Не получен код авторизации', origin)
 
     if not code_verifier:
-        return error(400, 'Code verifier is required', origin)
+        return error(400, 'Сессия устарела, попробуйте снова', origin)
 
     client_id = os.environ.get('VK_CLIENT_ID', '')
     client_secret = os.environ.get('VK_CLIENT_SECRET', '')
     redirect_uri = os.environ.get('VK_REDIRECT_URI', '')
 
     if not client_id or not client_secret:
-        return error(500, 'Server configuration error', origin)
+        return error(500, 'Ошибка конфигурации сервера', origin)
 
     try:
-        # Validate JWT_SECRET early
         get_jwt_secret()
     except ValueError:
-        return error(500, 'Server configuration error', origin)
+        return error(500, 'Ошибка конфигурации сервера', origin)
 
     try:
         # Exchange code for token with PKCE
@@ -301,7 +300,7 @@ def handle_callback(event: dict, origin: str) -> dict:
         )
 
         if 'error' in token_data:
-            return error(400, token_data.get('error_description', 'VK auth failed'), origin)
+            return error(400, 'Не удалось авторизоваться через ВКонтакте', origin)
 
         vk_access_token = token_data.get('access_token')
 
@@ -366,19 +365,40 @@ def handle_callback(event: dict, origin: str) -> dict:
                     name = db_name or full_name
                     photo_url = db_avatar or photo_url
                 else:
-                    # 3. Create new user
+                    # 3. Create new user or link to existing by generated email
                     safe_email = vk_email or f"vk_{vk_user_id}@vk.local"
                     safe_name = full_name or f"VK пользователь {vk_user_id}"
+
+                    # Check if user with this email already exists (e.g. after unlink+relink)
                     cur.execute(
-                        f"""INSERT INTO {S}users
-                            (vk_id, email, name, avatar_url, email_verified, created_at, updated_at, last_login_at)
-                            VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s)
-                            RETURNING id""",
-                        (str(vk_user_id), safe_email, safe_name, photo_url, now, now, now)
+                        f"SELECT id, name, avatar_url FROM {S}users WHERE email = %s",
+                        (safe_email,)
                     )
-                    user_id = cur.fetchone()[0]
-                    email = safe_email
-                    name = safe_name
+                    existing = cur.fetchone()
+
+                    if existing:
+                        user_id, db_name, db_avatar = existing
+                        cur.execute(
+                            f"""UPDATE {S}users
+                                SET vk_id = %s, avatar_url = COALESCE(avatar_url, %s),
+                                    last_login_at = %s, updated_at = %s, is_active = TRUE
+                                WHERE id = %s""",
+                            (str(vk_user_id), photo_url, now, now, user_id)
+                        )
+                        email = safe_email
+                        name = db_name or safe_name
+                        photo_url = db_avatar or photo_url
+                    else:
+                        cur.execute(
+                            f"""INSERT INTO {S}users
+                                (vk_id, email, name, avatar_url, email_verified, created_at, updated_at, last_login_at)
+                                VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s)
+                                RETURNING id""",
+                            (str(vk_user_id), safe_email, safe_name, photo_url, now, now, now)
+                        )
+                        user_id = cur.fetchone()[0]
+                        email = safe_email
+                        name = safe_name
 
             # Create tokens
             access_token, expires_in = create_access_token(user_id, email)
@@ -411,17 +431,17 @@ def handle_callback(event: dict, origin: str) -> dict:
         except Exception as db_exc:
             conn.rollback()
             print(f"[VK-AUTH] DB error: {db_exc}")
-            return error(500, f'Database error: {db_exc}', origin)
+            return error(500, 'Ошибка базы данных, попробуйте позже', origin)
         finally:
             conn.close()
 
     except HTTPError as http_exc:
         body_bytes = http_exc.read()
         print(f"[VK-AUTH] VK API HTTP error {http_exc.code}: {body_bytes.decode('utf-8', errors='replace')}")
-        return error(500, f'VK API error: {http_exc.code}', origin)
+        return error(500, 'Ошибка связи с ВКонтакте, попробуйте позже', origin)
     except Exception as exc:
         print(f"[VK-AUTH] Unexpected error: {exc}")
-        return error(500, f'Internal server error: {exc}', origin)
+        return error(500, 'Внутренняя ошибка сервера', origin)
 
 
 def handle_refresh(event: dict, origin: str) -> dict:
@@ -433,16 +453,16 @@ def handle_refresh(event: dict, origin: str) -> dict:
     try:
         payload = json.loads(body_str)
     except json.JSONDecodeError:
-        return error(400, 'Invalid JSON', origin)
+        return error(400, 'Некорректный запрос', origin)
 
     refresh_token = payload.get('refresh_token', '')
     if not refresh_token:
-        return error(400, 'refresh_token is required', origin)
+        return error(400, 'Токен обновления обязателен', origin)
 
     try:
         get_jwt_secret()
     except ValueError:
-        return error(500, 'Server configuration error', origin)
+        return error(500, 'Ошибка конфигурации сервера', origin)
 
     S = get_schema()
     conn = get_connection()
@@ -468,7 +488,7 @@ def handle_refresh(event: dict, origin: str) -> dict:
         row = cur.fetchone()
         if not row:
             conn.commit()  # Commit cleanup
-            return error(401, 'Invalid or expired refresh token', origin)
+            return error(401, 'Сессия истекла, войдите заново', origin)
 
         user_id, email, name, avatar_url, vk_id = row
 
@@ -489,7 +509,7 @@ def handle_refresh(event: dict, origin: str) -> dict:
         }, origin)
 
     except Exception:
-        return error(500, 'Internal server error', origin)
+        return error(500, 'Внутренняя ошибка сервера', origin)
     finally:
         conn.close()
 
@@ -503,7 +523,7 @@ def handle_logout(event: dict, origin: str) -> dict:
     try:
         payload = json.loads(body_str)
     except json.JSONDecodeError:
-        return error(400, 'Invalid JSON', origin)
+        return error(400, 'Некорректный запрос', origin)
 
     refresh_token = payload.get('refresh_token', '')
     if refresh_token:

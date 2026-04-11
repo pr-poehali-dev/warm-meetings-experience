@@ -81,11 +81,13 @@ export default function VkCallback() {
           return;
         }
 
-        // 2. Создаём сессию основной системы по vk_id
+        const user_id = vkData.user?.id;
+
+        // 2. Создаём сессию основной системы по vk_id + user_id
         const sessionRes = await fetch(`${USER_AUTH_URL}/?action=vk_session`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ vk_id }),
+          body: JSON.stringify({ vk_id, user_id }),
         });
         const sessionData = await sessionRes.json();
 

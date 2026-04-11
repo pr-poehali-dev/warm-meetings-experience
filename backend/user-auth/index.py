@@ -310,20 +310,27 @@ def handle_logout(body):
 def handle_vk_session(body):
     """Создаёт сессию основной системы для пользователя, вошедшего через VK."""
     vk_id = str(body.get('vk_id') or '').strip()
-    if not vk_id:
-        return respond(400, {'error': 'vk_id обязателен'})
+    user_id = body.get('user_id')
+    if not vk_id and not user_id:
+        return respond(400, {'error': 'vk_id или user_id обязателен'})
 
     schema = get_schema()
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    safe_vk_id = vk_id.replace("'", "''")
-    cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, created_at, is_active FROM {schema}.users WHERE vk_id = '{safe_vk_id}'")
-    user = cur.fetchone()
+    user = None
+    if vk_id:
+        safe_vk_id = vk_id.replace("'", "''")
+        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, created_at, is_active FROM {schema}.users WHERE vk_id = '{safe_vk_id}'")
+        user = cur.fetchone()
+
+    if not user and user_id:
+        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, created_at, is_active FROM {schema}.users WHERE id = {int(user_id)}")
+        user = cur.fetchone()
 
     if not user:
         conn.close()
-        return respond(404, {'error': 'Пользователь с таким VK ID не найден'})
+        return respond(404, {'error': 'Пользователь не найден'})
 
     if not user.get('is_active'):
         conn.close()
