@@ -161,7 +161,7 @@ def handle_login(body):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     e = email.replace("'", "''")
-    cur.execute(f"SELECT id, email, name, phone, password_hash, is_active, created_at FROM {schema}.users WHERE email = '{e}'")
+    cur.execute(f"SELECT id, email, name, phone, password_hash, is_active, vk_id, created_at FROM {schema}.users WHERE email = '{e}'")
     user = cur.fetchone()
 
     if not user:
@@ -196,7 +196,7 @@ def handle_login(body):
     conn.commit()
     conn.close()
 
-    user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'created_at']}
+    user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'created_at']}
     return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
 
 
@@ -276,7 +276,7 @@ def handle_check(body):
 
     t = token.replace("'", "''")
     cur.execute(f"""
-        SELECT u.id, u.email, u.name, u.phone, u.created_at
+        SELECT u.id, u.email, u.name, u.phone, u.vk_id, u.created_at
         FROM {schema}.user_sessions s
         JOIN {schema}.users u ON u.id = s.user_id
         WHERE s.token = '{t}' AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true
@@ -318,7 +318,7 @@ def handle_vk_session(body):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     safe_vk_id = vk_id.replace("'", "''")
-    cur.execute(f"SELECT id, email, name, phone, telegram, created_at, is_active FROM {schema}.users WHERE vk_id = '{safe_vk_id}'")
+    cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, created_at, is_active FROM {schema}.users WHERE vk_id = '{safe_vk_id}'")
     user = cur.fetchone()
 
     if not user:
@@ -338,7 +338,7 @@ def handle_vk_session(body):
     conn.commit()
     conn.close()
 
-    user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'created_at']}
+    user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'created_at']}
     return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
 
 
