@@ -50,7 +50,7 @@ export default function Register() {
 
     setSubmitting(true);
     try {
-      await register({ email, name, phone, password, consent_pd: consentPd });
+      await register({ email, name, phone, password, consent_pd: consentPd, consent_photo: consentPhoto });
       navigate(redirectTo);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Ошибка регистрации");

@@ -136,6 +136,9 @@ def handle_register(body, ip=None):
     phone = (body.get('phone') or '').strip()
     password = (body.get('password') or '')
     consent_pd = body.get('consent_pd', False)
+    consent_photo = body.get('consent_photo')
+    if consent_photo not in ('yes', 'no', None):
+        consent_photo = None
 
     if not email or not name or not password:
         return respond(400, {'error': 'Заполните email, имя и пароль'})
@@ -168,9 +171,10 @@ def handle_register(body, ip=None):
     pw_hash = hash_password(password)
     pw_hash_escaped = pw_hash.replace("'", "''")
 
+    cp_val = f"'{consent_photo}'" if consent_photo else 'NULL'
     cur.execute(f"""
-        INSERT INTO {schema}.users (email, name, phone, password_hash)
-        VALUES ('{e}', '{n}', '{p}', '{pw_hash_escaped}')
+        INSERT INTO {schema}.users (email, name, phone, password_hash, consent_photo)
+        VALUES ('{e}', '{n}', '{p}', '{pw_hash_escaped}', {cp_val})
         RETURNING id, email, name, phone, created_at
     """)
     user = cur.fetchone()

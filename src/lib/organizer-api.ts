@@ -57,6 +57,8 @@ export interface OrgParticipant {
   payment_type: string | null;
   payment_amount: number;
   created_at: string;
+  user_id?: number | null;
+  consent_photo?: "yes" | "no" | null;
 }
 
 export interface CoOrganizer {

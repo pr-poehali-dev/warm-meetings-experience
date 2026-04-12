@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
+import ConsentPhotoBadge from "@/components/ui/ConsentPhotoBadge";
 import ParticipantPaymentEditor, { PaymentBadge } from "./ParticipantPaymentEditor";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -94,7 +95,10 @@ export default function ParticipantCard({
                   {p.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <div className="font-medium text-sm">{p.name}</div>
+                  <div className="font-medium text-sm flex items-center gap-1.5">
+                    {p.name}
+                    {p.consent_photo && <ConsentPhotoBadge consent={p.consent_photo} />}
+                  </div>
                   <div className="text-xs text-muted-foreground flex gap-2 flex-wrap items-center">
                     <span>{p.phone}</span>
                     {p.telegram && <span>{p.telegram}</span>}

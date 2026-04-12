@@ -6,7 +6,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithToken: (token: string, user: User) => void;
-  register: (data: { email: string; name: string; phone: string; password: string; consent_pd: boolean }) => Promise<void>;
+  register: (data: { email: string; name: string; phone: string; password: string; consent_pd: boolean; consent_photo?: string | null }) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
 }
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
   };
 
-  const register = async (regData: { email: string; name: string; phone: string; password: string; consent_pd: boolean }) => {
+  const register = async (regData: { email: string; name: string; phone: string; password: string; consent_pd: boolean; consent_photo?: string | null }) => {
     const data = await userAuthApi.register(regData);
     localStorage.setItem("user_token", data.token);
     localStorage.setItem("user_data", JSON.stringify(data.user));

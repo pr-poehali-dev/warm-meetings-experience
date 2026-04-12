@@ -40,7 +40,7 @@ def get_user_full(cur, schema, user_id):
     cur.execute(f"""
         SELECT
             u.id, u.name, u.email, u.phone, u.telegram,
-            u.is_active, u.created_at, u.updated_at,
+            u.is_active, u.created_at, u.updated_at, u.consent_photo,
             COALESCE(json_agg(
                 json_build_object('id', r.id, 'name', r.name, 'slug', r.slug, 'icon', r.icon, 'status', ur.status)
             ) FILTER (WHERE ur.id IS NOT NULL), '[]') as roles
@@ -99,7 +99,7 @@ def handler(event, context):
         cur.execute(f"""
             SELECT
                 u.id, u.name, u.email, u.phone, u.telegram,
-                u.is_active, u.created_at,
+                u.is_active, u.created_at, u.consent_photo,
                 COALESCE(json_agg(
                     json_build_object('id', r.id, 'name', r.name, 'slug', r.slug, 'icon', r.icon, 'status', ur.status)
                 ) FILTER (WHERE ur.id IS NOT NULL), '[]') as roles

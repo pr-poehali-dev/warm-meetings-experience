@@ -55,7 +55,7 @@ def get_user_from_token(cur, schema, token):
         return None
     t = token.replace("'", "''")
     cur.execute(f"""
-        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.vk_id, u.password_hash, u.totp_enabled, u.created_at
+        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.vk_id, u.password_hash, u.totp_enabled, u.consent_photo, u.created_at
         FROM {schema}.user_sessions s
         JOIN {schema}.users u ON u.id = s.user_id
         WHERE s.token = '{t}' AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import Icon from "@/components/ui/icon";
+import ConsentPhotoBadge from "@/components/ui/ConsentPhotoBadge";
 import { toast } from "sonner";
 
 const ADMIN_USERS_API = "https://functions.poehali.dev/3048e78f-8bfe-4300-b910-2752590fa3ab";
@@ -33,6 +34,7 @@ interface User {
   telegram: string | null;
   is_active: boolean;
   created_at: string;
+  consent_photo?: "yes" | "no" | null;
   roles: UserRole[];
 }
 
@@ -215,6 +217,7 @@ export default function AdminUsers() {
                     <th className="pb-3 pr-4 font-medium">Email</th>
                     <th className="pb-3 pr-4 font-medium">Телефон</th>
                     <th className="pb-3 pr-4 font-medium">Роли</th>
+                    <th className="pb-3 pr-4 font-medium">Фото</th>
                     <th className="pb-3 pr-4 font-medium">Дата</th>
                     <th className="pb-3 font-medium">Статус</th>
                   </tr>
@@ -242,6 +245,9 @@ export default function AdminUsers() {
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </div>
+                      </td>
+                      <td className="py-3 pr-4 text-center">
+                        <ConsentPhotoBadge consent={user.consent_photo} />
                       </td>
                       <td className="py-3 pr-4 text-gray-500">{formatDate(user.created_at)}</td>
                       <td className="py-3">
@@ -320,6 +326,11 @@ export default function AdminUsers() {
 
                   <span className="text-gray-500">Регистрация</span>
                   <span>{formatDate(selected.created_at)}</span>
+
+                  <span className="text-gray-500">Фото в рекламе</span>
+                  {selected.consent_photo
+                    ? <ConsentPhotoBadge consent={selected.consent_photo} showLabel />
+                    : <span className="text-gray-400">Не указано</span>}
                 </div>
               )}
 

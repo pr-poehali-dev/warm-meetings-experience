@@ -438,9 +438,11 @@ def handle_participants(event, method, params, cur, conn, user_id, schema, heade
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'event_id required'})}
         cur.execute(f"""
-            SELECT * FROM {schema}.event_signups
-            WHERE event_id = {event_id}
-            ORDER BY created_at DESC
+            SELECT s.*, u.consent_photo
+            FROM {schema}.event_signups s
+            LEFT JOIN {schema}.users u ON u.id = s.user_id
+            WHERE s.event_id = {event_id}
+            ORDER BY s.created_at DESC
         """)
         rows = cur.fetchall()
         conn.close()
