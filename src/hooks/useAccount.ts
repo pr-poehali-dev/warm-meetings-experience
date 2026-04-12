@@ -64,7 +64,7 @@ export function useAccount() {
       setEditPhone(user.phone || "");
       setEditTelegram(user.telegram || "");
     }
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (user) {

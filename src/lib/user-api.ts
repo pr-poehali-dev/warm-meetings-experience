@@ -12,6 +12,7 @@ export interface User {
   vk_id?: string | null;
   has_password?: boolean;
   totp_enabled?: boolean;
+  email_verified?: boolean;
   created_at: string;
 }
 
@@ -86,6 +87,12 @@ export const userProfileApi = {
 
   exportMyData: (): Promise<{ data: Record<string, unknown> }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=my-data`),
+
+  sendVerifyEmail: (): Promise<{ message: string }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=send-verify`, { method: "POST" }),
+
+  verifyEmail: (token: string): Promise<{ message: string }> =>
+    authRequest(`${USER_PROFILE_API}/?resource=verify-email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }),
 };
 
 export const userAuthApi2FA = {

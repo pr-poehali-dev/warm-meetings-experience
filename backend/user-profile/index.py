@@ -55,7 +55,7 @@ def get_user_from_token(cur, schema, token):
         return None
     t = token.replace("'", "''")
     cur.execute(f"""
-        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.vk_id, u.password_hash, u.totp_enabled, u.consent_photo, u.created_at
+        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.vk_id, u.password_hash, u.totp_enabled, u.consent_photo, u.email_verified, u.created_at
         FROM {schema}.user_sessions s
         JOIN {schema}.users u ON u.id = s.user_id
         WHERE s.token = '{t}' AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true
@@ -75,21 +75,26 @@ def handler(event, context):
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    user = get_user_from_token(cur, schema, token)
-    if not user:
-        conn.close()
-        return respond(401, {'error': 'Не авторизован'})
-
     method = event.get('httpMethod', 'GET')
     params = event.get('queryStringParameters') or {}
     resource = params.get('resource', 'profile')
     ip = (event.get('requestContext') or {}).get('identity', {}).get('sourceIp')
+
+    if resource == 'verify-email' and method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        return handle_verify_email(cur, conn, schema, body, ip)
+
+    user = get_user_from_token(cur, schema, token)
+    if not user:
+        conn.close()
+        return respond(401, {'error': 'Не авторизован'})
 
     if resource == 'profile':
         if method == 'GET':
             conn.close()
             user_data = dict(user)
             user_data['has_password'] = bool(user_data.pop('password_hash', None))
+            user_data['email_verified'] = bool(user_data.get('email_verified'))
             return respond(200, {'user': user_data})
         if method == 'PUT':
             body = json.loads(event.get('body', '{}'))
@@ -134,6 +139,10 @@ def handler(event, context):
         if method == 'GET':
             return handle_my_data_export(cur, conn, schema, user, ip)
 
+    if resource == 'send-verify':
+        if method == 'POST':
+            return handle_send_verify(cur, conn, schema, user, ip)
+
     conn.close()
     return respond(400, {'error': 'Unknown resource'})
 
@@ -146,14 +155,16 @@ def handle_update_profile(cur, conn, schema, user, body, ip=None):
             conn.close()
             return respond(400, {'error': 'Этот номер телефона уже используется другим аккаунтом'})
 
+    can_change_email = user.get('email', '').endswith('@vk.local') or not user.get('email_verified', True)
+
     if 'email' in body and body['email']:
         new_email = str(body['email']).strip().lower()
         if '@' not in new_email or '.' not in new_email.split('@')[-1]:
             conn.close()
             return respond(400, {'error': 'Некорректный email'})
-        if not user.get('email', '').endswith('@vk.local'):
+        if not can_change_email:
             conn.close()
-            return respond(400, {'error': 'Email можно указать только при входе через VK без привязанной почты'})
+            return respond(400, {'error': 'Email уже подтверждён и не может быть изменён'})
         e_safe = new_email.replace("'", "''")
         cur.execute(f"SELECT id FROM {schema}.users WHERE email = '{e_safe}' AND id != {user['id']}")
         if cur.fetchone():
@@ -162,9 +173,9 @@ def handle_update_profile(cur, conn, schema, user, body, ip=None):
 
     sets = []
     changed_fields = []
-    if 'email' in body and body['email'] and user.get('email', '').endswith('@vk.local'):
+    if 'email' in body and body['email'] and can_change_email:
         val = str(body['email']).strip().lower().replace("'", "''")
-        sets.append(f"email = '{val}'")
+        sets.append(f"email = '{val}', email_verified = false")
         changed_fields.append('email')
     for field in ['name', 'phone', 'telegram']:
         if field in body:
@@ -474,3 +485,118 @@ def handle_my_data_export(cur, conn, schema, user, ip=None):
     export['exported_at'] = datetime.utcnow().isoformat()
 
     return respond(200, {'data': export})
+
+
+def handle_send_verify(cur, conn, schema, user, ip=None):
+    import secrets as _secrets
+    from datetime import datetime, timedelta
+
+    email = user.get('email', '')
+    if not email or email.endswith('@vk.local'):
+        conn.close()
+        return respond(400, {'error': 'Сначала укажите настоящий email'})
+    if user.get('email_verified'):
+        conn.close()
+        return respond(400, {'error': 'Email уже подтверждён'})
+
+    cur.execute(f"""
+        SELECT created_at FROM {schema}.email_verify_tokens
+        WHERE user_id = {user['id']} AND used = false AND expires_at > CURRENT_TIMESTAMP
+        ORDER BY created_at DESC LIMIT 1
+    """)
+    last = cur.fetchone()
+    if last:
+        from datetime import datetime as dt
+        elapsed = (dt.utcnow() - last['created_at'].replace(tzinfo=None)).total_seconds()
+        if elapsed < 60:
+            conn.close()
+            return respond(400, {'error': f'Подождите {int(60 - elapsed)} сек. перед повторной отправкой'})
+
+    token = _secrets.token_urlsafe(32)
+    expires = (datetime.utcnow() + timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+    cur.execute(f"""
+        INSERT INTO {schema}.email_verify_tokens (user_id, token, expires_at)
+        VALUES ({user['id']}, '{token}', '{expires}')
+    """)
+    write_audit_log(cur, schema, user['id'], 'email_verify_sent', 'users', user['id'], ip)
+    conn.commit()
+    conn.close()
+
+    send_verify_email(email, user.get('name', ''), token)
+    return respond(200, {'message': 'Письмо отправлено'})
+
+
+def handle_verify_email(cur, conn, schema, body, ip=None):
+    token = (body.get('token') or '').strip()
+    if not token:
+        conn.close()
+        return respond(400, {'error': 'Токен обязателен'})
+
+    t = token.replace("'", "''")
+    cur.execute(f"""
+        SELECT id, user_id FROM {schema}.email_verify_tokens
+        WHERE token = '{t}' AND used = false AND expires_at > CURRENT_TIMESTAMP
+    """)
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return respond(400, {'error': 'Ссылка недействительна или устарела'})
+
+    cur.execute(f"UPDATE {schema}.users SET email_verified = true, updated_at = CURRENT_TIMESTAMP WHERE id = {row['user_id']}")
+    cur.execute(f"UPDATE {schema}.email_verify_tokens SET used = true WHERE id = {row['id']}")
+    write_audit_log(cur, schema, row['user_id'], 'email_verified', 'users', row['user_id'], ip)
+    conn.commit()
+    conn.close()
+    return respond(200, {'message': 'Email подтверждён'})
+
+
+def send_verify_email(to_email, name, token):
+    import requests as _requests
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
+    if not api_key or not sender_email:
+        return
+
+    verify_url = f"https://sparcom.ru/verify-email?token={token}"
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fafafa;">
+        <div style="background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="width: 56px; height: 56px; background: #dbeafe; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 28px;">&#9993;</div>
+            </div>
+            <h1 style="color: #1a1a1a; font-size: 22px; text-align: center; margin: 0 0 8px;">Подтверждение email</h1>
+            <p style="color: #666; text-align: center; margin: 0 0 28px; font-size: 15px;">
+                {name}, подтвердите ваш email на sparcom.ru
+            </p>
+            <div style="text-align: center; margin-bottom: 24px;">
+                <a href="{verify_url}" style="display: inline-block; background: #1a1a1a; color: #ffffff; padding: 12px 32px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 600;">Подтвердить email</a>
+            </div>
+            <p style="color: #888; font-size: 13px; text-align: center; margin: 0 0 20px;">
+                Ссылка действительна 24 часа. Если вы не запрашивали подтверждение — проигнорируйте письмо.
+            </p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">Это автоматическое письмо. Отвечать на него не нужно.</p>
+        </div>
+    </div>
+    """
+    message = {{
+        "recipients": [{{"email": to_email, "name": name}}],
+        "from_email": sender_email,
+        "subject": "Подтвердите email — Sparcom",
+        "body": {{"html": html}},
+        "track_links": 0,
+        "track_read": 1,
+        "tags": ["email-verify"],
+    }}
+    if sender_name:
+        message["from_name"] = sender_name
+    try:
+        _requests.post(
+            "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
+            headers={{"Content-Type": "application/json", "X-API-KEY": api_key}},
+            json={{"message": message}},
+            timeout=10
+        )
+    except Exception:
+        pass

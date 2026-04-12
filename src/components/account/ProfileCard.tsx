@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
-import { User } from "@/lib/user-api";
+import { User, userProfileApi } from "@/lib/user-api";
 import VkLinkSection from "@/components/account/VkLinkSection";
+import { toast } from "sonner";
 
 function maskEmail(email: string): string {
   const [local, domain] = email.split("@");
@@ -72,6 +73,19 @@ export default function ProfileCard({
 }: ProfileCardProps) {
   const [showPhone, setShowPhone] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
+  const [sendingVerify, setSendingVerify] = useState(false);
+
+  const handleSendVerify = async () => {
+    setSendingVerify(true);
+    try {
+      await userProfileApi.sendVerifyEmail();
+      toast.success("Письмо отправлено — проверьте почту");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Ошибка отправки");
+    } finally {
+      setSendingVerify(false);
+    }
+  };
 
   return (
     <Card className="border-0 shadow-sm">
@@ -97,7 +111,7 @@ export default function ProfileCard({
                 onChange={(e) => setEditName(e.target.value)}
               />
             </div>
-            {user.email?.includes("@vk.local") ? (
+            {(user.email?.includes("@vk.local") || !user.email_verified) ? (
               <div className="space-y-2">
                 <Label htmlFor="editEmail">Email</Label>
                 <Input
@@ -107,7 +121,11 @@ export default function ProfileCard({
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">Укажите email для уведомлений и восстановления доступа</p>
+                <p className="text-xs text-muted-foreground">
+                  {user.email?.includes("@vk.local")
+                    ? "Укажите email для уведомлений и восстановления доступа"
+                    : "Email можно изменить пока он не подтверждён"}
+                </p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -165,17 +183,34 @@ export default function ProfileCard({
                 {user.email?.includes("@vk.local") ? (
                   <div className="font-medium text-muted-foreground">Не указан</div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <div className="font-medium">
-                      {showEmail ? user.email : maskEmail(user.email)}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium">
+                        {showEmail ? user.email : maskEmail(user.email)}
+                      </div>
+                      <button
+                        onClick={() => setShowEmail(!showEmail)}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        title={showEmail ? "Скрыть" : "Показать"}
+                      >
+                        <Icon name={showEmail ? "EyeOff" : "Eye"} size={14} />
+                      </button>
+                      {user.email_verified && (
+                        <Icon name="CheckCircle" size={14} className="text-green-500" title="Подтверждён" />
+                      )}
                     </div>
-                    <button
-                      onClick={() => setShowEmail(!showEmail)}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                      title={showEmail ? "Скрыть" : "Показать"}
-                    >
-                      <Icon name={showEmail ? "EyeOff" : "Eye"} size={14} />
-                    </button>
+                    {!user.email_verified && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-amber-600 dark:text-amber-400">Не подтверждён</span>
+                        <button
+                          onClick={handleSendVerify}
+                          disabled={sendingVerify}
+                          className="text-xs text-primary underline underline-offset-2 hover:text-primary/80 disabled:opacity-50"
+                        >
+                          {sendingVerify ? "Отправка..." : "Отправить письмо"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
