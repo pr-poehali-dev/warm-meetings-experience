@@ -211,7 +211,7 @@ export default function Register() {
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     Использование моих фото с мероприятий в рекламных целях{" "}
-                    (<AppendixLinkModal appendixId={2} label="Приложение №2" />)
+                    (<AppendixLinkModal appendixId={4} label="Приложение №4" />)
                   </p>
                   <div className="flex gap-3">
                     <button
