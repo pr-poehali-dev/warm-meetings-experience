@@ -12,6 +12,7 @@ export function useAccount() {
 
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editTelegram, setEditTelegram] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
@@ -59,6 +60,7 @@ export function useAccount() {
   useEffect(() => {
     if (user) {
       setEditName(user.name || "");
+      setEditEmail(user.email?.includes("@vk.local") ? "" : (user.email || ""));
       setEditPhone(user.phone || "");
       setEditTelegram(user.telegram || "");
     }
@@ -77,10 +79,12 @@ export function useAccount() {
   const handleSaveProfile = async () => {
     setSavingProfile(true);
     try {
+      const isVkEmail = user?.email?.includes("@vk.local");
       const data = await userProfileApi.updateProfile({
         name: editName,
         phone: editPhone,
         telegram: editTelegram,
+        ...(isVkEmail && editEmail ? { email: editEmail } : {}),
       });
       updateUser(data.user);
       setEditing(false);
@@ -95,6 +99,7 @@ export function useAccount() {
   const handleCancelEdit = () => {
     if (user) {
       setEditName(user.name || "");
+      setEditEmail(user.email?.includes("@vk.local") ? "" : (user.email || ""));
       setEditPhone(user.phone || "");
       setEditTelegram(user.telegram || "");
     }
@@ -164,6 +169,8 @@ export function useAccount() {
     setEditing,
     editName,
     setEditName,
+    editEmail,
+    setEditEmail,
     editPhone,
     setEditPhone,
     editTelegram,

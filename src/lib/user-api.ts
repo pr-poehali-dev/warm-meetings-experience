@@ -57,7 +57,7 @@ export const userProfileApi = {
   getProfile: (): Promise<{ user: User }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=profile`),
 
-  updateProfile: (data: { name?: string; phone?: string; telegram?: string }): Promise<{ user: User }> =>
+  updateProfile: (data: { name?: string; phone?: string; telegram?: string; email?: string }): Promise<{ user: User }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=profile`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
 
   getSignups: (): Promise<{ signups: UserSignup[] }> =>

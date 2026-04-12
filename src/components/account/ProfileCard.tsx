@@ -25,11 +25,13 @@ interface ProfileCardProps {
   user: User;
   editing: boolean;
   editName: string;
+  editEmail: string;
   editPhone: string;
   editTelegram: string;
   savingProfile: boolean;
   setEditing: (editing: boolean) => void;
   setEditName: (name: string) => void;
+  setEditEmail: (email: string) => void;
   setEditPhone: (phone: string) => void;
   setEditTelegram: (telegram: string) => void;
   handleSaveProfile: () => void;
@@ -48,11 +50,13 @@ export default function ProfileCard({
   user,
   editing,
   editName,
+  editEmail,
   editPhone,
   editTelegram,
   savingProfile,
   setEditing,
   setEditName,
+  setEditEmail,
   setEditPhone,
   setEditTelegram,
   handleSaveProfile,
@@ -93,11 +97,25 @@ export default function ProfileCard({
                 onChange={(e) => setEditName(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input value={user.email} disabled />
-              <p className="text-xs text-muted-foreground">Email нельзя изменить</p>
-            </div>
+            {user.email?.includes("@vk.local") ? (
+              <div className="space-y-2">
+                <Label htmlFor="editEmail">Email</Label>
+                <Input
+                  id="editEmail"
+                  type="email"
+                  placeholder="your@email.com"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">Укажите email для уведомлений и восстановления доступа</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input value={user.email} disabled />
+                <p className="text-xs text-muted-foreground">Email нельзя изменить</p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="editPhone">Телефон</Label>
               <Input

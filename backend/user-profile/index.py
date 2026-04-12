@@ -146,8 +146,26 @@ def handle_update_profile(cur, conn, schema, user, body, ip=None):
             conn.close()
             return respond(400, {'error': 'Этот номер телефона уже используется другим аккаунтом'})
 
+    if 'email' in body and body['email']:
+        new_email = str(body['email']).strip().lower()
+        if '@' not in new_email or '.' not in new_email.split('@')[-1]:
+            conn.close()
+            return respond(400, {'error': 'Некорректный email'})
+        if not user.get('email', '').endswith('@vk.local'):
+            conn.close()
+            return respond(400, {'error': 'Email можно указать только при входе через VK без привязанной почты'})
+        e_safe = new_email.replace("'", "''")
+        cur.execute(f"SELECT id FROM {schema}.users WHERE email = '{e_safe}' AND id != {user['id']}")
+        if cur.fetchone():
+            conn.close()
+            return respond(400, {'error': 'Этот email уже используется другим аккаунтом'})
+
     sets = []
     changed_fields = []
+    if 'email' in body and body['email'] and user.get('email', '').endswith('@vk.local'):
+        val = str(body['email']).strip().lower().replace("'", "''")
+        sets.append(f"email = '{val}'")
+        changed_fields.append('email')
     for field in ['name', 'phone', 'telegram']:
         if field in body:
             val = str(body[field]).replace("'", "''")

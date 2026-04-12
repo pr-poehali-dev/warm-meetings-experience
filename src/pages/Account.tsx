@@ -38,6 +38,8 @@ export default function Account() {
     setEditing,
     editName,
     setEditName,
+    editEmail,
+    setEditEmail,
     editPhone,
     setEditPhone,
     editTelegram,
@@ -141,11 +143,13 @@ export default function Account() {
               user={user}
               editing={editing}
               editName={editName}
+              editEmail={editEmail}
               editPhone={editPhone}
               editTelegram={editTelegram}
               savingProfile={savingProfile}
               setEditing={setEditing}
               setEditName={setEditName}
+              setEditEmail={setEditEmail}
               setEditPhone={setEditPhone}
               setEditTelegram={setEditTelegram}
               handleSaveProfile={handleSaveProfile}
