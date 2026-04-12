@@ -5,6 +5,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithToken: (token: string, user: User) => void;
   register: (data: { email: string; name: string; phone: string; password: string; consent_pd: boolean }) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
@@ -39,9 +40,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const data = await userAuthApi.login({ email, password });
+    if (data.requires_2fa) {
+      const err = new Error("2FA_REQUIRED");
+      (err as Error & { pending_token: string }).pending_token = data.pending_token;
+      throw err;
+    }
     localStorage.setItem("user_token", data.token);
     localStorage.setItem("user_data", JSON.stringify(data.user));
     setUser(data.user);
+  };
+
+  const loginWithToken = (token: string, userData: User) => {
+    localStorage.setItem("user_token", token);
+    localStorage.setItem("user_data", JSON.stringify(userData));
+    setUser(userData);
   };
 
   const register = async (regData: { email: string; name: string; phone: string; password: string; consent_pd: boolean }) => {
@@ -67,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithToken, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

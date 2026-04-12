@@ -10,10 +10,12 @@ import GrowthSection from "@/components/account/GrowthSection";
 import BadgesSection from "@/components/account/BadgesSection";
 import SignupsList from "@/components/account/SignupsList";
 import PasswordChangeForm from "@/components/account/PasswordChangeForm";
+import TwoFactorSection from "@/components/account/TwoFactorSection";
+import MyDataExport from "@/components/account/MyDataExport";
 import MyArticles from "@/components/account/MyArticles";
 import MyCalendar from "@/components/account/MyCalendar";
 
-type Tab = "main" | "articles" | "calendar";
+type Tab = "main" | "articles" | "calendar" | "my-data";
 
 export default function Account() {
   const navigate = useNavigate();
@@ -83,6 +85,13 @@ export default function Account() {
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${tab === "main" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             Профиль
+          </button>
+          <button
+            onClick={() => setTab("my-data")}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${tab === "my-data" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <Icon name="Database" size={14} />
+            Мои данные
           </button>
           <button
             onClick={() => setTab("articles")}
@@ -164,7 +173,18 @@ export default function Account() {
               setConfirmNewPassword={setConfirmNewPassword}
               handleChangePassword={handleChangePassword}
             />
+            <TwoFactorSection
+              totpEnabled={user.totp_enabled === true}
+              hasPassword={user.has_password !== false}
+              onToggled={(enabled) => authUser && updateUser({ ...authUser, totp_enabled: enabled })}
+            />
           </div>
+        </div>
+      )}
+
+      {tab === "my-data" && (
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl">
+          <MyDataExport />
         </div>
       )}
 

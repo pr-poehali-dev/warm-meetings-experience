@@ -9,11 +9,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { VkLoginButton } from "@/components/extensions/vk-auth/VkLoginButton";
 import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
+import { userAuthApi2FA } from "@/lib/user-api";
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 
 export default function Login() {
-  const { user, loading: authLoading, login } = useAuth();
+  const { user, loading: authLoading, login, loginWithToken } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -28,6 +29,10 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [show2FA, setShow2FA] = useState(false);
+  const [pendingToken, setPendingToken] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [verifying2FA, setVerifying2FA] = useState(false);
 
   const redirectPath = (() => {
     const r = searchParams.get("redirect");
@@ -50,9 +55,35 @@ export default function Login() {
       await login(email, password);
       navigate(redirectPath);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Ошибка входа");
+      if (err instanceof Error && err.message === "2FA_REQUIRED") {
+        const pending = (err as Error & { pending_token?: string }).pending_token;
+        if (pending) {
+          setPendingToken(pending);
+          setShow2FA(true);
+        }
+      } else {
+        toast.error(err instanceof Error ? err.message : "Ошибка входа");
+      }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleVerify2FA = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (totpCode.length < 6) {
+      toast.error("Введите 6-значный код");
+      return;
+    }
+    setVerifying2FA(true);
+    try {
+      const data = await userAuthApi2FA.verify2FA(pendingToken, totpCode);
+      loginWithToken(data.token, data.user);
+      navigate(redirectPath);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Неверный код");
+    } finally {
+      setVerifying2FA(false);
     }
   };
 
@@ -82,76 +113,122 @@ export default function Login() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16 flex justify-center">
         <Card className="w-full max-w-md border-0 shadow-sm">
           <CardContent className="p-6 sm:p-8">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Пароль</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Введите пароль"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={submitting}>
-                {submitting ? (
-                  <>
-                    <Icon name="Loader2" size={16} className="animate-spin mr-2" />
-                    Вход...
-                  </>
-                ) : (
-                  "Войти"
-                )}
-              </Button>
-            </form>
-
-            <div className="mt-4 space-y-3">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
+            {show2FA ? (
+              <div className="space-y-4">
+                <div className="text-center space-y-2">
+                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                    <Icon name="Shield" size={24} className="text-primary" />
+                  </div>
+                  <h2 className="text-lg font-semibold">Двухфакторная аутентификация</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Введите код из приложения-аутентификатора или резервный код
+                  </p>
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">или</span>
-                </div>
+                <form onSubmit={handleVerify2FA} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="totpCode">Код подтверждения</Label>
+                    <Input
+                      id="totpCode"
+                      value={totpCode}
+                      onChange={(e) => setTotpCode(e.target.value.replace(/[^0-9a-f]/gi, "").slice(0, 8))}
+                      placeholder="000000"
+                      className="text-center text-lg tracking-widest font-mono"
+                      autoFocus
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={verifying2FA}>
+                    {verifying2FA ? (
+                      <>
+                        <Icon name="Loader2" size={16} className="animate-spin mr-2" />
+                        Проверка...
+                      </>
+                    ) : (
+                      "Подтвердить"
+                    )}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => { setShow2FA(false); setTotpCode(""); setPendingToken(""); }}
+                    className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Вернуться к входу
+                  </button>
+                </form>
               </div>
-              <VkLoginButton
-                onClick={vkAuth.login}
-                isLoading={vkAuth.isLoading}
-                className="w-full"
-              />
-            </div>
+            ) : (
+              <>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
 
-            <div className="mt-4 text-center space-y-2">
-              <Link
-                to="/forgot-password"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
-              >
-                Забыли пароль?
-              </Link>
-              <p className="text-sm text-muted-foreground">
-                Нет аккаунта?{" "}
-                <Link
-                  to="/register"
-                  className="text-primary hover:text-primary/80 transition-colors underline underline-offset-2"
-                >
-                  Зарегистрироваться
-                </Link>
-              </p>
-            </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Пароль</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Введите пароль"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={submitting}>
+                    {submitting ? (
+                      <>
+                        <Icon name="Loader2" size={16} className="animate-spin mr-2" />
+                        Вход...
+                      </>
+                    ) : (
+                      "Войти"
+                    )}
+                  </Button>
+                </form>
+
+                <div className="mt-4 space-y-3">
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">или</span>
+                    </div>
+                  </div>
+                  <VkLoginButton
+                    onClick={vkAuth.login}
+                    isLoading={vkAuth.isLoading}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="mt-4 text-center space-y-2">
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+                  >
+                    Забыли пароль?
+                  </Link>
+                  <p className="text-sm text-muted-foreground">
+                    Нет аккаунта?{" "}
+                    <Link
+                      to="/register"
+                      className="text-primary hover:text-primary/80 transition-colors underline underline-offset-2"
+                    >
+                      Зарегистрироваться
+                    </Link>
+                  </p>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

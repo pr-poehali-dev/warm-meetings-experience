@@ -56,6 +56,22 @@
       "expectedStatus": 401,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "TOTP setup without token returns 401",
+      "method": "POST",
+      "path": "/?resource=totp-setup",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "My data export without token returns 401",
+      "method": "GET",
+      "path": "/?resource=my-data",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

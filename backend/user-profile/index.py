@@ -1,8 +1,10 @@
 import json
 import os
 import hashlib
+import secrets
 
 import bcrypt
+import pyotp
 import psycopg2
 import psycopg2.extras
 
@@ -53,7 +55,7 @@ def get_user_from_token(cur, schema, token):
         return None
     t = token.replace("'", "''")
     cur.execute(f"""
-        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.vk_id, u.password_hash, u.created_at
+        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.vk_id, u.password_hash, u.totp_enabled, u.created_at
         FROM {schema}.user_sessions s
         JOIN {schema}.users u ON u.id = s.user_id
         WHERE s.token = '{t}' AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true
@@ -114,6 +116,24 @@ def handler(event, context):
         if method == 'DELETE':
             return handle_unlink_vk(cur, conn, schema, user, ip)
 
+    if resource == 'totp-setup':
+        if method == 'POST':
+            return handle_totp_setup(cur, conn, schema, user, ip)
+
+    if resource == 'totp-verify':
+        if method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            return handle_totp_verify(cur, conn, schema, user, body, ip)
+
+    if resource == 'totp-disable':
+        if method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            return handle_totp_disable(cur, conn, schema, user, body, ip)
+
+    if resource == 'my-data':
+        if method == 'GET':
+            return handle_my_data_export(cur, conn, schema, user, ip)
+
     conn.close()
     return respond(400, {'error': 'Unknown resource'})
 
@@ -142,7 +162,7 @@ def handle_update_profile(cur, conn, schema, user, body, ip=None):
     cur.execute(f"""
         UPDATE {schema}.users SET {', '.join(sets)}
         WHERE id = {user['id']}
-        RETURNING id, email, name, phone, telegram, vk_id, password_hash, created_at
+        RETURNING id, email, name, phone, telegram, vk_id, password_hash, totp_enabled, created_at
     """)
     updated = cur.fetchone()
     updated_data = dict(updated)
@@ -295,3 +315,144 @@ def handle_unlink_vk(cur, conn, schema, user, ip=None):
     conn.commit()
     conn.close()
     return respond(200, {'message': 'VK аккаунт отвязан'})
+
+
+def handle_totp_setup(cur, conn, schema, user, ip=None):
+    cur.execute(f"SELECT totp_enabled FROM {schema}.users WHERE id = {user['id']}")
+    row = cur.fetchone()
+    if row and row.get('totp_enabled'):
+        conn.close()
+        return respond(400, {'error': '2FA уже включена'})
+
+    secret = pyotp.random_base32()
+    safe_secret = secret.replace("'", "''")
+    cur.execute(f"UPDATE {schema}.users SET totp_secret = '{safe_secret}', updated_at = CURRENT_TIMESTAMP WHERE id = {user['id']}")
+    conn.commit()
+    conn.close()
+
+    email = user.get('email', '')
+    totp = pyotp.TOTP(secret)
+    provisioning_uri = totp.provisioning_uri(name=email, issuer_name='Sparcom')
+
+    return respond(200, {'secret': secret, 'provisioning_uri': provisioning_uri})
+
+
+def handle_totp_verify(cur, conn, schema, user, body, ip=None):
+    code = str(body.get('code') or '').strip()
+    if not code or len(code) != 6:
+        conn.close()
+        return respond(400, {'error': 'Введите 6-значный код'})
+
+    cur.execute(f"SELECT totp_secret, totp_enabled FROM {schema}.users WHERE id = {user['id']}")
+    row = cur.fetchone()
+    if not row or not row.get('totp_secret'):
+        conn.close()
+        return respond(400, {'error': 'Сначала настройте 2FA'})
+    if row.get('totp_enabled'):
+        conn.close()
+        return respond(400, {'error': '2FA уже включена'})
+
+    totp = pyotp.TOTP(row['totp_secret'])
+    if not totp.verify(code, valid_window=1):
+        conn.close()
+        return respond(400, {'error': 'Неверный код'})
+
+    backup_codes = [secrets.token_hex(4) for _ in range(8)]
+    backup_json = json.dumps(backup_codes).replace("'", "''")
+    cur.execute(f"""
+        UPDATE {schema}.users
+        SET totp_enabled = true, totp_backup_codes = '{backup_json}', updated_at = CURRENT_TIMESTAMP
+        WHERE id = {user['id']}
+    """)
+    write_audit_log(cur, schema, user['id'], 'totp_enable', 'users', user['id'], ip)
+    conn.commit()
+    conn.close()
+
+    return respond(200, {'message': '2FA включена', 'backup_codes': backup_codes})
+
+
+def handle_totp_disable(cur, conn, schema, user, body, ip=None):
+    password = (body.get('password') or '')
+    code = str(body.get('code') or '').strip()
+
+    cur.execute(f"SELECT password_hash, totp_enabled, totp_secret FROM {schema}.users WHERE id = {user['id']}")
+    row = cur.fetchone()
+    if not row or not row.get('totp_enabled'):
+        conn.close()
+        return respond(400, {'error': '2FA не включена'})
+
+    if row.get('password_hash') and password:
+        if not verify_password(password, row['password_hash']):
+            conn.close()
+            return respond(400, {'error': 'Неверный пароль'})
+    elif code:
+        totp = pyotp.TOTP(row['totp_secret'])
+        if not totp.verify(code, valid_window=1):
+            conn.close()
+            return respond(400, {'error': 'Неверный код'})
+    else:
+        conn.close()
+        return respond(400, {'error': 'Введите пароль или код из приложения'})
+
+    cur.execute(f"""
+        UPDATE {schema}.users
+        SET totp_enabled = false, totp_secret = NULL, totp_backup_codes = NULL, updated_at = CURRENT_TIMESTAMP
+        WHERE id = {user['id']}
+    """)
+    write_audit_log(cur, schema, user['id'], 'totp_disable', 'users', user['id'], ip)
+    conn.commit()
+    conn.close()
+
+    return respond(200, {'message': '2FA отключена'})
+
+
+def handle_my_data_export(cur, conn, schema, user, ip=None):
+    cur.execute(f"""
+        SELECT id, email, name, phone, telegram, vk_id, created_at, updated_at, last_login_at, email_verified
+        FROM {schema}.users WHERE id = {user['id']}
+    """)
+    profile = cur.fetchone()
+
+    cur.execute(f"""
+        SELECT s.id, s.event_id, s.name, s.phone, s.email, s.status, s.created_at,
+               e.title as event_title, e.event_date
+        FROM {schema}.event_signups s
+        LEFT JOIN {schema}.events e ON e.id = s.event_id
+        WHERE s.user_id = {user['id']}
+        ORDER BY s.created_at DESC
+    """)
+    signups = [dict(r) for r in cur.fetchall()]
+
+    cur.execute(f"""
+        SELECT action, ip_address, created_at, details
+        FROM {schema}.audit_logs
+        WHERE user_id = {user['id']}
+        ORDER BY created_at DESC
+        LIMIT 100
+    """)
+    audit = [dict(r) for r in cur.fetchall()]
+
+    cur.execute(f"""
+        SELECT r.name as role_name, ur.status, ur.assigned_at
+        FROM {schema}.user_roles ur
+        JOIN {schema}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = {user['id']}
+    """)
+    roles = [dict(r) for r in cur.fetchall()]
+
+    write_audit_log(cur, schema, user['id'], 'data_export', 'users', user['id'], ip)
+    conn.commit()
+    conn.close()
+
+    export = {
+        'profile': dict(profile) if profile else {},
+        'signups': signups,
+        'roles': roles,
+        'audit_log': audit,
+        'exported_at': str(json.dumps(None, default=str))
+    }
+
+    from datetime import datetime
+    export['exported_at'] = datetime.utcnow().isoformat()
+
+    return respond(200, {'data': export})

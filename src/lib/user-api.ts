@@ -11,6 +11,7 @@ export interface User {
   telegram?: string;
   vk_id?: string | null;
   has_password?: boolean;
+  totp_enabled?: boolean;
   created_at: string;
 }
 
@@ -73,4 +74,21 @@ export const userProfileApi = {
 
   unlinkVk: (): Promise<{ message: string }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=link-vk`, { method: "DELETE" }),
+
+  totpSetup: (): Promise<{ secret: string; provisioning_uri: string }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=totp-setup`, { method: "POST" }),
+
+  totpVerify: (code: string): Promise<{ message: string; backup_codes: string[] }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=totp-verify`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) }),
+
+  totpDisable: (data: { password?: string; code?: string }): Promise<{ message: string }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=totp-disable`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
+
+  exportMyData: (): Promise<{ data: Record<string, unknown> }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=my-data`),
+};
+
+export const userAuthApi2FA = {
+  verify2FA: (pending_token: string, code: string) =>
+    authRequest(`${USER_AUTH_API}/?action=verify_2fa`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pending_token, code }) }),
 };
