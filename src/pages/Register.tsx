@@ -24,7 +24,7 @@ export default function Register() {
   const [consentTerms, setConsentTerms] = useState(false);
   const [consentPd, setConsentPd] = useState(false);
   const [consentRules, setConsentRules] = useState(false);
-  const [consentPhoto, setConsentPhoto] = useState(false);
+  const [consentPhoto, setConsentPhoto] = useState<"yes" | "no" | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const allRequired = consentTerms && consentPd && consentRules;
@@ -208,19 +208,35 @@ export default function Register() {
               <div className="space-y-3 pt-1 border-t border-border">
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Дополнительно</p>
 
-                <div className="flex items-start gap-3">
-                  <Checkbox
-                    id="consentPhoto"
-                    checked={consentPhoto}
-                    onCheckedChange={(checked) => setConsentPhoto(checked === true)}
-                    className="mt-0.5"
-                  />
-                  <Label htmlFor="consentPhoto" className="text-sm leading-relaxed font-normal cursor-pointer text-muted-foreground">
-                    Я согласен(на) на использование моих фото с мероприятий в рекламных целях{" "}
-                    ({" "}
-                    <AppendixLinkModal appendixId={2} label="Приложение №2" />
-                    {" "})
-                  </Label>
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Использование моих фото с мероприятий в рекламных целях{" "}
+                    (<AppendixLinkModal appendixId={2} label="Приложение №2" />)
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setConsentPhoto("yes")}
+                      className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
+                        consentPhoto === "yes"
+                          ? "border-green-500 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400"
+                          : "border-border text-muted-foreground hover:border-foreground/30"
+                      }`}
+                    >
+                      Согласен(на)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConsentPhoto("no")}
+                      className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
+                        consentPhoto === "no"
+                          ? "border-red-400 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400"
+                          : "border-border text-muted-foreground hover:border-foreground/30"
+                      }`}
+                    >
+                      Запрещаю
+                    </button>
+                  </div>
                 </div>
               </div>
 
