@@ -5,6 +5,8 @@ import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 
 const SECTIONS = [
+  { id: "s0", title: "Общие сведения о ПО" },
+  { id: "s00", title: "Сведения о правообладателе" },
   { id: "s1", title: "Наименование ПО" },
   { id: "s2", title: "Описание функционала" },
   { id: "s21", title: "2.1. Общий функционал" },
@@ -107,8 +109,58 @@ export default function Functional() {
               </div>
             </div>
 
+            <section id="s0" className="scroll-mt-20 mb-10">
+              <h2 className="text-xl font-semibold text-foreground mb-4">1. Общие сведения о программном обеспечении</h2>
+              <dl className="space-y-3 text-sm">
+                <div>
+                  <dt className="font-semibold text-foreground">Наименование программного обеспечения:</dt>
+                  <dd className="text-foreground/80 mt-0.5">Платформа «СПАРКОМ» (далее — ПО, Платформа).</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-foreground">Тип программного обеспечения:</dt>
+                  <dd className="text-foreground/80 mt-0.5">Веб-приложение, облачная SaaS-платформа.</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-foreground">Класс программного обеспечения по Классификатору, утверждённому Приказом Минцифры России от 22.09.2020 № 486:</dt>
+                  <dd className="text-foreground/80 mt-0.5">12.18 «Программное обеспечение для решения отраслевых задач в области культуры, спорта, организации досуга и развлечений».</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-foreground">Код продукции по Общероссийскому классификатору продукции по видам экономической деятельности (ОКПД2):</dt>
+                  <dd className="text-foreground/80 mt-0.5">58.29.29 «Обеспечение программное прикладное прочее на электронном носителе».</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section id="s00" className="scroll-mt-20 mb-10">
+              <h2 className="text-xl font-semibold text-foreground mb-4">2. Сведения о правообладателе</h2>
+              <dl className="space-y-3 text-sm">
+                <div>
+                  <dt className="font-semibold text-foreground">Правообладатель:</dt>
+                  <dd className="text-foreground/80 mt-0.5">Индивидуальный предприниматель Чикин Дмитрий Сергеевич.</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-foreground">ОГРНИП:</dt>
+                  <dd className="text-foreground/80 mt-0.5">321774600501510.</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-foreground">ИНН:</dt>
+                  <dd className="text-foreground/80 mt-0.5">771916365140.</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-foreground">Адрес:</dt>
+                  <dd className="text-foreground/80 mt-0.5">105187, г. Москва, ул. Фортунатовская, д. 31/35, кв. 98.</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-foreground">Адрес электронной почты:</dt>
+                  <dd className="text-foreground/80 mt-0.5"><a href="mailto:privacy@sparcom.ru">privacy@sparcom.ru</a>.</dd>
+                </div>
+              </dl>
+            </section>
+
+            <div className="border-t border-border my-10" />
+
             <section id="s1" className="scroll-mt-20 mb-10">
-              <h2 className="text-xl font-semibold text-foreground mb-3">1. Наименование программного обеспечения</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-3">3. Наименование программного обеспечения</h2>
               <p className="text-foreground/80">Платформа «СПАРКОМ» (далее — ПО, Платформа).</p>
             </section>
 
