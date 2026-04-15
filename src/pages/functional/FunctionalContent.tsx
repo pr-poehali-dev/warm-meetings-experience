@@ -25,28 +25,31 @@ export function FunctionalSidebar() {
   const [activeId, setActiveId] = useState(FUNCTIONAL_SECTIONS[0].id);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting);
-        if (visible.length > 0) {
-          const topmost = visible.reduce((a, b) =>
-            a.boundingClientRect.top < b.boundingClientRect.top ? a : b
-          );
-          setActiveId(topmost.target.id);
-        }
-      },
-      { rootMargin: "-20% 0px -70% 0px" }
-    );
-    FUNCTIONAL_SECTIONS.forEach(({ id }) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
+    const timer = setTimeout(() => {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries.filter((e) => e.isIntersecting);
+          if (visible.length > 0) {
+            const topmost = visible.reduce((a, b) =>
+              a.boundingClientRect.top < b.boundingClientRect.top ? a : b
+            );
+            setActiveId(topmost.target.id);
+          }
+        },
+        { rootMargin: "-20% 0px -70% 0px" }
+      );
+      FUNCTIONAL_SECTIONS.forEach(({ id }) => {
+        const el = document.getElementById(id);
+        if (el) observer.observe(el);
+      });
+      return () => observer.disconnect();
+    }, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
     <aside className="hidden lg:block w-56 shrink-0">
-      <div className="sticky top-20">
+      <div className="sticky top-28">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Содержание</p>
         <nav className="space-y-0.5">
           {FUNCTIONAL_SECTIONS.map((s) => (
@@ -81,7 +84,7 @@ export function FunctionalContent() {
         </div>
       </div>
 
-      <section id="s0" className="scroll-mt-20 mb-10">
+      <section id="s0" className="scroll-mt-28 mb-10">
         <h2 className="text-xl font-semibold text-foreground mb-4">1. Общие сведения о программном обеспечении</h2>
         <dl className="space-y-3 text-sm">
           <div>
@@ -103,7 +106,7 @@ export function FunctionalContent() {
         </dl>
       </section>
 
-      <section id="s00" className="scroll-mt-20 mb-10">
+      <section id="s00" className="scroll-mt-28 mb-10">
         <h2 className="text-xl font-semibold text-foreground mb-4">2. Сведения о правообладателе</h2>
         <dl className="space-y-3 text-sm">
           <div>
@@ -131,17 +134,17 @@ export function FunctionalContent() {
 
       <div className="border-t border-border my-10" />
 
-      <section id="s1" className="scroll-mt-20 mb-10">
+      <section id="s1" className="scroll-mt-28 mb-10">
         <h2 className="text-xl font-semibold text-foreground mb-3">3. Наименование программного обеспечения</h2>
         <p className="text-foreground/80">Платформа «СПАРКОМ» (далее — ПО, Платформа).</p>
       </section>
 
-      <section id="s2" className="scroll-mt-20 mb-10">
+      <section id="s2" className="scroll-mt-28 mb-10">
         <h2 className="text-xl font-semibold text-foreground mb-3">4. Описание функциональных характеристик</h2>
         <p className="text-foreground/80">ПО представляет собой веб-платформу (SaaS), содержащую каталог банных комплексов и мероприятий, каталог профессиональных мастеров, а также информационный новостной канал. На Платформе реализован личный кабинет, функционал которого различается в зависимости от роли пользователя.</p>
       </section>
 
-      <section id="s21" className="scroll-mt-20 mb-8">
+      <section id="s21" className="scroll-mt-28 mb-8">
         <h3 className="text-lg font-semibold text-foreground mb-3">4.1. Общий функционал для всех ролей</h3>
         <ul className="space-y-1.5 text-foreground/80">
           <li>Регистрация и авторизация (по адресу электронной почты или через сервисы идентификации российских провайдеров).</li>
@@ -153,7 +156,7 @@ export function FunctionalContent() {
         </ul>
       </section>
 
-      <section id="s22" className="scroll-mt-20 mb-8">
+      <section id="s22" className="scroll-mt-28 mb-8">
         <h3 className="text-lg font-semibold text-foreground mb-3">4.2. Роль «Участник» (Посетитель)</h3>
         <ul className="space-y-1.5 text-foreground/80">
           <li>Просмотр детальной информации о банном комплексе, мероприятии или мастере (описание, фотографии, правила, стоимость).</li>
@@ -166,7 +169,7 @@ export function FunctionalContent() {
         </ul>
       </section>
 
-      <section id="s23" className="scroll-mt-20 mb-8">
+      <section id="s23" className="scroll-mt-28 mb-8">
         <h3 className="text-lg font-semibold text-foreground mb-3">4.3. Роль «Партнёр (Баня)» — Владелец или менеджер банного комплекса</h3>
         <ul className="space-y-1.5 text-foreground/80">
           <li>Регистрация и ведение карточки банного комплекса (наименование, адрес, контактные данные, описание, перечень услуг).</li>
@@ -182,7 +185,7 @@ export function FunctionalContent() {
         </ul>
       </section>
 
-      <section id="s24" className="scroll-mt-20 mb-8">
+      <section id="s24" className="scroll-mt-28 mb-8">
         <h3 className="text-lg font-semibold text-foreground mb-3">4.4. Роль «Мастер»</h3>
         <ul className="space-y-1.5 text-foreground/80">
           <li>Создание и ведение личного профиля (описание, фотографии, сведения о квалификации, направления работы).</li>
@@ -195,7 +198,7 @@ export function FunctionalContent() {
         </ul>
       </section>
 
-      <section id="s25" className="scroll-mt-20 mb-8">
+      <section id="s25" className="scroll-mt-28 mb-8">
         <h3 className="text-lg font-semibold text-foreground mb-3">4.5. Роль «Организатор мероприятий»</h3>
         <ul className="space-y-1.5 text-foreground/80">
           <li>Создание и публикация карточки мероприятия (название, описание, дата, время, место, стоимость).</li>
@@ -208,7 +211,7 @@ export function FunctionalContent() {
         </ul>
       </section>
 
-      <section id="s26" className="scroll-mt-20 mb-8">
+      <section id="s26" className="scroll-mt-28 mb-8">
         <h3 className="text-lg font-semibold text-foreground mb-3">4.6. Функционал Администратора платформы</h3>
         <ul className="space-y-1.5 text-foreground/80">
           <li>Модерация публикуемого контента (карточки бань, мероприятия, профили мастеров, отзывы).</li>
@@ -218,7 +221,7 @@ export function FunctionalContent() {
         </ul>
       </section>
 
-      <section id="s27" className="scroll-mt-20 mb-10">
+      <section id="s27" className="scroll-mt-28 mb-10">
         <h3 className="text-lg font-semibold text-foreground mb-3">4.7. Коммуникация между пользователями</h3>
         <p className="text-foreground/80">На Платформе реализована система уведомлений и служебных сообщений между участниками, партнёрами и мастерами (в рамках подтверждения бронирований и записей).</p>
         <p className="text-foreground/80 mt-3">Обмен сообщениями осуществляется без применения сквозного (end-to-end) шифрования. Все сообщения передаются по защищённому каналу связи (HTTPS/TLS) и хранятся на сервере в открытом виде, доступном администратору Платформы. Такой подход обеспечивает выполнение требований законодательства Российской Федерации к организаторам распространения информации.</p>
@@ -226,21 +229,21 @@ export function FunctionalContent() {
 
       <div className="border-t border-border my-10" />
 
-      <section id="s3" className="scroll-mt-20 mb-10">
+      <section id="s3" className="scroll-mt-28 mb-10">
         <h2 className="text-xl font-semibold text-foreground mb-3">5. Информация, необходимая для установки и эксплуатации</h2>
       </section>
 
-      <section id="s31" className="scroll-mt-20 mb-8">
+      <section id="s31" className="scroll-mt-28 mb-8">
         <h3 className="text-lg font-semibold text-foreground mb-3">5.1. Модель распространения</h3>
         <p className="text-foreground/80">ПО распространяется по модели SaaS (Software as a Service — программное обеспечение как услуга) и не требует установки на оборудование пользователя.</p>
       </section>
 
-      <section id="s32" className="scroll-mt-20 mb-8">
+      <section id="s32" className="scroll-mt-28 mb-8">
         <h3 className="text-lg font-semibold text-foreground mb-3">5.2. Доступ к Платформе</h3>
         <p className="text-foreground/80">Доступ осуществляется через веб-браузер по адресу: <a href="https://sparcom.ru" target="_blank" rel="noopener noreferrer">https://sparcom.ru</a>.</p>
       </section>
 
-      <section id="s33" className="scroll-mt-20 mb-8">
+      <section id="s33" className="scroll-mt-28 mb-8">
         <h3 className="text-lg font-semibold text-foreground mb-3">5.3. Системные требования</h3>
         <ul className="space-y-1.5 text-foreground/80">
           <li>Актуальная версия любого современного веб-браузера (Google Chrome, Mozilla Firefox, Safari, Яндекс.Браузер или аналогичный).</li>
@@ -249,7 +252,7 @@ export function FunctionalContent() {
         </ul>
       </section>
 
-      <section id="s34" className="scroll-mt-20 mb-8">
+      <section id="s34" className="scroll-mt-28 mb-8">
         <h3 className="text-lg font-semibold text-foreground mb-3">5.4. Начало работы</h3>
         <ol className="space-y-2 text-foreground/80 list-decimal list-inside">
           <li>Перейдите на сайт <a href="https://sparcom.ru" target="_blank" rel="noopener noreferrer">https://sparcom.ru</a>.</li>
@@ -260,7 +263,7 @@ export function FunctionalContent() {
         </ol>
       </section>
 
-      <section id="s35" className="scroll-mt-20 mb-10">
+      <section id="s35" className="scroll-mt-28 mb-10">
         <h3 className="text-lg font-semibold text-foreground mb-3">5.5. Техническая поддержка</h3>
         <p className="text-foreground/80">По всем вопросам, связанным с работой Платформы, обращайтесь в службу поддержки по адресу электронной почты: <a href="mailto:club@sparcom.ru">club@sparcom.ru</a>.</p>
       </section>
