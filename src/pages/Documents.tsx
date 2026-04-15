@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
@@ -8,22 +8,22 @@ import TermsContent from "./terms/TermsContent";
 import TermsAppendixModal from "./terms/TermsAppendixModal";
 import { appendices as termsAppendices } from "./terms/termsAppendices";
 import { privacyAppendices } from "./privacy/privacyAppendices";
+import { FunctionalContent, FunctionalSidebar } from "./functional/FunctionalContent";
 
-type TabId = "privacy" | "terms";
+type TabId = "privacy" | "terms" | "functional";
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
-  { id: "privacy", label: "Политика конфиденциальности", icon: "Shield" },
-  { id: "terms",   label: "Пользовательское соглашение", icon: "FileText" },
-];
-
-const EXTRA_LINKS = [
-  { label: "Документация на ПО", icon: "BookOpen", href: "/functional" },
+  { id: "privacy",    label: "Политика конфиденциальности", icon: "Shield" },
+  { id: "terms",      label: "Пользовательское соглашение", icon: "FileText" },
+  { id: "functional", label: "Документация на ПО",          icon: "BookOpen" },
 ];
 
 export default function Documents() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") as TabId) || "privacy";
-  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
+  const [activeTab, setActiveTab] = useState<TabId>(
+    ["privacy", "terms", "functional"].includes(initialTab) ? initialTab : "privacy"
+  );
   const [openTermsAppendix, setOpenTermsAppendix] = useState<number | null>(null);
   const [openPrivacyAppendix, setOpenPrivacyAppendix] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -39,7 +39,7 @@ export default function Documents() {
 
   useEffect(() => {
     const tab = searchParams.get("tab") as TabId;
-    if (tab && (tab === "privacy" || tab === "terms")) setActiveTab(tab);
+    if (tab && ["privacy", "terms", "functional"].includes(tab)) setActiveTab(tab);
   }, [searchParams]);
 
   const privacyDate = "30 марта 2026 г.";
@@ -84,16 +84,6 @@ export default function Documents() {
                 <Icon name={tab.icon as "Shield"} size={15} />
                 {tab.label}
               </button>
-            ))}
-            {EXTRA_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                to={link.href}
-                className="flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-colors whitespace-nowrap"
-              >
-                <Icon name={link.icon as "BookOpen"} size={15} />
-                {link.label}
-              </Link>
             ))}
           </div>
         </div>
@@ -140,6 +130,13 @@ export default function Documents() {
               </div>
               <TermsContent onOpenAppendix={setOpenTermsAppendix} />
             </article>
+          </div>
+        )}
+
+        {activeTab === "functional" && (
+          <div className="flex gap-12">
+            <FunctionalSidebar />
+            <FunctionalContent />
           </div>
         )}
       </div>
