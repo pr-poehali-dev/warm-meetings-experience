@@ -179,38 +179,47 @@ const PRIVACY_SECTIONS = [
   { id: "ps15", title: "Контакты" },
 ];
 
-function PrivacySidebar() {
-  const [activeId, setActiveId] = useState(PRIVACY_SECTIONS[0].id);
+function useSidebarActive(sections: { id: string }[], offset = 130) {
+  const [activeId, setActiveId] = useState(sections[0].id);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting);
-        if (visible.length > 0) {
-          const topmost = visible.reduce((a, b) =>
-            a.boundingClientRect.top < b.boundingClientRect.top ? a : b
-          );
-          setActiveId(topmost.target.id);
-        }
-      },
-      { rootMargin: "-20% 0px -70% 0px" }
-    );
-    PRIVACY_SECTIONS.forEach(({ id }) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, []);
+    const getActive = () => {
+      let current = sections[0].id;
+      for (const { id } of sections) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= offset) current = id;
+        else break;
+      }
+      return current;
+    };
+    const onScroll = () => setActiveId(getActive());
+    setActiveId(getActive());
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [sections, offset]);
+
+  return activeId;
+}
+
+function handleSidebarClick(id: string, offset = 112) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: "smooth" });
+}
+
+function PrivacySidebar() {
+  const activeId = useSidebarActive(PRIVACY_SECTIONS);
 
   return (
     <aside className="hidden lg:block w-56 shrink-0">
-      <div className="sticky top-20">
+      <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Содержание</p>
         <nav className="space-y-0.5">
           {PRIVACY_SECTIONS.map((s) => (
             <button
               key={s.id}
-              onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              onClick={() => handleSidebarClick(s.id)}
               className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors leading-snug
                 ${activeId === s.id
                   ? "bg-primary/10 text-primary font-medium"
@@ -238,37 +247,17 @@ const TERMS_SECTIONS = [
 ];
 
 function TermsSidebar() {
-  const [activeId, setActiveId] = useState(TERMS_SECTIONS[0].id);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting);
-        if (visible.length > 0) {
-          const topmost = visible.reduce((a, b) =>
-            a.boundingClientRect.top < b.boundingClientRect.top ? a : b
-          );
-          setActiveId(topmost.target.id);
-        }
-      },
-      { rootMargin: "-20% 0px -70% 0px" }
-    );
-    TERMS_SECTIONS.forEach(({ id }) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, []);
+  const activeId = useSidebarActive(TERMS_SECTIONS);
 
   return (
     <aside className="hidden lg:block w-56 shrink-0">
-      <div className="sticky top-20">
+      <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Содержание</p>
         <nav className="space-y-0.5">
           {TERMS_SECTIONS.map((s) => (
             <button
               key={s.id}
-              onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              onClick={() => handleSidebarClick(s.id)}
               className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors leading-snug
                 ${activeId === s.id
                   ? "bg-primary/10 text-primary font-medium"
