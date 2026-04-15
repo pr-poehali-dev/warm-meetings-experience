@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
