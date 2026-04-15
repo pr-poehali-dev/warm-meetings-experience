@@ -36,6 +36,7 @@ import InviteVerify from "./pages/InviteVerify";
 import PastEvents from "./pages/PastEvents";
 import VkCallback from "./pages/VkCallback";
 import VerifyEmail from "./pages/VerifyEmail";
+import Functional from "./pages/Functional";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,7 @@ const AppContent = () => {
         <Route path="/blog/category/:slug" element={<BlogCategory />} />
         <Route path="/blog/:slug" element={<BlogArticle />} />
         <Route path="/documents" element={<Documents />} />
+        <Route path="/functional" element={<Functional />} />
         <Route path="/privacy" element={<Navigate to="/documents?tab=privacy" replace />} />
         <Route path="/terms" element={<Navigate to="/documents?tab=terms" replace />} />
         <Route path="*" element={<NotFound />} />
