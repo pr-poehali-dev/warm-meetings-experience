@@ -16,6 +16,10 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: "terms",   label: "Пользовательское соглашение", icon: "FileText" },
 ];
 
+const EXTRA_LINKS = [
+  { label: "Документация на ПО", icon: "BookOpen", href: "/functional" },
+];
+
 export default function Documents() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") as TabId) || "privacy";
@@ -80,6 +84,16 @@ export default function Documents() {
                 <Icon name={tab.icon as "Shield"} size={15} />
                 {tab.label}
               </button>
+            ))}
+            {EXTRA_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                to={link.href}
+                className="flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground hover:border-border transition-colors whitespace-nowrap"
+              >
+                <Icon name={link.icon as "BookOpen"} size={15} />
+                {link.label}
+              </Link>
             ))}
           </div>
         </div>
