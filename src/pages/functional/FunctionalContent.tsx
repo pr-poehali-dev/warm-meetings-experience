@@ -25,37 +25,48 @@ export function FunctionalSidebar() {
   const [activeId, setActiveId] = useState(FUNCTIONAL_SECTIONS[0].id);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          const visible = entries.filter((e) => e.isIntersecting);
-          if (visible.length > 0) {
-            const topmost = visible.reduce((a, b) =>
-              a.boundingClientRect.top < b.boundingClientRect.top ? a : b
-            );
-            setActiveId(topmost.target.id);
-          }
-        },
-        { rootMargin: "-20% 0px -70% 0px" }
-      );
-      FUNCTIONAL_SECTIONS.forEach(({ id }) => {
+    const OFFSET = 130;
+
+    const getActiveId = () => {
+      const ids = FUNCTIONAL_SECTIONS.map((s) => s.id);
+      let current = ids[0];
+      for (const id of ids) {
         const el = document.getElementById(id);
-        if (el) observer.observe(el);
-      });
-      return () => observer.disconnect();
-    }, 100);
-    return () => clearTimeout(timer);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= OFFSET) {
+          current = id;
+        } else {
+          break;
+        }
+      }
+      return current;
+    };
+
+    const onScroll = () => {
+      setActiveId(getActiveId());
+    };
+
+    setActiveId(getActiveId());
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const handleClick = (id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - 112;
+    window.scrollTo({ top, behavior: "smooth" });
+  };
 
   return (
     <aside className="hidden lg:block w-56 shrink-0">
-      <div className="sticky top-28">
+      <div className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-1">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Содержание</p>
         <nav className="space-y-0.5">
           {FUNCTIONAL_SECTIONS.map((s) => (
             <button
               key={s.id}
-              onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              onClick={() => handleClick(s.id)}
               className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors leading-snug
                 ${activeId === s.id
                   ? "bg-primary/10 text-primary font-medium"
