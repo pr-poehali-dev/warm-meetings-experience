@@ -177,6 +177,7 @@ const PRIVACY_SECTIONS = [
   { id: "ps13", title: "Изменение Политики" },
   { id: "ps14", title: "Заключительные положения" },
   { id: "ps15", title: "Контакты" },
+  { id: "ps-appendices", title: "Приложения" },
 ];
 
 function useSidebarActive(sections: { id: string }[], offset = 130) {

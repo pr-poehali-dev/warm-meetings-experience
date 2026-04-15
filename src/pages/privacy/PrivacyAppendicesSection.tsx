@@ -9,7 +9,7 @@ export function PrivacyAppendicesSection({
   return (
     <>
       {/* ── Приложения ──────────────────────────────────────────────────────── */}
-      <section className="scroll-mt-20">
+      <section id="ps-appendices" className="scroll-mt-20">
         <h2 className="text-xl font-semibold text-foreground mb-5 pb-2 border-b border-border">
           Приложения к Политике
         </h2>
