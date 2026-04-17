@@ -10,6 +10,7 @@ export interface User {
   phone: string;
   telegram?: string;
   vk_id?: string | null;
+  yandex_id?: string | null;
   has_password?: boolean;
   totp_enabled?: boolean;
   email_verified?: boolean;

@@ -73,6 +73,36 @@ export interface Badge {
   earned_at: string | null;
 }
 
+export interface ApplyResponse {
+  application: { id: number; status: string; created_at?: string };
+  requires_email_code?: boolean;
+  email_masked?: string;
+  code_ttl_minutes?: number;
+  message: string;
+}
+
+export interface VerifyEmailCodeResponse {
+  application_id: number;
+  status: string;
+  message: string;
+  attempts_left?: number;
+}
+
+export interface StartOAuth2FAResponse {
+  provider: "vk" | "yandex";
+  auth_url: string;
+  state: string;
+  code_verifier?: string;
+  redirect_uri: string;
+}
+
+export interface VerifyOAuth2FAResponse {
+  application_id: number;
+  status: string;
+  linked: boolean;
+  message: string;
+}
+
 export const rolesApi = {
   getAllRoles: (): Promise<{ roles: Role[] }> =>
     rolesRequest(`${ROLES_API}/?resource=all-roles`),
@@ -86,11 +116,45 @@ export const rolesApi = {
   getBadges: (): Promise<{ badges: Badge[] }> =>
     rolesRequest(`${ROLES_API}/?resource=badges`),
 
-  applyForRole: (role_slug: string, message: string, portfolio_data?: Record<string, unknown>): Promise<{ application: RoleApplication; message: string }> =>
+  applyForRole: (role_slug: string, message: string, portfolio_data?: Record<string, unknown>): Promise<ApplyResponse> =>
     rolesRequest(`${ROLES_API}/?resource=apply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role_slug, message, portfolio_data }),
+    }),
+
+  verifyEmailCode: (application_id: number, code: string): Promise<VerifyEmailCodeResponse> =>
+    rolesRequest(`${ROLES_API}/?resource=verify-email-code`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ application_id, code }),
+    }),
+
+  resendEmailCode: (application_id: number): Promise<{ message: string; email_masked: string; code_ttl_minutes: number }> =>
+    rolesRequest(`${ROLES_API}/?resource=resend-email-code`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ application_id }),
+    }),
+
+  startOAuth2FA: (application_id: number, provider: "vk" | "yandex"): Promise<StartOAuth2FAResponse> =>
+    rolesRequest(`${ROLES_API}/?resource=start-oauth-2fa`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ application_id, provider }),
+    }),
+
+  verifyOAuth2FA: (params: {
+    application_id: number;
+    provider: "vk" | "yandex";
+    code: string;
+    code_verifier?: string;
+    device_id?: string;
+  }): Promise<VerifyOAuth2FAResponse> =>
+    rolesRequest(`${ROLES_API}/?resource=verify-oauth-2fa`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
     }),
 
   switchRole: (role_slug: string): Promise<{ active_role: { id: number; slug: string; name: string } }> =>

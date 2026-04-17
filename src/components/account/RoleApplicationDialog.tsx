@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,20 +14,36 @@ import Icon from "@/components/ui/icon";
 import { rolesApi, Role } from "@/lib/roles-api";
 import { toast } from "sonner";
 import AppendixLinkModal from "@/components/AppendixLinkModal";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import RoleApplication2FA from "./RoleApplication2FA";
 
 interface Props {
   role: Role;
   onClose: () => void;
   onSuccess: () => void;
+  initialTfaState?: {
+    applicationId: number;
+    emailMasked?: string;
+    codeTtlMinutes?: number;
+  };
 }
 
-export default function RoleApplicationDialog({ role, onClose, onSuccess }: Props) {
+export default function RoleApplicationDialog({ role, onClose, onSuccess, initialTfaState }: Props) {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [consentRules, setConsentRules] = useState(false);
   const [consentPd, setConsentPd] = useState(false);
   const [consentEp, setConsentEp] = useState(false);
+  const [tfaState, setTfaState] = useState<{
+    applicationId: number;
+    emailMasked?: string;
+    codeTtlMinutes?: number;
+  } | null>(initialTfaState || null);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (initialTfaState) setTfaState(initialTfaState);
+  }, [initialTfaState]);
 
   const allRequired = consentRules && consentPd && consentEp;
 
@@ -39,14 +55,51 @@ export default function RoleApplicationDialog({ role, onClose, onSuccess }: Prop
     setSubmitting(true);
     try {
       const result = await rolesApi.applyForRole(role.slug, message);
-      toast.success(result.message);
-      onSuccess();
+      if (result.requires_email_code && result.application?.id) {
+        setTfaState({
+          applicationId: result.application.id,
+          emailMasked: result.email_masked,
+          codeTtlMinutes: result.code_ttl_minutes,
+        });
+        toast.success(result.message);
+      } else {
+        toast.success(result.message);
+        onSuccess();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Ошибка отправки заявки");
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (tfaState) {
+    return (
+      <Dialog open onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="text-2xl">{role.icon}</span>
+              Подтверждение заявки
+            </DialogTitle>
+          </DialogHeader>
+          <RoleApplication2FA
+            applicationId={tfaState.applicationId}
+            roleName={role.name}
+            emailMasked={tfaState.emailMasked}
+            codeTtlMinutes={tfaState.codeTtlMinutes}
+            onVerified={() => {
+              // очищаем URL от callback-параметров, если они были
+              if (location.search) {
+                window.history.replaceState({}, "", location.pathname);
+              }
+              onSuccess();
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open onOpenChange={onClose}>

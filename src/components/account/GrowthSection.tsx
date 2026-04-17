@@ -12,6 +12,7 @@ export default function GrowthSection() {
   const [allRoles, setAllRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [applyRole, setApplyRole] = useState<Role | null>(null);
+  const [tfaContinueRole, setTfaContinueRole] = useState<Role | null>(null);
 
   useEffect(() => {
     loadData();
@@ -34,7 +35,14 @@ export default function GrowthSection() {
   };
 
   const activeRoleSlugs = myRoles.filter((r) => r.status === "active").map((r) => r.slug);
-  const pendingAppSlugs = applications.filter((a) => a.status === "pending").map((a) => a.role_slug);
+  const pendingAppSlugs = applications
+    .filter((a) => a.status === "pending" || a.status === "pending_2fa")
+    .map((a) => a.role_slug);
+
+  const handleContinueTfa = (roleSlug: string) => {
+    const role = allRoles.find((r) => r.slug === roleSlug);
+    if (role) setTfaContinueRole(role);
+  };
 
   const availableRoles = allRoles.filter(
     (r) => !activeRoleSlugs.includes(r.slug) && r.slug !== "member"
@@ -131,7 +139,18 @@ export default function GrowthSection() {
                       </div>
                     </div>
                   </div>
-                  <ApplicationStatus status={app.status} comment={app.admin_comment} />
+                  <div className="flex items-center gap-2">
+                    {app.status === "pending_2fa" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleContinueTfa(app.role_slug)}
+                      >
+                        Подтвердить
+                      </Button>
+                    )}
+                    <ApplicationStatus status={app.status} comment={app.admin_comment} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -149,12 +168,29 @@ export default function GrowthSection() {
           }}
         />
       )}
+
+      {tfaContinueRole && (
+        <RoleApplicationDialog
+          role={tfaContinueRole}
+          onClose={() => setTfaContinueRole(null)}
+          onSuccess={() => {
+            setTfaContinueRole(null);
+            loadData();
+          }}
+          initialTfaState={{
+            applicationId: applications.find(
+              (a) => a.role_slug === tfaContinueRole.slug && a.status === "pending_2fa"
+            )!.id,
+          }}
+        />
+      )}
     </>
   );
 }
 
 function ApplicationStatus({ status, comment }: { status: string; comment: string | null }) {
   const map: Record<string, { label: string; className: string }> = {
+    pending_2fa: { label: "Требуется подтверждение", className: "bg-blue-50 text-blue-700" },
     pending: { label: "На рассмотрении", className: "bg-amber-50 text-amber-700" },
     approved: { label: "Одобрена", className: "bg-green-50 text-green-700" },
     rejected: { label: "Отклонена", className: "bg-red-50 text-red-700" },

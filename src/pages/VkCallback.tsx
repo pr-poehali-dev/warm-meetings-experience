@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
+import { rolesApi } from "@/lib/roles-api";
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 const USER_AUTH_URL = "https://functions.poehali.dev/d5d9f568-ba92-4605-9b95-646ba409fd8d";
@@ -18,6 +19,11 @@ function clearVkStorage() {
   sessionStorage.removeItem("vk_auth_state");
   localStorage.removeItem("vk_auth_refresh_token");
 }
+function clearRole2FAStorage() {
+  sessionStorage.removeItem("role_2fa_vk_state");
+  sessionStorage.removeItem("role_2fa_vk_verifier");
+  sessionStorage.removeItem("role_2fa_vk_app_id");
+}
 
 export default function VkCallback() {
   const navigate = useNavigate();
@@ -26,6 +32,35 @@ export default function VkCallback() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const isLinkFlow = params.get("vk_link") === "1";
+
+    // Проверяем сначала role-2fa флоу
+    const role2faAppId = sessionStorage.getItem("role_2fa_vk_app_id");
+    const role2faState = sessionStorage.getItem("role_2fa_vk_state");
+    const role2faVerifier = sessionStorage.getItem("role_2fa_vk_verifier");
+    const urlStateEarly = params.get("state");
+    const urlCodeEarly = params.get("code");
+    const deviceIdEarly = params.get("device_id") || "";
+
+    if (role2faAppId && role2faState && urlStateEarly === role2faState && urlCodeEarly) {
+      (async () => {
+        try {
+          const res = await rolesApi.verifyOAuth2FA({
+            application_id: parseInt(role2faAppId, 10),
+            provider: "vk",
+            code: urlCodeEarly,
+            code_verifier: role2faVerifier || undefined,
+            device_id: deviceIdEarly || undefined,
+          });
+          toast.success(res.message);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Не удалось подтвердить через VK");
+        } finally {
+          clearRole2FAStorage();
+          navigate("/account?tab=growth", { replace: true });
+        }
+      })();
+      return;
+    }
 
     if (isLinkFlow) {
       const accountUrl = new URL(`${window.location.origin}/account`);
