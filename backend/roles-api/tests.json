@@ -47,6 +47,26 @@
         "error": "string"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Verify email code requires auth",
+      "method": "POST",
+      "path": "/?resource=verify-email-code",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Resend email code requires auth",
+      "method": "POST",
+      "path": "/?resource=resend-email-code",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

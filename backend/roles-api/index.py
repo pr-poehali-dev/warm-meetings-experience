@@ -1,9 +1,12 @@
 import json
 import os
 import hashlib
+import secrets as pysecrets
+from datetime import datetime, timedelta
 
 import psycopg2
 import psycopg2.extras
+import requests
 
 
 def get_conn():
@@ -99,7 +102,19 @@ def handler(event, context):
         return handle_badges(cur, conn, schema, user)
     elif resource == 'apply' and method == 'POST':
         body = json.loads(event.get('body', '{}'))
-        return handle_apply(cur, conn, schema, user, body)
+        ip = (headers_in.get('X-Forwarded-For') or headers_in.get('x-forwarded-for') or '').split(',')[0].strip() or None
+        ua = headers_in.get('User-Agent') or headers_in.get('user-agent') or ''
+        return handle_apply(cur, conn, schema, user, body, ip, ua)
+    elif resource == 'verify-email-code' and method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        ip = (headers_in.get('X-Forwarded-For') or headers_in.get('x-forwarded-for') or '').split(',')[0].strip() or None
+        ua = headers_in.get('User-Agent') or headers_in.get('user-agent') or ''
+        return handle_verify_email_code(cur, conn, schema, user, body, ip, ua)
+    elif resource == 'resend-email-code' and method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        ip = (headers_in.get('X-Forwarded-For') or headers_in.get('x-forwarded-for') or '').split(',')[0].strip() or None
+        ua = headers_in.get('User-Agent') or headers_in.get('user-agent') or ''
+        return handle_resend_email_code(cur, conn, schema, user, body, ip, ua)
     elif resource == 'switch-role' and method == 'POST':
         body = json.loads(event.get('body', '{}'))
         return handle_switch_role(cur, conn, schema, user, body)
@@ -217,7 +232,105 @@ def handle_badges(cur, conn, schema, user):
     return respond(200, {'badges': badges})
 
 
-def handle_apply(cur, conn, schema, user, body):
+CODE_TTL_MINUTES = 15
+CODE_MAX_ATTEMPTS = 5
+CODE_LOCK_MINUTES = 15
+RESEND_COOLDOWN_SECONDS = 60
+
+
+def hash_code(code: str) -> str:
+    return hashlib.sha256(code.encode('utf-8')).hexdigest()
+
+
+def generate_email_code() -> str:
+    return f"{pysecrets.randbelow(900000) + 100000:06d}"
+
+
+def log_2fa_event(cur, schema, app_id, user_id, method, event, success, ip, user_agent, details=None):
+    det = json.dumps(details or {}).replace("'", "''")
+    ip_val = f"'{ip}'" if ip else 'NULL'
+    ua = (user_agent or '')[:500].replace("'", "''")
+    cur.execute(f"""
+        INSERT INTO {schema}.role_application_2fa_log
+            (application_id, user_id, method, event, success, ip_address, user_agent, details)
+        VALUES ({app_id}, {user_id}, '{method}', '{event}', {str(bool(success)).upper()}, {ip_val}, '{ua}', '{det}'::jsonb)
+    """)
+
+
+def create_email_code(cur, schema, app_id, email, ip, user_agent):
+    code = generate_email_code()
+    code_hash = hash_code(code)
+    expires = (datetime.utcnow() + timedelta(minutes=CODE_TTL_MINUTES)).strftime('%Y-%m-%d %H:%M:%S')
+    e = email.replace("'", "''")
+    ip_val = f"'{ip}'" if ip else 'NULL'
+    ua = (user_agent or '')[:500].replace("'", "''")
+    cur.execute(f"""
+        INSERT INTO {schema}.role_application_email_codes
+            (application_id, email, code_hash, expires_at, ip_address, user_agent)
+        VALUES ({app_id}, '{e}', '{code_hash}', '{expires}', {ip_val}, '{ua}')
+        RETURNING id, expires_at
+    """)
+    row = dict(cur.fetchone())
+    return code, row
+
+
+def send_role_application_code_email(to_email, name, role_name, code):
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
+    if not api_key or not sender_email:
+        return False
+
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fafafa;">
+        <div style="background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="width: 56px; height: 56px; background: #e0f2fe; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 28px;">🛡️</div>
+            </div>
+            <h1 style="color: #1a1a1a; font-size: 22px; text-align: center; margin: 0 0 8px;">Подтверждение заявки</h1>
+            <p style="color: #666; text-align: center; margin: 0 0 24px; font-size: 15px;">
+                {name}, вы подали заявку на роль «{role_name}» на sparcom.ru
+            </p>
+            <div style="background: #f8f9fa; border-radius: 8px; padding: 24px; margin-bottom: 20px; text-align: center;">
+                <p style="color: #666; font-size: 13px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: 1px;">Код подтверждения</p>
+                <p style="color: #1a1a1a; font-size: 32px; font-weight: 700; letter-spacing: 8px; margin: 0; font-family: 'Courier New', monospace;">{code}</p>
+            </div>
+            <p style="color: #888; font-size: 13px; text-align: center; margin: 0 0 20px;">
+                Код действителен {CODE_TTL_MINUTES} минут. Если вы не подавали заявку — проигнорируйте это письмо.
+            </p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">
+                Это автоматическое письмо. Отвечать на него не нужно.
+            </p>
+        </div>
+    </div>
+    """
+
+    message = {
+        "recipients": [{"email": to_email, "name": name}],
+        "from_email": sender_email,
+        "subject": f"Подтверждение заявки на роль «{role_name}» — Sparcom",
+        "body": {"html": html},
+        "track_links": 0,
+        "track_read": 1,
+        "tags": ["role-application-2fa"],
+    }
+    if sender_name:
+        message["from_name"] = sender_name
+
+    try:
+        r = requests.post(
+            "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
+            headers={"Content-Type": "application/json", "X-API-KEY": api_key},
+            json={"message": message},
+            timeout=10
+        )
+        return r.status_code < 400
+    except Exception:
+        return False
+
+
+def handle_apply(cur, conn, schema, user, body, ip=None, user_agent=''):
     role_slug = (body.get('role_slug') or '').strip()
     message = (body.get('message') or '').strip()
     portfolio_data = body.get('portfolio_data', {})
@@ -229,6 +342,10 @@ def handle_apply(cur, conn, schema, user, body):
     if role_slug == 'admin':
         conn.close()
         return respond(403, {'error': 'Эту роль может назначить только администратор'})
+
+    if not user.get('email'):
+        conn.close()
+        return respond(400, {'error': 'К аккаунту не привязан email — невозможно подтвердить заявку'})
 
     rs = role_slug.replace("'", "''")
     cur.execute(f"SELECT id, name FROM {schema}.roles WHERE slug = '{rs}' AND is_active = true")
@@ -246,27 +363,253 @@ def handle_apply(cur, conn, schema, user, body):
         return respond(400, {'error': 'У вас уже есть эта роль'})
 
     cur.execute(f"""
-        SELECT id FROM {schema}.role_applications
-        WHERE user_id = {user['id']} AND role_id = {role['id']} AND status = 'pending'
+        SELECT id, status FROM {schema}.role_applications
+        WHERE user_id = {user['id']} AND role_id = {role['id']} AND status IN ('pending', 'pending_2fa')
+        ORDER BY created_at DESC LIMIT 1
     """)
-    if cur.fetchone():
+    existing = cur.fetchone()
+    if existing:
+        if existing['status'] == 'pending':
+            conn.close()
+            return respond(400, {'error': 'Заявка на эту роль уже подана'})
+        # Для pending_2fa — возвращаем существующую заявку, новый код не генерируем
         conn.close()
-        return respond(400, {'error': 'Заявка на эту роль уже подана'})
+        return respond(200, {
+            'application': {'id': existing['id'], 'status': 'pending_2fa'},
+            'requires_email_code': True,
+            'email_masked': mask_email(user['email']),
+            'message': 'Код подтверждения уже отправлен на вашу почту. Проверьте письмо или запросите повторную отправку.'
+        })
 
     m = message.replace("'", "''")
     pd_json = json.dumps(portfolio_data).replace("'", "''")
+    tfa_email = user['email'].replace("'", "''")
+    tfa_expires = (datetime.utcnow() + timedelta(minutes=CODE_TTL_MINUTES)).strftime('%Y-%m-%d %H:%M:%S')
     cur.execute(f"""
-        INSERT INTO {schema}.role_applications (user_id, role_id, status, message, portfolio_data)
-        VALUES ({user['id']}, {role['id']}, 'pending', '{m}', '{pd_json}')
+        INSERT INTO {schema}.role_applications
+            (user_id, role_id, status, message, portfolio_data, tfa_method, tfa_identifier, tfa_expires_at)
+        VALUES ({user['id']}, {role['id']}, 'pending_2fa', '{m}', '{pd_json}',
+                'email', '{tfa_email}', '{tfa_expires}')
         RETURNING id, status, created_at
     """)
     app = dict(cur.fetchone())
+
+    code, _ = create_email_code(cur, schema, app['id'], user['email'], ip, user_agent)
+    log_2fa_event(cur, schema, app['id'], user['id'], 'email', 'code_sent', True, ip, user_agent,
+                  {'role_slug': role_slug})
     conn.commit()
 
-    send_telegram_notification(user, role, message)
+    sent_ok = send_role_application_code_email(user['email'], user.get('name') or 'участник', role['name'], code)
+    if not sent_ok:
+        log_2fa_event(cur, schema, app['id'], user['id'], 'email', 'email_send_failed', False, ip, user_agent)
+        conn.commit()
 
     conn.close()
-    return respond(200, {'application': app, 'message': f'Заявка на роль «{role["name"]}» отправлена'})
+    return respond(200, {
+        'application': app,
+        'requires_email_code': True,
+        'email_masked': mask_email(user['email']),
+        'code_ttl_minutes': CODE_TTL_MINUTES,
+        'message': f'Заявка на роль «{role["name"]}» создана. Введите код из письма для подтверждения.'
+    })
+
+
+def mask_email(email: str) -> str:
+    if not email or '@' not in email:
+        return email or ''
+    local, domain = email.split('@', 1)
+    if len(local) <= 2:
+        masked_local = local[0] + '*'
+    else:
+        masked_local = local[0] + '*' * max(1, len(local) - 2) + local[-1]
+    return f"{masked_local}@{domain}"
+
+
+def handle_verify_email_code(cur, conn, schema, user, body, ip=None, user_agent=''):
+    app_id = body.get('application_id')
+    code = (body.get('code') or '').strip()
+
+    if not app_id or not code:
+        conn.close()
+        return respond(400, {'error': 'Укажите application_id и code'})
+
+    try:
+        app_id = int(app_id)
+    except (TypeError, ValueError):
+        conn.close()
+        return respond(400, {'error': 'Некорректный application_id'})
+
+    cur.execute(f"""
+        SELECT ra.id, ra.user_id, ra.role_id, ra.status, ra.tfa_identifier,
+               r.name as role_name, r.slug as role_slug, ra.message
+        FROM {schema}.role_applications ra
+        JOIN {schema}.roles r ON r.id = ra.role_id
+        WHERE ra.id = {app_id}
+    """)
+    app = cur.fetchone()
+    if not app or app['user_id'] != user['id']:
+        conn.close()
+        return respond(404, {'error': 'Заявка не найдена'})
+
+    if app['status'] == 'pending':
+        conn.close()
+        return respond(200, {'application_id': app_id, 'status': 'pending', 'message': 'Заявка уже подтверждена'})
+
+    if app['status'] != 'pending_2fa':
+        conn.close()
+        return respond(400, {'error': 'Заявка уже обработана'})
+
+    cur.execute(f"""
+        SELECT id, code_hash, attempts, expires_at, locked_until, verified_at
+        FROM {schema}.role_application_email_codes
+        WHERE application_id = {app_id} AND verified_at IS NULL
+        ORDER BY created_at DESC LIMIT 1
+    """)
+    rec = cur.fetchone()
+    if not rec:
+        conn.close()
+        return respond(400, {'error': 'Код не найден. Запросите новый.'})
+
+    now = datetime.utcnow()
+    if rec.get('locked_until') and rec['locked_until'] > now:
+        log_2fa_event(cur, schema, app_id, user['id'], 'email', 'verify_locked', False, ip, user_agent)
+        conn.commit()
+        conn.close()
+        return respond(429, {'error': 'Слишком много попыток. Попробуйте позже.'})
+
+    if rec['expires_at'] < now:
+        log_2fa_event(cur, schema, app_id, user['id'], 'email', 'verify_expired', False, ip, user_agent)
+        conn.commit()
+        conn.close()
+        return respond(400, {'error': 'Код истёк. Запросите новый.'})
+
+    expected = rec['code_hash']
+    actual = hash_code(code)
+    if actual != expected:
+        new_attempts = rec['attempts'] + 1
+        if new_attempts >= CODE_MAX_ATTEMPTS:
+            lock_until = (now + timedelta(minutes=CODE_LOCK_MINUTES)).strftime('%Y-%m-%d %H:%M:%S')
+            cur.execute(f"""
+                UPDATE {schema}.role_application_email_codes
+                SET attempts = {new_attempts}, locked_until = '{lock_until}'
+                WHERE id = {rec['id']}
+            """)
+            log_2fa_event(cur, schema, app_id, user['id'], 'email', 'verify_locked', False, ip, user_agent,
+                          {'attempts': new_attempts})
+            conn.commit()
+            conn.close()
+            return respond(429, {'error': 'Слишком много неверных попыток. Попробуйте через 15 минут.'})
+
+        cur.execute(f"""
+            UPDATE {schema}.role_application_email_codes
+            SET attempts = {new_attempts}
+            WHERE id = {rec['id']}
+        """)
+        log_2fa_event(cur, schema, app_id, user['id'], 'email', 'verify_failed', False, ip, user_agent,
+                      {'attempts': new_attempts})
+        conn.commit()
+        conn.close()
+        return respond(400, {
+            'error': 'Неверный код',
+            'attempts_left': max(0, CODE_MAX_ATTEMPTS - new_attempts)
+        })
+
+    # Успех — помечаем код как использованный, переводим заявку в pending
+    cur.execute(f"""
+        UPDATE {schema}.role_application_email_codes
+        SET verified_at = CURRENT_TIMESTAMP
+        WHERE id = {rec['id']}
+    """)
+    cur.execute(f"""
+        UPDATE {schema}.role_applications
+        SET status = 'pending', tfa_verified_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = {app_id}
+    """)
+    log_2fa_event(cur, schema, app_id, user['id'], 'email', 'verify_success', True, ip, user_agent)
+    conn.commit()
+
+    # Теперь можно уведомить админов
+    send_telegram_notification(
+        user,
+        {'id': app['role_id'], 'name': app['role_name']},
+        app.get('message') or ''
+    )
+
+    conn.close()
+    return respond(200, {
+        'application_id': app_id,
+        'status': 'pending',
+        'message': f'Заявка на роль «{app["role_name"]}» отправлена на рассмотрение'
+    })
+
+
+def handle_resend_email_code(cur, conn, schema, user, body, ip=None, user_agent=''):
+    app_id = body.get('application_id')
+    if not app_id:
+        conn.close()
+        return respond(400, {'error': 'Укажите application_id'})
+
+    try:
+        app_id = int(app_id)
+    except (TypeError, ValueError):
+        conn.close()
+        return respond(400, {'error': 'Некорректный application_id'})
+
+    cur.execute(f"""
+        SELECT ra.id, ra.user_id, ra.status, r.name as role_name
+        FROM {schema}.role_applications ra
+        JOIN {schema}.roles r ON r.id = ra.role_id
+        WHERE ra.id = {app_id}
+    """)
+    app = cur.fetchone()
+    if not app or app['user_id'] != user['id']:
+        conn.close()
+        return respond(404, {'error': 'Заявка не найдена'})
+
+    if app['status'] != 'pending_2fa':
+        conn.close()
+        return respond(400, {'error': 'Заявка уже подтверждена или обработана'})
+
+    if not user.get('email'):
+        conn.close()
+        return respond(400, {'error': 'К аккаунту не привязан email'})
+
+    # Cooldown — запрет повторной отправки чаще раза в минуту
+    cur.execute(f"""
+        SELECT created_at FROM {schema}.role_application_email_codes
+        WHERE application_id = {app_id}
+        ORDER BY created_at DESC LIMIT 1
+    """)
+    last = cur.fetchone()
+    if last:
+        delta = (datetime.utcnow() - last['created_at']).total_seconds()
+        if delta < RESEND_COOLDOWN_SECONDS:
+            wait = int(RESEND_COOLDOWN_SECONDS - delta)
+            conn.close()
+            return respond(429, {'error': f'Повторная отправка доступна через {wait} сек.'})
+
+    # Инвалидируем предыдущие неиспользованные коды
+    cur.execute(f"""
+        UPDATE {schema}.role_application_email_codes
+        SET expires_at = CURRENT_TIMESTAMP
+        WHERE application_id = {app_id} AND verified_at IS NULL AND expires_at > CURRENT_TIMESTAMP
+    """)
+
+    code, _ = create_email_code(cur, schema, app_id, user['email'], ip, user_agent)
+    log_2fa_event(cur, schema, app_id, user['id'], 'email', 'code_resent', True, ip, user_agent)
+    conn.commit()
+
+    sent_ok = send_role_application_code_email(user['email'], user.get('name') or 'участник', app['role_name'], code)
+    if not sent_ok:
+        log_2fa_event(cur, schema, app_id, user['id'], 'email', 'email_send_failed', False, ip, user_agent)
+        conn.commit()
+
+    conn.close()
+    return respond(200, {
+        'message': 'Код отправлен повторно',
+        'email_masked': mask_email(user['email']),
+        'code_ttl_minutes': CODE_TTL_MINUTES
+    })
 
 
 def handle_switch_role(cur, conn, schema, user, body):
@@ -303,6 +646,7 @@ def handle_admin_applications(cur, conn, schema):
         JOIN {schema}.users u ON u.id = ra.user_id
         JOIN {schema}.roles r ON r.id = ra.role_id
         LEFT JOIN {schema}.events e ON e.id = ra.invite_event_id
+        WHERE ra.status != 'pending_2fa'
         ORDER BY
             CASE WHEN ra.status = 'pending' THEN 0 ELSE 1 END,
             ra.created_at DESC
@@ -446,7 +790,6 @@ def send_telegram_notification(user, role, message):
     if message:
         text += f"💬 Сообщение: {message}\n"
 
-    import requests
     try:
         requests.post(
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
