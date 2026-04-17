@@ -9,9 +9,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { VkLoginButton } from "@/components/extensions/vk-auth/VkLoginButton";
 import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
+import { YandexLoginButton } from "@/components/extensions/yandex-auth/YandexLoginButton";
+import { useYandexAuth } from "@/components/extensions/yandex-auth/useYandexAuth";
 import { userAuthApi2FA } from "@/lib/user-api";
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
+const YANDEX_AUTH_URL = "https://functions.poehali.dev/1e5f15d8-b432-4341-9a18-4c408d3d80aa";
 
 export default function Login() {
   const { user, loading: authLoading, login, loginWithToken } = useAuth();
@@ -24,6 +27,14 @@ export default function Login() {
       callback: `${VK_AUTH_URL}?action=callback`,
       refresh: `${VK_AUTH_URL}?action=refresh`,
       logout: `${VK_AUTH_URL}?action=logout`,
+    },
+  });
+  const yandexAuth = useYandexAuth({
+    apiUrls: {
+      authUrl: `${YANDEX_AUTH_URL}?action=auth-url`,
+      callback: `${YANDEX_AUTH_URL}?action=callback`,
+      refresh: `${YANDEX_AUTH_URL}?action=refresh`,
+      logout: `${YANDEX_AUTH_URL}?action=logout`,
     },
   });
   const [email, setEmail] = useState("");
@@ -206,6 +217,11 @@ export default function Login() {
                   <VkLoginButton
                     onClick={vkAuth.login}
                     isLoading={vkAuth.isLoading}
+                    className="w-full"
+                  />
+                  <YandexLoginButton
+                    onClick={yandexAuth.login}
+                    isLoading={yandexAuth.isLoading}
                     className="w-full"
                   />
                 </div>

@@ -124,6 +124,8 @@ def handler(event, context):
         return handle_logout(body, ip)
     elif action == 'vk_session':
         return handle_vk_session(body, ip, user_agent)
+    elif action == 'yandex_session':
+        return handle_yandex_session(body, ip, user_agent)
     elif action == 'verify_2fa':
         return handle_verify_2fa(body, ip, user_agent)
 
@@ -426,6 +428,51 @@ def handle_vk_session(body, ip=None, user_agent=''):
     conn.close()
 
     user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'created_at']}
+    user_data['has_password'] = bool(user.get('password_hash'))
+    return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
+
+
+def handle_yandex_session(body, ip=None, user_agent=''):
+    """Создаёт сессию основной системы для пользователя, вошедшего через Яндекс."""
+    yandex_id = str(body.get('yandex_id') or '').strip()
+    user_id = body.get('user_id')
+    if not yandex_id and not user_id:
+        return respond(400, {'error': 'yandex_id или user_id обязателен'})
+
+    schema = get_schema()
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    user = None
+    if yandex_id:
+        safe_yandex_id = yandex_id.replace("'", "''")
+        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, yandex_id, password_hash, created_at, is_active FROM {schema}.users WHERE yandex_id = '{safe_yandex_id}'")
+        user = cur.fetchone()
+
+    if not user and user_id:
+        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, yandex_id, password_hash, created_at, is_active FROM {schema}.users WHERE id = {int(user_id)}")
+        user = cur.fetchone()
+
+    if not user:
+        conn.close()
+        return respond(404, {'error': 'Пользователь не найден'})
+
+    if not user.get('is_active'):
+        conn.close()
+        return respond(403, {'error': 'Аккаунт заблокирован'})
+
+    token = generate_token()
+    expires = (datetime.utcnow() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+    cur.execute(f"""
+        INSERT INTO {schema}.user_sessions (user_id, token, expires_at)
+        VALUES ({user['id']}, '{token}', '{expires}')
+    """)
+    check_device_and_notify(cur, schema, user['id'], user['email'], user.get('name', ''), ip, user_agent)
+    write_audit_log(cur, schema, user['id'], 'login', 'users', user['id'], ip, {'method': 'yandex'})
+    conn.commit()
+    conn.close()
+
+    user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'yandex_id', 'created_at']}
     user_data['has_password'] = bool(user.get('password_hash'))
     return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
 
