@@ -89,6 +89,32 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get login-2fa without token returns 401",
+      "method": "GET",
+      "path": "/?resource=login-2fa",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Set login-2fa without token returns 401",
+      "method": "POST",
+      "path": "/?resource=login-2fa",
+      "body": {"method": "email", "password": "x"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Disable login-2fa without token returns 401",
+      "method": "DELETE",
+      "path": "/?resource=login-2fa",
+      "body": {"password": "x"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

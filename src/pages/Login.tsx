@@ -11,7 +11,7 @@ import { VkLoginButton } from "@/components/extensions/vk-auth/VkLoginButton";
 import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
 import { YandexLoginButton } from "@/components/extensions/yandex-auth/YandexLoginButton";
 import { useYandexAuth } from "@/components/extensions/yandex-auth/useYandexAuth";
-import { userAuthApi2FA } from "@/lib/user-api";
+import Login2FAChallenge from "@/components/auth/Login2FAChallenge";
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 const YANDEX_AUTH_URL = "https://functions.poehali.dev/1e5f15d8-b432-4341-9a18-4c408d3d80aa";
@@ -40,10 +40,13 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [show2FA, setShow2FA] = useState(false);
-  const [pendingToken, setPendingToken] = useState("");
-  const [totpCode, setTotpCode] = useState("");
-  const [verifying2FA, setVerifying2FA] = useState(false);
+  const [challenge, setChallenge] = useState<{
+    pendingToken: string;
+    method: "totp" | "email" | "vk" | "yandex";
+    emailMasked: string | null;
+    hasVk: boolean;
+    hasYandex: boolean;
+  } | null>(null);
 
   const redirectPath = (() => {
     const r = searchParams.get("redirect");
@@ -67,34 +70,27 @@ export default function Login() {
       navigate(redirectPath);
     } catch (err) {
       if (err instanceof Error && err.message === "2FA_REQUIRED") {
-        const pending = (err as Error & { pending_token?: string }).pending_token;
-        if (pending) {
-          setPendingToken(pending);
-          setShow2FA(true);
+        const x = err as Error & {
+          pending_token?: string;
+          method?: string;
+          email_masked?: string | null;
+          has_vk?: boolean;
+          has_yandex?: boolean;
+        };
+        if (x.pending_token) {
+          setChallenge({
+            pendingToken: x.pending_token,
+            method: (x.method as "totp" | "email" | "vk" | "yandex") || "totp",
+            emailMasked: x.email_masked ?? null,
+            hasVk: !!x.has_vk,
+            hasYandex: !!x.has_yandex,
+          });
         }
       } else {
         toast.error(err instanceof Error ? err.message : "Ошибка входа");
       }
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const handleVerify2FA = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (totpCode.length < 6) {
-      toast.error("Введите 6-значный код");
-      return;
-    }
-    setVerifying2FA(true);
-    try {
-      const data = await userAuthApi2FA.verify2FA(pendingToken, totpCode);
-      loginWithToken(data.token, data.user);
-      navigate(redirectPath);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Неверный код");
-    } finally {
-      setVerifying2FA(false);
     }
   };
 
@@ -124,48 +120,20 @@ export default function Login() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16 flex justify-center">
         <Card className="w-full max-w-md border-0 shadow-sm">
           <CardContent className="p-6 sm:p-8">
-            {show2FA ? (
-              <div className="space-y-4">
-                <div className="text-center space-y-2">
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                    <Icon name="Shield" size={24} className="text-primary" />
-                  </div>
-                  <h2 className="text-lg font-semibold">Двухфакторная аутентификация</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Введите код из приложения-аутентификатора или резервный код
-                  </p>
-                </div>
-                <form onSubmit={handleVerify2FA} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="totpCode">Код подтверждения</Label>
-                    <Input
-                      id="totpCode"
-                      value={totpCode}
-                      onChange={(e) => setTotpCode(e.target.value.replace(/[^0-9a-f]/gi, "").slice(0, 8))}
-                      placeholder="000000"
-                      className="text-center text-lg tracking-widest font-mono"
-                      autoFocus
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={verifying2FA}>
-                    {verifying2FA ? (
-                      <>
-                        <Icon name="Loader2" size={16} className="animate-spin mr-2" />
-                        Проверка...
-                      </>
-                    ) : (
-                      "Подтвердить"
-                    )}
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={() => { setShow2FA(false); setTotpCode(""); setPendingToken(""); }}
-                    className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Вернуться к входу
-                  </button>
-                </form>
-              </div>
+            {challenge ? (
+              <Login2FAChallenge
+                pendingToken={challenge.pendingToken}
+                initialMethod={challenge.method}
+                emailMasked={challenge.emailMasked}
+                hasVk={challenge.hasVk}
+                hasYandex={challenge.hasYandex}
+                onSuccess={(token, userData) => {
+                  loginWithToken(token, userData);
+                  setChallenge(null);
+                  navigate(redirectPath);
+                }}
+                onCancel={() => setChallenge(null)}
+              />
             ) : (
               <>
                 <form onSubmit={handleSubmit} className="space-y-4">

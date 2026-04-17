@@ -41,8 +41,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const data = await userAuthApi.login({ email, password });
     if (data.requires_2fa) {
-      const err = new Error("2FA_REQUIRED");
-      (err as Error & { pending_token: string }).pending_token = data.pending_token;
+      const err = new Error("2FA_REQUIRED") as Error & {
+        pending_token: string;
+        method?: string;
+        email_masked?: string | null;
+        has_vk?: boolean;
+        has_yandex?: boolean;
+      };
+      err.pending_token = data.pending_token;
+      err.method = data.method || "totp";
+      err.email_masked = data.email_masked ?? null;
+      err.has_vk = !!data.has_vk;
+      err.has_yandex = !!data.has_yandex;
       throw err;
     }
     localStorage.setItem("user_token", data.token);

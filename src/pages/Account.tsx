@@ -11,6 +11,7 @@ import BadgesSection from "@/components/account/BadgesSection";
 import SignupsList from "@/components/account/SignupsList";
 import PasswordChangeForm from "@/components/account/PasswordChangeForm";
 import TwoFactorSection from "@/components/account/TwoFactorSection";
+import LoginSecuritySection from "@/components/account/LoginSecuritySection";
 import MyDataExport from "@/components/account/MyDataExport";
 import MyArticles from "@/components/account/MyArticles";
 import MyCalendar from "@/components/account/MyCalendar";
@@ -177,6 +178,7 @@ export default function Account() {
               setConfirmNewPassword={setConfirmNewPassword}
               handleChangePassword={handleChangePassword}
             />
+            <LoginSecuritySection />
             <TwoFactorSection
               totpEnabled={user.totp_enabled === true}
               hasPassword={user.has_password !== false}

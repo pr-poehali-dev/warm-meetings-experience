@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { rolesApi } from "@/lib/roles-api";
+import { userAuthApi2FA } from "@/lib/user-api";
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 const USER_AUTH_URL = "https://functions.poehali.dev/d5d9f568-ba92-4605-9b95-646ba409fd8d";
@@ -24,22 +25,56 @@ function clearRole2FAStorage() {
   sessionStorage.removeItem("role_2fa_vk_verifier");
   sessionStorage.removeItem("role_2fa_vk_app_id");
 }
+function clearLogin2FAStorage() {
+  sessionStorage.removeItem("login_2fa_vk_pending");
+  sessionStorage.removeItem("login_2fa_vk_state");
+  sessionStorage.removeItem("login_2fa_vk_verifier");
+}
 
 export default function VkCallback() {
   const navigate = useNavigate();
-  const { updateUser } = useAuth();
+  const { updateUser, loginWithToken } = useAuth();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const isLinkFlow = params.get("vk_link") === "1";
-
-    // Проверяем сначала role-2fa флоу
-    const role2faAppId = sessionStorage.getItem("role_2fa_vk_app_id");
-    const role2faState = sessionStorage.getItem("role_2fa_vk_state");
-    const role2faVerifier = sessionStorage.getItem("role_2fa_vk_verifier");
     const urlStateEarly = params.get("state");
     const urlCodeEarly = params.get("code");
     const deviceIdEarly = params.get("device_id") || "";
+
+    // 1) Проверяем login-2fa флоу
+    const login2faPending = sessionStorage.getItem("login_2fa_vk_pending");
+    const login2faState = sessionStorage.getItem("login_2fa_vk_state");
+    const login2faVerifier = sessionStorage.getItem("login_2fa_vk_verifier");
+
+    if (login2faPending && login2faState && urlStateEarly === login2faState && urlCodeEarly) {
+      (async () => {
+        try {
+          const res = await userAuthApi2FA.loginVerifyOAuth({
+            pending_token: login2faPending,
+            provider: "vk",
+            code: urlCodeEarly,
+            state: urlStateEarly,
+            code_verifier: login2faVerifier || undefined,
+            device_id: deviceIdEarly || undefined,
+          });
+          loginWithToken(res.token, res.user);
+          toast.success("Вход подтверждён");
+          navigate("/account", { replace: true });
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Не удалось подтвердить вход через VK");
+          navigate("/login", { replace: true });
+        } finally {
+          clearLogin2FAStorage();
+        }
+      })();
+      return;
+    }
+
+    // 2) Проверяем role-2fa флоу
+    const role2faAppId = sessionStorage.getItem("role_2fa_vk_app_id");
+    const role2faState = sessionStorage.getItem("role_2fa_vk_state");
+    const role2faVerifier = sessionStorage.getItem("role_2fa_vk_verifier");
 
     if (role2faAppId && role2faState && urlStateEarly === role2faState && urlCodeEarly) {
       (async () => {

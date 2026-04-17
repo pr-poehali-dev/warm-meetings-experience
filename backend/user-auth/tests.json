@@ -95,6 +95,42 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Login 2FA verify email without params returns 400",
+      "method": "POST",
+      "path": "/?action=login_2fa_verify_email",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Login 2FA resend without token returns 400",
+      "method": "POST",
+      "path": "/?action=login_2fa_resend_email",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Login 2FA start OAuth without params returns 400",
+      "method": "POST",
+      "path": "/?action=login_2fa_start_oauth",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Login 2FA verify OAuth without params returns 400",
+      "method": "POST",
+      "path": "/?action=login_2fa_verify_oauth",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

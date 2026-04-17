@@ -55,7 +55,7 @@ def get_user_from_token(cur, schema, token):
         return None
     t = token.replace("'", "''")
     cur.execute(f"""
-        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.vk_id, u.password_hash, u.totp_enabled, u.consent_photo, u.email_verified, u.created_at
+        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.vk_id, u.yandex_id, u.password_hash, u.totp_enabled, u.login_2fa_method, u.consent_photo, u.email_verified, u.created_at
         FROM {schema}.user_sessions s
         JOIN {schema}.users u ON u.id = s.user_id
         WHERE s.token = '{t}' AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true
@@ -135,6 +135,16 @@ def handler(event, context):
             body = json.loads(event.get('body', '{}'))
             return handle_totp_disable(cur, conn, schema, user, body, ip)
 
+    if resource == 'login-2fa':
+        if method == 'GET':
+            return handle_get_login_2fa(cur, conn, schema, user)
+        if method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            return handle_set_login_2fa(cur, conn, schema, user, body, ip)
+        if method == 'DELETE':
+            body = json.loads(event.get('body', '{}'))
+            return handle_disable_login_2fa(cur, conn, schema, user, body, ip)
+
     if resource == 'my-data':
         if method == 'GET':
             return handle_my_data_export(cur, conn, schema, user, ip)
@@ -145,6 +155,87 @@ def handler(event, context):
 
     conn.close()
     return respond(400, {'error': 'Unknown resource'})
+
+
+# =============================================================================
+# LOGIN 2FA (email / vk / yandex)
+# =============================================================================
+
+PRIVILEGED_ROLE_SLUGS = ('parmaster', 'partner', 'admin', 'organizer')
+
+
+def has_privileged_role(cur, schema, user_id):
+    slugs = ",".join(f"'{s}'" for s in PRIVILEGED_ROLE_SLUGS)
+    cur.execute(f"""
+        SELECT 1 FROM {schema}.user_roles ur
+        JOIN {schema}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = {user_id} AND ur.status = 'active' AND r.slug IN ({slugs})
+        LIMIT 1
+    """)
+    return cur.fetchone() is not None
+
+
+def handle_get_login_2fa(cur, conn, schema, user):
+    mandatory = has_privileged_role(cur, schema, user['id'])
+    method = (user.get('login_2fa_method') or '').lower() or None
+    # Если привилегированная роль и метод не задан — считаем email принудительным
+    effective = method or ('email' if mandatory else None)
+    conn.close()
+    return respond(200, {
+        'enabled': bool(method) or mandatory,
+        'method': effective,
+        'explicit_method': method,
+        'mandatory': mandatory,
+        'vk_linked': bool(user.get('vk_id')),
+        'yandex_linked': bool(user.get('yandex_id')),
+        'totp_enabled': bool(user.get('totp_enabled')),
+    })
+
+
+def handle_set_login_2fa(cur, conn, schema, user, body, ip=None):
+    method = (body.get('method') or '').strip().lower()
+    password = body.get('password') or ''
+    if method not in ('email', 'vk', 'yandex'):
+        conn.close()
+        return respond(400, {'error': 'Метод должен быть email, vk или yandex'})
+
+    # Требуем подтверждение паролем для включения / смены метода
+    if user.get('password_hash'):
+        if not password or not verify_password(password, user['password_hash']):
+            conn.close()
+            return respond(401, {'error': 'Неверный пароль'})
+
+    if method == 'vk' and not user.get('vk_id'):
+        conn.close()
+        return respond(400, {'error': 'Сначала привяжите VK-аккаунт в профиле'})
+    if method == 'yandex' and not user.get('yandex_id'):
+        conn.close()
+        return respond(400, {'error': 'Сначала привяжите Яндекс-аккаунт в профиле'})
+
+    cur.execute(f"UPDATE {schema}.users SET login_2fa_method = '{method}' WHERE id = {user['id']}")
+    write_audit_log(cur, schema, user['id'], 'login_2fa_enabled', 'users', user['id'], ip, {'method': method})
+    conn.commit()
+    conn.close()
+    return respond(200, {'enabled': True, 'method': method})
+
+
+def handle_disable_login_2fa(cur, conn, schema, user, body, ip=None):
+    password = body.get('password') or ''
+    if user.get('password_hash'):
+        if not password or not verify_password(password, user['password_hash']):
+            conn.close()
+            return respond(401, {'error': 'Неверный пароль'})
+
+    mandatory = has_privileged_role(cur, schema, user['id'])
+    if mandatory:
+        conn.close()
+        return respond(400, {'error': 'Для вашей роли двухфакторная аутентификация обязательна и не может быть отключена'})
+
+    cur.execute(f"UPDATE {schema}.users SET login_2fa_method = NULL WHERE id = {user['id']}")
+    write_audit_log(cur, schema, user['id'], 'login_2fa_disabled', 'users', user['id'], ip)
+    conn.commit()
+    conn.close()
+    return respond(200, {'enabled': False, 'method': None})
 
 
 def handle_update_profile(cur, conn, schema, user, body, ip=None):

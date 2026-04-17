@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { rolesApi } from "@/lib/roles-api";
+import { userAuthApi2FA } from "@/lib/user-api";
 
 const YANDEX_AUTH_URL = "https://functions.poehali.dev/1e5f15d8-b432-4341-9a18-4c408d3d80aa";
 const USER_AUTH_URL = "https://functions.poehali.dev/d5d9f568-ba92-4605-9b95-646ba409fd8d";
@@ -19,20 +20,50 @@ function clearRole2FAStorage() {
   sessionStorage.removeItem("role_2fa_yandex_state");
   sessionStorage.removeItem("role_2fa_yandex_app_id");
 }
+function clearLogin2FAStorage() {
+  sessionStorage.removeItem("login_2fa_yandex_pending");
+  sessionStorage.removeItem("login_2fa_yandex_state");
+}
 
 export default function YandexCallback() {
   const navigate = useNavigate();
-  const { updateUser } = useAuth();
+  const { updateUser, loginWithToken } = useAuth();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const isLinkFlow = params.get("yandex_link") === "1";
-
-    // Проверяем сначала role-2fa флоу
-    const role2faAppId = sessionStorage.getItem("role_2fa_yandex_app_id");
-    const role2faState = sessionStorage.getItem("role_2fa_yandex_state");
     const urlStateEarly = params.get("state");
     const urlCodeEarly = params.get("code");
+
+    // 1) Проверяем login-2fa флоу
+    const login2faPending = sessionStorage.getItem("login_2fa_yandex_pending");
+    const login2faState = sessionStorage.getItem("login_2fa_yandex_state");
+
+    if (login2faPending && login2faState && urlStateEarly === login2faState && urlCodeEarly) {
+      (async () => {
+        try {
+          const res = await userAuthApi2FA.loginVerifyOAuth({
+            pending_token: login2faPending,
+            provider: "yandex",
+            code: urlCodeEarly,
+            state: urlStateEarly,
+          });
+          loginWithToken(res.token, res.user);
+          toast.success("Вход подтверждён");
+          navigate("/account", { replace: true });
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Не удалось подтвердить вход через Яндекс");
+          navigate("/login", { replace: true });
+        } finally {
+          clearLogin2FAStorage();
+        }
+      })();
+      return;
+    }
+
+    // 2) Проверяем role-2fa флоу
+    const role2faAppId = sessionStorage.getItem("role_2fa_yandex_app_id");
+    const role2faState = sessionStorage.getItem("role_2fa_yandex_state");
 
     if (role2faAppId && role2faState && urlStateEarly === role2faState && urlCodeEarly) {
       (async () => {

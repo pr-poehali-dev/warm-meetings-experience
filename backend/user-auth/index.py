@@ -128,6 +128,14 @@ def handler(event, context):
         return handle_yandex_session(body, ip, user_agent)
     elif action == 'verify_2fa':
         return handle_verify_2fa(body, ip, user_agent)
+    elif action == 'login_2fa_verify_email':
+        return handle_login_2fa_verify_email(body, ip, user_agent)
+    elif action == 'login_2fa_resend_email':
+        return handle_login_2fa_resend_email(body, ip, user_agent)
+    elif action == 'login_2fa_start_oauth':
+        return handle_login_2fa_start_oauth(body, ip, user_agent)
+    elif action == 'login_2fa_verify_oauth':
+        return handle_login_2fa_verify_oauth(body, ip, user_agent)
 
     return respond(400, {'error': 'Unknown action'})
 
@@ -220,7 +228,7 @@ def handle_login(body, ip=None, user_agent=''):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     e = email.replace("'", "''")
-    cur.execute(f"SELECT id, email, name, phone, password_hash, is_active, vk_id, totp_enabled, totp_secret, totp_backup_codes, created_at FROM {schema}.users WHERE email = '{e}'")
+    cur.execute(f"SELECT id, email, name, phone, password_hash, is_active, vk_id, yandex_id, totp_enabled, totp_secret, totp_backup_codes, login_2fa_method, created_at FROM {schema}.users WHERE email = '{e}'")
     user = cur.fetchone()
 
     if not user:
@@ -247,14 +255,39 @@ def handle_login(body, ip=None, user_agent=''):
 
     if user.get('totp_enabled') and user.get('totp_secret'):
         pending_token = generate_token()
-        expires_2fa = (datetime.utcnow() + timedelta(minutes=5)).strftime('%Y-%m-%d %H:%M:%S')
+        expires_2fa = (datetime.utcnow() + timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S')
         cur.execute(f"""
             INSERT INTO {schema}.user_sessions (user_id, token, expires_at)
             VALUES ({user['id']}, '{pending_token}', '{expires_2fa}')
         """)
         conn.commit()
         conn.close()
-        return respond(200, {'requires_2fa': True, 'pending_token': pending_token})
+        return respond(200, {'requires_2fa': True, 'method': 'totp', 'pending_token': pending_token})
+
+    # Гибкая 2FA (email / vk / yandex) — определяется полем login_2fa_method,
+    # либо автоматически требуется для привилегированных ролей
+    required_method = effective_login_2fa_method(cur, schema, user)
+    if required_method:
+        pending_token = generate_token()
+        expires_2fa = (datetime.utcnow() + timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S')
+        cur.execute(f"""
+            INSERT INTO {schema}.user_sessions (user_id, token, expires_at)
+            VALUES ({user['id']}, '{pending_token}', '{expires_2fa}')
+        """)
+        email_masked = None
+        if required_method == 'email':
+            email_masked = create_and_send_login_email_code(cur, schema, user, pending_token, ip, user_agent)
+        log_login_2fa(cur, schema, user['id'], required_method, 'login_required', True, ip, user_agent)
+        conn.commit()
+        conn.close()
+        return respond(200, {
+            'requires_2fa': True,
+            'method': required_method,
+            'pending_token': pending_token,
+            'email_masked': email_masked,
+            'has_vk': bool(user.get('vk_id')),
+            'has_yandex': bool(user.get('yandex_id')),
+        })
 
     token = generate_token()
     expires = (datetime.utcnow() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
@@ -532,6 +565,514 @@ def handle_verify_2fa(body, ip=None, user_agent=''):
     user_data = {k: row[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'created_at']}
     user_data['has_password'] = True
     return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
+
+
+# =============================================================================
+# LOGIN 2FA (email / vk / yandex) — гибкая двухфакторка при входе
+# =============================================================================
+
+PRIVILEGED_ROLE_SLUGS = ('parmaster', 'partner', 'admin', 'organizer')
+LOGIN_2FA_CODE_TTL_MIN = 10
+LOGIN_2FA_MAX_ATTEMPTS = 5
+LOGIN_2FA_RESEND_COOLDOWN = 60
+
+VK_AUTHORIZE_URL = "https://id.vk.com/authorize"
+VK_TOKEN_URL = "https://id.vk.com/oauth2/auth"
+VK_USER_INFO_URL = "https://id.vk.com/oauth2/user_info"
+YANDEX_AUTH_URL = "https://oauth.yandex.ru/authorize"
+YANDEX_TOKEN_URL = "https://oauth.yandex.ru/token"
+YANDEX_USER_INFO_URL = "https://login.yandex.ru/info"
+
+
+def mask_email_login(email):
+    if not email or '@' not in email:
+        return email or ''
+    local, domain = email.split('@', 1)
+    if len(local) <= 2:
+        masked = local[0] + '*'
+    else:
+        masked = local[0] + '*' * max(1, len(local) - 2) + local[-1]
+    return f"{masked}@{domain}"
+
+
+def hash_code_login(code):
+    return hashlib.sha256(code.encode('utf-8')).hexdigest()
+
+
+def generate_login_code():
+    return f"{secrets.randbelow(900000) + 100000:06d}"
+
+
+def log_login_2fa(cur, schema, user_id, method, event, success, ip, user_agent, details=None):
+    det = json.dumps(details or {}).replace("'", "''")
+    ip_val = f"'{ip}'" if ip else 'NULL'
+    ua = (user_agent or '')[:500].replace("'", "''")
+    uid_val = str(user_id) if user_id else 'NULL'
+    cur.execute(f"""
+        INSERT INTO {schema}.login_2fa_log
+            (user_id, method, event, success, ip_address, user_agent, details)
+        VALUES ({uid_val}, '{method}', '{event}', {str(bool(success)).upper()}, {ip_val}, '{ua}', '{det}'::jsonb)
+    """)
+
+
+def has_privileged_role(cur, schema, user_id):
+    slugs = ",".join(f"'{s}'" for s in PRIVILEGED_ROLE_SLUGS)
+    cur.execute(f"""
+        SELECT 1 FROM {schema}.user_roles ur
+        JOIN {schema}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = {user_id}
+          AND ur.status = 'active'
+          AND r.slug IN ({slugs})
+        LIMIT 1
+    """)
+    return cur.fetchone() is not None
+
+
+def effective_login_2fa_method(cur, schema, user):
+    """Возвращает 'email' | 'vk' | 'yandex' если 2FA при входе требуется, иначе None."""
+    chosen = (user.get('login_2fa_method') or '').strip().lower()
+    if chosen in ('email', 'vk', 'yandex'):
+        # Проверим, что провайдер привязан; если нет — упадём на email
+        if chosen == 'vk' and not user.get('vk_id'):
+            return 'email'
+        if chosen == 'yandex' and not user.get('yandex_id'):
+            return 'email'
+        return chosen
+    # Если пользователь ничего не выбрал, но имеет привилегированную роль — форсируем email
+    if has_privileged_role(cur, schema, user['id']):
+        return 'email'
+    return None
+
+
+def load_pending_session(cur, schema, pending_token):
+    t = pending_token.replace("'", "''")
+    cur.execute(f"""
+        SELECT s.user_id, s.token, s.expires_at,
+               u.id, u.email, u.name, u.phone, u.vk_id, u.yandex_id,
+               u.login_2fa_method, u.created_at
+        FROM {schema}.user_sessions s
+        JOIN {schema}.users u ON u.id = s.user_id
+        WHERE s.token = '{t}' AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true
+    """)
+    return cur.fetchone()
+
+
+def finalize_login_session(cur, schema, user_row, method_used, ip, user_agent, pending_token):
+    t = pending_token.replace("'", "''")
+    cur.execute(f"UPDATE {schema}.user_sessions SET expires_at = CURRENT_TIMESTAMP WHERE token = '{t}'")
+
+    token = generate_token()
+    expires = (datetime.utcnow() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+    cur.execute(f"""
+        INSERT INTO {schema}.user_sessions (user_id, token, expires_at)
+        VALUES ({user_row['id']}, '{token}', '{expires}')
+    """)
+    check_device_and_notify(cur, schema, user_row['id'], user_row['email'], user_row.get('name', ''), ip, user_agent)
+    write_audit_log(cur, schema, user_row['id'], 'login', 'users', user_row['id'], ip, {'method': method_used})
+
+    user_data = {
+        'id': user_row['id'],
+        'email': user_row['email'],
+        'name': user_row['name'],
+        'phone': user_row.get('phone'),
+        'vk_id': user_row.get('vk_id'),
+        'yandex_id': user_row.get('yandex_id'),
+        'created_at': user_row.get('created_at'),
+        'has_password': True,
+    }
+    return user_data, token, expires
+
+
+def send_login_2fa_email(to_email, name, code, ip, ua):
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
+    if not api_key or not sender_email:
+        return False
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fafafa;">
+        <div style="background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="width: 56px; height: 56px; background: #e0f2fe; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 28px;">🔐</div>
+            </div>
+            <h1 style="color: #1a1a1a; font-size: 22px; text-align: center; margin: 0 0 8px;">Код для входа в аккаунт</h1>
+            <p style="color: #666; text-align: center; margin: 0 0 24px; font-size: 15px;">
+                Здравствуйте, {name}! Вы пытаетесь войти в свой аккаунт на sparcom.ru
+            </p>
+            <div style="background: #f8f9fa; border-radius: 8px; padding: 24px; margin-bottom: 20px; text-align: center;">
+                <p style="color: #666; font-size: 13px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: 1px;">Код подтверждения</p>
+                <p style="color: #1a1a1a; font-size: 32px; font-weight: 700; letter-spacing: 8px; margin: 0; font-family: 'Courier New', monospace;">{code}</p>
+            </div>
+            <p style="color: #888; font-size: 13px; text-align: center; margin: 0 0 20px;">
+                Код действует {LOGIN_2FA_CODE_TTL_MIN} минут. IP: {ip or 'неизвестен'}. Если вы не пытались войти — немедленно смените пароль.
+            </p>
+        </div>
+    </div>
+    """
+    message = {
+        "recipients": [{"email": to_email, "name": name}],
+        "from_email": sender_email,
+        "subject": "Код для входа — Sparcom",
+        "body": {"html": html},
+        "track_links": 0,
+        "track_read": 1,
+        "tags": ["login-2fa"],
+    }
+    if sender_name:
+        message["from_name"] = sender_name
+    try:
+        r = requests.post(
+            "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
+            headers={"Content-Type": "application/json", "X-API-KEY": api_key},
+            json={"message": message},
+            timeout=10,
+        )
+        return r.status_code < 400
+    except Exception:
+        return False
+
+
+def create_and_send_login_email_code(cur, schema, user_row, pending_token, ip, user_agent):
+    """Создаёт код и отправляет его на email. Используется внутри login и resend."""
+    code = generate_login_code()
+    code_hash = hash_code_login(code)
+    expires = (datetime.utcnow() + timedelta(minutes=LOGIN_2FA_CODE_TTL_MIN)).strftime('%Y-%m-%d %H:%M:%S')
+    pt = pending_token.replace("'", "''")
+    masked = mask_email_login(user_row['email'])
+    m = masked.replace("'", "''")
+    ip_val = f"'{ip}'" if ip else 'NULL'
+    ua = (user_agent or '')[:500].replace("'", "''")
+    cur.execute(f"""
+        INSERT INTO {schema}.login_2fa_email_codes
+            (user_id, pending_token, code_hash, email_masked, ip_address, user_agent, expires_at)
+        VALUES ({user_row['id']}, '{pt}', '{code_hash}', '{m}', {ip_val}, '{ua}', '{expires}')
+    """)
+    send_login_2fa_email(user_row['email'], user_row.get('name') or '', code, ip, user_agent)
+    return masked
+
+
+def handle_login_2fa_verify_email(body, ip=None, user_agent=''):
+    pending_token = (body.get('pending_token') or '').strip()
+    code = (body.get('code') or '').strip()
+    if not pending_token or not code:
+        return respond(400, {'error': 'Токен и код обязательны'})
+    if not code.isdigit() or len(code) != 6:
+        return respond(400, {'error': 'Код должен состоять из 6 цифр'})
+
+    schema = get_schema()
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    user_row = load_pending_session(cur, schema, pending_token)
+    if not user_row:
+        conn.close()
+        return respond(400, {'error': 'Сессия истекла, войдите заново'})
+
+    pt = pending_token.replace("'", "''")
+    cur.execute(f"""
+        SELECT id, code_hash, attempts, expires_at, verified_at
+        FROM {schema}.login_2fa_email_codes
+        WHERE pending_token = '{pt}' AND user_id = {user_row['id']}
+        ORDER BY id DESC LIMIT 1
+    """)
+    code_row = cur.fetchone()
+    if not code_row:
+        conn.close()
+        return respond(400, {'error': 'Код не найден. Запросите код заново.'})
+    if code_row['verified_at']:
+        conn.close()
+        return respond(400, {'error': 'Код уже использован'})
+    if code_row['expires_at'] and code_row['expires_at'] < datetime.utcnow():
+        conn.close()
+        return respond(400, {'error': 'Код истёк. Запросите код заново.'})
+    if code_row['attempts'] >= LOGIN_2FA_MAX_ATTEMPTS:
+        log_login_2fa(cur, schema, user_row['id'], 'email', 'too_many_attempts', False, ip, user_agent)
+        conn.commit()
+        conn.close()
+        return respond(429, {'error': 'Слишком много попыток. Запросите код заново.'})
+
+    if hash_code_login(code) != code_row['code_hash']:
+        cur.execute(f"UPDATE {schema}.login_2fa_email_codes SET attempts = attempts + 1 WHERE id = {code_row['id']}")
+        log_login_2fa(cur, schema, user_row['id'], 'email', 'verify_failed', False, ip, user_agent)
+        conn.commit()
+        left = LOGIN_2FA_MAX_ATTEMPTS - (code_row['attempts'] + 1)
+        conn.close()
+        return respond(400, {'error': 'Неверный код', 'attempts_left': max(0, left)})
+
+    cur.execute(f"UPDATE {schema}.login_2fa_email_codes SET verified_at = CURRENT_TIMESTAMP WHERE id = {code_row['id']}")
+    log_login_2fa(cur, schema, user_row['id'], 'email', 'verify_success', True, ip, user_agent)
+    user_data, token, expires = finalize_login_session(cur, schema, user_row, 'email_code', ip, user_agent, pending_token)
+    conn.commit()
+    conn.close()
+    return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
+
+
+def handle_login_2fa_resend_email(body, ip=None, user_agent=''):
+    pending_token = (body.get('pending_token') or '').strip()
+    if not pending_token:
+        return respond(400, {'error': 'Токен обязателен'})
+
+    schema = get_schema()
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    user_row = load_pending_session(cur, schema, pending_token)
+    if not user_row:
+        conn.close()
+        return respond(400, {'error': 'Сессия истекла, войдите заново'})
+
+    pt = pending_token.replace("'", "''")
+    cur.execute(f"""
+        SELECT created_at FROM {schema}.login_2fa_email_codes
+        WHERE pending_token = '{pt}' AND user_id = {user_row['id']}
+        ORDER BY created_at DESC LIMIT 1
+    """)
+    last = cur.fetchone()
+    if last:
+        delta = (datetime.utcnow() - last['created_at']).total_seconds()
+        if delta < LOGIN_2FA_RESEND_COOLDOWN:
+            wait = int(LOGIN_2FA_RESEND_COOLDOWN - delta)
+            conn.close()
+            return respond(429, {'error': f'Повторная отправка доступна через {wait} сек.'})
+
+    cur.execute(f"""
+        UPDATE {schema}.login_2fa_email_codes SET expires_at = CURRENT_TIMESTAMP
+        WHERE pending_token = '{pt}' AND user_id = {user_row['id']}
+          AND verified_at IS NULL AND expires_at > CURRENT_TIMESTAMP
+    """)
+    masked = create_and_send_login_email_code(cur, schema, user_row, pending_token, ip, user_agent)
+    log_login_2fa(cur, schema, user_row['id'], 'email', 'code_resent', True, ip, user_agent)
+    conn.commit()
+    conn.close()
+    return respond(200, {
+        'message': 'Код отправлен повторно',
+        'email_masked': masked,
+        'code_ttl_minutes': LOGIN_2FA_CODE_TTL_MIN,
+    })
+
+
+def build_vk_login_auth_url(client_id, redirect_uri, state, code_challenge):
+    from urllib.parse import urlencode
+    return f"{VK_AUTHORIZE_URL}?" + urlencode({
+        'client_id': client_id,
+        'redirect_uri': redirect_uri,
+        'response_type': 'code',
+        'scope': '',
+        'state': state,
+        'code_challenge': code_challenge,
+        'code_challenge_method': 'S256',
+    })
+
+
+def build_yandex_login_auth_url(client_id, redirect_uri, state):
+    from urllib.parse import urlencode
+    return f"{YANDEX_AUTH_URL}?" + urlencode({
+        'client_id': client_id,
+        'redirect_uri': redirect_uri,
+        'response_type': 'code',
+        'state': state,
+        'force_confirm': 'yes',
+    })
+
+
+def handle_login_2fa_start_oauth(body, ip=None, user_agent=''):
+    pending_token = (body.get('pending_token') or '').strip()
+    provider = (body.get('provider') or '').strip().lower()
+    if not pending_token or provider not in ('vk', 'yandex'):
+        return respond(400, {'error': 'Неверные параметры'})
+
+    schema = get_schema()
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    user_row = load_pending_session(cur, schema, pending_token)
+    if not user_row:
+        conn.close()
+        return respond(400, {'error': 'Сессия истекла, войдите заново'})
+
+    state = secrets.token_urlsafe(24)
+    code_verifier_val = 'NULL'
+
+    if provider == 'vk':
+        client_id = os.environ.get('VK_CLIENT_ID', '')
+        redirect_uri = os.environ.get('VK_REDIRECT_URI', '')
+        if not client_id or not redirect_uri:
+            conn.close()
+            return respond(500, {'error': 'VK не настроен'})
+        import base64 as b64
+        verifier = b64.urlsafe_b64encode(secrets.token_bytes(32)).decode('utf-8').rstrip('=')
+        challenge = b64.urlsafe_b64encode(hashlib.sha256(verifier.encode('utf-8')).digest()).decode('utf-8').rstrip('=')
+        auth_url = build_vk_login_auth_url(client_id, redirect_uri, state, challenge)
+        code_verifier_val = f"'{verifier}'"
+        resp_body = {'auth_url': auth_url, 'state': state, 'code_verifier': verifier, 'provider': 'vk'}
+    else:
+        client_id = os.environ.get('YANDEX_CLIENT_ID', '')
+        redirect_uri = os.environ.get('YANDEX_REDIRECT_URI', '')
+        if not client_id or not redirect_uri:
+            conn.close()
+            return respond(500, {'error': 'Яндекс не настроен'})
+        auth_url = build_yandex_login_auth_url(client_id, redirect_uri, state)
+        resp_body = {'auth_url': auth_url, 'state': state, 'provider': 'yandex'}
+
+    pt = pending_token.replace("'", "''")
+    s = state.replace("'", "''")
+    expires = (datetime.utcnow() + timedelta(minutes=LOGIN_2FA_CODE_TTL_MIN)).strftime('%Y-%m-%d %H:%M:%S')
+    ip_val = f"'{ip}'" if ip else 'NULL'
+    ua = (user_agent or '')[:500].replace("'", "''")
+    cur.execute(f"""
+        INSERT INTO {schema}.login_2fa_oauth_states
+            (user_id, pending_token, provider, state, code_verifier, ip_address, user_agent, expires_at)
+        VALUES ({user_row['id']}, '{pt}', '{provider}', '{s}', {code_verifier_val}, {ip_val}, '{ua}', '{expires}')
+    """)
+    log_login_2fa(cur, schema, user_row['id'], provider, 'oauth_started', True, ip, user_agent)
+    conn.commit()
+    conn.close()
+    return respond(200, resp_body)
+
+
+def exchange_vk_login_code(code, code_verifier, device_id, redirect_uri):
+    client_id = os.environ.get('VK_CLIENT_ID', '')
+    client_secret = os.environ.get('VK_CLIENT_SECRET', '')
+    if not client_id or not client_secret:
+        return None, 'VK не настроен'
+    data = {
+        'grant_type': 'authorization_code', 'code': code, 'redirect_uri': redirect_uri,
+        'client_id': client_id, 'client_secret': client_secret, 'code_verifier': code_verifier,
+    }
+    if device_id:
+        data['device_id'] = device_id
+    try:
+        r = requests.post(VK_TOKEN_URL, data=data, timeout=10)
+        tok = r.json()
+    except Exception:
+        return None, 'Ошибка запроса к VK'
+    if 'error' in tok:
+        return None, tok.get('error_description') or 'Не удалось авторизоваться через VK'
+    at = tok.get('access_token')
+    if not at:
+        return None, 'VK не вернул access_token'
+    try:
+        ur = requests.post(VK_USER_INFO_URL, data={'access_token': at, 'client_id': client_id}, timeout=10)
+        info = ur.json().get('user') or {}
+    except Exception:
+        return None, 'Не удалось получить профиль VK'
+    vid = str(info.get('user_id') or info.get('id') or '')
+    if not vid:
+        return None, 'VK не вернул идентификатор'
+    return {'vk_id': vid}, None
+
+
+def exchange_yandex_login_code(code):
+    client_id = os.environ.get('YANDEX_CLIENT_ID', '')
+    client_secret = os.environ.get('YANDEX_CLIENT_SECRET', '')
+    if not client_id or not client_secret:
+        return None, 'Яндекс не настроен'
+    data = {
+        'grant_type': 'authorization_code', 'code': code,
+        'client_id': client_id, 'client_secret': client_secret,
+    }
+    try:
+        r = requests.post(YANDEX_TOKEN_URL, data=data, timeout=10)
+        tok = r.json()
+    except Exception:
+        return None, 'Ошибка запроса к Яндексу'
+    if 'error' in tok:
+        return None, tok.get('error_description') or 'Не удалось авторизоваться через Яндекс'
+    at = tok.get('access_token')
+    if not at:
+        return None, 'Яндекс не вернул access_token'
+    try:
+        ur = requests.get(YANDEX_USER_INFO_URL, headers={'Authorization': f'OAuth {at}'}, timeout=10)
+        info = ur.json()
+    except Exception:
+        return None, 'Не удалось получить профиль Яндекса'
+    yid = str(info.get('id') or '')
+    if not yid:
+        return None, 'Яндекс не вернул идентификатор'
+    return {'yandex_id': yid}, None
+
+
+def handle_login_2fa_verify_oauth(body, ip=None, user_agent=''):
+    pending_token = (body.get('pending_token') or '').strip()
+    provider = (body.get('provider') or '').strip().lower()
+    code = (body.get('code') or '').strip()
+    state = (body.get('state') or '').strip()
+    code_verifier = (body.get('code_verifier') or '').strip()
+    device_id = (body.get('device_id') or '').strip()
+
+    if not pending_token or provider not in ('vk', 'yandex') or not code or not state:
+        return respond(400, {'error': 'Неверные параметры'})
+
+    schema = get_schema()
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    user_row = load_pending_session(cur, schema, pending_token)
+    if not user_row:
+        conn.close()
+        return respond(400, {'error': 'Сессия истекла, войдите заново'})
+
+    pt = pending_token.replace("'", "''")
+    s = state.replace("'", "''")
+    cur.execute(f"""
+        SELECT id, code_verifier, used_at, expires_at
+        FROM {schema}.login_2fa_oauth_states
+        WHERE pending_token = '{pt}' AND state = '{s}' AND provider = '{provider}' AND user_id = {user_row['id']}
+        ORDER BY id DESC LIMIT 1
+    """)
+    st_row = cur.fetchone()
+    if not st_row:
+        log_login_2fa(cur, schema, user_row['id'], provider, 'state_mismatch', False, ip, user_agent)
+        conn.commit()
+        conn.close()
+        return respond(400, {'error': 'Неверный state. Повторите попытку.'})
+    if st_row['used_at']:
+        conn.close()
+        return respond(400, {'error': 'State уже использован'})
+    if st_row['expires_at'] and st_row['expires_at'] < datetime.utcnow():
+        conn.close()
+        return respond(400, {'error': 'Срок действия истёк. Повторите попытку.'})
+
+    # Обмен кода на токен и ID
+    if provider == 'vk':
+        verifier = code_verifier or (st_row['code_verifier'] or '')
+        if not verifier:
+            conn.close()
+            return respond(400, {'error': 'code_verifier отсутствует'})
+        redirect_uri = os.environ.get('VK_REDIRECT_URI', '')
+        result, err = exchange_vk_login_code(code, verifier, device_id, redirect_uri)
+        expected_id = (user_row.get('vk_id') or '').strip()
+        got_id = result.get('vk_id') if result else ''
+        id_field = 'vk_id'
+    else:
+        result, err = exchange_yandex_login_code(code)
+        expected_id = (user_row.get('yandex_id') or '').strip()
+        got_id = result.get('yandex_id') if result else ''
+        id_field = 'yandex_id'
+
+    if err or not result:
+        log_login_2fa(cur, schema, user_row['id'], provider, 'exchange_failed', False, ip, user_agent, {'error': err})
+        conn.commit()
+        conn.close()
+        return respond(400, {'error': err or 'Не удалось подтвердить'})
+
+    if not expected_id or str(expected_id) != str(got_id):
+        log_login_2fa(cur, schema, user_row['id'], provider, 'id_mismatch', False, ip, user_agent,
+                      {'expected': str(expected_id), 'got': str(got_id)})
+        conn.commit()
+        conn.close()
+        return respond(400, {'error': f'{provider.upper()}-аккаунт не совпадает с привязанным к профилю'})
+
+    cur.execute(f"UPDATE {schema}.login_2fa_oauth_states SET used_at = CURRENT_TIMESTAMP WHERE id = {st_row['id']}")
+    log_login_2fa(cur, schema, user_row['id'], provider, 'verify_success', True, ip, user_agent)
+    _ = id_field  # reserved
+    user_data, token, expires = finalize_login_session(cur, schema, user_row, f'{provider}_2fa', ip, user_agent, pending_token)
+    conn.commit()
+    conn.close()
+    return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
+
+
+# =============================================================================
 
 
 def send_welcome_email(to_email, name):

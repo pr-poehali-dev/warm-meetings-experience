@@ -96,7 +96,49 @@ export const userProfileApi = {
     authRequest(`${USER_PROFILE_API}/?resource=verify-email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }),
 };
 
+export interface LoginChallenge {
+  requires_2fa: true;
+  method: "totp" | "email" | "vk" | "yandex";
+  pending_token: string;
+  email_masked?: string | null;
+  has_vk?: boolean;
+  has_yandex?: boolean;
+}
+
 export const userAuthApi2FA = {
   verify2FA: (pending_token: string, code: string) =>
     authRequest(`${USER_AUTH_API}/?action=verify_2fa`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pending_token, code }) }),
+
+  loginVerifyEmail: (pending_token: string, code: string): Promise<{ user: User; token: string; expires_at: string }> =>
+    authRequest(`${USER_AUTH_API}/?action=login_2fa_verify_email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pending_token, code }) }),
+
+  loginResendEmail: (pending_token: string): Promise<{ message: string; email_masked: string; code_ttl_minutes: number }> =>
+    authRequest(`${USER_AUTH_API}/?action=login_2fa_resend_email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pending_token }) }),
+
+  loginStartOAuth: (pending_token: string, provider: "vk" | "yandex"): Promise<{ auth_url: string; state: string; code_verifier?: string; provider: "vk" | "yandex" }> =>
+    authRequest(`${USER_AUTH_API}/?action=login_2fa_start_oauth`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pending_token, provider }) }),
+
+  loginVerifyOAuth: (params: { pending_token: string; provider: "vk" | "yandex"; code: string; state: string; code_verifier?: string; device_id?: string }): Promise<{ user: User; token: string; expires_at: string }> =>
+    authRequest(`${USER_AUTH_API}/?action=login_2fa_verify_oauth`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(params) }),
+};
+
+export interface Login2FAStatus {
+  enabled: boolean;
+  method: "email" | "vk" | "yandex" | null;
+  explicit_method: "email" | "vk" | "yandex" | null;
+  mandatory: boolean;
+  vk_linked: boolean;
+  yandex_linked: boolean;
+  totp_enabled: boolean;
+}
+
+export const loginSecurityApi = {
+  get: (): Promise<Login2FAStatus> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=login-2fa`),
+
+  set: (method: "email" | "vk" | "yandex", password: string): Promise<{ enabled: boolean; method: string }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=login-2fa`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ method, password }) }),
+
+  disable: (password: string): Promise<{ enabled: boolean; method: null }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=login-2fa`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) }),
 };
