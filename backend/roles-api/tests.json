@@ -67,6 +67,26 @@
         "error": "string"
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Start OAuth 2FA requires auth",
+      "method": "POST",
+      "path": "/?resource=start-oauth-2fa",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Verify OAuth 2FA requires auth",
+      "method": "POST",
+      "path": "/?resource=verify-oauth-2fa",
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }

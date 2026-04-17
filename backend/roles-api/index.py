@@ -115,6 +115,16 @@ def handler(event, context):
         ip = (headers_in.get('X-Forwarded-For') or headers_in.get('x-forwarded-for') or '').split(',')[0].strip() or None
         ua = headers_in.get('User-Agent') or headers_in.get('user-agent') or ''
         return handle_resend_email_code(cur, conn, schema, user, body, ip, ua)
+    elif resource == 'start-oauth-2fa' and method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        ip = (headers_in.get('X-Forwarded-For') or headers_in.get('x-forwarded-for') or '').split(',')[0].strip() or None
+        ua = headers_in.get('User-Agent') or headers_in.get('user-agent') or ''
+        return handle_start_oauth_2fa(cur, conn, schema, user, body, ip, ua)
+    elif resource == 'verify-oauth-2fa' and method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        ip = (headers_in.get('X-Forwarded-For') or headers_in.get('x-forwarded-for') or '').split(',')[0].strip() or None
+        ua = headers_in.get('User-Agent') or headers_in.get('user-agent') or ''
+        return handle_verify_oauth_2fa(cur, conn, schema, user, body, ip, ua)
     elif resource == 'switch-role' and method == 'POST':
         body = json.loads(event.get('body', '{}'))
         return handle_switch_role(cur, conn, schema, user, body)
@@ -609,6 +619,317 @@ def handle_resend_email_code(cur, conn, schema, user, body, ip=None, user_agent=
         'message': 'Код отправлен повторно',
         'email_masked': mask_email(user['email']),
         'code_ttl_minutes': CODE_TTL_MINUTES
+    })
+
+
+# =============================================================================
+# OAUTH 2FA (VK / Яндекс) — для подтверждения заявки на роль
+# =============================================================================
+
+VK_AUTHORIZE_URL = "https://id.vk.com/authorize"
+VK_TOKEN_URL = "https://id.vk.com/oauth2/auth"
+VK_USER_INFO_URL = "https://id.vk.com/oauth2/user_info"
+
+YANDEX_AUTH_URL = "https://oauth.yandex.ru/authorize"
+YANDEX_TOKEN_URL = "https://oauth.yandex.ru/token"
+YANDEX_USER_INFO_URL = "https://login.yandex.ru/info"
+
+OAUTH_STATE_TTL_MINUTES = 10
+
+
+def _urlencode(d):
+    from urllib.parse import urlencode
+    return urlencode(d)
+
+
+def build_vk_auth_url(client_id, redirect_uri, state, code_challenge):
+    params = {
+        'client_id': client_id,
+        'redirect_uri': redirect_uri,
+        'response_type': 'code',
+        'scope': '',
+        'state': state,
+        'code_challenge': code_challenge,
+        'code_challenge_method': 'S256',
+    }
+    return f"{VK_AUTHORIZE_URL}?{_urlencode(params)}"
+
+
+def build_yandex_auth_url(client_id, redirect_uri, state):
+    params = {
+        'client_id': client_id,
+        'redirect_uri': redirect_uri,
+        'response_type': 'code',
+        'state': state,
+        'force_confirm': 'yes',
+    }
+    return f"{YANDEX_AUTH_URL}?{_urlencode(params)}"
+
+
+def exchange_vk_code(code, code_verifier, device_id, redirect_uri):
+    client_id = os.environ.get('VK_CLIENT_ID', '')
+    client_secret = os.environ.get('VK_CLIENT_SECRET', '')
+    if not client_id or not client_secret:
+        return None, 'VK не настроен'
+    data = {
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': redirect_uri,
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'code_verifier': code_verifier,
+    }
+    if device_id:
+        data['device_id'] = device_id
+    try:
+        r = requests.post(VK_TOKEN_URL, data=data, timeout=10)
+        token_data = r.json()
+    except Exception:
+        return None, 'Ошибка запроса к VK'
+    if 'error' in token_data:
+        return None, token_data.get('error_description') or 'Не удалось авторизоваться через VK'
+    access_token = token_data.get('access_token')
+    if not access_token:
+        return None, 'VK не вернул access_token'
+    try:
+        ur = requests.post(
+            VK_USER_INFO_URL,
+            data={'access_token': access_token, 'client_id': client_id},
+            timeout=10,
+        )
+        info = ur.json()
+        user = info.get('user') or {}
+    except Exception:
+        return None, 'Не удалось получить профиль VK'
+    vk_id = str(user.get('user_id') or user.get('id') or '')
+    if not vk_id:
+        return None, 'VK не вернул идентификатор пользователя'
+    return {'vk_id': vk_id, 'email': user.get('email'), 'raw': user}, None
+
+
+def exchange_yandex_code(code):
+    client_id = os.environ.get('YANDEX_CLIENT_ID', '')
+    client_secret = os.environ.get('YANDEX_CLIENT_SECRET', '')
+    if not client_id or not client_secret:
+        return None, 'Яндекс не настроен'
+    data = {
+        'grant_type': 'authorization_code',
+        'code': code,
+        'client_id': client_id,
+        'client_secret': client_secret,
+    }
+    try:
+        r = requests.post(YANDEX_TOKEN_URL, data=data, timeout=10)
+        token_data = r.json()
+    except Exception:
+        return None, 'Ошибка запроса к Яндексу'
+    if 'error' in token_data:
+        return None, token_data.get('error_description') or 'Не удалось авторизоваться через Яндекс'
+    access_token = token_data.get('access_token')
+    if not access_token:
+        return None, 'Яндекс не вернул access_token'
+    try:
+        ur = requests.get(
+            YANDEX_USER_INFO_URL,
+            headers={'Authorization': f'OAuth {access_token}'},
+            timeout=10,
+        )
+        info = ur.json()
+    except Exception:
+        return None, 'Не удалось получить профиль Яндекса'
+    yandex_id = str(info.get('id') or '')
+    if not yandex_id:
+        return None, 'Яндекс не вернул идентификатор пользователя'
+    return {'yandex_id': yandex_id, 'email': info.get('default_email'), 'raw': info}, None
+
+
+def handle_start_oauth_2fa(cur, conn, schema, user, body, ip=None, user_agent=''):
+    provider = (body.get('provider') or '').strip().lower()
+    app_id = body.get('application_id')
+
+    if provider not in ('vk', 'yandex'):
+        conn.close()
+        return respond(400, {'error': 'Поддерживаются только провайдеры vk и yandex'})
+    if not app_id:
+        conn.close()
+        return respond(400, {'error': 'Укажите application_id'})
+    try:
+        app_id = int(app_id)
+    except (TypeError, ValueError):
+        conn.close()
+        return respond(400, {'error': 'Некорректный application_id'})
+
+    cur.execute(f"""
+        SELECT id, user_id, status FROM {schema}.role_applications
+        WHERE id = {app_id}
+    """)
+    app = cur.fetchone()
+    if not app or app['user_id'] != user['id']:
+        conn.close()
+        return respond(404, {'error': 'Заявка не найдена'})
+    if app['status'] != 'pending_2fa':
+        conn.close()
+        return respond(400, {'error': 'Заявка уже обработана'})
+
+    state = pysecrets.token_urlsafe(24)
+
+    resp = {'provider': provider, 'state': state}
+
+    if provider == 'vk':
+        client_id = os.environ.get('VK_CLIENT_ID', '')
+        redirect_uri = os.environ.get('VK_REDIRECT_URI', '')
+        if not client_id or not redirect_uri:
+            conn.close()
+            return respond(500, {'error': 'VK не настроен'})
+        import base64 as b64
+        code_verifier = b64.urlsafe_b64encode(pysecrets.token_bytes(32)).decode('utf-8').rstrip('=')
+        code_challenge = b64.urlsafe_b64encode(
+            hashlib.sha256(code_verifier.encode('utf-8')).digest()
+        ).decode('utf-8').rstrip('=')
+        auth_url = build_vk_auth_url(client_id, redirect_uri, state, code_challenge)
+        resp.update({
+            'auth_url': auth_url,
+            'code_verifier': code_verifier,
+            'redirect_uri': redirect_uri,
+        })
+    else:  # yandex
+        client_id = os.environ.get('YANDEX_CLIENT_ID', '')
+        redirect_uri = os.environ.get('YANDEX_REDIRECT_URI', '')
+        if not client_id or not redirect_uri:
+            conn.close()
+            return respond(500, {'error': 'Яндекс не настроен'})
+        auth_url = build_yandex_auth_url(client_id, redirect_uri, state)
+        resp.update({
+            'auth_url': auth_url,
+            'redirect_uri': redirect_uri,
+        })
+
+    log_2fa_event(cur, schema, app_id, user['id'], provider, 'oauth_started', True, ip, user_agent)
+    conn.commit()
+    conn.close()
+    return respond(200, resp)
+
+
+def handle_verify_oauth_2fa(cur, conn, schema, user, body, ip=None, user_agent=''):
+    app_id = body.get('application_id')
+    provider = (body.get('provider') or '').strip().lower()
+    code = (body.get('code') or '').strip()
+    code_verifier = (body.get('code_verifier') or '').strip()
+    device_id = (body.get('device_id') or '').strip()
+
+    if provider not in ('vk', 'yandex'):
+        conn.close()
+        return respond(400, {'error': 'Поддерживаются только провайдеры vk и yandex'})
+    if not app_id or not code:
+        conn.close()
+        return respond(400, {'error': 'Укажите application_id и code'})
+    try:
+        app_id = int(app_id)
+    except (TypeError, ValueError):
+        conn.close()
+        return respond(400, {'error': 'Некорректный application_id'})
+
+    cur.execute(f"""
+        SELECT ra.id, ra.user_id, ra.role_id, ra.status, ra.message,
+               r.name as role_name, r.slug as role_slug
+        FROM {schema}.role_applications ra
+        JOIN {schema}.roles r ON r.id = ra.role_id
+        WHERE ra.id = {app_id}
+    """)
+    app = cur.fetchone()
+    if not app or app['user_id'] != user['id']:
+        conn.close()
+        return respond(404, {'error': 'Заявка не найдена'})
+
+    if app['status'] == 'pending':
+        conn.close()
+        return respond(200, {'application_id': app_id, 'status': 'pending', 'message': 'Заявка уже подтверждена'})
+    if app['status'] != 'pending_2fa':
+        conn.close()
+        return respond(400, {'error': 'Заявка уже обработана'})
+
+    # Обмениваем code → получаем ID провайдера
+    if provider == 'vk':
+        if not code_verifier:
+            conn.close()
+            return respond(400, {'error': 'Сессия устарела, начните подтверждение заново'})
+        redirect_uri = os.environ.get('VK_REDIRECT_URI', '')
+        oauth_user, err = exchange_vk_code(code, code_verifier, device_id, redirect_uri)
+        external_id_field = 'vk_id'
+    else:
+        oauth_user, err = exchange_yandex_code(code)
+        external_id_field = 'yandex_id'
+
+    if err or not oauth_user:
+        log_2fa_event(cur, schema, app_id, user['id'], provider, 'verify_failed', False, ip, user_agent,
+                      {'error': err})
+        conn.commit()
+        conn.close()
+        return respond(400, {'error': err or 'Не удалось подтвердить аккаунт'})
+
+    provider_id = oauth_user.get(external_id_field)
+
+    # Загружаем текущее значение vk_id / yandex_id из users
+    cur.execute(f"SELECT vk_id, yandex_id FROM {schema}.users WHERE id = {user['id']}")
+    current = cur.fetchone() or {}
+    stored_id = current.get(external_id_field)
+
+    if stored_id and str(stored_id) != str(provider_id):
+        # Привязан другой аккаунт провайдера — отказ
+        log_2fa_event(cur, schema, app_id, user['id'], provider, 'verify_id_mismatch', False, ip, user_agent,
+                      {'stored': str(stored_id), 'got': str(provider_id)})
+        conn.commit()
+        conn.close()
+        return respond(400, {'error': f'К вашему аккаунту привязан другой {provider.upper()}-профиль. Подтвердите заявку тем же аккаунтом.'})
+
+    if not stored_id:
+        # Проверяем, что этот provider_id не занят другим пользователем
+        safe_pid = str(provider_id).replace("'", "''")
+        cur.execute(f"""
+            SELECT id FROM {schema}.users
+            WHERE {external_id_field} = '{safe_pid}' AND id != {user['id']}
+        """)
+        occupied = cur.fetchone()
+        if occupied:
+            log_2fa_event(cur, schema, app_id, user['id'], provider, 'verify_id_taken', False, ip, user_agent,
+                          {'provider_id': str(provider_id)})
+            conn.commit()
+            conn.close()
+            return respond(400, {'error': f'Этот {provider.upper()}-аккаунт уже привязан к другому пользователю платформы'})
+
+        # Автопривязка
+        cur.execute(f"""
+            UPDATE {schema}.users
+            SET {external_id_field} = '{safe_pid}', updated_at = CURRENT_TIMESTAMP
+            WHERE id = {user['id']}
+        """)
+        log_2fa_event(cur, schema, app_id, user['id'], provider, 'auto_linked', True, ip, user_agent,
+                      {'provider_id': str(provider_id)})
+
+    # Переводим заявку в pending
+    safe_pid = str(provider_id).replace("'", "''")
+    cur.execute(f"""
+        UPDATE {schema}.role_applications
+        SET status = 'pending', tfa_method = '{provider}', tfa_identifier = '{safe_pid}',
+            tfa_verified_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE id = {app_id}
+    """)
+    log_2fa_event(cur, schema, app_id, user['id'], provider, 'verify_success', True, ip, user_agent,
+                  {'provider_id': str(provider_id), 'linked': not bool(stored_id)})
+    conn.commit()
+
+    send_telegram_notification(
+        user,
+        {'id': app['role_id'], 'name': app['role_name']},
+        app.get('message') or ''
+    )
+
+    conn.close()
+    return respond(200, {
+        'application_id': app_id,
+        'status': 'pending',
+        'linked': not bool(stored_id),
+        'message': f'Аккаунт {provider.upper()} подтверждён. Заявка на роль «{app["role_name"]}» отправлена на рассмотрение'
     })
 
 
