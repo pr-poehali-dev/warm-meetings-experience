@@ -1,8 +1,6 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAccount } from "@/hooks/useAccount";
-import { rolesApi } from "@/lib/roles-api";
 import { useAuth } from "@/contexts/AuthContext";
 import AccountHeader from "@/components/account/AccountHeader";
 import ProfileCard from "@/components/account/ProfileCard";
@@ -19,18 +17,9 @@ import MyCalendar from "@/components/account/MyCalendar";
 type Tab = "main" | "articles" | "calendar" | "my-data";
 
 export default function Account() {
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tab = (searchParams.get("tab") as Tab) || "main";
   const { user: authUser, updateUser } = useAuth();
-  const [tab, setTab] = useState<Tab>("main");
-  const [isParmaster, setIsParmaster] = useState(false);
-  const [isOrganizer, setIsOrganizer] = useState(false);
-
-  useEffect(() => {
-    rolesApi.getMyRoles().then(({ roles }) => {
-      setIsParmaster(roles.some((r) => r.slug === "parmaster" && r.status === "active"));
-      setIsOrganizer(roles.some((r) => ["organizer", "admin"].includes(r.slug) && r.status === "active"));
-    }).catch(() => {});
-  }, []);
 
   const {
     user,
@@ -80,49 +69,6 @@ export default function Account() {
   return (
     <div className="min-h-screen bg-background">
       <AccountHeader handleLogout={handleLogout} />
-
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <div className="flex gap-1 bg-muted rounded-full p-1 mb-8 w-fit">
-          <button
-            onClick={() => setTab("main")}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${tab === "main" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            Профиль
-          </button>
-          <button
-            onClick={() => setTab("my-data")}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${tab === "my-data" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Icon name="Database" size={14} />
-            Мои данные
-          </button>
-          <button
-            onClick={() => setTab("articles")}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${tab === "articles" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Icon name="FileText" size={14} />
-            Статьи
-          </button>
-          {isParmaster && (
-            <button
-              onClick={() => setTab("calendar")}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${tab === "calendar" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <Icon name="Calendar" size={14} />
-              Календарь
-            </button>
-          )}
-          {isOrganizer && (
-            <button
-              onClick={() => navigate("/organizer-cabinet")}
-              className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
-            >
-              <Icon name="LayoutDashboard" size={14} />
-              Кабинет организатора
-            </button>
-          )}
-        </div>
-      </div>
 
       {tab === "main" && (
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl">

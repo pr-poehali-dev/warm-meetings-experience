@@ -13,9 +13,10 @@ interface MenuItem {
 
 const CABINET_ITEMS: MenuItem[] = [
   { label: "Мой профиль", to: "/account", icon: "User" },
-  { label: "Кабинет участника", to: "/account", icon: "Users", roleSlug: "member" },
-  { label: "Кабинет мастера", to: "/account", icon: "Sparkles", roleSlug: "parmaster" },
-  { label: "Кабинет организатора", to: "/organizer-cabinet", icon: "Calendar", roleSlug: "organizer" },
+  { label: "Мои данные", to: "/account?tab=my-data", icon: "Database" },
+  { label: "Мои статьи", to: "/account?tab=articles", icon: "FileText" },
+  { label: "Кабинет мастера", to: "/account?tab=calendar", icon: "Sparkles", roleSlug: "parmaster" },
+  { label: "Кабинет организатора", to: "/organizer-cabinet", icon: "LayoutDashboard", roleSlug: "organizer" },
   { label: "Кабинет партнёра", to: "/account", icon: "Home", roleSlug: "partner" },
 ];
 
