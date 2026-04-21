@@ -83,7 +83,7 @@ export default function Admin() {
       case "event-signups":
         return <AdminEventSignups />;
       case "roles":
-        return <AdminRoles />;
+        return <AdminRoles onViewChange={setCurrentView} />;
       case "blog":
         return <AdminBlog />;
       case "users":

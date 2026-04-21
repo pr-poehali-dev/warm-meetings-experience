@@ -24,13 +24,6 @@ interface RoleApplication {
   invite_event_title: string | null;
 }
 
-interface UserWithRoles {
-  id: number;
-  name: string;
-  email: string;
-  roles: { name: string; slug: string; icon: string; status: string }[];
-}
-
 async function adminRequest(url: string, options?: RequestInit) {
   const res = await fetch(url, options);
   const data = await res.json();
@@ -38,11 +31,13 @@ async function adminRequest(url: string, options?: RequestInit) {
   return data;
 }
 
-export default function AdminRoles() {
+interface AdminRolesProps {
+  onViewChange?: (view: string) => void;
+}
+
+export default function AdminRoles({ onViewChange }: AdminRolesProps) {
   const [applications, setApplications] = useState<RoleApplication[]>([]);
-  const [users, setUsers] = useState<UserWithRoles[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"applications" | "users">("applications");
   const [reviewComment, setReviewComment] = useState<Record<number, string>>({});
   const [processing, setProcessing] = useState<number | null>(null);
 
@@ -58,7 +53,6 @@ export default function AdminRoles() {
         headers: { "X-Admin-Token": token },
       });
       setApplications(data.applications || []);
-      setUsers(data.users || []);
     } catch {
       toast.error("Не удалось загрузить данные о ролях");
     } finally {
@@ -88,21 +82,6 @@ export default function AdminRoles() {
     }
   };
 
-  const handleGrantRole = async (userId: number, roleSlug: string) => {
-    try {
-      const token = localStorage.getItem("admin_token") || "";
-      await adminRequest(`${ROLES_API}/?resource=admin-grant`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Admin-Token": token },
-        body: JSON.stringify({ user_id: userId, role_slug: roleSlug }),
-      });
-      toast.success("Роль назначена");
-      loadData();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Ошибка");
-    }
-  };
-
   const pendingApps = applications.filter((a) => a.status === "pending");
   const reviewedApps = applications.filter((a) => a.status !== "pending");
 
@@ -118,22 +97,16 @@ export default function AdminRoles() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Управление ролями</h2>
-        <div className="flex gap-2">
+        {onViewChange && (
           <Button
-            variant={tab === "applications" ? "default" : "outline"}
+            variant="outline"
             size="sm"
-            onClick={() => setTab("applications")}
+            onClick={() => onViewChange("users")}
           >
-            Заявки {pendingApps.length > 0 && `(${pendingApps.length})`}
+            <Icon name="Users" size={14} className="mr-1.5" />
+            Все пользователи
           </Button>
-          <Button
-            variant={tab === "users" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setTab("users")}
-          >
-            Пользователи
-          </Button>
-        </div>
+        )}
       </div>
 
       {tab === "applications" && (
@@ -261,64 +234,6 @@ export default function AdminRoles() {
         </div>
       )}
 
-      {tab === "users" && (
-        <Card>
-          <CardContent className="py-4">
-            {users.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">Нет пользователей</div>
-            ) : (
-              <div className="space-y-3">
-                {users.map((u) => (
-                  <div key={u.id} className="flex items-center justify-between py-3 border-b last:border-0">
-                    <div>
-                      <div className="font-medium text-sm">{u.name}</div>
-                      <div className="text-xs text-gray-500">{u.email}</div>
-                      <div className="flex gap-1 mt-1">
-                        {u.roles.map((r) => (
-                          <span
-                            key={r.slug}
-                            className={`text-xs px-2 py-0.5 rounded-full ${
-                              r.status === "active"
-                                ? "bg-primary/10 text-primary"
-                                : "bg-gray-100 text-gray-500"
-                            }`}
-                          >
-                            {r.icon} {r.name}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      {["parmaster", "organizer", "partner", "admin"].map((slug) => {
-                        const hasRole = u.roles.some((r) => r.slug === slug && r.status === "active");
-                        if (hasRole) return null;
-                        const names: Record<string, string> = {
-                          parmaster: "🔥",
-                          organizer: "📅",
-                          partner: "🏠",
-                          admin: "⚙️",
-                        };
-                        return (
-                          <Button
-                            key={slug}
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs h-7 px-2"
-                            onClick={() => handleGrantRole(u.id, slug)}
-                            title={`Назначить роль ${slug}`}
-                          >
-                            +{names[slug]}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
