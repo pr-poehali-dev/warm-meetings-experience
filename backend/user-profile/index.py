@@ -715,15 +715,15 @@ def send_verify_email(to_email, name, token):
         </div>
     </div>
     """
-    message = {{
-        "recipients": [{{"email": to_email, "name": name}}],
+    message = {
+        "recipients": [{"email": to_email, "name": name}],
         "from_email": sender_email,
         "subject": "Подтвердите email — Sparcom",
-        "body": {{"html": html}},
+        "body": {"html": html},
         "track_links": 0,
         "track_read": 1,
         "tags": ["email-verify"],
-    }}
+    }
     if sender_name:
         message["from_name"] = sender_name
     try:
