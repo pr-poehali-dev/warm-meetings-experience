@@ -31,6 +31,7 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -40,8 +41,12 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
       rolesApi.getMyRoles().then(({ roles }) => {
         setUserRoles(roles.filter((r) => r.status === "active"));
       }).catch(() => {});
+      const token = localStorage.getItem("admin_token");
+      const expires = localStorage.getItem("admin_token_expires");
+      setIsAdmin(!!(token && expires && new Date(expires) > new Date()));
     } else {
       setUserRoles([]);
+      setIsAdmin(false);
     }
   }, [user]);
 
@@ -128,6 +133,18 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
               {item.label}
             </Link>
           ))}
+
+          {isAdmin && (
+            <div className="border-t border-border mt-1 pt-1">
+              <Link
+                to="/admin"
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-muted/60 transition-colors"
+              >
+                <Icon name="ShieldCheck" size={16} className="text-muted-foreground flex-shrink-0" />
+                Панель администратора
+              </Link>
+            </div>
+          )}
 
           <div className="border-t border-border mt-1 pt-1">
             <button
