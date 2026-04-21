@@ -10,9 +10,10 @@ interface Props {
   onManageEvent: (event: OrgEvent) => void;
   onViewAll: () => void;
   onEditEvent?: (event: OrgEvent) => void;
+  onStatClick?: (filter: string) => void;
 }
 
-export default function OrgDashboard({ data, onCreateEvent, onManageEvent, onViewAll, onEditEvent }: Props) {
+export default function OrgDashboard({ data, onCreateEvent, onManageEvent, onViewAll, onEditEvent, onStatClick }: Props) {
   const { user, stats, upcoming_events } = data;
 
   const formatDate = (d: string) =>
@@ -42,12 +43,16 @@ export default function OrgDashboard({ data, onCreateEvent, onManageEvent, onVie
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Проведено событий", value: stats.total_events, icon: "CalendarCheck", color: "text-blue-600" },
-          { label: "Предстоящих", value: stats.upcoming_events, icon: "Calendar", color: "text-green-600" },
-          { label: "Всего участников", value: stats.total_participants, icon: "Users", color: "text-purple-600" },
-          { label: "Черновики", value: stats.drafts, icon: "FileText", color: "text-gray-600" },
+          { label: "Проведено событий", value: stats.total_events, icon: "CalendarCheck", color: "text-blue-600", filter: "past" },
+          { label: "Предстоящих", value: stats.upcoming_events, icon: "Calendar", color: "text-green-600", filter: "upcoming" },
+          { label: "Всего участников", value: stats.total_participants, icon: "Users", color: "text-purple-600", filter: "all" },
+          { label: "Черновики", value: stats.drafts, icon: "FileText", color: "text-gray-600", filter: "draft" },
         ].map((s) => (
-          <Card key={s.label}>
+          <Card
+            key={s.label}
+            className="cursor-pointer hover:shadow-md transition-shadow hover:border-primary/30"
+            onClick={() => onStatClick?.(s.filter)}
+          >
             <CardContent className="pt-5 pb-4">
               <div className={`${s.color} mb-2`}>
                 <Icon name={s.icon} size={22} />

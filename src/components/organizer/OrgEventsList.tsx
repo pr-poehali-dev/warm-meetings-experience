@@ -18,6 +18,7 @@ interface Props {
   onDuplicateEvent: (event: OrgEvent) => void;
   onToggleVisibility: (event: OrgEvent) => void;
   onDeleteEvent: (event: OrgEvent) => void;
+  initialFilter?: StatusFilter;
 }
 
 const STATUS_LABELS: Record<StatusFilter, string> = {
@@ -30,8 +31,9 @@ const STATUS_LABELS: Record<StatusFilter, string> = {
 export default function OrgEventsList({
   events, loading, onCreateEvent, onEditEvent,
   onManageParticipants, onDuplicateEvent, onToggleVisibility, onDeleteEvent,
+  initialFilter = "all",
 }: Props) {
-  const [filter, setFilter] = useState<StatusFilter>("all");
+  const [filter, setFilter] = useState<StatusFilter>(initialFilter);
   const [search, setSearch] = useState("");
   const { toast } = useToast();
 

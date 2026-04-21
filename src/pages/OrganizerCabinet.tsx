@@ -20,6 +20,7 @@ export default function OrganizerCabinet() {
   const { toast } = useToast();
 
   const [view, setView] = useState<View>("dashboard");
+  const [eventsFilter, setEventsFilter] = useState<"all" | "active" | "past" | "drafts">("all");
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [events, setEvents] = useState<OrgEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<OrgEvent | null>(null);
@@ -287,7 +288,14 @@ export default function OrganizerCabinet() {
             onCreateEvent={handleCreateEvent}
             onManageEvent={handleManageParticipants}
             onEditEvent={handleEditEvent}
-            onViewAll={() => setView("events")}
+            onViewAll={() => { setEventsFilter("all"); setView("events"); }}
+            onStatClick={(f) => {
+              const map: Record<string, "all" | "active" | "past" | "drafts"> = {
+                past: "past", upcoming: "active", all: "all", draft: "drafts",
+              };
+              setEventsFilter(map[f] ?? "all");
+              setView("events");
+            }}
           />
         )}
 
@@ -301,6 +309,7 @@ export default function OrganizerCabinet() {
             onDuplicateEvent={handleDuplicateEvent}
             onToggleVisibility={handleToggleVisibility}
             onDeleteEvent={handleDeleteEvent}
+            initialFilter={eventsFilter}
           />
         )}
 
