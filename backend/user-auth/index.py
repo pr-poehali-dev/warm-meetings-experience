@@ -383,7 +383,7 @@ def handle_check(body):
 
     t = token.replace("'", "''")
     cur.execute(f"""
-        SELECT u.id, u.email, u.name, u.phone, u.vk_id, u.password_hash, u.totp_enabled, u.created_at
+        SELECT u.id, u.email, u.name, u.phone, u.vk_id, u.password_hash, u.totp_enabled, u.email_verified, u.created_at
         FROM {schema}.user_sessions s
         JOIN {schema}.users u ON u.id = s.user_id
         WHERE s.token = '{t}' AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true
@@ -396,6 +396,7 @@ def handle_check(body):
 
     user_data = dict(user)
     user_data['has_password'] = bool(user_data.pop('password_hash', None))
+    user_data['email_verified'] = bool(user_data.get('email_verified'))
     return respond(200, {'user': user_data})
 
 
