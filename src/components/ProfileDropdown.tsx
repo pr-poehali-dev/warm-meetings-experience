@@ -109,8 +109,8 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
 
       {open && (
         <div
-          style={{ top: dropdownPos.top, right: dropdownPos.right }}
-          className="fixed w-56 bg-card border border-border rounded-xl shadow-xl py-1 z-[200]"
+          style={{ top: dropdownPos.top, right: Math.max(dropdownPos.right, 8) }}
+          className="fixed w-56 max-w-[calc(100vw-16px)] bg-card border border-border rounded-xl shadow-xl py-1 z-[200]"
         >
           <div className="px-4 py-2.5 border-b border-border">
             <div className="text-sm font-semibold text-foreground truncate">{user.name}</div>
