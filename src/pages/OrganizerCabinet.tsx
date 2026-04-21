@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { organizerApi, OrgEvent, OrgParticipant, DashboardData } from "@/lib/organizer-api";
 import OrgDashboard from "@/components/organizer/OrgDashboard";
-import OrgEventsList from "@/components/organizer/OrgEventsList";
 import OrgParticipants from "@/components/organizer/OrgParticipants";
 import LiveEventEditor from "@/components/organizer/LiveEventEditor";
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +10,7 @@ import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import TelegramSettings from "@/components/organizer/TelegramSettings";
 
-type View = "dashboard" | "events" | "create" | "edit" | "participants" | "telegram";
+type View = "dashboard" | "create" | "edit" | "participants" | "telegram";
 
 export default function OrganizerCabinet() {
   const { user, loading: authLoading } = useAuth();
@@ -20,7 +19,6 @@ export default function OrganizerCabinet() {
   const { toast } = useToast();
 
   const [view, setView] = useState<View>("dashboard");
-  const [eventsFilter, setEventsFilter] = useState<"all" | "active" | "past" | "drafts">("all");
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [events, setEvents] = useState<OrgEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<OrgEvent | null>(null);
@@ -113,8 +111,8 @@ export default function OrganizerCabinet() {
   }, [user, authLoading, navigate, loadDashboard, searchParams, toast]);
 
   useEffect(() => {
-    if (view === "events") loadEvents();
-  }, [view, loadEvents]);
+    if (!authLoading && user) loadEvents();
+  }, [authLoading, user, loadEvents]);
 
   const emptyForm = (): OrgEvent => ({
     id: 0, title: "", short_description: "", full_description: "", description: "",
@@ -169,9 +167,8 @@ export default function OrganizerCabinet() {
       if (data.pricing_type === 'dynamic' && data.pricing_tiers) {
         await organizerApi.savePricingTiers(savedEvent.id, data.pricing_tiers);
       }
-      await loadDashboard();
-      setView("events");
-      await loadEvents();
+      await Promise.all([loadDashboard(), loadEvents()]);
+      setView("dashboard");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Ошибка сохранения";
       toast({ title: "Ошибка сохранения", description: msg, variant: "destructive" });
@@ -199,8 +196,7 @@ export default function OrganizerCabinet() {
   const handleToggleVisibility = async (event: OrgEvent) => {
     try {
       await organizerApi.updateEvent({ id: event.id, is_visible: !event.is_visible } as OrgEvent & { id: number });
-      await loadEvents();
-      if (view === "dashboard") await loadDashboard();
+      await Promise.all([loadEvents(), loadDashboard()]);
     } catch {
       toast({ title: "Ошибка", variant: "destructive" });
     }
@@ -211,8 +207,7 @@ export default function OrganizerCabinet() {
     try {
       await organizerApi.deleteEvent(event.id);
       toast({ title: "Событие скрыто" });
-      await loadEvents();
-      if (view === "dashboard") await loadDashboard();
+      await Promise.all([loadEvents(), loadDashboard()]);
     } catch {
       toast({ title: "Ошибка удаления", variant: "destructive" });
     }
@@ -263,13 +258,13 @@ export default function OrganizerCabinet() {
             </button>
             <span className="text-muted-foreground">/</span>
             <nav className="flex gap-1">
-              {(["dashboard", "events", "telegram"] as View[]).map((v) => (
+              {([["dashboard", "Дашборд"], ["telegram", "Telegram"]] as [View, string][]).map(([v, label]) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
-                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${view === v || (view === "create" && v === "events") || (view === "edit" && v === "events") || (view === "participants" && v === "events") ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${view === v || (["create", "edit", "participants"].includes(view) && v === "dashboard") ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
-                  {v === "dashboard" ? "Дашборд" : v === "events" ? "Встречи" : "Telegram"}
+                  {label}
                 </button>
               ))}
             </nav>
@@ -285,31 +280,14 @@ export default function OrganizerCabinet() {
         {view === "dashboard" && dashboard && (
           <OrgDashboard
             data={dashboard}
+            events={events}
+            eventsLoading={eventsLoading}
             onCreateEvent={handleCreateEvent}
             onManageEvent={handleManageParticipants}
             onEditEvent={handleEditEvent}
-            onViewAll={() => { setEventsFilter("all"); setView("events"); }}
-            onStatClick={(f) => {
-              const map: Record<string, "all" | "active" | "past" | "drafts"> = {
-                past: "past", upcoming: "active", all: "all", draft: "drafts",
-              };
-              setEventsFilter(map[f] ?? "all");
-              setView("events");
-            }}
-          />
-        )}
-
-        {view === "events" && (
-          <OrgEventsList
-            events={events}
-            loading={eventsLoading}
-            onCreateEvent={handleCreateEvent}
-            onEditEvent={handleEditEvent}
-            onManageParticipants={handleManageParticipants}
             onDuplicateEvent={handleDuplicateEvent}
             onToggleVisibility={handleToggleVisibility}
             onDeleteEvent={handleDeleteEvent}
-            initialFilter={eventsFilter}
           />
         )}
 
@@ -323,7 +301,7 @@ export default function OrganizerCabinet() {
                 e.preventDefault();
                 await handleSaveEvent(formDataRef.current);
               }}
-              onCancel={() => setView(events.length ? "events" : "dashboard")}
+              onCancel={() => setView("dashboard")}
             />
           </div>
         )}
@@ -332,7 +310,7 @@ export default function OrganizerCabinet() {
           <OrgParticipants
             event={selectedEvent}
             participants={participants}
-            onBack={() => setView("events")}
+            onBack={() => setView("dashboard")}
             onRefresh={() => loadParticipants(selectedEvent.id)}
           />
         )}
