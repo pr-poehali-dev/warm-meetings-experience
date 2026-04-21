@@ -77,6 +77,12 @@ export const userProfileApi = {
   unlinkVk: (): Promise<{ message: string }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=link-vk`, { method: "DELETE" }),
 
+  linkYandex: (yandex_id: string, access_token: string): Promise<{ message: string; yandex_id: string }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=link-yandex`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ yandex_id, access_token }) }),
+
+  unlinkYandex: (): Promise<{ message: string }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=link-yandex`, { method: "DELETE" }),
+
   totpSetup: (): Promise<{ secret: string; provisioning_uri: string }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=totp-setup`, { method: "POST" }),
 

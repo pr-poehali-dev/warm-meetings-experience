@@ -121,6 +121,13 @@ def handler(event, context):
         if method == 'DELETE':
             return handle_unlink_vk(cur, conn, schema, user, ip)
 
+    if resource == 'link-yandex':
+        if method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            return handle_link_yandex(cur, conn, schema, user, body, ip)
+        if method == 'DELETE':
+            return handle_unlink_yandex(cur, conn, schema, user, ip)
+
     if resource == 'totp-setup':
         if method == 'POST':
             return handle_totp_setup(cur, conn, schema, user, ip)
@@ -435,6 +442,43 @@ def handle_unlink_vk(cur, conn, schema, user, ip=None):
     conn.commit()
     conn.close()
     return respond(200, {'message': 'VK аккаунт отвязан'})
+
+
+def handle_link_yandex(cur, conn, schema, user, body, ip=None):
+    yandex_id = str(body.get('yandex_id') or '').strip()
+    access_token = str(body.get('access_token') or '').strip()
+
+    if not yandex_id or not access_token:
+        conn.close()
+        return respond(400, {'error': 'Не передан yandex_id или access_token'})
+
+    safe_yandex_id = yandex_id.replace("'", "''")
+    cur.execute(f"SELECT id FROM {schema}.users WHERE yandex_id = '{safe_yandex_id}' AND id != {user['id']}")
+    if cur.fetchone():
+        conn.close()
+        return respond(400, {'error': 'Этот Яндекс аккаунт уже привязан к другому пользователю'})
+
+    cur.execute(f"""
+        UPDATE {schema}.users SET yandex_id = '{safe_yandex_id}', updated_at = CURRENT_TIMESTAMP
+        WHERE id = {user['id']}
+    """)
+    write_audit_log(cur, schema, user['id'], 'link_yandex', 'users', user['id'], ip)
+    conn.commit()
+    conn.close()
+    return respond(200, {'message': 'Яндекс успешно привязан', 'yandex_id': yandex_id})
+
+
+def handle_unlink_yandex(cur, conn, schema, user, ip=None):
+    cur.execute(f"SELECT yandex_id FROM {schema}.users WHERE id = {user['id']}")
+    row = cur.fetchone()
+    if not row or not row.get('yandex_id'):
+        conn.close()
+        return respond(400, {'error': 'Яндекс аккаунт не привязан'})
+    cur.execute(f"UPDATE {schema}.users SET yandex_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = {user['id']}")
+    write_audit_log(cur, schema, user['id'], 'unlink_yandex', 'users', user['id'], ip)
+    conn.commit()
+    conn.close()
+    return respond(200, {'message': 'Яндекс аккаунт отвязан'})
 
 
 def handle_totp_setup(cur, conn, schema, user, ip=None):

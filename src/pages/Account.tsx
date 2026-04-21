@@ -109,6 +109,8 @@ export default function Account() {
               handleDeleteAccount={handleDeleteAccount}
               onVkLinked={(vkId) => authUser && updateUser({ ...authUser, vk_id: vkId })}
               onVkUnlinked={() => authUser && updateUser({ ...authUser, vk_id: null })}
+              onYandexLinked={(yandexId) => authUser && updateUser({ ...authUser, yandex_id: yandexId })}
+              onYandexUnlinked={() => authUser && updateUser({ ...authUser, yandex_id: null })}
             />
             <GrowthSection />
             <BadgesSection />

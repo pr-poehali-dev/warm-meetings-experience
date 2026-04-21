@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { User, userProfileApi } from "@/lib/user-api";
 import VkLinkSection from "@/components/account/VkLinkSection";
+import YandexLinkSection from "@/components/account/YandexLinkSection";
 import { toast } from "sonner";
 
 function maskEmail(email: string): string {
@@ -45,6 +46,8 @@ interface ProfileCardProps {
   handleDeleteAccount: (e: React.FormEvent) => void;
   onVkLinked?: (vkId: string) => void;
   onVkUnlinked?: () => void;
+  onYandexLinked?: (yandexId: string) => void;
+  onYandexUnlinked?: () => void;
 }
 
 export default function ProfileCard({
@@ -70,6 +73,8 @@ export default function ProfileCard({
   handleDeleteAccount,
   onVkLinked,
   onVkUnlinked,
+  onYandexLinked,
+  onYandexUnlinked,
 }: ProfileCardProps) {
   const [showPhone, setShowPhone] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
@@ -244,12 +249,18 @@ export default function ProfileCard({
                 <div className="font-medium">{user.telegram || "Не указан"}</div>
               </div>
             </div>
-            <div className="pt-1 border-t border-border">
+            <div className="pt-1 border-t border-border space-y-3">
               <VkLinkSection
                 vkId={user.vk_id}
                 hasPassword={user.has_password !== false}
                 onLinked={onVkLinked || (() => {})}
                 onUnlinked={onVkUnlinked || (() => {})}
+              />
+              <YandexLinkSection
+                yandexId={user.yandex_id}
+                hasPassword={user.has_password !== false}
+                onLinked={onYandexLinked || (() => {})}
+                onUnlinked={onYandexUnlinked || (() => {})}
               />
             </div>
           </div>
