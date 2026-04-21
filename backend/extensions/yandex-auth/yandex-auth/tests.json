@@ -1,0 +1,18 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS returns 200",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "auth-url action returns auth_url",
+      "method": "GET",
+      "path": "/?action=auth-url",
+      "expectedStatus": 200,
+      "expectedBody": {"auth_url": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

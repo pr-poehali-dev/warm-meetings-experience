@@ -268,7 +268,7 @@ def handle_callback(event: dict, origin: str) -> dict:
         user_info = get_yandex_user_info(yandex_access_token)
 
         yandex_id = str(user_info.get('id', ''))
-        email = user_info.get('default_email', '')
+        email = (user_info.get('default_email', '') or '').strip().lower()
         name = user_info.get('real_name') or user_info.get('display_name', '')
         # Yandex avatar: https://avatars.yandex.net/get-yapic/{avatar_id}/islands-200
         avatar_id = user_info.get('default_avatar_id', '')
