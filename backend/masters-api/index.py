@@ -1,9 +1,21 @@
+import hashlib
 import json
 import os
 import re
+import time
 import psycopg2
 import psycopg2.extras
 import datetime
+
+
+def verify_admin_token(token):
+    if not token:
+        return False
+    admin_pwd = os.environ.get('ADMIN_PASSWORD', '')
+    if not admin_pwd:
+        return False
+    expected = hashlib.sha256(f"{admin_pwd}:{int(time.time() // 86400)}".encode()).hexdigest()
+    return token == expected
 
 
 def get_conn():
@@ -35,7 +47,7 @@ def cors_headers():
     return {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Authorization',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Authorization, X-Admin-Token',
         'Access-Control-Max-Age': '86400',
         'Content-Type': 'application/json'
     }
@@ -61,6 +73,74 @@ def handler(event, context):
     method = event.get('httpMethod', 'GET')
     params = event.get('queryStringParameters') or {}
     schema = get_schema()
+    admin_token = (event.get('headers') or {}).get('X-Admin-Token', '')
+
+    # GET /masters?admin=1 — список всех мастеров для админа
+    if method == 'GET' and params.get('admin') == '1':
+        if not verify_admin_token(admin_token):
+            return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Не авторизован'})}
+        conn = get_conn()
+        cur = conn.cursor()
+        search = params.get('search', '')
+        verified = params.get('verified', '')
+        where = ['1=1']
+        args = []
+        if search:
+            where.append("(m.name ILIKE %s OR m.city ILIKE %s OR m.phone ILIKE %s)")
+            args += [f'%{search}%', f'%{search}%', f'%{search}%']
+        if verified == 'true':
+            where.append('m.is_verified = true')
+        elif verified == 'false':
+            where.append('m.is_verified = false')
+        where_sql = ' AND '.join(where)
+        cur.execute(f"""
+            SELECT m.id, m.slug, m.name, m.tagline, m.city, m.phone, m.telegram,
+                   m.avatar, m.specialization_ids, m.rating, m.reviews_count,
+                   m.price_from, m.is_verified, m.is_active, m.created_at
+            FROM {schema}.masters m
+            WHERE {where_sql}
+            ORDER BY m.is_verified ASC, m.created_at DESC
+        """, args)
+        rows = cur.fetchall()
+        masters = []
+        for row in rows:
+            d = row_to_dict(row, cur)
+            d['rating'] = float(d['rating']) if d['rating'] else 0
+            masters.append(d)
+        cur.close()
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'masters': masters}, ensure_ascii=False)}
+
+    # PUT /masters?admin_verify=1 — верификация/снятие верификации
+    if method == 'PUT' and params.get('admin_verify') == '1':
+        if not verify_admin_token(admin_token):
+            return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Не авторизован'})}
+        body = json.loads(event.get('body') or '{}')
+        master_id = body.get('id')
+        is_verified = body.get('is_verified')
+        is_active = body.get('is_active')
+        if not master_id:
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id обязателен'})}
+        conn = get_conn()
+        cur = conn.cursor()
+        fields = ['updated_at = NOW()']
+        vals = []
+        if is_verified is not None:
+            fields.append('is_verified = %s')
+            vals.append(bool(is_verified))
+        if is_active is not None:
+            fields.append('is_active = %s')
+            vals.append(bool(is_active))
+        vals.append(master_id)
+        cur.execute(f"UPDATE {schema}.masters SET {', '.join(fields)} WHERE id = %s RETURNING id, name, is_verified, is_active", vals)
+        row = cur.fetchone()
+        conn.commit()
+        result = row_to_dict(row, cur) if row else None
+        cur.close()
+        conn.close()
+        if not result:
+            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Мастер не найден'})}
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'master': result})}
 
     # GET /masters?specializations=1 — список специализаций
     if method == 'GET' and params.get('specializations') == '1':

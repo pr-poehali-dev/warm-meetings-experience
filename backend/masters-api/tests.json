@@ -1,11 +1,11 @@
 {
   "tests": [
     {
-      "name": "Список мастеров",
+      "name": "Список мастеров (публичный)",
       "method": "GET",
       "path": "/",
       "expectedStatus": 200,
-      "expectedBody": {},
+      "expectedBody": {"masters": []},
       "bodyMatcher": "partial"
     },
     {
@@ -14,6 +14,14 @@
       "path": "/?specializations=1",
       "expectedStatus": 200,
       "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Список мастеров для админа — без токена",
+      "method": "GET",
+      "path": "/?admin=1",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Не авторизован"},
       "bodyMatcher": "partial"
     }
   ]
