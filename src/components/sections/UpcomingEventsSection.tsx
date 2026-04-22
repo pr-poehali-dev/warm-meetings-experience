@@ -10,7 +10,9 @@ interface UpcomingEventsSectionProps {
   events: EventItem[];
 }
 
-export default function UpcomingEventsSection({ events }: UpcomingEventsSectionProps) {
+export default function UpcomingEventsSection({
+  events,
+}: UpcomingEventsSectionProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(false);
@@ -44,10 +46,13 @@ export default function UpcomingEventsSection({ events }: UpcomingEventsSectionP
           <div>
             <div className="flex items-center gap-3 mb-4">
               <Icon name="Calendar" className="text-accent" size={36} />
-              <h2 className="text-3xl md:text-4xl font-semibold">Ближайшие встречи</h2>
+              <h2 className="text-3xl md:text-4xl font-semibold">
+                Ближайшие события
+              </h2>
             </div>
             <p className="text-xl text-muted-foreground max-w-2xl">
-              Банные встречи, мастер-классы и практики — выберите подходящую и запишитесь
+              Банные встречи, мастер-классы и практики — выберите подходящую и
+              запишитесь
             </p>
           </div>
           {events.length > 0 && (
@@ -89,7 +94,11 @@ export default function UpcomingEventsSection({ events }: UpcomingEventsSectionP
             </div>
             <div className="text-center mt-10">
               <Link to="/events">
-                <Button size="lg" variant="outline" className="rounded-full text-base px-8">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="rounded-full text-base px-8"
+                >
                   <Icon name="CalendarDays" className="mr-2" size={20} />
                   Все встречи и расписание
                 </Button>
@@ -98,10 +107,17 @@ export default function UpcomingEventsSection({ events }: UpcomingEventsSectionP
           </>
         ) : (
           <div className="max-w-lg mx-auto text-center py-12 px-8 border border-dashed border-border rounded-2xl bg-card">
-            <Icon name="CalendarClock" size={48} className="text-muted-foreground/40 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Скоро здесь появятся встречи</h3>
+            <Icon
+              name="CalendarClock"
+              size={48}
+              className="text-muted-foreground/40 mx-auto mb-4"
+            />
+            <h3 className="text-xl font-semibold mb-2">
+              Скоро здесь появятся встречи
+            </h3>
             <p className="text-muted-foreground mb-6">
-              Мы готовим новые встречи. Подпишитесь на Telegram-канал, чтобы не пропустить анонс.
+              Мы готовим новые встречи. Подпишитесь на Telegram-канал, чтобы не
+              пропустить анонс.
             </p>
             <Button
               variant="outline"
