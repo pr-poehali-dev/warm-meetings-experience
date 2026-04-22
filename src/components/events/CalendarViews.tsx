@@ -120,6 +120,96 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect }: {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// РЕЖИМ: НЕДЕЛЯ (мобиль — список по дням)
+// ═══════════════════════════════════════════════════════════════════════════════
+function MobileWeekView({ events, currentDate, onDateSelect }: {
+  events: EventItem[];
+  currentDate: Date;
+  onDateSelect: (d: Date) => void;
+}) {
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, EventItem[]>();
+    events.forEach((e) => {
+      const key = format(parseISO(e.date), "yyyy-MM-dd");
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(e);
+    });
+    return map;
+  }, [events]);
+
+  return (
+    <div className="space-y-3">
+      {days.map((day) => {
+        const key = format(day, "yyyy-MM-dd");
+        const dayEvents = eventsByDate.get(key) || [];
+        const isTodayDay = isToday(day);
+        const past = isBefore(day, startOfDay(new Date()));
+
+        return (
+          <div key={key}>
+            <button
+              onClick={() => onDateSelect(day)}
+              className={`flex items-center gap-2 mb-2 w-full text-left`}
+            >
+              <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold flex-shrink-0
+                ${isTodayDay ? "bg-primary text-primary-foreground" : "text-foreground"}`}>
+                {format(day, "d")}
+              </span>
+              <span className={`text-sm font-medium capitalize ${isTodayDay ? "text-primary" : past ? "text-muted-foreground" : "text-foreground"}`}>
+                {format(day, "EEEE", { locale: ru })}
+              </span>
+              {dayEvents.length > 0 && (
+                <span className="ml-auto text-xs text-muted-foreground">{dayEvents.length} {dayEvents.length === 1 ? "встреча" : dayEvents.length < 5 ? "встречи" : "встреч"}</span>
+              )}
+            </button>
+
+            {dayEvents.length === 0 ? (
+              <div className={`text-xs text-muted-foreground/50 pl-9 pb-2 ${past ? "line-through" : ""}`}>Встреч нет</div>
+            ) : (
+              <div className="space-y-2 pl-9">
+                {dayEvents.map((ev) => {
+                  const meta = getTypeMeta(ev.type);
+                  const pct = ev.totalSpots > 0 ? ev.spotsLeft / ev.totalSpots : 1;
+                  const spotsText = ev.totalSpots === 0 ? null : ev.spotsLeft === 0 ? "Нет мест" : `${ev.spotsLeft} мест`;
+                  const spotsColor = pct === 0 ? "text-red-600" : pct <= 0.3 ? "text-yellow-600" : "text-green-600";
+                  return (
+                    <div key={ev.slug} className={`rounded-xl border border-border bg-card p-3 ${past ? "opacity-60" : ""}`}>
+                      <div className="flex items-start gap-2">
+                        <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.dot}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                            <span className="text-xs font-bold">{ev.timeStart}</span>
+                            <span className="text-xs text-muted-foreground">— {ev.timeEnd}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{meta.short}</span>
+                          </div>
+                          <p className="text-sm font-semibold line-clamp-1">{ev.title}</p>
+                          <div className="flex items-center justify-between mt-1.5 gap-2">
+                            <div className="flex items-center gap-2 text-xs">
+                              {ev.priceLabel && <span className="font-semibold">{ev.priceLabel}</span>}
+                              {spotsText && <span className={`font-medium ${spotsColor}`}>{spotsText}</span>}
+                            </div>
+                            <Button asChild size="sm" variant={ev.spotsLeft === 0 ? "outline" : "default"} className="rounded-full h-6 text-[10px] px-2.5 shrink-0" disabled={ev.spotsLeft === 0}>
+                              <Link to={`/events/${ev.slug}`}>{ev.spotsLeft === 0 ? "Нет мест" : "Записаться"}</Link>
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // РЕЖИМ: НЕДЕЛЯ
 // ═══════════════════════════════════════════════════════════════════════════════
 export function WeekView({ events, currentDate, onDateSelect }: {
@@ -128,6 +218,7 @@ export function WeekView({ events, currentDate, onDateSelect }: {
   onDateSelect: (d: Date) => void;
 }) {
   const [tooltipEvent, setTooltipEvent] = useState<{ event: EventItem; key: string } | null>(null);
+  const [isMobile] = useState(() => window.innerWidth < 640);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -145,6 +236,10 @@ export function WeekView({ events, currentDate, onDateSelect }: {
     });
     return map;
   }, [events]);
+
+  if (isMobile) {
+    return <MobileWeekView events={events} currentDate={currentDate} onDateSelect={onDateSelect} />;
+  }
 
   return (
     <div className="overflow-x-auto">
