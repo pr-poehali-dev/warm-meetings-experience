@@ -21,10 +21,13 @@ export default function Events() {
   const [view, setView] = useState<"list" | "calendar">("list");
 
   useEffect(() => {
-    eventsApi.getAll(true).then((data) => {
-      setEvents(data.map(mapApiEvent));
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    eventsApi
+      .getAll(true)
+      .then((data) => {
+        setEvents(data.map(mapApiEvent));
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   const hasActiveFilters =
@@ -37,24 +40,42 @@ export default function Events() {
 
   const upcomingEvents = useMemo(
     () => events.filter((e) => parseISO(e.date) >= today),
-    [events]
+    [events],
   );
 
-  const eventTypes = useMemo(() => [...new Set(upcomingEvents.map((e) => e.type))], [upcomingEvents]);
-  const bathNames = useMemo(() => [...new Set(upcomingEvents.map((e) => e.bathName).filter(Boolean))], [upcomingEvents]);
+  const eventTypes = useMemo(
+    () => [...new Set(upcomingEvents.map((e) => e.type))],
+    [upcomingEvents],
+  );
+  const bathNames = useMemo(
+    () => [...new Set(upcomingEvents.map((e) => e.bathName).filter(Boolean))],
+    [upcomingEvents],
+  );
 
   const filteredEvents = useMemo(() => {
     return upcomingEvents
       .filter((e) => {
         if (selectedType !== "all" && e.type !== selectedType) return false;
         if (selectedBath !== "all" && e.bathName !== selectedBath) return false;
-        if (selectedAvailability === "available" && e.spotsLeft === 0) return false;
-        if (selectedAvailability === "few" && (e.spotsLeft === 0 || e.spotsLeft > 3)) return false;
-        if (calendarDate && !isSameDay(parseISO(e.date), calendarDate)) return false;
+        if (selectedAvailability === "available" && e.spotsLeft === 0)
+          return false;
+        if (
+          selectedAvailability === "few" &&
+          (e.spotsLeft === 0 || e.spotsLeft > 3)
+        )
+          return false;
+        if (calendarDate && !isSameDay(parseISO(e.date), calendarDate))
+          return false;
         return true;
       })
       .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-  }, [upcomingEvents, selectedType, selectedBath, selectedAvailability, calendarDate]);
+  }, [
+    upcomingEvents,
+    selectedType,
+    selectedBath,
+    selectedAvailability,
+    calendarDate,
+  ]);
 
   const resetFilters = () => {
     setSelectedType("all");
@@ -67,7 +88,7 @@ export default function Events() {
     <div className="min-h-screen bg-background">
       <PageHero
         label="Афиша"
-        title="Встречи СПАРКОМ"
+        title="События СПАРКОМ"
         subtitle="Банные встречи, мастер-классы и практики. Выберите подходящую и запишитесь."
         minHeight="min-h-[280px] md:min-h-[320px]"
       />
@@ -76,7 +97,11 @@ export default function Events() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           {loading ? (
             <div className="text-center py-20">
-              <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground mx-auto mb-4" />
+              <Icon
+                name="Loader2"
+                size={32}
+                className="animate-spin text-muted-foreground mx-auto mb-4"
+              />
               <p className="text-muted-foreground">Загрузка встреч...</p>
             </div>
           ) : (
@@ -108,7 +133,11 @@ export default function Events() {
                       onClick={() => setView("calendar")}
                       className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${view === "calendar" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
                     >
-                      <Icon name="CalendarDays" size={16} className="inline mr-1" />
+                      <Icon
+                        name="CalendarDays"
+                        size={16}
+                        className="inline mr-1"
+                      />
                       Календарь
                     </button>
                   </div>
@@ -124,10 +153,22 @@ export default function Events() {
                       </div>
                     ) : (
                       <div className="text-center py-16">
-                        <Icon name="CalendarX" size={48} className="text-muted-foreground/40 mx-auto mb-4" />
-                        <p className="text-muted-foreground text-lg mb-2">Встреч не найдено</p>
-                        <p className="text-sm text-muted-foreground mb-4">Попробуйте изменить фильтры</p>
-                        <Button variant="outline" className="rounded-full" onClick={resetFilters}>
+                        <Icon
+                          name="CalendarX"
+                          size={48}
+                          className="text-muted-foreground/40 mx-auto mb-4"
+                        />
+                        <p className="text-muted-foreground text-lg mb-2">
+                          Встреч не найдено
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Попробуйте изменить фильтры
+                        </p>
+                        <Button
+                          variant="outline"
+                          className="rounded-full"
+                          onClick={resetFilters}
+                        >
                           Сбросить фильтры
                         </Button>
                       </div>
@@ -146,13 +187,14 @@ export default function Events() {
               </div>
             </div>
           )}
-
         </div>
       </section>
 
       <section className="py-10 border-t border-border">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-muted-foreground text-sm mb-3">Хотите посмотреть на прошедшие встречи?</p>
+          <p className="text-muted-foreground text-sm mb-3">
+            Хотите посмотреть на прошедшие встречи?
+          </p>
           <Button asChild variant="outline" className="rounded-full">
             <Link to="/events/past">
               <Icon name="History" size={16} />
@@ -166,8 +208,13 @@ export default function Events() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6 max-w-4xl mx-auto">
             <div>
-              <h3 className="text-xl font-semibold mb-1">Хотите провести свою встречу?</h3>
-              <p className="text-muted-foreground">Станьте организатором — создавайте события и собирайте свою аудиторию</p>
+              <h3 className="text-xl font-semibold mb-1">
+                Хотите провести свою встречу?
+              </h3>
+              <p className="text-muted-foreground">
+                Станьте организатором — создавайте события и собирайте свою
+                аудиторию
+              </p>
             </div>
             <Button asChild size="lg" className="shrink-0">
               <Link to="/organizer">

@@ -23,13 +23,34 @@ interface NavGroup {
 const NAV: NavGroup[] = [
   {
     id: "events",
-    label: "Встречи",
+    label: "События",
     icon: "PartyPopper",
     items: [
-      { view: "overview", label: "Дашборд", icon: "LayoutDashboard", hint: "Общая сводка" },
-      { view: "list", label: "Все встречи", icon: "List", hint: "Список событий" },
-      { view: "add", label: "Создать встречу", icon: "Plus", hint: "Новое событие" },
-      { view: "event-signups", label: "Заявки", icon: "ClipboardList", hint: "Записи участников", badgeKey: "events" },
+      {
+        view: "overview",
+        label: "Дашборд",
+        icon: "LayoutDashboard",
+        hint: "Общая сводка",
+      },
+      {
+        view: "list",
+        label: "Все события",
+        icon: "List",
+        hint: "Список событий",
+      },
+      {
+        view: "add",
+        label: "Создать встречу",
+        icon: "Plus",
+        hint: "Новое событие",
+      },
+      {
+        view: "event-signups",
+        label: "Заявки",
+        icon: "ClipboardList",
+        hint: "Записи участников",
+        badgeKey: "events",
+      },
     ],
   },
   {
@@ -37,9 +58,25 @@ const NAV: NavGroup[] = [
     label: "Люди",
     icon: "Users",
     items: [
-      { view: "users", label: "Пользователи", icon: "Users", hint: "Все аккаунты" },
-      { view: "roles", label: "Заявки на роли", icon: "Shield", hint: "Мастера, организаторы", badgeKey: "community" },
-      { view: "masters", label: "Мастера", icon: "Sparkles", hint: "Верификация профилей" },
+      {
+        view: "users",
+        label: "Пользователи",
+        icon: "Users",
+        hint: "Все аккаунты",
+      },
+      {
+        view: "roles",
+        label: "Заявки на роли",
+        icon: "Shield",
+        hint: "Мастера, организаторы",
+        badgeKey: "community",
+      },
+      {
+        view: "masters",
+        label: "Мастера",
+        icon: "Sparkles",
+        hint: "Верификация профилей",
+      },
     ],
   },
   {
@@ -47,8 +84,18 @@ const NAV: NavGroup[] = [
     label: "Контент",
     icon: "FileText",
     items: [
-      { view: "blog", label: "Статьи блога", icon: "BookOpen", hint: "Публикация, модерация" },
-      { view: "baths", label: "Бани", icon: "Home", hint: "Карточки заведений" },
+      {
+        view: "blog",
+        label: "Статьи блога",
+        icon: "BookOpen",
+        hint: "Публикация, модерация",
+      },
+      {
+        view: "baths",
+        label: "Бани",
+        icon: "Home",
+        hint: "Карточки заведений",
+      },
     ],
   },
   {
@@ -56,9 +103,25 @@ const NAV: NavGroup[] = [
     label: "Бронирования",
     icon: "CalendarCheck",
     items: [
-      { view: "bookings", label: "Заявки", icon: "FileText", hint: "Из калькулятора", badgeKey: "calculator" },
-      { view: "packages", label: "Пакеты", icon: "Package", hint: "Состав и цены" },
-      { view: "addons", label: "Дополнения", icon: "ShoppingBag", hint: "Доп. услуги" },
+      {
+        view: "bookings",
+        label: "Заявки",
+        icon: "FileText",
+        hint: "Из калькулятора",
+        badgeKey: "calculator",
+      },
+      {
+        view: "packages",
+        label: "Пакеты",
+        icon: "Package",
+        hint: "Состав и цены",
+      },
+      {
+        view: "addons",
+        label: "Дополнения",
+        icon: "ShoppingBag",
+        hint: "Доп. услуги",
+      },
     ],
   },
   {
@@ -66,12 +129,42 @@ const NAV: NavGroup[] = [
     label: "Цены и настройки",
     icon: "Settings",
     items: [
-      { view: "service-areas", label: "Зоны доставки", icon: "MapPin", hint: "Районы и множители" },
-      { view: "multipliers", label: "Коэффициенты", icon: "TrendingUp", hint: "Сезонные надбавки" },
-      { view: "holidays", label: "Праздники", icon: "Calendar", hint: "Праздничные даты" },
-      { view: "promo-codes", label: "Промо-коды", icon: "Tag", hint: "Скидки и акции" },
-      { view: "availability", label: "Выходные дни", icon: "CalendarOff", hint: "Блокировка дат" },
-      { view: "settings", label: "Настройки сайта", icon: "SlidersHorizontal", hint: "Общие параметры" },
+      {
+        view: "service-areas",
+        label: "Зоны доставки",
+        icon: "MapPin",
+        hint: "Районы и множители",
+      },
+      {
+        view: "multipliers",
+        label: "Коэффициенты",
+        icon: "TrendingUp",
+        hint: "Сезонные надбавки",
+      },
+      {
+        view: "holidays",
+        label: "Праздники",
+        icon: "Calendar",
+        hint: "Праздничные даты",
+      },
+      {
+        view: "promo-codes",
+        label: "Промо-коды",
+        icon: "Tag",
+        hint: "Скидки и акции",
+      },
+      {
+        view: "availability",
+        label: "Выходные дни",
+        icon: "CalendarOff",
+        hint: "Блокировка дат",
+      },
+      {
+        view: "settings",
+        label: "Настройки сайта",
+        icon: "SlidersHorizontal",
+        hint: "Общие параметры",
+      },
     ],
   },
 ];
@@ -99,7 +192,12 @@ const NotifBadge = ({ count }: { count: number }) => {
   );
 };
 
-export default function AdminTabs({ currentView, onViewChange, onNewEvent, onLogout }: AdminTabsProps) {
+export default function AdminTabs({
+  currentView,
+  onViewChange,
+  onNewEvent,
+  onLogout,
+}: AdminTabsProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const { badges } = useAdminBadges();
@@ -160,11 +258,19 @@ export default function AdminTabs({ currentView, onViewChange, onNewEvent, onLog
                           : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                       }`}
                     >
-                      <Icon name={item.icon} size={14} className="flex-shrink-0" />
+                      <Icon
+                        name={item.icon}
+                        size={14}
+                        className="flex-shrink-0"
+                      />
                       <div className="flex-1 text-left min-w-0">
-                        <div className="font-medium leading-tight">{item.label}</div>
+                        <div className="font-medium leading-tight">
+                          {item.label}
+                        </div>
                         {item.hint && (
-                          <div className={`text-[11px] truncate ${active ? "text-white/70" : "text-gray-400"}`}>
+                          <div
+                            className={`text-[11px] truncate ${active ? "text-white/70" : "text-gray-400"}`}
+                          >
                             {item.hint}
                           </div>
                         )}
@@ -190,7 +296,9 @@ export default function AdminTabs({ currentView, onViewChange, onNewEvent, onLog
             <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
               <Icon name="ShieldCheck" size={14} className="text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-sm">Админ-панель</span>
+            <span className="font-bold text-gray-900 text-sm">
+              Админ-панель
+            </span>
           </div>
         </div>
 
@@ -221,7 +329,8 @@ export default function AdminTabs({ currentView, onViewChange, onNewEvent, onLog
               <Icon name={mobileOpen ? "X" : "Menu"} size={20} />
             </button>
             <span className="font-bold text-gray-900 text-sm">
-              {NAV.flatMap((g) => g.items).find((i) => i.view === currentView)?.label ?? "Админ"}
+              {NAV.flatMap((g) => g.items).find((i) => i.view === currentView)
+                ?.label ?? "Админ"}
             </span>
           </div>
           <div className="flex items-center gap-2">

@@ -10,7 +10,7 @@ interface NavLink {
 }
 
 const NAV_LINKS: NavLink[] = [
-  { label: "Встречи", to: "/events" },
+  { label: "События", to: "/events" },
   { label: "Бани", to: "/baths" },
   { label: "Мастера", to: "/masters" },
   { label: "Блог", to: "/blog" },
@@ -37,11 +37,14 @@ export default function Header({ transparent = false }: HeaderProps) {
     setHeroVisible(true);
 
     const hero = document.querySelector("[data-hero]") as HTMLElement | null;
-    if (!hero) { setHeroVisible(false); return; }
+    if (!hero) {
+      setHeroVisible(false);
+      return;
+    }
 
     const obs = new IntersectionObserver(
       ([e]) => setHeroVisible(e.isIntersecting),
-      { threshold: 0.05 }
+      { threshold: 0.05 },
     );
     obs.observe(hero);
     return () => obs.disconnect();
@@ -68,71 +71,79 @@ export default function Header({ transparent = false }: HeaderProps) {
 
   return (
     <>
-    <header className={headerBase}>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <Link to="/" className={`font-bold text-lg tracking-wide transition-colors duration-300 ${
-            onHero ? "text-white" : "text-foreground"
-          }`}>
-            СПАРКОМ
-          </Link>
-
-          <nav className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300 ${
-                  onHero
-                    ? isActive(link.to)
-                      ? "bg-white/20 text-white"
-                      : "text-white/80 hover:text-white hover:bg-white/10"
-                    : isActive(link.to)
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-2">
-            {user ? (
-              <ProfileDropdown variant={onHero ? "transparent" : "default"} />
-            ) : (
-              <Link
-                to="/login"
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-300 ${
-                  onHero
-                    ? "bg-white/10 border border-white/20 text-white hover:bg-white/20"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90"
-                }`}
-              >
-                <Icon name="LogIn" size={16} />
-                <span className="hidden sm:inline">Войти</span>
-              </Link>
-            )}
-
-            <button
-              className={`md:hidden p-2 rounded-md transition-colors duration-300 ${
-                onHero ? "text-white hover:bg-white/10" : "text-foreground hover:bg-muted"
+      <header className={headerBase}>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <Link
+              to="/"
+              className={`font-bold text-lg tracking-wide transition-colors duration-300 ${
+                onHero ? "text-white" : "text-foreground"
               }`}
-              onClick={() => setMobileOpen((v) => !v)}
             >
-              <Icon name={mobileOpen ? "X" : "Menu"} size={20} />
-            </button>
+              СПАРКОМ
+            </Link>
+
+            <nav className="hidden md:flex items-center gap-1">
+              {NAV_LINKS.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300 ${
+                    onHero
+                      ? isActive(link.to)
+                        ? "bg-white/20 text-white"
+                        : "text-white/80 hover:text-white hover:bg-white/10"
+                      : isActive(link.to)
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+
+            <div className="flex items-center gap-2">
+              {user ? (
+                <ProfileDropdown variant={onHero ? "transparent" : "default"} />
+              ) : (
+                <Link
+                  to="/login"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-300 ${
+                    onHero
+                      ? "bg-white/10 border border-white/20 text-white hover:bg-white/20"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90"
+                  }`}
+                >
+                  <Icon name="LogIn" size={16} />
+                  <span className="hidden sm:inline">Войти</span>
+                </Link>
+              )}
+
+              <button
+                className={`md:hidden p-2 rounded-md transition-colors duration-300 ${
+                  onHero
+                    ? "text-white hover:bg-white/10"
+                    : "text-foreground hover:bg-muted"
+                }`}
+                onClick={() => setMobileOpen((v) => !v)}
+              >
+                <Icon name={mobileOpen ? "X" : "Menu"} size={20} />
+              </button>
+            </div>
           </div>
         </div>
-
-      </div>
-
-    </header>
+      </header>
 
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-[200] bg-foreground/80 backdrop-blur-md flex flex-col px-4 pb-8" style={{position:"fixed",top:0,left:0,right:0,bottom:0}}>
+        <div
+          className="md:hidden fixed inset-0 z-[200] bg-foreground/80 backdrop-blur-md flex flex-col px-4 pb-8"
+          style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
+        >
           <div className="flex items-center justify-between h-16 flex-shrink-0">
-            <span className="font-bold text-lg text-white tracking-wide">СПАРКОМ</span>
+            <span className="font-bold text-lg text-white tracking-wide">
+              СПАРКОМ
+            </span>
             <button
               onClick={() => setMobileOpen(false)}
               className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
