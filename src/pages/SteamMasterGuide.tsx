@@ -24,7 +24,7 @@ const SCHEDULE_STEPS = [
     title: "Создай событие",
     desc: "В разделе «Мои встречи» нажми кнопку «Создать встречу» и заполни карточку.",
     details: [
-      "Укажи название встречи (например, «Банная встреча с парением»)",
+      "Укажи название события (например, «Банная встреча с парением»)",
       "Выбери дату и время начала",
       "Укажи продолжительность (обычно 2–4 часа)",
       "Добавь описание: что будет, что брать с собой",
@@ -104,10 +104,26 @@ const TIPS = [
 ];
 
 const MANAGE_ACTIONS = [
-  { icon: "Pencil", title: "Редактирование", desc: "Изменить дату, время, описание или стоимость можно до начала события. Участники получат уведомление об изменениях." },
-  { icon: "XCircle", title: "Отмена события", desc: "Если нужно отменить — сделай это минимум за 24 часа. Участникам автоматически вернётся оплата." },
-  { icon: "Copy", title: "Дублирование", desc: "Быстро создай новое событие на основе предыдущего — все настройки скопируются." },
-  { icon: "BarChart3", title: "Аналитика", desc: "Смотри статистику: просмотры, записи, средний чек, процент повторных участников." },
+  {
+    icon: "Pencil",
+    title: "Редактирование",
+    desc: "Изменить дату, время, описание или стоимость можно до начала события. Участники получат уведомление об изменениях.",
+  },
+  {
+    icon: "XCircle",
+    title: "Отмена события",
+    desc: "Если нужно отменить — сделай это минимум за 24 часа. Участникам автоматически вернётся оплата.",
+  },
+  {
+    icon: "Copy",
+    title: "Дублирование",
+    desc: "Быстро создай новое событие на основе предыдущего — все настройки скопируются.",
+  },
+  {
+    icon: "BarChart3",
+    title: "Аналитика",
+    desc: "Смотри статистику: просмотры, записи, средний чек, процент повторных участников.",
+  },
 ];
 
 export default function SteamMasterGuide() {
@@ -181,11 +197,7 @@ export default function SteamMasterGuide() {
                 className="p-8 bg-card border-0 shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center mb-5">
-                  <Icon
-                    name={tip.icon}
-                    className="text-green-600"
-                    size={24}
-                  />
+                  <Icon name={tip.icon} className="text-green-600" size={24} />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">{tip.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
@@ -207,11 +219,7 @@ export default function SteamMasterGuide() {
               Мы всегда на связи и готовы помочь с настройкой расписания
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                size="lg"
-                className="rounded-full px-8"
-                asChild
-              >
+              <Button size="lg" className="rounded-full px-8" asChild>
                 <a href="mailto:club@sparcom.ru">
                   <Icon name="Mail" size={18} className="mr-2" />
                   Написать на почту
@@ -238,11 +246,7 @@ export default function SteamMasterGuide() {
   );
 }
 
-function StepCard({
-  step,
-}: {
-  step: (typeof SCHEDULE_STEPS)[number];
-}) {
+function StepCard({ step }: { step: (typeof SCHEDULE_STEPS)[number] }) {
   const [open, setOpen] = useState(false);
 
   return (

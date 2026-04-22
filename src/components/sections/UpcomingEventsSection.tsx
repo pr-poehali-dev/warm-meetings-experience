@@ -100,7 +100,7 @@ export default function UpcomingEventsSection({
                   className="rounded-full text-base px-8"
                 >
                   <Icon name="CalendarDays" className="mr-2" size={20} />
-                  Все встречи и расписание
+                  Все события и расписание
                 </Button>
               </Link>
             </div>
