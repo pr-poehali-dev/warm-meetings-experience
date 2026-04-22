@@ -109,8 +109,7 @@ export default function AdminRoles({ onViewChange }: AdminRolesProps) {
         )}
       </div>
 
-      {tab === "applications" && (
-        <div className="space-y-4">
+      <div className="space-y-4">
           {pendingApps.length > 0 && (
             <Card>
               <CardHeader>
@@ -232,7 +231,6 @@ export default function AdminRoles({ onViewChange }: AdminRolesProps) {
             </Card>
           )}
         </div>
-      )}
 
     </div>
   );
