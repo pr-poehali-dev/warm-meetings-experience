@@ -1,10 +1,22 @@
+import hashlib
 import json
 import os
 import re
+import time
 from datetime import datetime
 
 import psycopg2
 import psycopg2.extras
+
+
+def verify_admin_token(token):
+    if not token:
+        return False
+    admin_pwd = os.environ.get('ADMIN_PASSWORD', '')
+    if not admin_pwd:
+        return False
+    expected = hashlib.sha256(f"{admin_pwd}:{int(time.time() // 86400)}".encode()).hexdigest()
+    return token == expected
 
 
 def get_conn():
@@ -18,7 +30,7 @@ def get_schema():
 CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Session-Token',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Session-Token, X-Admin-Token',
     'Access-Control-Max-Age': '86400'
 }
 
@@ -72,7 +84,9 @@ def handler(event, context):
 
     method = event.get('httpMethod', 'GET')
     params = event.get('queryStringParameters') or {}
-    token = (event.get('headers') or {}).get('X-Session-Token', '')
+    headers_in = event.get('headers') or {}
+    token = headers_in.get('X-Session-Token', '')
+    admin_token = headers_in.get('X-Admin-Token', '')
     raw_body = event.get('body') or '{}'
     body = json.loads(raw_body) if raw_body else {}
 
@@ -142,13 +156,13 @@ def handler(event, context):
 
     # --- Все статьи для админа ---
     if method == 'GET' and action == 'admin':
-        if not token:
+        is_admin = verify_admin_token(admin_token)
+        if not is_admin and token:
+            _, roles = get_user_from_token(cur, schema, token)
+            is_admin = 'admin' in roles
+        if not is_admin:
             conn.close()
             return respond(401, {'error': 'Не авторизован'})
-        user, roles = get_user_from_token(cur, schema, token)
-        if not user or 'admin' not in roles:
-            conn.close()
-            return respond(403, {'error': 'Доступ запрещён'})
 
         status_filter = params.get('status', '')
         where = '1=1'
@@ -296,13 +310,13 @@ def handler(event, context):
 
     # --- Модерация (только админ) ---
     if method == 'PUT' and action == 'moderate':
-        if not token:
+        is_admin = verify_admin_token(admin_token)
+        if not is_admin and token:
+            _, roles = get_user_from_token(cur, schema, token)
+            is_admin = 'admin' in roles
+        if not is_admin:
             conn.close()
             return respond(401, {'error': 'Не авторизован'})
-        user, roles = get_user_from_token(cur, schema, token)
-        if not user or 'admin' not in roles:
-            conn.close()
-            return respond(403, {'error': 'Доступ запрещён'})
 
         article_id = int(body.get('id') or 0)
         decision = body.get('decision', '')  # 'approve' | 'reject'
@@ -336,13 +350,13 @@ def handler(event, context):
 
     # --- Установить popular (только админ) ---
     if method == 'PUT' and action == 'set-popular':
-        if not token:
+        is_admin = verify_admin_token(admin_token)
+        if not is_admin and token:
+            _, roles = get_user_from_token(cur, schema, token)
+            is_admin = 'admin' in roles
+        if not is_admin:
             conn.close()
             return respond(401, {'error': 'Не авторизован'})
-        user, roles = get_user_from_token(cur, schema, token)
-        if not user or 'admin' not in roles:
-            conn.close()
-            return respond(403, {'error': 'Доступ запрещён'})
 
         article_id = int(body.get('id') or 0)
         popular = bool(body.get('popular', False))

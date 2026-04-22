@@ -1,5 +1,16 @@
 import { request, authenticatedRequest } from "@/lib/http";
 
+function adminRequest(url: string, options?: RequestInit) {
+  const adminToken = localStorage.getItem("admin_token") || "";
+  return authenticatedRequest(url, {
+    ...options,
+    headers: {
+      ...options?.headers,
+      "X-Admin-Token": adminToken,
+    },
+  });
+}
+
 const BLOG_API = "https://functions.poehali.dev/c4b3bf91-237b-43c6-be59-4e02e3f0a63e";
 
 export interface ApiBlogArticle {
@@ -41,7 +52,7 @@ export const blogApi = {
     authenticatedRequest(`${BLOG_API}/?action=my`),
 
   getAdmin: (status?: string): Promise<{ articles: ApiBlogArticle[] }> =>
-    authenticatedRequest(
+    adminRequest(
       `${BLOG_API}/?action=admin${status ? `&status=${status}` : ""}`
     ),
 
@@ -69,7 +80,7 @@ export const blogApi = {
     decision: "approve" | "reject",
     reject_reason?: string
   ): Promise<{ article: ApiBlogArticle }> =>
-    authenticatedRequest(`${BLOG_API}/?action=moderate`, {
+    adminRequest(`${BLOG_API}/?action=moderate`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, decision, reject_reason }),
@@ -79,7 +90,7 @@ export const blogApi = {
     id: number,
     popular: boolean
   ): Promise<{ article: ApiBlogArticle }> =>
-    authenticatedRequest(`${BLOG_API}/?action=set-popular`, {
+    adminRequest(`${BLOG_API}/?action=set-popular`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, popular }),
