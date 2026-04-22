@@ -117,16 +117,18 @@ export default function Admin() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex">
       <AdminTabs
         currentView={currentView}
         onViewChange={setCurrentView}
         onNewEvent={resetFormData}
         onLogout={handleLogout}
       />
-      <main className="flex-1 p-4 lg:p-8 overflow-x-hidden">
-        {renderContent()}
-      </main>
+      <div className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 p-4 lg:p-8 overflow-x-hidden">
+          {renderContent()}
+        </main>
+      </div>
     </div>
   );
 }
