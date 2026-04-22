@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
-const UPLOAD_URL = "https://functions.poehali.dev/bc598664-ac65-4fb1-af0a-cba338dcfaf7";
+const UPLOAD_URL =
+  "https://functions.poehali.dev/bc598664-ac65-4fb1-af0a-cba338dcfaf7";
 
 const ASPECT_W = 16;
 const ASPECT_H = 9;
@@ -19,7 +20,10 @@ interface ImageUploadProps {
   onImageUploaded: (url: string) => void;
 }
 
-const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => {
+const ImageUpload = ({
+  currentImageUrl,
+  onImageUploaded,
+}: ImageUploadProps) => {
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(currentImageUrl);
   const [cropMode, setCropMode] = useState(false);
@@ -32,7 +36,6 @@ const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => 
   const imgRef = useRef<HTMLImageElement | null>(null);
   const { toast } = useToast();
 
-
   const drawCrop = useCallback(() => {
     const canvas = canvasRef.current;
     const img = imgRef.current;
@@ -42,7 +45,7 @@ const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => 
     if (!container) return;
 
     const cw = container.clientWidth;
-    const ch = Math.round(cw * ASPECT_H / ASPECT_W);
+    const ch = Math.round((cw * ASPECT_H) / ASPECT_W);
     canvas.width = cw;
     canvas.height = ch;
 
@@ -71,7 +74,7 @@ const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => 
     ctx.fillRect(0, 0, cw, ch);
 
     const cropW = cw * (crop.size / 100);
-    const cropH = Math.round(cropW * ASPECT_H / ASPECT_W);
+    const cropH = Math.round((cropW * ASPECT_H) / ASPECT_W);
     const cx = (cw - cropW) / 2;
     const cy = (ch - cropH) / 2;
 
@@ -123,7 +126,7 @@ const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => 
     if (!container) return;
 
     const cw = container.clientWidth;
-    const ch = Math.round(cw * ASPECT_H / ASPECT_W);
+    const ch = Math.round((cw * ASPECT_H) / ASPECT_W);
 
     const imgAspect = img.naturalWidth / img.naturalHeight;
     const canvasAspect = cw / ch;
@@ -142,7 +145,7 @@ const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => 
     }
 
     const cropW = cw * (crop.size / 100);
-    const cropH = Math.round(cropW * ASPECT_H / ASPECT_W);
+    const cropH = Math.round((cropW * ASPECT_H) / ASPECT_W);
     const cx = (cw - cropW) / 2;
     const cy = (ch - cropH) / 2;
 
@@ -184,7 +187,11 @@ const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => 
 
       toast({ title: "Готово!", description: "Изображение загружено" });
     } catch {
-      toast({ title: "Ошибка", description: "Не удалось загрузить изображение", variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: "Не удалось загрузить изображение",
+        variant: "destructive",
+      });
       setPreviewUrl(currentImageUrl);
     } finally {
       setUploading(false);
@@ -196,12 +203,20 @@ const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => 
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      toast({ title: "Ошибка", description: "Выберите изображение", variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: "Выберите изображение",
+        variant: "destructive",
+      });
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "Ошибка", description: "Размер файла не должен превышать 10 МБ", variant: "destructive" });
+      toast({
+        title: "Ошибка",
+        description: "Размер файла не должен превышать 10 МБ",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -223,7 +238,7 @@ const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => 
     if (!dragging) return;
     const dx = e.clientX - dragStart.x;
     const dy = e.clientY - dragStart.y;
-    setCrop(c => ({ ...c, x: dragStart.cx + dx, y: dragStart.cy + dy }));
+    setCrop((c) => ({ ...c, x: dragStart.cx + dx, y: dragStart.cy + dy }));
   };
 
   const handleMouseUp = () => setDragging(false);
@@ -236,11 +251,13 @@ const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => 
 
   return (
     <div className="space-y-4">
-      <Label>Изображение встречи</Label>
+      <Label>Изображение событие</Label>
 
       {cropMode && originalImage ? (
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">Перетащите изображение, чтобы выбрать нужный фрагмент (16:9)</p>
+          <p className="text-sm text-muted-foreground">
+            Перетащите изображение, чтобы выбрать нужный фрагмент (16:9)
+          </p>
           <div
             ref={containerRef}
             className="w-full cursor-move select-none"
@@ -249,16 +266,24 @@ const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => 
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
           >
-            <canvas ref={canvasRef} className="w-full rounded-lg" style={{ display: "block" }} />
+            <canvas
+              ref={canvasRef}
+              className="w-full rounded-lg"
+              style={{ display: "block" }}
+            />
           </div>
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Масштаб кадрирования</Label>
+            <Label className="text-xs text-muted-foreground">
+              Масштаб кадрирования
+            </Label>
             <input
               type="range"
               min={30}
               max={100}
               value={crop.size}
-              onChange={e => setCrop(c => ({ ...c, size: Number(e.target.value) }))}
+              onChange={(e) =>
+                setCrop((c) => ({ ...c, size: Number(e.target.value) }))
+              }
               className="w-full"
             />
           </div>
@@ -267,7 +292,11 @@ const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => 
               <Icon name="Check" size={16} className="mr-2" />
               {uploading ? "Загрузка..." : "Применить"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setCropMode(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCropMode(false)}
+            >
               Отмена
             </Button>
           </div>
@@ -297,11 +326,21 @@ const ImageUpload = ({ currentImageUrl, onImageUploaded }: ImageUploadProps) => 
 
             {previewUrl && (
               <>
-                <Button type="button" variant="outline" onClick={() => openCrop(previewUrl)} disabled={uploading}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => openCrop(previewUrl)}
+                  disabled={uploading}
+                >
                   <Icon name="Crop" size={16} className="mr-2" />
                   Обрезать
                 </Button>
-                <Button type="button" variant="outline" onClick={handleRemove} disabled={uploading}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleRemove}
+                  disabled={uploading}
+                >
                   <Icon name="Trash2" size={16} className="mr-2" />
                   Удалить
                 </Button>

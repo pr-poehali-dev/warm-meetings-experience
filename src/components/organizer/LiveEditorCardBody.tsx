@@ -3,13 +3,24 @@ import { OrgEvent, PricingTier } from "@/lib/organizer-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
 import { format, parseISO, isValid } from "date-fns";
 import { ru } from "date-fns/locale";
 import PricingTiersEditor from "@/components/admin/PricingTiersEditor";
 import CoOrganizersPanel from "./CoOrganizersPanel";
-import { InlineText, InlineList, InlinePricingLines, spotsColor } from "./LiveEditorInlineFields";
+import {
+  InlineText,
+  InlineList,
+  InlinePricingLines,
+  spotsColor,
+} from "./LiveEditorInlineFields";
 
 interface Props {
   fd: OrgEvent;
@@ -25,17 +36,19 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
     try {
       const d = parseISO(fd.event_date);
       if (isValid(d)) dateObj = d;
-    } catch (_) { /* ignore */ }
+    } catch (_) {
+      /* ignore */
+    }
   }
 
   const spotsLeft = fd.spots_left ?? 0;
   const totalSpots = fd.total_spots ?? 0;
   const priceDisplay =
-    fd.price_label || (fd.price_amount ? `${fd.price_amount.toLocaleString("ru-RU")} ₽` : "");
+    fd.price_label ||
+    (fd.price_amount ? `${fd.price_amount.toLocaleString("ru-RU")} ₽` : "");
 
   return (
     <div className="border border-t-0 rounded-b-2xl bg-card px-5 pt-4 pb-5 space-y-4 mb-4">
-
       {/* Date & time row */}
       <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
         <label className="flex items-center gap-1.5 cursor-pointer group">
@@ -74,7 +87,7 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
       <InlineText
         value={fd.title}
         onChange={(v) => set({ title: v })}
-        placeholder="Название встречи"
+        placeholder="Название события"
         className="text-xl font-bold leading-snug"
         maxLength={255}
       />
@@ -92,7 +105,11 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
 
       {/* Location */}
       <div className="flex items-start gap-2">
-        <Icon name="MapPin" size={14} className="text-muted-foreground mt-0.5 flex-shrink-0" />
+        <Icon
+          name="MapPin"
+          size={14}
+          className="text-muted-foreground mt-0.5 flex-shrink-0"
+        />
         <div className="flex-1 space-y-1">
           <InlineText
             value={fd.bath_name || ""}
@@ -121,19 +138,24 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
             value={totalSpots || ""}
             onChange={(e) => {
               const v = parseInt(e.target.value) || 0;
-              set({ total_spots: v, spots_left: Math.min(fd.spots_left || v, v) });
+              set({
+                total_spots: v,
+                spots_left: Math.min(fd.spots_left || v, v),
+              });
             }}
             className="w-14 text-sm font-medium bg-transparent border-b border-dashed border-muted-foreground/30 outline-none text-center hover:border-primary focus:border-primary transition-colors"
             placeholder="∞"
           />
         </div>
         {totalSpots > 0 && (
-          <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${spotsColor(spotsLeft)}`}>
+          <span
+            className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${spotsColor(spotsLeft)}`}
+          >
             {spotsLeft === 0
               ? "Мест нет"
               : spotsLeft <= 2
-              ? `Последние ${spotsLeft}`
-              : `Осталось ${spotsLeft}`}
+                ? `Последние ${spotsLeft}`
+                : `Осталось ${spotsLeft}`}
           </span>
         )}
       </div>
@@ -198,7 +220,9 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
                 <button
                   key={pt}
                   type="button"
-                  onClick={() => set({ pricing_type: pt as "fixed" | "dynamic" })}
+                  onClick={() =>
+                    set({ pricing_type: pt as "fixed" | "dynamic" })
+                  }
                   className={`flex-1 py-2 px-3 rounded border text-xs font-medium transition-colors ${
                     (fd.pricing_type || "fixed") === pt
                       ? "bg-primary text-primary-foreground border-primary"
@@ -223,17 +247,23 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
                 />
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground block mb-1">Цена, ₽ (число)</label>
+                    <label className="text-xs text-muted-foreground block mb-1">
+                      Цена, ₽ (число)
+                    </label>
                     <Input
                       type="number"
                       value={fd.price_amount || ""}
-                      onChange={(e) => set({ price_amount: parseInt(e.target.value) || 0 })}
+                      onChange={(e) =>
+                        set({ price_amount: parseInt(e.target.value) || 0 })
+                      }
                       className="h-8 text-sm"
                       placeholder="5000"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground block mb-1">Отображение цены</label>
+                    <label className="text-xs text-muted-foreground block mb-1">
+                      Отображение цены
+                    </label>
                     <Input
                       value={fd.price_label || ""}
                       onChange={(e) => set({ price_label: e.target.value })}
@@ -246,7 +276,9 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
             ) : (
               <PricingTiersEditor
                 tiers={fd.pricing_tiers || []}
-                onChange={(tiers: PricingTier[]) => set({ pricing_tiers: tiers })}
+                onChange={(tiers: PricingTier[]) =>
+                  set({ pricing_tiers: tiers })
+                }
               />
             )}
           </div>
@@ -256,7 +288,10 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
         {fd.pricing_type === "dynamic" && fd.pricing_tiers?.length ? (
           <div className="space-y-1">
             {fd.pricing_tiers.map((tier, i) => (
-              <div key={i} className="flex items-center justify-between text-sm">
+              <div
+                key={i}
+                className="flex items-center justify-between text-sm"
+              >
                 <span className="text-muted-foreground">{tier.label}</span>
                 <span className="font-semibold text-accent">
                   {tier.price_amount.toLocaleString("ru-RU")} ₽
@@ -267,7 +302,9 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
         ) : (
           <div>
             {priceDisplay ? (
-              <div className="text-2xl font-bold text-accent">{priceDisplay}</div>
+              <div className="text-2xl font-bold text-accent">
+                {priceDisplay}
+              </div>
             ) : (
               <button
                 type="button"
@@ -295,13 +332,17 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
 
         <div
           className={`flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${
-            fd.is_visible ? "border-green-200 bg-green-50" : "border-border bg-muted/30"
+            fd.is_visible
+              ? "border-green-200 bg-green-50"
+              : "border-border bg-muted/30"
           }`}
         >
           <div className="flex items-center gap-3">
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                fd.is_visible ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground"
+                fd.is_visible
+                  ? "bg-green-100 text-green-600"
+                  : "bg-muted text-muted-foreground"
               }`}
             >
               <Icon name={fd.is_visible ? "Eye" : "EyeOff"} size={16} />
@@ -311,7 +352,9 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
                 {fd.is_visible ? "Опубликовано" : "Черновик"}
               </p>
               <p className="text-xs text-muted-foreground">
-                {fd.is_visible ? "Видно всем посетителям" : "Только вы видите встречу"}
+                {fd.is_visible
+                  ? "Видно всем посетителям"
+                  : "Только вы видите встречу"}
               </p>
             </div>
           </div>
@@ -330,11 +373,15 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
               className="w-4 h-4 rounded"
             />
             <span className="text-sm">Избранное</span>
-            <span className="text-xs text-muted-foreground">— выделить на главной</span>
+            <span className="text-xs text-muted-foreground">
+              — выделить на главной
+            </span>
           </label>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Загруженность:</span>
+            <span className="text-sm text-muted-foreground">
+              Загруженность:
+            </span>
             <Select
               value={fd.occupancy || "low"}
               onValueChange={(v) => set({ occupancy: v })}

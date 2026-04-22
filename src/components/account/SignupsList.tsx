@@ -10,7 +10,10 @@ interface SignupsListProps {
   signupsLoading: boolean;
 }
 
-export default function SignupsList({ signups, signupsLoading }: SignupsListProps) {
+export default function SignupsList({
+  signups,
+  signupsLoading,
+}: SignupsListProps) {
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader>
@@ -19,15 +22,25 @@ export default function SignupsList({ signups, signupsLoading }: SignupsListProp
       <CardContent>
         {signupsLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Icon name="Loader2" size={24} className="animate-spin text-muted-foreground" />
+            <Icon
+              name="Loader2"
+              size={24}
+              className="animate-spin text-muted-foreground"
+            />
           </div>
         ) : signups.length === 0 ? (
           <div className="text-center py-8">
-            <Icon name="Calendar" size={40} className="mx-auto text-muted-foreground/40 mb-3" />
-            <p className="text-muted-foreground">У вас пока нет записей на встречи</p>
+            <Icon
+              name="Calendar"
+              size={40}
+              className="mx-auto text-muted-foreground/40 mb-3"
+            />
+            <p className="text-muted-foreground">
+              У вас пока нет записей на события
+            </p>
             <Link to="/events">
               <Button variant="outline" size="sm" className="mt-4">
-                Посмотреть встречи
+                Посмотреть события
               </Button>
             </Link>
           </div>
@@ -49,18 +62,28 @@ export default function SignupsList({ signups, signupsLoading }: SignupsListProp
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-medium truncate">{signup.event_title}</h3>
+                      <h3 className="font-medium truncate">
+                        {signup.event_title}
+                      </h3>
                       <StatusBadge status={signup.status} />
                     </div>
                     <div className="mt-1 space-y-1 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1.5">
                         <Icon name="Calendar" size={14} />
-                        <span>{signup.event_date}, {signup.start_time} — {signup.end_time}</span>
+                        <span>
+                          {signup.event_date}, {signup.start_time} —{" "}
+                          {signup.end_time}
+                        </span>
                       </div>
                       {signup.bath_name && (
                         <div className="flex items-center gap-1.5">
                           <Icon name="MapPin" size={14} />
-                          <span className="truncate">{signup.bath_name}{signup.bath_address ? `, ${signup.bath_address}` : ""}</span>
+                          <span className="truncate">
+                            {signup.bath_name}
+                            {signup.bath_address
+                              ? `, ${signup.bath_address}`
+                              : ""}
+                          </span>
                         </div>
                       )}
                     </div>

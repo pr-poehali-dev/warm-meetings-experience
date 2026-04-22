@@ -92,7 +92,9 @@ export default function RepeatEventDialog({
                 >
                   -
                 </button>
-                <span className="text-lg font-semibold w-8 text-center">{count}</span>
+                <span className="text-lg font-semibold w-8 text-center">
+                  {count}
+                </span>
                 <button
                   onClick={() => setCount((c) => Math.min(12, c + 1))}
                   className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50"
@@ -141,7 +143,7 @@ export default function RepeatEventDialog({
           {dates.length > 0 && mode !== "custom" && (
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-xs font-medium text-gray-500 uppercase mb-2">
-                Будут созданы встречи на:
+                Будут созданы события на:
               </p>
               <div className="flex flex-wrap gap-2">
                 {dates.map((d) => (

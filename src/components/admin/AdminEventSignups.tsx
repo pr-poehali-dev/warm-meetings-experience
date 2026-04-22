@@ -1,8 +1,20 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,14 +54,16 @@ const AdminEventSignups = () => {
     }
   };
 
-  useEffect(() => { fetchSignups(); }, []);
+  useEffect(() => {
+    fetchSignups();
+  }, []);
 
   const handleStatusChange = async (id: number, status: string) => {
     try {
       await signupsApi.updateStatus(id, status);
       toast({ title: "Статус обновлён" });
       fetchSignups();
-      if (selected?.id === id) setSelected((s) => s ? { ...s, status } : s);
+      if (selected?.id === id) setSelected((s) => (s ? { ...s, status } : s));
     } catch {
       toast({ title: "Ошибка обновления", variant: "destructive" });
     }
@@ -105,12 +119,18 @@ const AdminEventSignups = () => {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Заявки на встречи</h1>
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">
+        Заявки на событие
+      </h1>
 
       {signups.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Icon name="Inbox" size={48} className="text-gray-300 mx-auto mb-4" />
+            <Icon
+              name="Inbox"
+              size={48}
+              className="text-gray-300 mx-auto mb-4"
+            />
             <p className="text-gray-500">Заявок пока нет</p>
           </CardContent>
         </Card>
@@ -141,11 +161,19 @@ const AdminEventSignups = () => {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                  <span className={`text-xs px-2 py-1 rounded-full ${STATUS_COLORS[signup.status] || "bg-gray-100 text-gray-800"}`}>
+                <div
+                  className="flex items-center gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full ${STATUS_COLORS[signup.status] || "bg-gray-100 text-gray-800"}`}
+                  >
                     {STATUS_LABELS[signup.status] || signup.status}
                   </span>
-                  <Select value={signup.status} onValueChange={(v) => handleStatusChange(signup.id, v)}>
+                  <Select
+                    value={signup.status}
+                    onValueChange={(v) => handleStatusChange(signup.id, v)}
+                  >
                     <SelectTrigger className="w-[140px] h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
@@ -162,7 +190,16 @@ const AdminEventSignups = () => {
         </div>
       )}
 
-      <Dialog open={!!selected} onOpenChange={(open) => { if (!open) { setSelected(null); setEditing(false); setDraft({}); } }}>
+      <Dialog
+        open={!!selected}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelected(null);
+            setEditing(false);
+            setDraft({});
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -180,14 +217,18 @@ const AdminEventSignups = () => {
                       <Label>Имя</Label>
                       <Input
                         value={draft.name ?? ""}
-                        onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+                        onChange={(e) =>
+                          setDraft((d) => ({ ...d, name: e.target.value }))
+                        }
                       />
                     </div>
                     <div>
                       <Label>Телефон</Label>
                       <Input
                         value={draft.phone ?? ""}
-                        onChange={(e) => setDraft((d) => ({ ...d, phone: e.target.value }))}
+                        onChange={(e) =>
+                          setDraft((d) => ({ ...d, phone: e.target.value }))
+                        }
                       />
                     </div>
                     <div>
@@ -195,18 +236,27 @@ const AdminEventSignups = () => {
                       <Input
                         value={draft.telegram ?? ""}
                         placeholder="@username"
-                        onChange={(e) => setDraft((d) => ({ ...d, telegram: e.target.value }))}
+                        onChange={(e) =>
+                          setDraft((d) => ({ ...d, telegram: e.target.value }))
+                        }
                       />
                     </div>
                     <div>
                       <Label>Статус</Label>
-                      <Select value={draft.status ?? selected.status} onValueChange={(v) => setDraft((d) => ({ ...d, status: v }))}>
+                      <Select
+                        value={draft.status ?? selected.status}
+                        onValueChange={(v) =>
+                          setDraft((d) => ({ ...d, status: v }))
+                        }
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="new">Новая</SelectItem>
-                          <SelectItem value="confirmed">Подтверждена</SelectItem>
+                          <SelectItem value="confirmed">
+                            Подтверждена
+                          </SelectItem>
                           <SelectItem value="cancelled">Отменена</SelectItem>
                         </SelectContent>
                       </Select>
@@ -217,7 +267,9 @@ const AdminEventSignups = () => {
                         value={draft.comment ?? ""}
                         rows={3}
                         placeholder="Заметки по заявке..."
-                        onChange={(e) => setDraft((d) => ({ ...d, comment: e.target.value }))}
+                        onChange={(e) =>
+                          setDraft((d) => ({ ...d, comment: e.target.value }))
+                        }
                       />
                     </div>
                   </div>
@@ -229,14 +281,20 @@ const AdminEventSignups = () => {
                     <span className="font-medium">{selected.name}</span>
 
                     <span className="text-gray-500">Телефон</span>
-                    <a href={`tel:${selected.phone}`} className="font-medium text-blue-600 hover:underline">
+                    <a
+                      href={`tel:${selected.phone}`}
+                      className="font-medium text-blue-600 hover:underline"
+                    >
                       {selected.phone}
                     </a>
 
                     {selected.email && (
                       <>
                         <span className="text-gray-500">Email</span>
-                        <a href={`mailto:${selected.email}`} className="font-medium text-blue-600 hover:underline truncate">
+                        <a
+                          href={`mailto:${selected.email}`}
+                          className="font-medium text-blue-600 hover:underline truncate"
+                        >
                           {selected.email}
                         </a>
                       </>
@@ -271,17 +329,23 @@ const AdminEventSignups = () => {
                     )}
 
                     <span className="text-gray-500">Статус</span>
-                    <span className={`inline-flex w-fit text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[selected.status] || "bg-gray-100 text-gray-800"}`}>
+                    <span
+                      className={`inline-flex w-fit text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[selected.status] || "bg-gray-100 text-gray-800"}`}
+                    >
                       {STATUS_LABELS[selected.status] || selected.status}
                     </span>
 
                     <span className="text-gray-500">Создана</span>
-                    <span>{new Date(selected.created_at).toLocaleString("ru-RU")}</span>
+                    <span>
+                      {new Date(selected.created_at).toLocaleString("ru-RU")}
+                    </span>
 
                     {selected.comment && (
                       <>
                         <span className="text-gray-500">Комментарий</span>
-                        <span className="text-amber-700">{selected.comment}</span>
+                        <span className="text-amber-700">
+                          {selected.comment}
+                        </span>
                       </>
                     )}
                   </div>
@@ -293,14 +357,30 @@ const AdminEventSignups = () => {
           <DialogFooter className="gap-2">
             {editing ? (
               <>
-                <Button variant="outline" onClick={cancelEdit} disabled={saving}>Отмена</Button>
+                <Button
+                  variant="outline"
+                  onClick={cancelEdit}
+                  disabled={saving}
+                >
+                  Отмена
+                </Button>
                 <Button onClick={saveEdit} disabled={saving}>
-                  {saving && <Icon name="Loader2" size={14} className="animate-spin mr-1" />}
+                  {saving && (
+                    <Icon
+                      name="Loader2"
+                      size={14}
+                      className="animate-spin mr-1"
+                    />
+                  )}
                   Сохранить
                 </Button>
               </>
             ) : (
-              <Button variant="outline" onClick={startEdit} className="w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={startEdit}
+                className="w-full sm:w-auto"
+              >
                 <Icon name="Pencil" size={14} className="mr-1.5" />
                 Редактировать
               </Button>

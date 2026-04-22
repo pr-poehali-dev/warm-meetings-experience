@@ -34,11 +34,11 @@ export default function LiveEventEditor({
   const handlePublish = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!fd.title?.trim()) {
-      toast({ title: "Укажите название встречи", variant: "destructive" });
+      toast({ title: "Укажите название события", variant: "destructive" });
       return;
     }
     if (!fd.event_date) {
-      toast({ title: "Укажите дату встречи", variant: "destructive" });
+      toast({ title: "Укажите дату события", variant: "destructive" });
       return;
     }
     set({ is_visible: true });
@@ -79,14 +79,23 @@ export default function LiveEventEditor({
       {/* Sticky bottom action bar */}
       <div className="fixed bottom-0 left-0 right-0 z-20 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center justify-end gap-3">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={loading}
+          >
             Отмена
           </Button>
           {isEditing ? (
             <Button type="submit" disabled={loading}>
               {loading ? (
                 <>
-                  <Icon name="Loader2" size={16} className="animate-spin mr-2" />
+                  <Icon
+                    name="Loader2"
+                    size={16}
+                    className="animate-spin mr-2"
+                  />
                   Сохранение...
                 </>
               ) : (
@@ -103,7 +112,11 @@ export default function LiveEventEditor({
               >
                 {loading ? (
                   <>
-                    <Icon name="Loader2" size={16} className="animate-spin mr-2" />
+                    <Icon
+                      name="Loader2"
+                      size={16}
+                      className="animate-spin mr-2"
+                    />
                     Сохранение...
                   </>
                 ) : (
@@ -116,7 +129,11 @@ export default function LiveEventEditor({
               <Button type="button" onClick={handlePublish} disabled={loading}>
                 {loading ? (
                   <>
-                    <Icon name="Loader2" size={16} className="animate-spin mr-2" />
+                    <Icon
+                      name="Loader2"
+                      size={16}
+                      className="animate-spin mr-2"
+                    />
                     Публикация...
                   </>
                 ) : (

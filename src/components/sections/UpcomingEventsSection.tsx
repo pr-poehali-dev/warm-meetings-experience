@@ -113,10 +113,10 @@ export default function UpcomingEventsSection({
               className="text-muted-foreground/40 mx-auto mb-4"
             />
             <h3 className="text-xl font-semibold mb-2">
-              Скоро здесь появятся встречи
+              Скоро здесь появятся события
             </h3>
             <p className="text-muted-foreground mb-6">
-              Мы готовим новые встречи. Подпишитесь на Telegram-канал, чтобы не
+              Мы готовим новые события. Подпишитесь на Telegram-канал, чтобы не
               пропустить анонс.
             </p>
             <Button
