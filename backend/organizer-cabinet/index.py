@@ -485,7 +485,9 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
 
         if action == 'approve':
             cur.execute(f"UPDATE {schema}.events SET status = 'published', is_visible = true WHERE id = {event_id}")
-            trigger_tg_publish(event_id, ev['organizer_id'])
+            publish_to_telegram = body.get('publish_to_telegram', True)
+            if publish_to_telegram:
+                trigger_tg_publish(event_id, ev['organizer_id'])
         else:
             cur.execute(f"UPDATE {schema}.events SET status = 'rejected', is_visible = false WHERE id = {event_id}")
 

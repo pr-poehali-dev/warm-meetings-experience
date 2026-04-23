@@ -208,10 +208,10 @@ export const organizerApi = {
   getPendingModeration: (): Promise<OrgEvent[]> =>
     authenticatedRequest(`${BASE}/?resource=moderation`),
 
-  moderateEvent: (eventId: number, action: 'approve' | 'reject', reason?: string): Promise<{ ok: boolean; action: string }> =>
+  moderateEvent: (eventId: number, action: 'approve' | 'reject', reason?: string, publishToTelegram?: boolean): Promise<{ ok: boolean; action: string }> =>
     authenticatedRequest(`${BASE}/?resource=moderation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_id: eventId, action, reason: reason || "" }),
+      body: JSON.stringify({ event_id: eventId, action, reason: reason || "", publish_to_telegram: publishToTelegram ?? true }),
     }),
 };
