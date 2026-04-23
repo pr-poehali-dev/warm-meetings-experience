@@ -194,7 +194,7 @@ export const organizerApi = {
     }),
 
   getTelegramCode: (): Promise<{ code: string }> => {
-    const token = localStorage.getItem("session_token") || "";
+    const token = localStorage.getItem("user_token") || "";
     return fetch(`https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1/?action=generate_code&token=${encodeURIComponent(token)}`)
       .then(r => r.json())
       .then(data => {
