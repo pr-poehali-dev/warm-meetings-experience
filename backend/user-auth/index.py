@@ -435,11 +435,11 @@ def handle_vk_session(body, ip=None, user_agent=''):
     user = None
     if vk_id:
         safe_vk_id = vk_id.replace("'", "''")
-        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, password_hash, created_at, is_active FROM {schema}.users WHERE vk_id = '{safe_vk_id}'")
+        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, password_hash, email_verified, created_at, is_active FROM {schema}.users WHERE vk_id = '{safe_vk_id}'")
         user = cur.fetchone()
 
     if not user and user_id:
-        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, password_hash, created_at, is_active FROM {schema}.users WHERE id = {int(user_id)}")
+        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, password_hash, email_verified, created_at, is_active FROM {schema}.users WHERE id = {int(user_id)}")
         user = cur.fetchone()
 
     if not user:
@@ -463,6 +463,7 @@ def handle_vk_session(body, ip=None, user_agent=''):
 
     user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'created_at']}
     user_data['has_password'] = bool(user.get('password_hash'))
+    user_data['email_verified'] = bool(user.get('email_verified'))
     return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
 
 
@@ -480,11 +481,11 @@ def handle_yandex_session(body, ip=None, user_agent=''):
     user = None
     if yandex_id:
         safe_yandex_id = yandex_id.replace("'", "''")
-        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, yandex_id, password_hash, created_at, is_active FROM {schema}.users WHERE yandex_id = '{safe_yandex_id}'")
+        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, yandex_id, password_hash, email_verified, created_at, is_active FROM {schema}.users WHERE yandex_id = '{safe_yandex_id}'")
         user = cur.fetchone()
 
     if not user and user_id:
-        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, yandex_id, password_hash, created_at, is_active FROM {schema}.users WHERE id = {int(user_id)}")
+        cur.execute(f"SELECT id, email, name, phone, telegram, vk_id, yandex_id, password_hash, email_verified, created_at, is_active FROM {schema}.users WHERE id = {int(user_id)}")
         user = cur.fetchone()
 
     if not user:
@@ -508,6 +509,7 @@ def handle_yandex_session(body, ip=None, user_agent=''):
 
     user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'yandex_id', 'created_at']}
     user_data['has_password'] = bool(user.get('password_hash'))
+    user_data['email_verified'] = bool(user.get('email_verified'))
     return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
 
 
