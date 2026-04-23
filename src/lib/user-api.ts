@@ -2,6 +2,7 @@ import { request as authRequest, authenticatedRequest as profileRequest } from "
 
 const USER_AUTH_API = "https://functions.poehali.dev/d5d9f568-ba92-4605-9b95-646ba409fd8d";
 const USER_PROFILE_API = "https://functions.poehali.dev/5322ffd0-7079-40ce-9d4e-8d7fee29624c";
+const VK_NOTIFY_API = "https://functions.poehali.dev/d80d1556-27a6-4477-b864-c621e0b9eaf7";
 
 export interface User {
   id: number;
@@ -137,6 +138,23 @@ export interface Login2FAStatus {
   yandex_linked: boolean;
   totp_enabled: boolean;
 }
+
+export interface NotificationPreferences {
+  notify_service: boolean;
+  notify_reminders: boolean;
+  notify_marketing: boolean;
+}
+
+export const vkNotifyApi = {
+  getPreferences: (): Promise<{ vk_notify_allowed: boolean; vk_id: string | null; preferences: Record<string, NotificationPreferences> }> =>
+    profileRequest(`${VK_NOTIFY_API}/?action=preferences`),
+
+  allowNotify: (allow: boolean): Promise<{ ok: boolean; vk_notify_allowed: boolean }> =>
+    profileRequest(`${VK_NOTIFY_API}/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "allow_notify", allow }) }),
+
+  setPreferences: (prefs: { channel: string } & NotificationPreferences): Promise<{ ok: boolean }> =>
+    profileRequest(`${VK_NOTIFY_API}/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "set_preferences", ...prefs }) }),
+};
 
 export const loginSecurityApi = {
   get: (): Promise<Login2FAStatus> =>

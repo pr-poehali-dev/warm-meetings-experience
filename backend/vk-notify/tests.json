@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "name": "Send without admin password",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "send", "admin_password": "", "message": "test"},
+      "expectedStatus": 403
+    },
+    {
+      "name": "Unknown action",
+      "method": "GET",
+      "path": "/?action=unknown",
+      "expectedStatus": 400
+    }
+  ]
+}

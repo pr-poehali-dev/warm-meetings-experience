@@ -1,4 +1,5 @@
 {
+  "vk-notify": "https://functions.poehali.dev/d80d1556-27a6-4477-b864-c621e0b9eaf7",
   "yandex-auth-yandex-auth": "https://functions.poehali.dev/1e5f15d8-b432-4341-9a18-4c408d3d80aa",
   "vk-auth-vk-auth": "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39",
   "telegram-bot": "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1",
