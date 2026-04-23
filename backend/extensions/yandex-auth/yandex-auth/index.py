@@ -315,7 +315,7 @@ def handle_callback(event: dict, origin: str) -> dict:
                     cur.execute(
                         f"""UPDATE {S}users
                             SET yandex_id = %s, avatar_url = COALESCE(avatar_url, %s),
-                                last_login_at = %s, updated_at = %s
+                                last_login_at = %s, updated_at = %s, email_verified = TRUE
                             WHERE id = %s""",
                         (yandex_id, picture, now, now, user_id)
                     )
