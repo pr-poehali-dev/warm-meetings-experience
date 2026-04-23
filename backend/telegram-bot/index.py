@@ -163,9 +163,16 @@ def process_update(update):
 
     chat = message.get('chat', {})
     chat_id = chat.get('id')
+    chat_type = chat.get('type', 'private')
     text = (message.get('text') or '').strip()
     tg_user = message.get('from', {})
     tg_user_id = tg_user.get('id')
+
+    # В группах и каналах бот молчит — только публикует события с сайта
+    if chat_type in ('group', 'supergroup', 'channel'):
+        if message.get('forward_from_chat'):
+            handle_forwarded_message(message, tg_user_id)
+        return
 
     if message.get('forward_from_chat'):
         handle_forwarded_message(message, tg_user_id)
