@@ -7,7 +7,6 @@ import Icon from "@/components/ui/icon";
 import { User, userProfileApi } from "@/lib/user-api";
 import VkLinkSection from "@/components/account/VkLinkSection";
 import YandexLinkSection from "@/components/account/YandexLinkSection";
-import VkNotifySection from "@/components/account/VkNotifySection";
 import { toast } from "sonner";
 
 function maskEmail(email: string): string {
@@ -257,7 +256,6 @@ export default function ProfileCard({
                 onLinked={onVkLinked || (() => {})}
                 onUnlinked={onVkUnlinked || (() => {})}
               />
-              <VkNotifySection vkId={user.vk_id} />
               <YandexLinkSection
                 yandexId={user.yandex_id}
                 hasPassword={user.has_password !== false}

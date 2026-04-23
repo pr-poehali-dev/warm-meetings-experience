@@ -139,21 +139,41 @@ export interface Login2FAStatus {
   totp_enabled: boolean;
 }
 
-export interface NotificationPreferences {
+export interface ChannelPrefs {
   notify_service: boolean;
   notify_reminders: boolean;
   notify_marketing: boolean;
+  notify_booking: boolean;
+  notify_urgent: boolean;
 }
 
-export const vkNotifyApi = {
-  getPreferences: (): Promise<{ vk_notify_allowed: boolean; vk_id: string | null; preferences: Record<string, NotificationPreferences> }> =>
-    profileRequest(`${VK_NOTIFY_API}/?action=preferences`),
+export interface ChannelInfo {
+  connected: boolean;
+  active: boolean;
+  allowed?: boolean;
+  value?: string | null;
+  prefs: ChannelPrefs;
+}
 
-  allowNotify: (allow: boolean): Promise<{ ok: boolean; vk_notify_allowed: boolean }> =>
-    profileRequest(`${VK_NOTIFY_API}/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "allow_notify", allow }) }),
+export interface NotificationChannels {
+  email: ChannelInfo;
+  vk: ChannelInfo;
+  telegram: ChannelInfo;
+  sms: ChannelInfo;
+}
 
-  setPreferences: (prefs: { channel: string } & NotificationPreferences): Promise<{ ok: boolean }> =>
-    profileRequest(`${VK_NOTIFY_API}/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "set_preferences", ...prefs }) }),
+export const notificationsApi = {
+  getChannels: (): Promise<{ channels: NotificationChannels }> =>
+    profileRequest(`${VK_NOTIFY_API}/?action=channels`),
+
+  setChannel: (channel: string, active: boolean): Promise<{ ok: boolean }> =>
+    profileRequest(`${VK_NOTIFY_API}/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "set_channel", channel, active }) }),
+
+  setPrefs: (channel: string, prefs: ChannelPrefs): Promise<{ ok: boolean }> =>
+    profileRequest(`${VK_NOTIFY_API}/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "set_prefs", channel, ...prefs }) }),
+
+  allowVk: (allow: boolean): Promise<{ ok: boolean }> =>
+    profileRequest(`${VK_NOTIFY_API}/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "allow_vk", allow }) }),
 };
 
 export const loginSecurityApi = {

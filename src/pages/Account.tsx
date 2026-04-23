@@ -13,6 +13,7 @@ import LoginSecuritySection from "@/components/account/LoginSecuritySection";
 import MyDataExport from "@/components/account/MyDataExport";
 import MyArticles from "@/components/account/MyArticles";
 import MyCalendar from "@/components/account/MyCalendar";
+import NotificationsSection from "@/components/account/NotificationsSection";
 
 type Tab = "main" | "articles" | "calendar" | "my-data";
 
@@ -112,6 +113,7 @@ export default function Account() {
               onYandexLinked={(yandexId) => authUser && updateUser({ ...authUser, yandex_id: yandexId })}
               onYandexUnlinked={() => authUser && updateUser({ ...authUser, yandex_id: null })}
             />
+            <NotificationsSection />
             <GrowthSection />
             <BadgesSection />
             <SignupsList signups={signups} signupsLoading={signupsLoading} />

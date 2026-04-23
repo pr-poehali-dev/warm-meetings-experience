@@ -1,11 +1,24 @@
 {
   "tests": [
     {
-      "name": "Send without admin password",
+      "name": "Broadcast without admin password",
       "method": "POST",
       "path": "/",
-      "body": {"action": "send", "admin_password": "", "message": "test"},
+      "body": {"action": "send_broadcast", "admin_password": "", "message": "test"},
       "expectedStatus": 403
+    },
+    {
+      "name": "Get channels without token",
+      "method": "GET",
+      "path": "/?action=channels",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Allow VK without token",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "allow_vk", "allow": true},
+      "expectedStatus": 401
     },
     {
       "name": "Unknown action",

@@ -77,15 +77,35 @@ export default function SignUpForm({ eventId, eventTitle, spotsLeft, registratio
 
   if (submitted) {
     return (
-      <Card className="border-0 shadow-sm bg-green-50">
-        <CardContent className="p-6 text-center">
-          <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Icon name="Check" size={28} className="text-green-600" />
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-6">
+          <div className="text-center mb-5">
+            <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Icon name="Check" size={28} className="text-green-600" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Заявка отправлена!</h3>
+            <p className="text-muted-foreground text-sm">
+              На <span className="font-medium">{email}</span> отправлено подтверждение записи на «{eventTitle}».
+            </p>
           </div>
-          <h3 className="text-lg font-semibold mb-2">Заявка отправлена!</h3>
-          <p className="text-muted-foreground text-sm">
-            На <span className="font-medium">{email}</span> отправлено подтверждение записи на «{eventTitle}».
-          </p>
+          <div className="border border-border rounded-lg p-4 bg-muted/30">
+            <div className="flex items-start gap-3">
+              <Icon name="Bell" size={18} className="text-primary flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium mb-1">Настройте напоминания</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Чтобы не пропустить событие — подключите удобный канал уведомлений: Telegram, ВКонтакте или SMS.
+                </p>
+                <a
+                  href="/account"
+                  className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline font-medium"
+                >
+                  <Icon name="Settings" size={14} />
+                  Настроить уведомления
+                </a>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
