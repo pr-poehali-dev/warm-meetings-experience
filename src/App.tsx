@@ -38,6 +38,7 @@ import VkCallback from "./pages/VkCallback";
 import YandexCallback from "./pages/YandexCallback";
 import VerifyEmail from "./pages/VerifyEmail";
 import Functional from "./pages/Functional";
+import AccountDemo from "./pages/AccountDemo";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const AppContent = () => {
         <Route path="/blog/:slug" element={<BlogArticle />} />
         <Route path="/documents" element={<Documents />} />
         <Route path="/functional" element={<Functional />} />
+        <Route path="/account-demo" element={<AccountDemo />} />
         <Route path="/privacy" element={<Navigate to="/documents?tab=privacy" replace />} />
         <Route path="/terms" element={<Navigate to="/documents?tab=terms" replace />} />
         <Route path="*" element={<NotFound />} />
