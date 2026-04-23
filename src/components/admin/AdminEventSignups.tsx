@@ -48,7 +48,7 @@ const AdminEventSignups = () => {
       const data = await signupsApi.getAll();
       setSignups(data);
     } catch {
-      toast({ title: "Ошибка загрузки заявок", variant: "destructive" });
+      toast({ title: "Ошибка загрузки записей", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -97,7 +97,7 @@ const AdminEventSignups = () => {
     setSaving(true);
     try {
       const updated = await signupsApi.update(selected.id, draft);
-      toast({ title: "Заявка обновлена" });
+      toast({ title: "Запись обновлена" });
       setSelected(updated);
       setEditing(false);
       setDraft({});
@@ -120,7 +120,7 @@ const AdminEventSignups = () => {
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-800 mb-6">
-        Заявки на событие
+        Записи на событие
       </h1>
 
       {signups.length === 0 ? (
@@ -131,7 +131,7 @@ const AdminEventSignups = () => {
               size={48}
               className="text-gray-300 mx-auto mb-4"
             />
-            <p className="text-gray-500">Заявок пока нет</p>
+            <p className="text-gray-500">Записей пока нет</p>
           </CardContent>
         </Card>
       ) : (
@@ -204,7 +204,7 @@ const AdminEventSignups = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Icon name="User" size={18} />
-              Заявка #{selected?.id}
+              Запись #{selected?.id}
             </DialogTitle>
           </DialogHeader>
 

@@ -49,7 +49,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     accent: "bg-primary text-white hover:bg-primary/90",
   },
   {
-    label: "Заявки участников",
+    label: "Записи участников",
     hint: "Подтвердить записи",
     icon: "ClipboardList",
     view: "event-signups",
@@ -115,9 +115,9 @@ export default function AdminOverview({
             </span>
             <span className="text-amber-700">
               {[
-                badges.events > 0 && `${badges.events} заявок на встречи`,
+                badges.events > 0 && `${badges.events} записей на встречи`,
                 badges.calculator > 0 &&
-                  `${badges.calculator} заявок из калькулятора`,
+                  `${badges.calculator} записей из калькулятора`,
                 badges.community > 0 && `${badges.community} заявок на роли`,
               ]
                 .filter(Boolean)
@@ -151,7 +151,7 @@ export default function AdminOverview({
             onClick: () => onViewChange("list"),
           },
           {
-            label: "Новых заявок",
+            label: "Новых записей",
             value: totalPending,
             icon: "Bell",
             color: "text-amber-600",

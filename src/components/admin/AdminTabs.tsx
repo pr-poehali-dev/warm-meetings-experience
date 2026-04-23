@@ -46,7 +46,7 @@ const NAV: NavGroup[] = [
       },
       {
         view: "event-signups",
-        label: "Заявки",
+        label: "Записи",
         icon: "ClipboardList",
         hint: "Записи участников",
         badgeKey: "events",
