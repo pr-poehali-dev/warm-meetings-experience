@@ -16,7 +16,8 @@ export type ViewType =
   | "blog"
   | "users"
   | "baths"
-  | "masters";
+  | "masters"
+  | "moderation";
 
 export interface AdminEvent {
   id?: number;

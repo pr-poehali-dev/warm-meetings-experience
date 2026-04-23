@@ -27,7 +27,7 @@ export default function OrganizerCabinet() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [formData, setFormData] = useState<OrgEvent>({} as OrgEvent);
+  const [formData, setFormData] = useState<OrgEvent & { submit_action?: string }>({} as OrgEvent);
   const formDataRef = React.useRef(formData);
   formDataRef.current = formData;
 
@@ -153,16 +153,28 @@ export default function OrganizerCabinet() {
     setView("participants");
   };
 
-  const handleSaveEvent = async (data: Partial<OrgEvent>) => {
+  const handleSaveEvent = async (data: Partial<OrgEvent> & { submit_action?: string }) => {
     setFormLoading(true);
     try {
       let savedEvent: OrgEvent;
+      const submitAction = data.submit_action || "draft";
+      const payload = { ...data };
+      delete (payload as Record<string, unknown>).submit_action;
+
       if (selectedEvent?.id) {
-        savedEvent = await organizerApi.updateEvent({ ...data, id: selectedEvent.id } as OrgEvent & { id: number });
-        toast({ title: "Событие обновлено" });
+        savedEvent = await organizerApi.updateEvent({ ...payload, id: selectedEvent.id, submit_action: submitAction } as OrgEvent & { id: number; submit_action: string });
+        if (submitAction === "submit") {
+          toast({ title: "Событие отправлено на модерацию", description: "Администратор проверит его в ближайшее время." });
+        } else {
+          toast({ title: "Черновик сохранён" });
+        }
       } else {
-        savedEvent = await organizerApi.createEvent(data);
-        toast({ title: data.is_visible ? "Событие опубликовано" : "Черновик сохранён" });
+        savedEvent = await organizerApi.createEvent({ ...payload, submit_action: submitAction } as Partial<OrgEvent> & { submit_action: string });
+        if (submitAction === "submit") {
+          toast({ title: "Событие отправлено на модерацию", description: "Администратор проверит его в ближайшее время." });
+        } else {
+          toast({ title: "Черновик сохранён" });
+        }
       }
       if (data.pricing_type === 'dynamic' && data.pricing_tiers) {
         await organizerApi.savePricingTiers(savedEvent.id, data.pricing_tiers);

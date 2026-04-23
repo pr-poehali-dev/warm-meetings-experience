@@ -19,6 +19,7 @@ import AdminBlog from "@/components/admin/AdminBlog";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminBaths from "@/components/admin/AdminBaths";
 import AdminMasters from "@/components/admin/AdminMasters";
+import AdminEventModeration from "@/components/admin/AdminEventModeration";
 
 
 export default function Admin() {
@@ -111,6 +112,8 @@ export default function Admin() {
         return <AdminBaths />;
       case "masters":
         return <AdminMasters />;
+      case "moderation":
+        return <AdminEventModeration />;
       default:
         return null;
     }

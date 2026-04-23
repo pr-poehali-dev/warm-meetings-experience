@@ -51,6 +51,13 @@ const NAV: NavGroup[] = [
         hint: "Записи участников",
         badgeKey: "events",
       },
+      {
+        view: "moderation",
+        label: "Модерация",
+        icon: "ShieldCheck",
+        hint: "Заявки организаторов",
+        badgeKey: "moderation",
+      },
     ],
   },
   {

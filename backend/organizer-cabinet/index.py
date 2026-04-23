@@ -109,6 +109,8 @@ def handler(event, context):
         return handle_dashboard(cur, conn, user_id, user, schema, headers)
     elif resource == 'events':
         return handle_events(event, method, params, cur, conn, user_id, schema, headers)
+    elif resource == 'moderation':
+        return handle_moderation(event, method, params, cur, conn, user_id, schema, headers)
     elif resource == 'participants':
         return handle_participants(event, method, params, cur, conn, user_id, schema, headers)
     elif resource == 'profile':
@@ -307,6 +309,20 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         if pricing_type not in ('fixed', 'dynamic'):
             pricing_type = 'fixed'
 
+        admin = is_admin(cur, user_id, schema)
+        requested_visible = body.get('is_visible', False)
+        if admin:
+            event_status = 'published' if requested_visible else 'draft'
+            event_visible = requested_visible
+        else:
+            action = body.get('submit_action', 'draft')
+            if action == 'submit':
+                event_status = 'pending'
+                event_visible = False
+            else:
+                event_status = 'draft'
+                event_visible = False
+
         try:
             cur.execute(f"""
                 INSERT INTO {schema}.events (
@@ -315,7 +331,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                     event_type, event_type_icon, occupancy,
                     bath_name, bath_address, image_url,
                     price, price_amount, price_label,
-                    total_spots, spots_left, featured, is_visible,
+                    total_spots, spots_left, featured, is_visible, status,
                     program, rules, pricing_lines, pricing_type, organizer_id
                 ) VALUES (
                     '{title}', '{slug}', '{short_desc}', '{full_desc}', '{description}',
@@ -324,7 +340,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                     '{bath_name}', '{bath_address}', '{body.get('image_url', '')}',
                     '{price_label}', {body.get('price_amount', 0)}, '{price_label}',
                     {body.get('total_spots', 10)}, {body.get('spots_left', body.get('total_spots', 10))},
-                    {body.get('featured', False)}, {body.get('is_visible', False)},
+                    {body.get('featured', False)}, {event_visible}, '{event_status}',
                     {program_sql}, {rules_sql}, {pricing_sql}, '{pricing_type}', {user_id}
                 ) RETURNING *
             """)
@@ -352,7 +368,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id required'})}
 
-        cur.execute(f"SELECT organizer_id, is_visible FROM {schema}.events WHERE id = {event_id}")
+        cur.execute(f"SELECT organizer_id, is_visible, status FROM {schema}.events WHERE id = {event_id}")
         existing = cur.fetchone()
         if not existing:
             conn.close()
@@ -370,9 +386,20 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         for field in ['price_amount','total_spots','spots_left']:
             if field in body:
                 sets.append(f"{field} = {int(body[field])}")
-        for field in ['featured','is_visible']:
+        for field in ['featured']:
             if field in body:
                 sets.append(f"{field} = {bool(body[field])}")
+        if 'is_visible' in body:
+            if admin:
+                sets.append(f"is_visible = {bool(body['is_visible'])}")
+        if 'submit_action' in body and not admin:
+            action = body['submit_action']
+            if action == 'submit':
+                sets.append("status = 'pending'")
+                sets.append("is_visible = false")
+            elif action == 'draft':
+                sets.append("status = 'draft'")
+                sets.append("is_visible = false")
         if 'program' in body:
             p = body['program']
             sets.append(f"program = {'ARRAY[' + ','.join(chr(39)+x.replace(chr(39),chr(39)*2)+chr(39) for x in p) + ']::text[]' if p else 'ARRAY[]::text[]'}")
@@ -416,6 +443,59 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         conn.commit()
         conn.close()
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True})}
+
+    conn.close()
+    return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+
+
+def handle_moderation(event, method, params, cur, conn, user_id, schema, headers):
+    """Модерация событий (только для админа)"""
+    admin = is_admin(cur, user_id, schema)
+    if not admin:
+        conn.close()
+        return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Forbidden: admin only'})}
+
+    if method == 'GET':
+        cur.execute(f"""
+            SELECT e.*, u.name as organizer_name, u.email as organizer_email
+            FROM {schema}.events e
+            LEFT JOIN {schema}.users u ON u.id = e.organizer_id
+            WHERE e.status = 'pending'
+            ORDER BY e.created_at ASC
+        """)
+        rows = cur.fetchall()
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps([dict(r) for r in rows], default=str)}
+
+    if method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        event_id = body.get('event_id')
+        action = body.get('action')
+        reason = (body.get('reason') or '').replace("'", "''")
+
+        if not event_id or action not in ('approve', 'reject'):
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'event_id and action (approve/reject) required'})}
+
+        cur.execute(f"SELECT id, organizer_id FROM {schema}.events WHERE id = {event_id}")
+        ev = cur.fetchone()
+        if not ev:
+            conn.close()
+            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Event not found'})}
+
+        if action == 'approve':
+            cur.execute(f"UPDATE {schema}.events SET status = 'published', is_visible = true WHERE id = {event_id}")
+            trigger_tg_publish(event_id, ev['organizer_id'])
+        else:
+            cur.execute(f"UPDATE {schema}.events SET status = 'rejected', is_visible = false WHERE id = {event_id}")
+
+        cur.execute(f"""
+            INSERT INTO {schema}.event_moderation_logs (event_id, admin_id, action, reason)
+            VALUES ({event_id}, {user_id}, '{action}', '{reason}')
+        """)
+        conn.commit()
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'action': action})}
 
     conn.close()
     return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}

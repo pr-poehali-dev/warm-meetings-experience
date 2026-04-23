@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { signupsApi } from "@/lib/api";
+import { authenticatedRequest } from "@/lib/http";
 
+const ORGANIZER_API = "https://functions.poehali.dev/730d60f4-a9cf-4f56-90d9-f48caaa9007d";
 const CALCULATOR_API = "https://functions.poehali.dev/0d9ea640-f2f5-4e63-8633-db26b10decc8";
 const ROLES_API = "https://functions.poehali.dev/ccd16473-f2d9-40af-a82e-4e348402aa29";
 
@@ -8,10 +10,11 @@ export interface AdminBadges {
   events: number;
   calculator: number;
   community: number;
+  moderation: number;
 }
 
 export function useAdminBadges() {
-  const [badges, setBadges] = useState<AdminBadges>({ events: 0, calculator: 0, community: 0 });
+  const [badges, setBadges] = useState<AdminBadges>({ events: 0, calculator: 0, community: 0, moderation: 0 });
 
   const refresh = useCallback(async () => {
     const token = localStorage.getItem("admin_token");
@@ -24,11 +27,13 @@ export function useAdminBadges() {
             headers: { "X-Admin-Token": token },
           }).then((r) => r.json())
         : Promise.resolve({ applications: [] }),
+      authenticatedRequest(`${ORGANIZER_API}/?resource=moderation`).catch(() => []),
     ]);
 
     const eventSignups = results[0].status === "fulfilled" ? results[0].value : [];
     const calcData = results[1].status === "fulfilled" ? results[1].value : {};
     const rolesData = results[2].status === "fulfilled" ? results[2].value : {};
+    const moderationData = results[3].status === "fulfilled" ? results[3].value : [];
 
     const eventsNew = Array.isArray(eventSignups)
       ? eventSignups.filter((s: { status: string }) => s.status === "new").length
@@ -44,7 +49,9 @@ export function useAdminBadges() {
       ? roleApps.filter((a: { status: string }) => a.status === "pending").length
       : 0;
 
-    setBadges({ events: eventsNew, calculator: calcNew, community: rolesNew });
+    const moderationNew = Array.isArray(moderationData) ? moderationData.length : 0;
+
+    setBadges({ events: eventsNew, calculator: calcNew, community: rolesNew, moderation: moderationNew });
   }, []);
 
   useEffect(() => {

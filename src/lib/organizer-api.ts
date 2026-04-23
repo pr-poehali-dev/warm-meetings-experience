@@ -42,6 +42,8 @@ export interface OrgEvent {
   featured: boolean;
   occupancy: string;
   created_at: string;
+  status?: 'draft' | 'pending' | 'published' | 'rejected';
+  rejection_reason?: string;
 }
 
 export interface OrgParticipant {
@@ -202,4 +204,14 @@ export const organizerApi = {
         return data;
       });
   },
+
+  getPendingModeration: (): Promise<OrgEvent[]> =>
+    authenticatedRequest(`${BASE}/?resource=moderation`),
+
+  moderateEvent: (eventId: number, action: 'approve' | 'reject', reason?: string): Promise<{ ok: boolean; action: string }> =>
+    authenticatedRequest(`${BASE}/?resource=moderation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_id: eventId, action, reason: reason || "" }),
+    }),
 };
