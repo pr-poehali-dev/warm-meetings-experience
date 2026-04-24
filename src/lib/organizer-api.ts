@@ -214,4 +214,61 @@ export const organizerApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ event_id: eventId, action, reason: reason || "", publish_to_telegram: publishToTelegram ?? true }),
     }),
+
+  getGuests: (eventId: number): Promise<{ event: OrgEvent; guests: Guest[]; stats: GuestStats }> =>
+    authenticatedRequest(`${BASE}/?resource=guests&event_id=${eventId}`),
+
+  updateGuestStatus: (eventId: number, signupId: number, status: string): Promise<{ ok: boolean }> =>
+    authenticatedRequest(`${BASE}/?resource=guests`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_id: eventId, signup_id: signupId, status }),
+    }),
+
+  getMessages: (signupId: number): Promise<{ messages: GuestMessage[] }> =>
+    authenticatedRequest(`${BASE}/?resource=messages&signup_id=${signupId}`),
+
+  sendMessages: (signupIds: number[], message: string): Promise<{ ok: boolean; sent: number[] }> =>
+    authenticatedRequest(`${BASE}/?resource=messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ signup_ids: signupIds, message }),
+    }),
 };
+
+export interface Guest {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  telegram: string;
+  status: string;
+  preferred_channel: string | null;
+  created_at: string;
+  wrote_at: string | null;
+  user_id: number | null;
+  tg_chat_id: number | null;
+  vk_id: string | null;
+  notify_telegram: boolean;
+  notify_vk: boolean;
+  notify_email: boolean;
+  notify_sms: boolean;
+  messages_count: number;
+}
+
+export interface GuestStats {
+  total: number;
+  confirmed: number;
+  waiting: number;
+  spots_left: number;
+  total_spots: number;
+}
+
+export interface GuestMessage {
+  id: number;
+  direction: 'in' | 'out';
+  channel: string;
+  body: string;
+  delivered: boolean | null;
+  created_at: string;
+}
