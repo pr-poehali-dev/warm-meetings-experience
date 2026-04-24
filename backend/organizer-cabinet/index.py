@@ -65,6 +65,16 @@ def trigger_tg_publish(event_id, organizer_id):
     except Exception:
         pass
 
+def verify_admin_token(token):
+    """Проверяет admin_token — тот же алгоритм что в auth/index.py"""
+    import hashlib, time
+    admin_password = os.environ.get('ADMIN_PASSWORD', '')
+    if not admin_password or not token:
+        return False
+    expected = hashlib.sha256(f"{admin_password}:{int(time.time() // 86400)}".encode()).hexdigest()
+    return token == expected
+
+
 def handler(event, context):
     """Личный кабинет организатора: дашборд, события, участники"""
     if event.get('httpMethod') == 'OPTIONS':
@@ -76,6 +86,26 @@ def handler(event, context):
     resource = params.get('resource', 'dashboard')
 
     hdrs = event.get('headers') or {}
+
+    # Если передан X-Admin-Token и ресурс — moderation, авторизуем напрямую
+    admin_token = hdrs.get('X-Admin-Token', '')
+    if admin_token and resource == 'moderation' and verify_admin_token(admin_token):
+        conn = get_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        schema = get_schema()
+        # Находим любого активного admin-пользователя для подстановки user_id
+        cur.execute(f"""
+            SELECT u.id FROM {schema}.users u
+            JOIN {schema}.user_roles ur ON ur.user_id = u.id
+            JOIN {schema}.roles r ON r.id = ur.role_id
+            WHERE r.slug = 'admin' AND ur.status = 'active'
+            LIMIT 1
+        """)
+        admin_row = cur.fetchone()
+        if admin_row:
+            return handle_moderation(event, method, params, cur, conn, admin_row['id'], schema, headers)
+        conn.close()
+
     token = (hdrs.get('X-Authorization') or hdrs.get('X-Session-Token') or '').replace('Bearer ', '')
     if not token:
         return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Unauthorized'})}

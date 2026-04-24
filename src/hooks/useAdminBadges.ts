@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { signupsApi } from "@/lib/api";
-import { authenticatedRequest } from "@/lib/http";
+import { adminModerationRequest } from "@/lib/http";
 
 const ORGANIZER_API = "https://functions.poehali.dev/730d60f4-a9cf-4f56-90d9-f48caaa9007d";
 const CALCULATOR_API = "https://functions.poehali.dev/0d9ea640-f2f5-4e63-8633-db26b10decc8";
@@ -27,7 +27,7 @@ export function useAdminBadges() {
             headers: { "X-Admin-Token": token },
           }).then((r) => r.json())
         : Promise.resolve({ applications: [] }),
-      authenticatedRequest(`${ORGANIZER_API}/?resource=moderation`).catch(() => []),
+      adminModerationRequest(`${ORGANIZER_API}/?resource=moderation`).catch(() => []),
     ]);
 
     const eventSignups = results[0].status === "fulfilled" ? results[0].value : [];
