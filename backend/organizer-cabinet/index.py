@@ -11,6 +11,23 @@ import requests as http_requests
 TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
 
 
+def notify_admin_tg(text):
+    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+    if not token or not chat_id:
+        return
+    payload = json.dumps({'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'}).encode('utf-8')
+    req = urllib.request.Request(
+        f'https://api.telegram.org/bot{token}/sendMessage',
+        data=payload,
+        headers={'Content-Type': 'application/json'}
+    )
+    try:
+        urllib.request.urlopen(req, timeout=5)
+    except Exception:
+        pass
+
+
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
 
@@ -393,6 +410,15 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         created = dict(row)
         if created.get('is_visible'):
             trigger_tg_publish(created['id'], user_id)
+        if created.get('status') == 'pending':
+            notify_admin_tg(
+                f"📋 <b>Новое событие на модерации</b>\n\n"
+                f"🎪 <b>{created.get('title', '—')}</b>\n"
+                f"📅 {created.get('event_date', '—')}  🕐 {str(created.get('start_time', ''))[:5]}\n"
+                f"📍 {created.get('bath_name', '—')}\n"
+                f"👤 Организатор ID: {user_id}\n\n"
+                f"Откройте Админ-панель → Модерация для проверки."
+            )
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(created, default=str)}
 
     if method == 'PUT':
@@ -464,6 +490,15 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         updated = dict(row)
         if was_hidden and updated.get('is_visible'):
             trigger_tg_publish(event_id, updated.get('organizer_id') or user_id)
+        if body.get('submit_action') == 'submit' and updated.get('status') == 'pending':
+            notify_admin_tg(
+                f"📋 <b>Новое событие на модерации</b>\n\n"
+                f"🎪 <b>{updated.get('title', '—')}</b>\n"
+                f"📅 {updated.get('event_date', '—')}  🕐 {str(updated.get('start_time', ''))[:5]}\n"
+                f"📍 {updated.get('bath_name', '—')}\n"
+                f"👤 Организатор ID: {updated.get('organizer_id', '—')}\n\n"
+                f"Откройте Админ-панель → Модерация для проверки."
+            )
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps(updated, default=str)}
 
     if method == 'DELETE':
@@ -511,7 +546,13 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'event_id and action (approve/reject) required'})}
 
-        cur.execute(f"SELECT id, organizer_id FROM {schema}.events WHERE id = {event_id}")
+        cur.execute(f"""
+            SELECT e.id, e.organizer_id, e.title, e.event_date, e.start_time, e.bath_name,
+                   u.name as organizer_name
+            FROM {schema}.events e
+            LEFT JOIN {schema}.users u ON u.id = e.organizer_id
+            WHERE e.id = {event_id}
+        """)
         ev = cur.fetchone()
         if not ev:
             conn.close()
@@ -522,8 +563,24 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
             publish_to_telegram = body.get('publish_to_telegram', True)
             if publish_to_telegram:
                 trigger_tg_publish(event_id, ev['organizer_id'])
+            notify_admin_tg(
+                f"✅ <b>Событие одобрено</b>\n\n"
+                f"🎪 <b>{ev['title']}</b>\n"
+                f"📅 {ev['event_date']}  🕐 {str(ev.get('start_time', ''))[:5]}\n"
+                f"📍 {ev.get('bath_name', '—')}\n"
+                f"👤 Организатор: {ev.get('organizer_name', '—')}"
+            )
         else:
             cur.execute(f"UPDATE {schema}.events SET status = 'rejected', is_visible = false WHERE id = {event_id}")
+            reason_display = reason.replace("''", "'") or 'не указана'
+            notify_admin_tg(
+                f"❌ <b>Событие отклонено</b>\n\n"
+                f"🎪 <b>{ev['title']}</b>\n"
+                f"📅 {ev['event_date']}  🕐 {str(ev.get('start_time', ''))[:5]}\n"
+                f"📍 {ev.get('bath_name', '—')}\n"
+                f"👤 Организатор: {ev.get('organizer_name', '—')}\n"
+                f"💬 Причина: {reason_display}"
+            )
 
         cur.execute(f"""
             INSERT INTO {schema}.event_moderation_logs (event_id, admin_id, action, reason)
