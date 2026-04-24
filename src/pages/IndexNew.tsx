@@ -103,99 +103,157 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-// ─── Netflix-карточка события ─────────────────────────────────────────────────
-function NetflixEventCard({ event, featured = false }: { event: EventItem; featured?: boolean }) {
+// ─── Утилиты ─────────────────────────────────────────────────────────────────
+function spotsInfo(left: number, total: number) {
+  if (left === 0) return { text: "Мест нет", cls: "text-red-400" };
+  if (left <= 2) return { text: `Осталось ${left}`, cls: "text-orange-400" };
+  return { text: `${left} из ${total}`, cls: "text-emerald-400" };
+}
+
+function SpotsBar({ left, total }: { left: number; total: number }) {
+  const pct = total > 0 ? Math.round(((total - left) / total) * 100) : 100;
+  const color = left === 0 ? "bg-red-400" : left <= 2 ? "bg-orange-400" : "bg-emerald-400";
+  return (
+    <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.12)" }}>
+      <div className={`h-full ${color} transition-all duration-700`} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+// ─── Netflix grid-карточка ────────────────────────────────────────────────────
+function NetflixGridCard({ event }: { event: EventItem }) {
   const [hovered, setHovered] = useState(false);
   const dateObj = parseISO(event.date);
   const dateStr = format(dateObj, "d MMM, EEE", { locale: ru });
+  const sp = spotsInfo(event.spotsLeft, event.totalSpots);
   const sold = event.spotsLeft === 0;
-  const few = !sold && event.spotsLeft > 0 && event.spotsLeft <= 3;
 
   return (
     <Link
       to={`/events/${event.slug}`}
-      className="group relative flex-shrink-0 block"
-      style={{ width: featured ? 320 : 240 }}
+      className="group relative block rounded-2xl overflow-hidden cursor-pointer"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Image */}
+      <div className="relative h-52 sm:h-56">
+        {event.image ? (
+          <img
+            src={event.image}
+            alt={event.title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+        ) : (
+          <div className="w-full h-full" style={{ background: "linear-gradient(135deg,rgba(200,131,74,0.35),rgba(143,168,154,0.2))" }} />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+
+        {/* Badges top */}
+        {event.featured && (
+          <div className="absolute top-3 left-3 bg-yellow-400 text-black text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">ТОП</div>
+        )}
+        <div className="absolute top-3 right-3">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(200,131,74,0.85)", color: "#fff" }}>{event.type}</span>
+        </div>
+
+        {/* Bottom info */}
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <div className="flex items-center justify-between text-xs mb-1" style={{ color: "rgba(255,255,255,0.55)" }}>
+            <span>{dateStr}, {event.timeStart}</span>
+            <span className={`font-semibold ${sp.cls}`}>{sp.text}</span>
+          </div>
+          <p className="font-semibold text-sm leading-snug mb-1 line-clamp-2 text-white">{event.title}</p>
+          <div className="flex items-center justify-between">
+            <span className="text-white/50 text-xs flex items-center gap-1">
+              <Icon name="MapPin" size={11} />{event.bathName ?? "—"}
+            </span>
+            <span className="font-bold text-sm" style={{ color: "#C8834A" }}>{event.priceLabel}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Hover-оверлей */}
+      <div
+        className="absolute inset-0 flex flex-col items-center justify-center gap-3 transition-opacity duration-200 rounded-2xl"
+        style={{ background: "rgba(0,0,0,0.7)", opacity: hovered ? 1 : 0 }}
+      >
+        <span className="text-white font-bold rounded-full px-6 py-2 text-sm" style={{ background: sold ? "rgba(255,255,255,0.15)" : "linear-gradient(90deg,#C8834A,#8FA89A)" }}>
+          {sold ? "Мест нет" : "Подробнее →"}
+        </span>
+        {event.priceLabel && !sold && (
+          <span className="font-bold text-lg" style={{ color: "#C8834A" }}>{event.priceLabel}</span>
+        )}
+      </div>
+
+      {/* Spots bar */}
+      <div className="px-0 pt-0">
+        <SpotsBar left={event.spotsLeft} total={event.totalSpots} />
+      </div>
+    </Link>
+  );
+}
+
+// ─── Netflix list-карточка ────────────────────────────────────────────────────
+function NetflixListCard({ event }: { event: EventItem }) {
+  const [hovered, setHovered] = useState(false);
+  const dateObj = parseISO(event.date);
+  const dateStr = format(dateObj, "d MMMM, EEEE", { locale: ru });
+  const sp = spotsInfo(event.spotsLeft, event.totalSpots);
+  const sold = event.spotsLeft === 0;
+
+  return (
+    <Link
+      to={`/events/${event.slug}`}
+      className="group block"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <div
-        className="relative overflow-hidden rounded-xl transition-all duration-300"
+        className="flex gap-4 rounded-2xl overflow-hidden transition-all duration-300"
         style={{
-          height: featured ? 380 : 300,
-          transform: hovered ? "scale(1.04)" : "scale(1)",
-          zIndex: hovered ? 10 : 1,
-          boxShadow: hovered ? "0 20px 60px rgba(0,0,0,0.7)" : "0 4px 20px rgba(0,0,0,0.4)",
+          background: hovered ? "rgba(237,224,204,0.09)" : "rgba(237,224,204,0.05)",
+          border: "1px solid rgba(237,224,204,0.1)",
+          transform: hovered ? "translateX(4px)" : "translateX(0)",
+          boxShadow: hovered ? "0 8px 32px rgba(0,0,0,0.4)" : "none",
         }}
       >
-        {/* BG image / gradient */}
-        {event.image ? (
-          <img src={event.image} alt={event.title} className="absolute inset-0 w-full h-full object-cover" />
-        ) : (
-          <div
-            className="absolute inset-0"
-            style={{ background: `linear-gradient(160deg, rgba(200,131,74,0.35) 0%, rgba(20,16,12,0.9) 100%)` }}
-          />
-        )}
-
-        {/* Dark overlay always */}
-        <div
-          className="absolute inset-0 transition-opacity duration-300"
-          style={{
-            background: "linear-gradient(to top, rgba(10,8,6,0.95) 0%, rgba(10,8,6,0.4) 50%, rgba(10,8,6,0.15) 100%)",
-            opacity: hovered ? 1 : 0.8,
-          }}
-        />
-
-        {/* Top badges */}
-        <div className="absolute top-2.5 left-2.5 flex gap-1.5 flex-wrap z-10">
-          {few && (
-            <span className="text-xs px-2 py-0.5 rounded-full font-semibold animate-pulse"
-              style={{ background: "rgba(200,131,74,0.85)", color: "#fff" }}>Мало мест</span>
+        {/* Thumb */}
+        <div className="relative flex-shrink-0 w-32 sm:w-40 h-24 sm:h-28 overflow-hidden">
+          {event.image ? (
+            <img src={event.image} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          ) : (
+            <div className="w-full h-full" style={{ background: "linear-gradient(135deg,rgba(200,131,74,0.3),rgba(143,168,154,0.15))" }} />
           )}
-          {sold && (
-            <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-              style={{ background: "rgba(239,68,68,0.8)", color: "#fff" }}>Занято</span>
+          {event.featured && (
+            <div className="absolute top-2 left-2 bg-yellow-400 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase">ТОП</div>
           )}
         </div>
 
-        {/* Content bottom */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
-          <div className="text-xs mb-1.5 flex items-center gap-2" style={{ color: "rgba(237,224,204,0.55)" }}>
-            <span>{dateStr}</span>
-            <span>·</span>
-            <span>{event.timeStart}</span>
-            {event.bathName && <><span>·</span><span className="truncate">{event.bathName}</span></>}
-          </div>
-
-          <h3
-            className="font-bold leading-tight mb-2 line-clamp-2"
-            style={{ fontSize: featured ? 18 : 15, color: "#EDE0CC" }}
-          >
-            {event.title}
-          </h3>
-
-          {/* Hover extras */}
-          <div
-            className="overflow-hidden transition-all duration-300"
-            style={{ maxHeight: hovered ? 120 : 0, opacity: hovered ? 1 : 0 }}
-          >
-            {event.description && (
-              <p className="text-xs line-clamp-2 mb-3" style={{ color: "rgba(217,237,232,0.5)" }}>
-                {event.description}
-              </p>
-            )}
-            <div className="flex items-center gap-2">
-              <span
-                className="px-4 py-1.5 rounded-full text-xs font-bold text-white transition-all hover:brightness-110"
-                style={{ background: sold ? "rgba(255,255,255,0.1)" : "linear-gradient(90deg,#C8834A,#8FA89A)" }}
-              >
-                {sold ? "Нет мест" : "Подробнее →"}
-              </span>
-              {event.priceLabel && (
-                <span className="text-sm font-bold" style={{ color: "#C8834A" }}>{event.priceLabel}</span>
-              )}
+        {/* Content */}
+        <div className="flex-1 min-w-0 py-3 pr-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(200,131,74,0.2)", color: "#C8834A" }}>{event.type}</span>
+              <span className={`text-xs font-medium ${sp.cls}`}>{sp.text}</span>
             </div>
+            <h3 className="font-semibold text-sm leading-snug line-clamp-2 text-white mb-1">{event.title}</h3>
+            <div className="flex flex-wrap gap-x-3 text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <span className="flex items-center gap-1"><Icon name="Calendar" size={11} />{dateStr}</span>
+              <span className="flex items-center gap-1"><Icon name="Clock" size={11} />{event.timeStart}</span>
+              {event.bathName && <span className="flex items-center gap-1"><Icon name="MapPin" size={11} />{event.bathName}</span>}
+            </div>
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            <span className="font-bold text-sm" style={{ color: "#C8834A" }}>{event.priceLabel}</span>
+            <span
+              className="text-xs font-semibold px-3 py-1 rounded-full transition-all duration-200"
+              style={hovered && !sold
+                ? { background: "linear-gradient(90deg,#C8834A,#8FA89A)", color: "#fff" }
+                : { background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.4)" }
+              }
+            >
+              {sold ? "Занято" : "Подробнее →"}
+            </span>
           </div>
         </div>
       </div>
@@ -205,36 +263,14 @@ function NetflixEventCard({ event, featured = false }: { event: EventItem; featu
 
 
 
-// ─── Netflix Row ──────────────────────────────────────────────────────────────
-function NetflixRow({ title, events, featured = false }: { title: string; events: EventItem[]; featured?: boolean }) {
-  if (events.length === 0) return null;
-  return (
-    <div className="mb-8">
-      <div className="px-4 sm:px-8 mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-bold" style={{ color: "#EDE0CC" }}>{title}</h2>
-        <Link to="/events" className="text-xs flex items-center gap-1 transition-all hover:brightness-125" style={{ color: "#C8834A" }}>
-          Все <Icon name="ChevronRight" size={14} />
-        </Link>
-      </div>
-      <div
-        className="flex gap-3 overflow-x-auto px-4 sm:px-8 pb-4"
-        style={{ scrollbarWidth: "none", scrollSnapType: "x mandatory" }}
-      >
-        {events.map((e) => (
-          <div key={e.slug} style={{ scrollSnapAlign: "start" }}>
-            <NetflixEventCard event={e} featured={featured} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+
 
 // ─── Главная страница ─────────────────────────────────────────────────────────
 export default function IndexNew() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState("all");
+  const [view, setView] = useState<"grid" | "list">("grid");
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -303,113 +339,130 @@ export default function IndexNew() {
         )}
       </header>
 
-      {/* ══ HERO ═════════════════════════════════════════════════════════════ */}
-      <section className="relative z-10 overflow-hidden">
-        <div className="relative min-h-[70vh] flex flex-col items-center justify-center text-center px-4 py-24">
-          {/* Hero background image with overlay */}
+      {/* ══ HERO + EVENTS — единый экран ════════════════════════════════════ */}
+      <section className="relative z-10 overflow-hidden" style={{ minHeight: "100vh" }}>
+        {/* Фоновое фото на весь экран */}
+        <div className="absolute inset-0">
           <img
             src="https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/69533be6-e8cd-4137-89eb-a06d187922f4.jpg"
             alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ opacity: 0.18 }}
+            className="w-full h-full object-cover"
+            style={{ opacity: 0.22 }}
           />
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 40%, #1a1410 100%)" }} />
-
-          <div className="relative z-10 max-w-3xl mx-auto">
-            <div
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm mb-8"
-              style={{ background: "rgba(200,131,74,0.15)", border: "1px solid rgba(200,131,74,0.3)", color: "#C8834A" }}
-            >
-              <Icon name="Flame" size={14} />
-              Банный агрегатор событий Москвы
-            </div>
-
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight mb-6">
-              <span style={{ background: "linear-gradient(135deg, #EDE0CC 15%, #C8834A 50%, #8FA89A 85%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                В баню можно идти одному.
-              </span>
-            </h1>
-
-            <p className="text-lg sm:text-xl max-w-xl mx-auto mb-10 leading-relaxed" style={{ color: "rgba(217,237,232,0.6)" }}>
-              Если хочется нормальной бани, но не с кем — это не проблема. СПАРКОМ существует именно для таких ситуаций.
-            </p>
-
-            <div className="flex flex-wrap gap-3 justify-center mb-16">
-              <a
-                href={TELEGRAM_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-white transition-all hover:brightness-110 hover:scale-105"
-                style={{ background: "linear-gradient(90deg,#C8834A,#8FA89A)", boxShadow: "0 0 32px rgba(200,131,74,0.3)" }}
-              >
-                <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
-                Расписание в Telegram
-              </a>
-              <Link
-                to="/events"
-                className="flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold transition-all hover:brightness-110"
-                style={{ background: "rgba(237,224,204,0.08)", border: "1px solid rgba(237,224,204,0.2)", color: "#EDE0CC" }}
-              >
-                <Icon name="CalendarDays" size={18} />
-                Смотреть афишу
-              </Link>
-            </div>
-
-            {/* Stats */}
-            <div className="flex flex-wrap justify-center gap-10">
-              {[{ val: "50+", label: "встреч проведено" }, { val: "700+", label: "участников" }, { val: "12+", label: "форматов" }, { val: "8+", label: "площадок" }].map(({ val, label }) => (
-                <div key={label} className="text-center">
-                  <div className="text-3xl font-bold" style={{ background: "linear-gradient(135deg,#C8834A,#8FA89A)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{val}</div>
-                  <div className="text-xs mt-0.5" style={{ color: "rgba(217,237,232,0.35)" }}>{label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(26,20,16,0.2) 0%, rgba(26,20,16,0.5) 45%, #1a1410 80%)" }} />
         </div>
-      </section>
 
-      {/* ══ EVENTS — Netflix-стиль ═══════════════════════════════════════════ */}
-      <section className="relative z-10 pt-2 pb-8">
-        {/* Фильтр по типу */}
-        <div className="px-4 sm:px-8 mb-6">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-            {eventTypes.map((t) => (
-              <button
-                key={t}
-                onClick={() => setSelectedType(t)}
-                className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
-                style={selectedType === t
-                  ? { background: "linear-gradient(90deg,#C8834A,#8FA89A)", color: "#fff", boxShadow: "0 0 18px rgba(200,131,74,0.35)" }
-                  : { background: "rgba(237,224,204,0.07)", border: "1px solid rgba(237,224,204,0.13)", color: "rgba(237,224,204,0.6)" }
-                }
-              >
-                {t === "all" ? "Все форматы" : t}
-              </button>
+        {/* Текст Hero — верхняя половина */}
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 pt-16 pb-10">
+          <div
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm mb-6"
+            style={{ background: "rgba(200,131,74,0.15)", border: "1px solid rgba(200,131,74,0.3)", color: "#C8834A" }}
+          >
+            <Icon name="Flame" size={14} />
+            Банный агрегатор событий Москвы
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.08] tracking-tight mb-4">
+            <span style={{ background: "linear-gradient(135deg, #EDE0CC 15%, #C8834A 55%, #8FA89A 90%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              В баню можно идти одному.
+            </span>
+          </h1>
+
+          <p className="text-base sm:text-lg max-w-lg mx-auto mb-7 leading-relaxed" style={{ color: "rgba(217,237,232,0.58)" }}>
+            Организованные банные встречи — спокойно, трезво, с уважением к каждому.
+          </p>
+
+          <div className="flex flex-wrap gap-3 justify-center mb-6">
+            <a
+              href={TELEGRAM_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-white text-sm transition-all hover:brightness-110 hover:scale-105"
+              style={{ background: "linear-gradient(90deg,#C8834A,#8FA89A)", boxShadow: "0 0 28px rgba(200,131,74,0.3)" }}
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+              Расписание в Telegram
+            </a>
+          </div>
+
+          {/* Stats mini */}
+          <div className="flex flex-wrap justify-center gap-7">
+            {[{ val: "50+", label: "встреч" }, { val: "700+", label: "участников" }, { val: "12+", label: "форматов" }, { val: "8+", label: "площадок" }].map(({ val, label }) => (
+              <div key={label} className="text-center">
+                <div className="text-2xl font-bold" style={{ background: "linear-gradient(135deg,#C8834A,#8FA89A)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{val}</div>
+                <div className="text-xs" style={{ color: "rgba(217,237,232,0.3)" }}>{label}</div>
+              </div>
             ))}
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-24" style={{ color: "rgba(217,237,232,0.4)" }}>
-            <Icon name="Loader2" size={32} className="animate-spin mr-3" />
-            Загрузка встреч...
+        {/* ── Карточки начинаются на нижней половине первого экрана ─────────── */}
+        <div className="relative z-10 px-4 sm:px-6">
+          {/* Фильтры + view toggle */}
+          <div className="flex items-center gap-3 mb-5 flex-wrap">
+            <div className="flex items-center gap-2 overflow-x-auto flex-1" style={{ scrollbarWidth: "none" }}>
+              {eventTypes.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setSelectedType(t)}
+                  className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
+                  style={selectedType === t
+                    ? { background: "white", color: "#0f0f0f", fontWeight: 700 }
+                    : { background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)" }
+                  }
+                >
+                  {t === "all" ? "Все" : t}
+                </button>
+              ))}
+            </div>
+
+            {/* View toggle — точь-в-точь как events-demo */}
+            <div className="flex-shrink-0 flex gap-1 rounded-xl p-1" style={{ background: "rgba(255,255,255,0.08)" }}>
+              <button
+                onClick={() => setView("grid")}
+                className="p-2 rounded-lg transition-all duration-200"
+                style={view === "grid"
+                  ? { background: "rgba(200,131,74,0.3)", color: "#C8834A" }
+                  : { color: "rgba(255,255,255,0.35)" }
+                }
+              >
+                <Icon name="LayoutGrid" size={16} />
+              </button>
+              <button
+                onClick={() => setView("list")}
+                className="p-2 rounded-lg transition-all duration-200"
+                style={view === "list"
+                  ? { background: "rgba(200,131,74,0.3)", color: "#C8834A" }
+                  : { color: "rgba(255,255,255,0.35)" }
+                }
+              >
+                <Icon name="List" size={16} />
+              </button>
+            </div>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-24" style={{ color: "rgba(217,237,232,0.35)" }}>
-            <Icon name="CalendarX" size={48} className="mx-auto mb-4 opacity-30" />
-            <p className="text-lg mb-2">Встреч не найдено</p>
-            <button onClick={() => setSelectedType("all")} className="text-sm underline underline-offset-4" style={{ color: "#C8834A" }}>Сбросить фильтры</button>
-          </div>
-        ) : (
-          <>
-            <NetflixRow title="Ближайшие встречи" events={filtered.slice(0, 8)} featured />
-            {selectedType === "all" && eventTypes.filter(t => t !== "all").map((type) => {
-              const row = filtered.filter(e => e.type === type);
-              if (row.length === 0) return null;
-              return <NetflixRow key={type} title={type} events={row} />;
-            })}
-          </>
-        )}
+
+          {/* Карточки */}
+          {loading ? (
+            <div className="flex items-center justify-center py-24" style={{ color: "rgba(217,237,232,0.4)" }}>
+              <Icon name="Loader2" size={32} className="animate-spin mr-3" />
+              Загрузка встреч...
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-20" style={{ color: "rgba(217,237,232,0.35)" }}>
+              <Icon name="CalendarX" size={48} className="mx-auto mb-4 opacity-30" />
+              <p className="text-lg mb-2">Встреч не найдено</p>
+              <button onClick={() => setSelectedType("all")} className="text-sm underline underline-offset-4" style={{ color: "#C8834A" }}>Сбросить</button>
+            </div>
+          ) : view === "grid" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map((e) => <NetflixGridCard key={e.slug} event={e} />)}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map((e) => <NetflixListCard key={e.slug} event={e} />)}
+            </div>
+          )}
+        </div>
       </section>
 
       {/* ══ FORMATS ══════════════════════════════════════════════════════════ */}
