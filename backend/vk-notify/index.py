@@ -88,7 +88,7 @@ def handler(event: dict, context) -> dict:
     method = event.get("httpMethod", "GET")
     params = event.get("queryStringParameters") or {}
     headers = event.get("headers") or {}
-    token = headers.get("X-Auth-Token", "")
+    token = headers.get("X-Session-Token", "") or headers.get("X-Auth-Token", "")
     body = {}
     if method in ("POST", "PUT"):
         try:
