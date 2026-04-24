@@ -41,6 +41,7 @@ import Functional from "./pages/Functional";
 import AccountDemo from "./pages/AccountDemo";
 import EventsDemo from "./pages/EventsDemo";
 import EventsGlassDemo from "./pages/EventsGlassDemo";
+import IndexGlass from "./pages/IndexGlass";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +82,7 @@ const AppContent = () => {
         <Route path="/account-demo" element={<AccountDemo />} />
         <Route path="/events-demo" element={<EventsDemo />} />
         <Route path="/events-glass" element={<EventsGlassDemo />} />
+        <Route path="/index-glass" element={<IndexGlass />} />
         <Route path="/privacy" element={<Navigate to="/documents?tab=privacy" replace />} />
         <Route path="/terms" element={<Navigate to="/documents?tab=terms" replace />} />
         <Route path="*" element={<NotFound />} />
