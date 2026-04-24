@@ -103,107 +103,99 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-// ─── Карточка события (Airbnb-стиль) ─────────────────────────────────────────
-function AirbnbEventCard({ event }: { event: EventItem }) {
+// ─── Netflix-карточка события ─────────────────────────────────────────────────
+function NetflixEventCard({ event, featured = false }: { event: EventItem; featured?: boolean }) {
+  const [hovered, setHovered] = useState(false);
   const dateObj = parseISO(event.date);
-  const dateStr = format(dateObj, "d MMMM, EEEE", { locale: ru });
+  const dateStr = format(dateObj, "d MMM, EEE", { locale: ru });
   const sold = event.spotsLeft === 0;
   const few = !sold && event.spotsLeft > 0 && event.spotsLeft <= 3;
-  const pct = event.totalSpots > 0 ? Math.round(((event.totalSpots - event.spotsLeft) / event.totalSpots) * 100) : 100;
 
   return (
-    <Link to={`/events/${event.slug}`} className="group block">
+    <Link
+      to={`/events/${event.slug}`}
+      className="group relative flex-shrink-0 block"
+      style={{ width: featured ? 320 : 240 }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <div
-        className="rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
-        style={{ ...glassCard, boxShadow: "0 4px 24px rgba(0,0,0,0.25)" }}
+        className="relative overflow-hidden rounded-xl transition-all duration-300"
+        style={{
+          height: featured ? 380 : 300,
+          transform: hovered ? "scale(1.04)" : "scale(1)",
+          zIndex: hovered ? 10 : 1,
+          boxShadow: hovered ? "0 20px 60px rgba(0,0,0,0.7)" : "0 4px 20px rgba(0,0,0,0.4)",
+        }}
       >
-        {/* Image / placeholder */}
-        <div className="relative h-48 overflow-hidden">
-          {event.image ? (
-            <img
-              src={event.image}
-              alt={event.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          ) : (
-            <div
-              className="w-full h-full flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, rgba(200,131,74,0.2), rgba(143,168,154,0.2))" }}
-            >
-              <Icon name="Flame" size={48} style={{ color: "rgba(200,131,74,0.4)" } as React.CSSProperties} />
-            </div>
+        {/* BG image / gradient */}
+        {event.image ? (
+          <img src={event.image} alt={event.title} className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div
+            className="absolute inset-0"
+            style={{ background: `linear-gradient(160deg, rgba(200,131,74,0.35) 0%, rgba(20,16,12,0.9) 100%)` }}
+          />
+        )}
+
+        {/* Dark overlay always */}
+        <div
+          className="absolute inset-0 transition-opacity duration-300"
+          style={{
+            background: "linear-gradient(to top, rgba(10,8,6,0.95) 0%, rgba(10,8,6,0.4) 50%, rgba(10,8,6,0.15) 100%)",
+            opacity: hovered ? 1 : 0.8,
+          }}
+        />
+
+        {/* Top badges */}
+        <div className="absolute top-2.5 left-2.5 flex gap-1.5 flex-wrap z-10">
+          {few && (
+            <span className="text-xs px-2 py-0.5 rounded-full font-semibold animate-pulse"
+              style={{ background: "rgba(200,131,74,0.85)", color: "#fff" }}>Мало мест</span>
           )}
-          {/* Gradient overlay */}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(20,16,12,0.7) 0%, transparent 50%)" }} />
-
-          {/* Tags */}
-          <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
-            <span
-              className="text-xs px-2.5 py-1 rounded-full font-medium backdrop-blur-sm"
-              style={{ background: "rgba(20,16,12,0.6)", color: "#EDE0CC", border: "1px solid rgba(237,224,204,0.2)" }}
-            >
-              <Icon name={event.typeIcon as "Star"} size={11} className="inline mr-1" />
-              {event.type}
-            </span>
-          </div>
-          <div className="absolute top-3 right-3">
-            {sold && (
-              <span className="text-xs px-2.5 py-1 rounded-full font-medium backdrop-blur-sm" style={{ background: "rgba(239,68,68,0.3)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.4)" }}>Мест нет</span>
-            )}
-            {few && (
-              <span className="text-xs px-2.5 py-1 rounded-full font-medium backdrop-blur-sm animate-pulse" style={{ background: "rgba(200,131,74,0.3)", color: "#C8834A", border: "1px solid rgba(200,131,74,0.4)" }}>Мало мест</span>
-            )}
-          </div>
-
-          {/* Date badge bottom */}
-          <div className="absolute bottom-3 left-3">
-            <span className="text-xs font-medium" style={{ color: "rgba(237,224,204,0.85)" }}>
-              <Icon name="Calendar" size={12} className="inline mr-1" />
-              {dateStr}
-            </span>
-          </div>
+          {sold && (
+            <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+              style={{ background: "rgba(239,68,68,0.8)", color: "#fff" }}>Занято</span>
+          )}
         </div>
 
-        {/* Body */}
-        <div className="p-4">
+        {/* Content bottom */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+          <div className="text-xs mb-1.5 flex items-center gap-2" style={{ color: "rgba(237,224,204,0.55)" }}>
+            <span>{dateStr}</span>
+            <span>·</span>
+            <span>{event.timeStart}</span>
+            {event.bathName && <><span>·</span><span className="truncate">{event.bathName}</span></>}
+          </div>
+
           <h3
-            className="font-bold text-base leading-snug mb-1 group-hover:brightness-110 transition-all line-clamp-2"
-            style={{ color: "#EDE0CC" }}
+            className="font-bold leading-tight mb-2 line-clamp-2"
+            style={{ fontSize: featured ? 18 : 15, color: "#EDE0CC" }}
           >
             {event.title}
           </h3>
 
-          {event.description && (
-            <p className="text-xs line-clamp-2 mb-3" style={{ color: "rgba(217,237,232,0.5)" }}>
-              {event.description}
-            </p>
-          )}
-
-          <div className="flex items-center gap-3 text-xs mb-3" style={{ color: "rgba(217,237,232,0.45)" }}>
-            <span className="flex items-center gap-1"><Icon name="Clock" size={11} />{event.timeStart}–{event.timeEnd}</span>
-            {event.bathName && <span className="flex items-center gap-1 truncate"><Icon name="MapPin" size={11} />{event.bathName}</span>}
-          </div>
-
-          {/* Footer */}
-          <div className="flex items-center justify-between gap-2 pt-3" style={{ borderTop: "1px solid rgba(237,224,204,0.1)" }}>
-            <span className="font-bold text-sm" style={{ color: "#C8834A" }}>{event.priceLabel}</span>
-            <span
-              className="text-xs px-3 py-1.5 rounded-full font-semibold transition-all"
-              style={sold
-                ? { background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.25)" }
-                : { background: "linear-gradient(90deg,#C8834A,#8FA89A)", color: "#fff", boxShadow: "0 0 12px rgba(200,131,74,0.25)" }
-              }
-            >
-              {sold ? "Занято" : "Подробнее →"}
-            </span>
-          </div>
-
-          {/* Spots bar */}
-          <div className="mt-2.5 h-1 rounded-full" style={{ background: "rgba(255,255,255,0.07)" }}>
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${pct}%`, background: sold ? "#ef4444" : few ? "#C8834A" : "#8FA89A" }}
-            />
+          {/* Hover extras */}
+          <div
+            className="overflow-hidden transition-all duration-300"
+            style={{ maxHeight: hovered ? 120 : 0, opacity: hovered ? 1 : 0 }}
+          >
+            {event.description && (
+              <p className="text-xs line-clamp-2 mb-3" style={{ color: "rgba(217,237,232,0.5)" }}>
+                {event.description}
+              </p>
+            )}
+            <div className="flex items-center gap-2">
+              <span
+                className="px-4 py-1.5 rounded-full text-xs font-bold text-white transition-all hover:brightness-110"
+                style={{ background: sold ? "rgba(255,255,255,0.1)" : "linear-gradient(90deg,#C8834A,#8FA89A)" }}
+              >
+                {sold ? "Нет мест" : "Подробнее →"}
+              </span>
+              {event.priceLabel && (
+                <span className="text-sm font-bold" style={{ color: "#C8834A" }}>{event.priceLabel}</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -211,56 +203,30 @@ function AirbnbEventCard({ event }: { event: EventItem }) {
   );
 }
 
-// ─── Строчная карточка (list view) ───────────────────────────────────────────
-function ListEventCard({ event }: { event: EventItem }) {
-  const dateObj = parseISO(event.date);
-  const dateStr = format(dateObj, "d MMM, EEE", { locale: ru });
-  const sold = event.spotsLeft === 0;
-  const few = !sold && event.spotsLeft > 0 && event.spotsLeft <= 3;
 
+
+// ─── Netflix Row ──────────────────────────────────────────────────────────────
+function NetflixRow({ title, events, featured = false }: { title: string; events: EventItem[]; featured?: boolean }) {
+  if (events.length === 0) return null;
   return (
-    <Link to={`/events/${event.slug}`} className="group block">
-      <div
-        className="flex gap-4 items-center rounded-2xl px-4 py-3.5 transition-all duration-300 hover:brightness-110"
-        style={{ ...glassCard, boxShadow: "0 2px 12px rgba(0,0,0,0.2)" }}
-      >
-        {/* Date pill */}
-        <div
-          className="flex-shrink-0 w-14 text-center rounded-xl py-2"
-          style={{ background: "rgba(200,131,74,0.15)", border: "1px solid rgba(200,131,74,0.25)" }}
-        >
-          <div className="text-lg font-bold leading-none" style={{ color: "#C8834A" }}>
-            {format(dateObj, "d")}
-          </div>
-          <div className="text-xs uppercase tracking-wide mt-0.5" style={{ color: "rgba(200,131,74,0.65)" }}>
-            {format(dateObj, "MMM", { locale: ru })}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-            <span className="text-xs" style={{ color: "#8FA89A" }}>
-              <Icon name={event.typeIcon as "Star"} size={11} className="inline mr-1" />
-              {event.type}
-            </span>
-            {sold && <span className="text-xs" style={{ color: "#f87171" }}>• Мест нет</span>}
-            {few && <span className="text-xs animate-pulse" style={{ color: "#C8834A" }}>• Мало мест</span>}
-          </div>
-          <h3 className="font-semibold text-sm truncate" style={{ color: "#EDE0CC" }}>{event.title}</h3>
-          <div className="flex items-center gap-3 mt-0.5 text-xs" style={{ color: "rgba(217,237,232,0.4)" }}>
-            <span>{dateStr} · {event.timeStart}</span>
-            {event.bathName && <span className="truncate">{event.bathName}</span>}
-          </div>
-        </div>
-
-        {/* Price + arrow */}
-        <div className="flex-shrink-0 text-right">
-          <div className="font-bold text-sm" style={{ color: "#C8834A" }}>{event.priceLabel}</div>
-          <Icon name="ChevronRight" size={16} className="ml-auto mt-1" style={{ color: "rgba(237,224,204,0.3)" } as React.CSSProperties} />
-        </div>
+    <div className="mb-8">
+      <div className="px-4 sm:px-8 mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-bold" style={{ color: "#EDE0CC" }}>{title}</h2>
+        <Link to="/events" className="text-xs flex items-center gap-1 transition-all hover:brightness-125" style={{ color: "#C8834A" }}>
+          Все <Icon name="ChevronRight" size={14} />
+        </Link>
       </div>
-    </Link>
+      <div
+        className="flex gap-3 overflow-x-auto px-4 sm:px-8 pb-4"
+        style={{ scrollbarWidth: "none", scrollSnapType: "x mandatory" }}
+      >
+        {events.map((e) => (
+          <div key={e.slug} style={{ scrollSnapAlign: "start" }}>
+            <NetflixEventCard event={e} featured={featured} />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -268,9 +234,7 @@ function ListEventCard({ event }: { event: EventItem }) {
 export default function IndexNew() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState("all");
-  const [view, setView] = useState<"grid" | "list">("grid");
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -284,15 +248,10 @@ export default function IndexNew() {
   const eventTypes = useMemo(() => ["all", ...Array.from(new Set(events.map((e) => e.type)))], [events]);
 
   const filtered = useMemo(() => {
-    return events.filter((e) => {
-      if (selectedType !== "all" && e.type !== selectedType) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        return e.title.toLowerCase().includes(q) || (e.bathName ?? "").toLowerCase().includes(q) || e.type.toLowerCase().includes(q);
-      }
-      return true;
-    }).sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-  }, [events, selectedType, search]);
+    return events
+      .filter((e) => selectedType === "all" || e.type === selectedType)
+      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+  }, [events, selectedType]);
 
   return (
     <div
@@ -311,7 +270,7 @@ export default function IndexNew() {
         className="sticky top-0 z-50 px-4 py-3"
         style={{ background: "rgba(20,16,12,0.75)", backdropFilter: "blur(24px)", borderBottom: "1px solid rgba(237,224,204,0.08)" }}
       >
-        <div className="max-w-6xl mx-auto flex items-center gap-4">
+        <div className="max-w-6xl mx-auto flex items-center gap-6">
           <Link to="/" className="flex-shrink-0">
             <img
               src="https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/fc7c6e03-06e9-49ae-b205-37526a96596b.png"
@@ -320,38 +279,17 @@ export default function IndexNew() {
             />
           </Link>
 
-          {/* Search bar — Airbnb style */}
-          <div
-            className="flex-1 max-w-md mx-auto flex items-center gap-2 px-4 py-2 rounded-full transition-all"
-            style={{ background: "rgba(237,224,204,0.08)", border: "1px solid rgba(237,224,204,0.15)" }}
-          >
-            <Icon name="Search" size={15} style={{ color: "rgba(237,224,204,0.4)", flexShrink: 0 } as React.CSSProperties} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Поиск встреч, бань, форматов..."
-              className="bg-transparent text-sm outline-none flex-1 min-w-0"
-              style={{ color: "rgba(237,224,204,0.85)" }}
-            />
-            {search && (
-              <button onClick={() => setSearch("")} style={{ color: "rgba(237,224,204,0.4)" }}>
-                <Icon name="X" size={13} />
-              </button>
-            )}
-          </div>
-
-          <nav className="hidden md:flex items-center gap-5 text-sm flex-shrink-0">
+          <nav className="hidden md:flex items-center gap-6 text-sm flex-1">
             {[["Афиша", "/events"], ["Мастера", "/masters"], ["Бани", "/baths"], ["Блог", "/blog"]].map(([l, h]) => (
               <Link key={h} to={h} className="hover:text-white transition-colors" style={{ color: "rgba(237,224,204,0.55)" }}>{l}</Link>
             ))}
           </nav>
 
           <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-            <Link to="/login" className="text-sm px-4 py-1.5 rounded-full transition-all" style={{ color: "#EDE0CC", border: "1px solid rgba(237,224,204,0.18)", background: "rgba(237,224,204,0.05)" }}>Войти</Link>
-            <Link to="/events" className="text-sm px-4 py-1.5 rounded-full font-semibold transition-all hover:brightness-110 text-white" style={{ background: "linear-gradient(90deg,#C8834A,#8FA89A)" }}>Все встречи</Link>
+            <Link to="/login" className="text-sm px-4 py-1.5 rounded-full transition-all hover:brightness-110" style={{ color: "#EDE0CC", border: "1px solid rgba(237,224,204,0.18)", background: "rgba(237,224,204,0.05)" }}>Войти</Link>
           </div>
 
-          <button className="md:hidden flex-shrink-0 p-2" style={{ color: "#EDE0CC" }} onClick={() => setMenuOpen(!menuOpen)}>
+          <button className="md:hidden flex-shrink-0 p-2 ml-auto" style={{ color: "#EDE0CC" }} onClick={() => setMenuOpen(!menuOpen)}>
             <Icon name={menuOpen ? "X" : "Menu"} size={20} />
           </button>
         </div>
@@ -430,91 +368,48 @@ export default function IndexNew() {
         </div>
       </section>
 
-      {/* ══ EVENTS (с поиском и фильтрами) ══════════════════════════════════ */}
-      <section className="relative z-10 py-16 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
-            <div>
-              <SectionBadge icon="CalendarDays">Афиша</SectionBadge>
-              <SectionHeading>Ближайшие встречи</SectionHeading>
-            </div>
-            <Link to="/events" className="flex items-center gap-1.5 text-sm font-medium transition-all hover:brightness-125 flex-shrink-0" style={{ color: "#C8834A" }}>
-              Все встречи <Icon name="ArrowRight" size={15} />
-            </Link>
-          </div>
-
-          {/* Controls bar */}
-          <div
-            className="flex flex-wrap gap-3 items-center mb-6 p-3 rounded-2xl"
-            style={glassCard}
-          >
-            {/* Type pills */}
-            <div className="flex flex-wrap gap-2 flex-1">
-              {eventTypes.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setSelectedType(t)}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all duration-200"
-                  style={selectedType === t
-                    ? { background: "linear-gradient(90deg,#C8834A,#8FA89A)", color: "#fff", boxShadow: "0 0 14px rgba(200,131,74,0.3)" }
-                    : { background: "rgba(237,224,204,0.06)", border: "1px solid rgba(237,224,204,0.12)", color: "rgba(237,224,204,0.6)" }
-                  }
-                >
-                  {t === "all" ? "Все форматы" : t}
-                </button>
-              ))}
-            </div>
-
-            {/* View toggle */}
-            <div className="flex gap-1 rounded-xl p-1 flex-shrink-0" style={{ background: "rgba(237,224,204,0.06)" }}>
+      {/* ══ EVENTS — Netflix-стиль ═══════════════════════════════════════════ */}
+      <section className="relative z-10 pt-2 pb-8">
+        {/* Фильтр по типу */}
+        <div className="px-4 sm:px-8 mb-6">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+            {eventTypes.map((t) => (
               <button
-                onClick={() => setView("grid")}
-                className="p-2 rounded-lg transition-all"
-                style={view === "grid" ? { background: "rgba(200,131,74,0.2)", color: "#C8834A" } : { color: "rgba(237,224,204,0.35)" }}
+                key={t}
+                onClick={() => setSelectedType(t)}
+                className="flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
+                style={selectedType === t
+                  ? { background: "linear-gradient(90deg,#C8834A,#8FA89A)", color: "#fff", boxShadow: "0 0 18px rgba(200,131,74,0.35)" }
+                  : { background: "rgba(237,224,204,0.07)", border: "1px solid rgba(237,224,204,0.13)", color: "rgba(237,224,204,0.6)" }
+                }
               >
-                <Icon name="LayoutGrid" size={16} />
+                {t === "all" ? "Все форматы" : t}
               </button>
-              <button
-                onClick={() => setView("list")}
-                className="p-2 rounded-lg transition-all"
-                style={view === "list" ? { background: "rgba(200,131,74,0.2)", color: "#C8834A" } : { color: "rgba(237,224,204,0.35)" }}
-              >
-                <Icon name="List" size={16} />
-              </button>
-            </div>
+            ))}
           </div>
-
-          {/* Results count */}
-          {!loading && (
-            <p className="text-xs mb-4" style={{ color: "rgba(217,237,232,0.35)" }}>
-              {search || selectedType !== "all"
-                ? `Найдено: ${filtered.length} ${filtered.length === 1 ? "встреча" : filtered.length < 5 ? "встречи" : "встреч"}`
-                : `Предстоящих встреч: ${filtered.length}`}
-            </p>
-          )}
-
-          {/* Cards */}
-          {loading ? (
-            <div className="flex items-center justify-center py-20" style={{ color: "rgba(217,237,232,0.4)" }}>
-              <Icon name="Loader2" size={32} className="animate-spin mr-3" />
-              Загрузка встреч...
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-20" style={{ color: "rgba(217,237,232,0.35)" }}>
-              <Icon name="CalendarX" size={48} className="mx-auto mb-4 opacity-30" />
-              <p className="text-lg mb-2">Встреч не найдено</p>
-              <button onClick={() => { setSearch(""); setSelectedType("all"); }} className="text-sm underline underline-offset-4" style={{ color: "#C8834A" }}>Сбросить фильтры</button>
-            </div>
-          ) : view === "grid" ? (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filtered.map((e) => <AirbnbEventCard key={e.slug} event={e} />)}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filtered.map((e) => <ListEventCard key={e.slug} event={e} />)}
-            </div>
-          )}
         </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-24" style={{ color: "rgba(217,237,232,0.4)" }}>
+            <Icon name="Loader2" size={32} className="animate-spin mr-3" />
+            Загрузка встреч...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-24" style={{ color: "rgba(217,237,232,0.35)" }}>
+            <Icon name="CalendarX" size={48} className="mx-auto mb-4 opacity-30" />
+            <p className="text-lg mb-2">Встреч не найдено</p>
+            <button onClick={() => setSelectedType("all")} className="text-sm underline underline-offset-4" style={{ color: "#C8834A" }}>Сбросить фильтры</button>
+          </div>
+        ) : (
+          <>
+            <NetflixRow title="Ближайшие встречи" events={filtered.slice(0, 8)} featured />
+            {selectedType === "all" && eventTypes.filter(t => t !== "all").map((type) => {
+              const row = filtered.filter(e => e.type === type);
+              if (row.length === 0) return null;
+              return <NetflixRow key={type} title={type} events={row} />;
+            })}
+          </>
+        )}
       </section>
 
       {/* ══ FORMATS ══════════════════════════════════════════════════════════ */}
