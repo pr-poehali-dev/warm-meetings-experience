@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAccount } from "@/hooks/useAccount";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +14,8 @@ import MyDataExport from "@/components/account/MyDataExport";
 import MyArticles from "@/components/account/MyArticles";
 import MyCalendar from "@/components/account/MyCalendar";
 import NotificationsSection from "@/components/account/NotificationsSection";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 type Tab = "main" | "articles" | "calendar" | "my-data";
 
@@ -67,56 +69,134 @@ export default function Account() {
 
   if (!user) return null;
 
+  const upcomingSignups = signups.filter((s) => s.status !== "attended" && s.status !== "cancelled");
+  const pastSignups = signups.filter((s) => s.status === "attended");
+
+  const securityOk = user.has_password !== false && (user.totp_enabled === true);
+
   return (
     <div className="min-h-screen bg-background">
       <AccountHeader handleLogout={handleLogout} />
 
       {tab === "main" && (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl">
-          <div className="space-y-6">
-            {user.email?.includes("@vk.local") && (
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Icon name="AlertTriangle" size={20} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-sm">Укажите настоящий email</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Вы вошли через ВКонтакте. Чтобы получать уведомления и иметь возможность восстановить доступ — укажите email и установите пароль.
-                    </p>
-                  </div>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-10 max-w-2xl space-y-4 pt-6">
+
+          {user.email?.includes("@vk.local") && (
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <Icon name="AlertTriangle" size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-sm">Укажите настоящий email</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Вы вошли через ВКонтакте. Укажите email и пароль, чтобы получать уведомления и восстановить доступ при необходимости.
+                  </p>
                 </div>
               </div>
-            )}
-            <ProfileCard
-              user={user}
-              editing={editing}
-              editName={editName}
-              editEmail={editEmail}
-              editPhone={editPhone}
-              editTelegram={editTelegram}
-              savingProfile={savingProfile}
-              setEditing={setEditing}
-              setEditName={setEditName}
-              setEditEmail={setEditEmail}
-              setEditPhone={setEditPhone}
-              setEditTelegram={setEditTelegram}
-              handleSaveProfile={handleSaveProfile}
-              handleCancelEdit={handleCancelEdit}
-              deletePassword={deletePassword}
-              setDeletePassword={setDeletePassword}
-              deletingAccount={deletingAccount}
-              showDeleteConfirm={showDeleteConfirm}
-              setShowDeleteConfirm={setShowDeleteConfirm}
-              handleDeleteAccount={handleDeleteAccount}
-              onVkLinked={(vkId) => authUser && updateUser({ ...authUser, vk_id: vkId })}
-              onVkUnlinked={() => authUser && updateUser({ ...authUser, vk_id: null })}
-              onYandexLinked={(yandexId) => authUser && updateUser({ ...authUser, yandex_id: yandexId })}
-              onYandexUnlinked={() => authUser && updateUser({ ...authUser, yandex_id: null })}
+            </div>
+          )}
+
+          {/* 1. Профиль — визитка с инлайн-редактированием */}
+          <ProfileCard
+            user={user}
+            editing={editing}
+            editName={editName}
+            editEmail={editEmail}
+            editPhone={editPhone}
+            editTelegram={editTelegram}
+            savingProfile={savingProfile}
+            setEditing={setEditing}
+            setEditName={setEditName}
+            setEditEmail={setEditEmail}
+            setEditPhone={setEditPhone}
+            setEditTelegram={setEditTelegram}
+            handleSaveProfile={handleSaveProfile}
+            handleCancelEdit={handleCancelEdit}
+            deletePassword={deletePassword}
+            setDeletePassword={setDeletePassword}
+            deletingAccount={deletingAccount}
+            showDeleteConfirm={showDeleteConfirm}
+            setShowDeleteConfirm={setShowDeleteConfirm}
+            handleDeleteAccount={handleDeleteAccount}
+            onVkLinked={(vkId) => authUser && updateUser({ ...authUser, vk_id: vkId })}
+            onVkUnlinked={() => authUser && updateUser({ ...authUser, vk_id: null })}
+            onYandexLinked={(yandexId) => authUser && updateUser({ ...authUser, yandex_id: yandexId })}
+            onYandexUnlinked={() => authUser && updateUser({ ...authUser, yandex_id: null })}
+          />
+
+          {/* 2. Ближайшие события — на видном месте */}
+          <SignupsList
+            signups={upcomingSignups}
+            signupsLoading={signupsLoading}
+            title="Ближайшие события"
+            emptyIcon="CalendarCheck"
+            emptyText="Нет предстоящих записей"
+            showEventsLink
+          />
+
+          {/* 3. Уведомления */}
+          <NotificationsSection />
+
+          {/* 4. Быстрые действия — безопасность и данные */}
+          <div className="grid grid-cols-2 gap-3">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 flex flex-col gap-2 h-full">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${securityOk ? "bg-green-50 dark:bg-green-950/40" : "bg-amber-50 dark:bg-amber-950/30"}`}>
+                    <Icon name="Shield" size={15} className={securityOk ? "text-green-600" : "text-amber-600"} />
+                  </div>
+                  <span className="text-sm font-medium">Безопасность</span>
+                </div>
+                <p className={`text-xs ${securityOk ? "text-green-600 dark:text-green-400 flex items-center gap-1" : "text-muted-foreground"}`}>
+                  {securityOk
+                    ? <><Icon name="CheckCircle" size={11} />Всё настроено</>
+                    : "Настройте защиту"}
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-auto w-full"
+                  onClick={() => {
+                    document.getElementById("security-section")?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                >
+                  Настроить
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 flex flex-col gap-2 h-full">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                    <Icon name="Download" size={15} className="text-muted-foreground" />
+                  </div>
+                  <span className="text-sm font-medium">Мои данные</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Скачать всё о себе</p>
+                <Link to="/account?tab=my-data" className="mt-auto">
+                  <Button size="sm" variant="outline" className="w-full">Скачать</Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* 5. Роли и достижения */}
+          <GrowthSection />
+          <BadgesSection />
+
+          {/* 6. Прошедшие события */}
+          {pastSignups.length > 0 && (
+            <SignupsList
+              signups={pastSignups}
+              signupsLoading={false}
+              title="Посещённые события"
+              emptyIcon="Calendar"
+              emptyText=""
             />
-            <NotificationsSection />
-            <GrowthSection />
-            <BadgesSection />
-            <SignupsList signups={signups} signupsLoading={signupsLoading} />
+          )}
+
+          {/* 7. Безопасность — детали (якорь) */}
+          <div id="security-section" className="space-y-4 scroll-mt-20">
             <PasswordChangeForm
               hasPassword={user.has_password !== false}
               currentPassword={currentPassword}
@@ -139,19 +219,19 @@ export default function Account() {
       )}
 
       {tab === "my-data" && (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl pt-6">
           <MyDataExport />
         </div>
       )}
 
       {tab === "articles" && (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl pt-6">
           <MyArticles />
         </div>
       )}
 
       {tab === "calendar" && (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-6">
           <MyCalendar />
         </div>
       )}

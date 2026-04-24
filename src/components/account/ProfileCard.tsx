@@ -92,20 +92,68 @@ export default function ProfileCard({
     }
   };
 
+  const initials = user.name
+    ? user.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
+    : "?";
+
   return (
-    <Card className="border-0 shadow-sm">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-xl">Профиль</CardTitle>
+    <Card className="border-0 shadow-sm overflow-hidden">
+      {/* Визитка-шапка */}
+      <div className="bg-gradient-to-br from-primary/15 to-primary/5 px-5 pt-5 pb-4">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center text-xl font-semibold text-primary flex-shrink-0 select-none">
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-lg leading-tight truncate">{user.name || "Имя не указано"}</div>
+            {!user.email?.includes("@vk.local") && (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-sm text-muted-foreground truncate">
+                  {showEmail ? user.email : maskEmail(user.email)}
+                </span>
+                <button
+                  onClick={() => setShowEmail(!showEmail)}
+                  className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                >
+                  <Icon name={showEmail ? "EyeOff" : "Eye"} size={13} />
+                </button>
+                {user.email_verified
+                  ? <Icon name="CheckCircle" size={13} className="text-green-500 flex-shrink-0" />
+                  : <button onClick={handleSendVerify} disabled={sendingVerify} className="text-xs text-amber-600 underline underline-offset-2 flex-shrink-0 disabled:opacity-50">
+                      {sendingVerify ? "..." : "подтвердить"}
+                    </button>
+                }
+              </div>
+            )}
+            {/* Бейджи привязанных аккаунтов */}
+            <div className="flex gap-1.5 mt-2 flex-wrap">
+              {user.email_verified && (
+                <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">Email ✓</span>
+              )}
+              {user.vk_id && (
+                <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">VK</span>
+              )}
+              {user.telegram && (
+                <span className="text-xs bg-sky-500 text-white px-2 py-0.5 rounded-full">TG</span>
+              )}
+              {user.yandex_id && (
+                <span className="text-xs bg-yellow-500 text-white px-2 py-0.5 rounded-full">Яндекс</span>
+              )}
+            </div>
+          </div>
           {!editing && (
-            <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
-              <Icon name="Pencil" size={16} className="mr-2" />
-              Редактировать
-            </Button>
+            <button
+              onClick={() => setEditing(true)}
+              className="w-8 h-8 rounded-full bg-background/70 hover:bg-background flex items-center justify-center transition-colors flex-shrink-0"
+              title="Редактировать"
+            >
+              <Icon name="Pencil" size={14} className="text-foreground" />
+            </button>
           )}
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+
+      <CardContent className="p-5">
         {editing ? (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -174,82 +222,37 @@ export default function ProfileCard({
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <Icon name="User" size={16} className="text-muted-foreground flex-shrink-0" />
-              <div>
-                <div className="text-sm text-muted-foreground">Имя</div>
-                <div className="font-medium">{user.name}</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Icon name="Mail" size={16} className="text-muted-foreground flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm text-muted-foreground">Email</div>
-                {user.email?.includes("@vk.local") ? (
-                  <div className="font-medium text-muted-foreground">Не указан</div>
-                ) : (
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <div className="font-medium">
-                        {showEmail ? user.email : maskEmail(user.email)}
-                      </div>
-                      <button
-                        onClick={() => setShowEmail(!showEmail)}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                        title={showEmail ? "Скрыть" : "Показать"}
-                      >
-                        <Icon name={showEmail ? "EyeOff" : "Eye"} size={14} />
-                      </button>
-                      {user.email_verified && (
-                        <Icon name="CheckCircle" size={14} className="text-green-500" title="Подтверждён" />
-                      )}
+            {user.phone && (
+              <div className="flex items-center gap-3">
+                <Icon name="Phone" size={15} className="text-muted-foreground flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-muted-foreground">Телефон</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-medium">
+                      {showPhone ? user.phone : maskPhone(user.phone)}
                     </div>
-                    {!user.email_verified && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-amber-600 dark:text-amber-400">Не подтверждён</span>
-                        <button
-                          onClick={handleSendVerify}
-                          disabled={sendingVerify}
-                          className="text-xs text-primary underline underline-offset-2 hover:text-primary/80 disabled:opacity-50"
-                        >
-                          {sendingVerify ? "Отправка..." : "Отправить письмо"}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Icon name="Phone" size={16} className="text-muted-foreground flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm text-muted-foreground">Телефон</div>
-                <div className="flex items-center gap-2">
-                  <div className="font-medium">
-                    {user.phone
-                      ? (showPhone ? user.phone : maskPhone(user.phone))
-                      : "Не указан"}
-                  </div>
-                  {user.phone && (
                     <button
                       onClick={() => setShowPhone(!showPhone)}
                       className="text-muted-foreground hover:text-foreground transition-colors"
-                      title={showPhone ? "Скрыть" : "Показать"}
                     >
-                      <Icon name={showPhone ? "EyeOff" : "Eye"} size={14} />
+                      <Icon name={showPhone ? "EyeOff" : "Eye"} size={13} />
                     </button>
-                  )}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Icon name="Send" size={16} className="text-muted-foreground flex-shrink-0" />
-              <div>
-                <div className="text-sm text-muted-foreground">Telegram</div>
-                <div className="font-medium">{user.telegram || "Не указан"}</div>
+            )}
+            {user.telegram && (
+              <div className="flex items-center gap-3">
+                <Icon name="Send" size={15} className="text-muted-foreground flex-shrink-0" />
+                <div>
+                  <div className="text-xs text-muted-foreground">Telegram</div>
+                  <div className="text-sm font-medium">{user.telegram}</div>
+                </div>
               </div>
-            </div>
-            <div className="pt-1 border-t border-border space-y-3">
+            )}
+            {/* Привязка аккаунтов */}
+            <div className="pt-2 border-t border-border space-y-2">
+              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Привязанные аккаунты</div>
               <VkLinkSection
                 vkId={user.vk_id}
                 hasPassword={user.has_password !== false}
