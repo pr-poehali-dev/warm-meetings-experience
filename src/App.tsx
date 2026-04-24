@@ -40,6 +40,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import Functional from "./pages/Functional";
 import AccountDemo from "./pages/AccountDemo";
 import EventsDemo from "./pages/EventsDemo";
+import EventsGlassDemo from "./pages/EventsGlassDemo";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,7 @@ const AppContent = () => {
         <Route path="/functional" element={<Functional />} />
         <Route path="/account-demo" element={<AccountDemo />} />
         <Route path="/events-demo" element={<EventsDemo />} />
+        <Route path="/events-glass" element={<EventsGlassDemo />} />
         <Route path="/privacy" element={<Navigate to="/documents?tab=privacy" replace />} />
         <Route path="/terms" element={<Navigate to="/documents?tab=terms" replace />} />
         <Route path="*" element={<NotFound />} />
