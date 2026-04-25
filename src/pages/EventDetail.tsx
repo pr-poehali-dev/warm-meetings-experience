@@ -49,23 +49,35 @@ export default function EventDetail() {
         ? "text-orange-600 bg-orange-50"
         : "text-green-600 bg-green-50";
 
+  const spotsLabel =
+    event.spotsLeft === 0
+      ? "Мест нет"
+      : event.spotsLeft <= 2
+        ? `Последние ${event.spotsLeft} места`
+        : `Осталось ${event.spotsLeft} из ${event.totalSpots} мест`;
+
+  const priceDisplay = event.pricingType === "dynamic" && event.pricingTiers?.length
+    ? null
+    : event.priceLabel || null;
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-24 lg:pb-0">
       <Header />
 
+      {/* Hero */}
       {event.image ? (
-        <div className="relative h-64 md:h-80 overflow-hidden">
+        <div className="relative h-64 md:h-96 overflow-hidden">
           <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
           <div className="absolute bottom-6 left-0 right-0 container mx-auto px-4 sm:px-6 lg:px-8">
             <span className={`inline-block text-xs px-3 py-1.5 rounded-full font-medium ${typeColors.bg} ${typeColors.color} mb-3`}>
               {event.type}
             </span>
-            <h1 className="text-2xl md:text-4xl font-bold text-white">{event.title}</h1>
+            <h1 className="text-2xl md:text-4xl font-bold text-white leading-tight">{event.title}</h1>
           </div>
         </div>
       ) : (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2">
           <span className={`inline-block text-xs px-3 py-1.5 rounded-full font-medium ${typeColors.bg} ${typeColors.color} mb-3`}>
             {event.type}
           </span>
@@ -73,146 +85,194 @@ export default function EventDetail() {
         </div>
       )}
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap gap-4 mb-8">
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center">
-                  <Icon name="Calendar" size={16} className="text-accent" />
-                </div>
-                <div>
-                  <div className="font-medium">{format(dateObj, "d MMMM yyyy, EEEE", { locale: ru })}</div>
-                  <div className="text-muted-foreground">{event.timeStart} — {event.timeEnd}</div>
-                </div>
-              </div>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+        <div className="flex flex-col lg:flex-row gap-10">
+
+          {/* Основной контент */}
+          <div className="flex-1 min-w-0 space-y-8">
+
+            {/* Мета-инфо */}
+            <div className="flex flex-wrap gap-5">
+              <MetaItem icon="Calendar" label={format(dateObj, "d MMMM yyyy, EEEE", { locale: ru })} sub={`${event.timeStart} — ${event.timeEnd}`} />
               {event.bathName && (
-                <div className="flex items-center gap-2 text-sm">
-                  <div className="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center">
-                    <Icon name="MapPin" size={16} className="text-accent" />
-                  </div>
-                  <div>
-                    <div className="font-medium">{event.bathName}</div>
-                    {event.bathAddress && <div className="text-muted-foreground">{event.bathAddress}</div>}
-                  </div>
-                </div>
+                <MetaItem icon="MapPin" label={event.bathName} sub={event.bathAddress} />
               )}
               {event.totalSpots > 0 && (
-                <div className="flex items-center gap-2 text-sm">
-                  <div className="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center">
-                    <Icon name="Users" size={16} className="text-accent" />
-                  </div>
-                  <div>
-                    <div className="font-medium">{event.totalSpots} мест</div>
-                    <div className={`font-medium ${event.spotsLeft === 0 ? "text-red-600" : event.spotsLeft <= 2 ? "text-orange-600" : "text-green-600"}`}>
-                      {event.spotsLeft === 0 ? "Все заняты" : `Свободно ${event.spotsLeft}`}
-                    </div>
-                  </div>
-                </div>
+                <MetaItem icon="Users" label={`${event.totalSpots} мест`} sub={spotsLabel} subColor={event.spotsLeft === 0 ? "text-red-500" : event.spotsLeft <= 2 ? "text-orange-500" : "text-green-600"} />
               )}
             </div>
 
+            {/* Описание */}
             {event.fullDescription && (
-              <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-4">О встрече</h2>
+              <section>
+                <h2 className="text-xl font-semibold mb-3">О встрече</h2>
                 <div className="text-muted-foreground leading-relaxed whitespace-pre-line">{event.fullDescription}</div>
-              </div>
+              </section>
             )}
 
+            {/* Программа */}
             {event.program.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-4">Программа</h2>
-                <div className="space-y-3">
+              <section>
+                <h2 className="text-xl font-semibold mb-3">Программа</h2>
+                <div className="space-y-2.5">
                   {event.program.map((item, i) => (
                     <div key={i} className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-accent/10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-xs font-medium text-accent">{i + 1}</span>
+                      <div className="w-6 h-6 bg-accent/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="text-xs font-semibold text-accent">{i + 1}</span>
                       </div>
                       <span className="text-muted-foreground">{item}</span>
                     </div>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
 
+            {/* Правила */}
             {event.rules.length > 0 && (
-              <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-4">Правила</h2>
-                <Card className="border-0 shadow-sm">
-                  <CardContent className="p-6">
+              <section>
+                <h2 className="text-xl font-semibold mb-3">Правила</h2>
+                <Card className="border shadow-sm">
+                  <CardContent className="p-5">
                     <ul className="space-y-3">
                       {event.rules.map((rule, i) => (
                         <li key={i} className="flex items-start gap-3">
-                          <Icon name="Shield" size={16} className="text-accent mt-0.5 flex-shrink-0" />
-                          <span className="text-muted-foreground">{rule}</span>
+                          <Icon name="Shield" size={15} className="text-accent mt-0.5 shrink-0" />
+                          <span className="text-muted-foreground text-sm">{rule}</span>
                         </li>
                       ))}
                     </ul>
                   </CardContent>
                 </Card>
-              </div>
+              </section>
             )}
           </div>
 
-          <div className="lg:w-[360px] flex-shrink-0">
-            <div className="lg:sticky lg:top-24 space-y-4">
-              <Card className="border-0 shadow-sm">
-                <CardContent className="p-6">
-                  {event.pricingType === 'dynamic' && event.pricingTiers?.length ? (
-                    <div className="mb-3">
-                      <DynamicPricingBlock tiers={event.pricingTiers} />
-                    </div>
-                  ) : (
-                    <>
-                      {event.priceLabel && !event.pricingLines?.length && (
-                        <div className="text-3xl font-bold text-accent mb-1">{event.priceLabel}</div>
-                      )}
-                      {event.pricingLines && event.pricingLines.length > 0 && (
-                        <div className="mb-3">
-                          <div className="text-sm font-semibold text-foreground mb-2">СТОИМОСТЬ УЧАСТИЯ</div>
-                          <ul className="space-y-1.5">
-                            {event.pricingLines.map((line, i) => (
-                              <li key={i} className="flex items-start gap-2 text-sm text-foreground">
-                                <span className="mt-0.5 flex-shrink-0">🔹</span>
-                                <span>{line}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {event.totalSpots > 0 && (
-                    <div className={`inline-block text-xs px-2.5 py-1 rounded-full font-medium ${spotsColor} mb-4`}>
-                      {event.spotsLeft === 0
-                        ? "Мест нет"
-                        : event.spotsLeft <= 2
-                          ? `Последние ${event.spotsLeft} места`
-                          : `Осталось ${event.spotsLeft} из ${event.totalSpots} мест`}
-                    </div>
-                  )}
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Icon name="Calendar" size={14} />
-                      {format(dateObj, "d MMMM", { locale: ru })}, {event.timeStart}
-                    </div>
-                    {event.bathName && (
-                      <div className="flex items-center gap-2">
-                        <Icon name="MapPin" size={14} />
-                        {event.bathName}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {event.id && (
-                <SignUpForm eventId={event.id} eventTitle={event.title} spotsLeft={event.spotsLeft} />
-              )}
+          {/* Десктопная боковая панель */}
+          <div className="hidden lg:block lg:w-[340px] shrink-0">
+            <div className="sticky top-24 space-y-4">
+              <SidebarCard
+                event={event}
+                spotsColor={spotsColor}
+                spotsLabel={spotsLabel}
+                priceDisplay={priceDisplay}
+                dateObj={dateObj}
+              />
             </div>
           </div>
         </div>
       </div>
+
+      {/* Мобильная sticky-панель снизу */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-border px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            {priceDisplay && (
+              <div className="text-lg font-bold text-accent leading-tight">{priceDisplay}</div>
+            )}
+            {event.totalSpots > 0 && (
+              <div className={`text-xs font-medium ${event.spotsLeft === 0 ? "text-red-500" : event.spotsLeft <= 2 ? "text-orange-500" : "text-green-600"}`}>
+                {spotsLabel}
+              </div>
+            )}
+          </div>
+          {event.id && (
+            <SignUpForm
+              eventId={event.id}
+              eventTitle={event.title}
+              spotsLeft={event.spotsLeft}
+              priceLabel={priceDisplay ?? undefined}
+            />
+          )}
+        </div>
+      </div>
     </div>
+  );
+}
+
+/* ── Мета-иконка с подписью ─────────────────────────────────────────── */
+function MetaItem({ icon, label, sub, subColor }: { icon: string; label: string; sub?: string; subColor?: string }) {
+  return (
+    <div className="flex items-center gap-2.5 text-sm">
+      <div className="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center shrink-0">
+        <Icon name={icon as "Calendar"} size={15} className="text-accent" />
+      </div>
+      <div>
+        <div className="font-medium">{label}</div>
+        {sub && <div className={`text-xs ${subColor ?? "text-muted-foreground"}`}>{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ── Десктопный сайдбар ─────────────────────────────────────────────── */
+function SidebarCard({ event, spotsColor, spotsLabel, priceDisplay, dateObj }: {
+  event: EventItem;
+  spotsColor: string;
+  spotsLabel: string;
+  priceDisplay: string | null;
+  dateObj: Date;
+}) {
+  return (
+    <>
+      <Card className="border shadow-sm">
+        <CardContent className="p-5 space-y-4">
+          {/* Цена */}
+          {event.pricingType === "dynamic" && event.pricingTiers?.length ? (
+            <DynamicPricingBlock tiers={event.pricingTiers} />
+          ) : (
+            <>
+              {priceDisplay && (
+                <div className="text-3xl font-bold text-accent">{priceDisplay}</div>
+              )}
+              {event.pricingLines && event.pricingLines.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Стоимость участия</div>
+                  <ul className="space-y-1.5">
+                    {event.pricingLines.map((line, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm">
+                        <span className="shrink-0 mt-0.5">🔹</span>
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Места */}
+          {event.totalSpots > 0 && (
+            <div className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${spotsColor}`}>
+              <Icon name="Users" size={11} />
+              {spotsLabel}
+            </div>
+          )}
+
+          {/* Дата и место */}
+          <div className="space-y-2 text-sm text-muted-foreground pt-1 border-t border-border">
+            <div className="flex items-center gap-2">
+              <Icon name="Calendar" size={13} />
+              {format(dateObj, "d MMMM", { locale: ru })}, {event.timeStart}–{event.timeEnd}
+            </div>
+            {event.bathName && (
+              <div className="flex items-center gap-2">
+                <Icon name="MapPin" size={13} />
+                {event.bathName}
+              </div>
+            )}
+          </div>
+
+          {/* Кнопка */}
+          {event.id && (
+            <SignUpForm
+              eventId={event.id}
+              eventTitle={event.title}
+              spotsLeft={event.spotsLeft}
+              priceLabel={priceDisplay ?? undefined}
+            />
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }
