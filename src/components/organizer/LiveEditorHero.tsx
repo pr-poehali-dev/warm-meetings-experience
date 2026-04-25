@@ -3,6 +3,7 @@ import { OrgEvent } from "@/lib/organizer-api";
 import Icon from "@/components/ui/icon";
 import { getTypeColors } from "@/data/events";
 import ImageUpload from "@/components/admin/ImageUpload";
+import PhotoBank, { useRecentPhotos } from "@/components/admin/PhotoBank";
 
 const BASE_EVENT_TYPES = [
   { value: "знакомство", label: "Знакомство", icon: "Users" },
@@ -22,6 +23,8 @@ interface Props {
 export default function LiveEditorHero({ fd, set }: Props) {
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
+  const [showPhotoBank, setShowPhotoBank] = useState(false);
+  const { addRecent } = useRecentPhotos();
 
   const typeColors = getTypeColors(fd.event_type || "знакомство");
   const typeIcon = fd.event_type_icon || "Users";
@@ -59,15 +62,25 @@ export default function LiveEditorHero({ fd, set }: Props) {
           </button>
         </div>
 
-        {/* image change button */}
-        <button
-          type="button"
-          onClick={() => setShowImageUpload(!showImageUpload)}
-          className="absolute bottom-3 right-3 bg-black/50 hover:bg-black/70 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-colors"
-        >
-          <Icon name="Camera" size={13} />
-          {fd.image_url ? "Сменить фото" : "Добавить фото"}
-        </button>
+        {/* Кнопки фото */}
+        <div className="absolute bottom-3 right-3 flex gap-1.5">
+          <button
+            type="button"
+            onClick={() => { setShowPhotoBank(!showPhotoBank); setShowImageUpload(false); }}
+            className="bg-black/50 hover:bg-black/70 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-colors"
+          >
+            <Icon name="Images" size={13} />
+            Банк фото
+          </button>
+          <button
+            type="button"
+            onClick={() => { setShowImageUpload(!showImageUpload); setShowPhotoBank(false); }}
+            className="bg-black/50 hover:bg-black/70 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-colors"
+          >
+            <Icon name="Upload" size={13} />
+            {fd.image_url ? "Своё фото" : "Загрузить"}
+          </button>
+        </div>
       </div>
 
       {/* Type selector dropdown */}
@@ -94,6 +107,34 @@ export default function LiveEditorHero({ fd, set }: Props) {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Панель фотобанка */}
+      {showPhotoBank && (
+        <div className="border border-border rounded-lg p-4 mb-3 bg-background shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold flex items-center gap-2">
+              <Icon name="Images" size={15} />
+              Фотобанк — выберите обложку
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowPhotoBank(false)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Icon name="X" size={16} />
+            </button>
+          </div>
+          <PhotoBank
+            currentUrl={fd.image_url}
+            onSelect={(url) => {
+              addRecent(url);
+              set({ image_url: url });
+              setShowPhotoBank(false);
+            }}
+            onClose={() => setShowPhotoBank(false)}
+          />
         </div>
       )}
 

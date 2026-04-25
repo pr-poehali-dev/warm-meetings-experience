@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
+import PhotoBank, { useRecentPhotos } from "./PhotoBank";
 const UPLOAD_URL =
   "https://functions.poehali.dev/bc598664-ac65-4fb1-af0a-cba338dcfaf7";
 
@@ -28,6 +29,8 @@ const ImageUpload = ({
   const [previewUrl, setPreviewUrl] = useState(currentImageUrl);
   const [cropMode, setCropMode] = useState(false);
   const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [showPhotoBank, setShowPhotoBank] = useState(false);
+  const { addRecent } = useRecentPhotos();
   const [crop, setCrop] = useState<CropState>({ x: 0, y: 0, size: 100 });
   const [dragging, setDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, cx: 0, cy: 0 });
@@ -249,9 +252,17 @@ const ImageUpload = ({
     toast({ title: "Удалено", description: "Изображение удалено" });
   };
 
+  const handleBankSelect = (url: string) => {
+    setPreviewUrl(url);
+    addRecent(url);
+    onImageUploaded(url);
+    setShowPhotoBank(false);
+    toast({ title: "Готово!", description: "Фото из банка выбрано" });
+  };
+
   return (
     <div className="space-y-4">
-      <Label>Изображение событие</Label>
+      <Label>Изображение события</Label>
 
       {cropMode && originalImage ? (
         <div className="space-y-3">
@@ -303,7 +314,36 @@ const ImageUpload = ({
         </div>
       ) : (
         <>
-          <div className="flex gap-3 flex-wrap">
+          {/* Текущее фото */}
+          {previewUrl && (
+            <div className="relative w-full max-w-md">
+              <img
+                src={previewUrl}
+                alt="Preview"
+                className="w-full aspect-video object-cover rounded-lg border border-border"
+              />
+              {uploading && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
+                  <Icon name="Loader2" size={24} className="animate-spin text-white" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Кнопки */}
+          <div className="flex gap-2 flex-wrap">
+            {/* Кнопка фотобанка */}
+            <Button
+              type="button"
+              variant={showPhotoBank ? "default" : "outline"}
+              onClick={() => setShowPhotoBank((v) => !v)}
+              disabled={uploading}
+            >
+              <Icon name="Images" size={16} className="mr-2" />
+              Фотобанк СПАРКОМ
+            </Button>
+
+            {/* Загрузить своё */}
             <div>
               <input
                 type="file"
@@ -320,7 +360,7 @@ const ImageUpload = ({
                 onClick={() => document.getElementById("image-upload")?.click()}
               >
                 <Icon name="Upload" size={16} className="mr-2" />
-                {uploading ? "Загрузка..." : "Загрузить изображение"}
+                {uploading ? "Загрузка..." : "Своё фото"}
               </Button>
             </div>
 
@@ -348,23 +388,32 @@ const ImageUpload = ({
             )}
           </div>
 
-          {previewUrl && (
-            <div className="relative w-full max-w-md">
-              <img
-                src={previewUrl}
-                alt="Preview"
-                className="w-full aspect-video object-cover rounded-lg border border-border"
+          {/* Панель фотобанка */}
+          {showPhotoBank && (
+            <div className="border border-border rounded-xl p-4 bg-muted/30">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold flex items-center gap-2">
+                  <Icon name="Images" size={15} />
+                  Фотобанк — выберите обложку
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowPhotoBank(false)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Icon name="X" size={16} />
+                </button>
+              </div>
+              <PhotoBank
+                currentUrl={previewUrl}
+                onSelect={handleBankSelect}
+                onClose={() => setShowPhotoBank(false)}
               />
-              {uploading && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">
-                  <span className="text-white font-medium">Загрузка...</span>
-                </div>
-              )}
             </div>
           )}
 
-          <p className="text-sm text-muted-foreground">
-            JPG, PNG, GIF · до 10 МБ · изображение будет обрезано до 16:9
+          <p className="text-xs text-muted-foreground">
+            Выберите фото из банка или загрузите своё · JPG, PNG до 10 МБ · будет обрезано до 16:9
           </p>
         </>
       )}
