@@ -1440,9 +1440,13 @@ def handle_notify_settings(event, method, cur, conn, user_id, schema, headers):
                 COALESCE(op.notify_vk, false)       AS notify_vk,
                 u.email,
                 u.vk_id,
-                EXISTS(SELECT 1 FROM {schema}.tg_linked_accounts la WHERE la.user_id = {user_id}) AS tg_linked
+                la.telegram_user_id   IS NOT NULL   AS tg_linked,
+                la.telegram_username,
+                la.telegram_first_name,
+                la.linked_at          AS tg_linked_at
             FROM {schema}.users u
             LEFT JOIN {schema}.organizer_profiles op ON op.user_id = u.id
+            LEFT JOIN {schema}.tg_linked_accounts la ON la.user_id = u.id
             WHERE u.id = {user_id}
         """)
         row = cur.fetchone()

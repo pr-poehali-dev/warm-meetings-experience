@@ -97,7 +97,11 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, onRefresh 
               {step1Done ? "Аккаунт привязан" : "Привязать аккаунт"}
             </div>
             <div className="text-xs text-muted-foreground truncate">
-              {step1Done ? "Готово ✓" : "Нужно сделать"}
+              {step1Done
+                ? (notifySettings?.telegram_username
+                    ? `@${notifySettings.telegram_username}`
+                    : notifySettings?.telegram_first_name || "Готово ✓")
+                : "Нужно сделать"}
             </div>
           </div>
         </div>
@@ -130,6 +134,28 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, onRefresh 
                 <div className="text-sm text-green-700">Бот активен и готов к работе</div>
               </div>
             </div>
+
+            {notifySettings?.tg_linked && (
+              <div className="flex items-center gap-3 bg-white rounded-xl border border-green-200 px-4 py-3">
+                <div className="w-9 h-9 rounded-full bg-[#229ED9]/10 flex items-center justify-center shrink-0">
+                  <Icon name="Send" size={16} className="text-[#229ED9]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium leading-tight">
+                    {notifySettings.telegram_first_name || "Telegram"}
+                    {notifySettings.telegram_username && (
+                      <span className="text-muted-foreground font-normal ml-1.5">@{notifySettings.telegram_username}</span>
+                    )}
+                  </p>
+                  {notifySettings.tg_linked_at && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Привязан {new Date(notifySettings.tg_linked_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                    </p>
+                  )}
+                </div>
+                <Icon name="CheckCircle2" size={16} className="text-green-500 shrink-0" />
+              </div>
+            )}
 
             <div className="bg-white rounded-xl border border-green-200 p-4 space-y-2">
               <p className="text-sm font-medium text-foreground">Что происходит автоматически:</p>

@@ -251,6 +251,9 @@ export interface OrgNotifySettings {
   notify_email: boolean;
   notify_vk: boolean;
   tg_linked: boolean;
+  tg_linked_at: string | null;
+  telegram_username: string | null;
+  telegram_first_name: string | null;
   email: string | null;
   vk_id: string | null;
 }
