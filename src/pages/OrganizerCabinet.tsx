@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { organizerApi, OrgEvent, OrgParticipant, DashboardData } from "@/lib/organizer-api";
+import { organizerApi, OrgEvent, DashboardData } from "@/lib/organizer-api";
 import OrgDashboard from "@/components/organizer/OrgDashboard";
-import EventPeoplePanel from "@/components/organizer/EventPeoplePanel";
+import UnifiedPeoplePanel from "@/components/organizer/UnifiedPeoplePanel";
 import LiveEventEditor from "@/components/organizer/LiveEventEditor";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
@@ -22,7 +22,7 @@ export default function OrganizerCabinet() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [events, setEvents] = useState<OrgEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<OrgEvent | null>(null);
-  const [participants, setParticipants] = useState<OrgParticipant[]>([]);
+
   const [dashLoading, setDashLoading] = useState(true);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
@@ -61,14 +61,7 @@ export default function OrganizerCabinet() {
     }
   }, [toast]);
 
-  const loadParticipants = useCallback(async (eventId: number) => {
-    try {
-      const data = await organizerApi.getParticipants(eventId);
-      setParticipants(data);
-    } catch {
-      toast({ title: "Ошибка загрузки участников", variant: "destructive" });
-    }
-  }, [toast]);
+
 
   useEffect(() => {
     if (authLoading) return;
@@ -147,9 +140,8 @@ export default function OrganizerCabinet() {
     setFormData({ ...emptyForm(), ...fullEvent, pricing_tiers: tiers });
   };
 
-  const handleManageParticipants = async (event: OrgEvent) => {
+  const handleManageParticipants = (event: OrgEvent) => {
     setSelectedEvent(event);
-    await loadParticipants(event.id);
     setView("participants");
   };
 
@@ -319,11 +311,9 @@ export default function OrganizerCabinet() {
         )}
 
         {view === "participants" && selectedEvent && (
-          <EventPeoplePanel
+          <UnifiedPeoplePanel
             event={selectedEvent}
-            participants={participants}
             onBack={() => setView("dashboard")}
-            onRefreshParticipants={() => loadParticipants(selectedEvent.id)}
           />
         )}
 
