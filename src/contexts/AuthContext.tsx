@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { User, userAuthApi } from "@/lib/user-api";
+import { HttpError } from "@/lib/http";
 
 interface AuthContextType {
   user: User | null;
@@ -30,9 +31,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const data = await userAuthApi.check(token);
       setUser(data.user);
-    } catch {
-      localStorage.removeItem("user_token");
-      localStorage.removeItem("user_data");
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 401) {
+        // Токен точно невалиден — очищаем
+        localStorage.removeItem("user_token");
+        localStorage.removeItem("user_data");
+      } else {
+        // Сетевая или серверная ошибка — восстанавливаем из кэша
+        const cached = localStorage.getItem("user_data");
+        if (cached) {
+          try { setUser(JSON.parse(cached)); } catch { /* ignore */ }
+        }
+      }
     } finally {
       setLoading(false);
     }
