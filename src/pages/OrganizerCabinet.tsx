@@ -4,13 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { organizerApi, OrgEvent, OrgParticipant, DashboardData } from "@/lib/organizer-api";
 import OrgDashboard from "@/components/organizer/OrgDashboard";
 import OrgParticipants from "@/components/organizer/OrgParticipants";
+import GuestsPanel from "@/components/organizer/GuestsPanel";
 import LiveEventEditor from "@/components/organizer/LiveEventEditor";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import TelegramSettings from "@/components/organizer/TelegramSettings";
 
-type View = "dashboard" | "create" | "edit" | "participants" | "telegram";
+type View = "dashboard" | "create" | "edit" | "participants" | "guests" | "telegram";
 
 export default function OrganizerCabinet() {
   const { user, loading: authLoading } = useAuth();
