@@ -563,54 +563,187 @@ def handle_help(chat_id):
         "📖 Подробная инструкция: sparcom.ru")
 
 
+def send_organizer_email(to_email, organizer_name, event_title, event_date, event_time, bath_name,
+                          signup_name, signup_phone, signup_email, signup_telegram, spots_left):
+    """Уведомление организатору о новой записи по Email через Unisender Go."""
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Уведомления')
+    if not api_key or not sender_email:
+        return False
+
+    tg_line = f"<tr><td style='padding:4px 0;color:#888;width:110px;'>Telegram:</td><td style='padding:4px 0;'>{signup_telegram}</td></tr>" if signup_telegram else ""
+
+    html = f"""
+<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:20px;background:#f9fafb;">
+  <div style="background:#fff;border-radius:12px;padding:28px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="width:52px;height:52px;background:#fef9c3;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:26px;">🎫</div>
+    </div>
+    <h1 style="color:#1a1a1a;font-size:20px;text-align:center;margin:0 0 6px;">Новая запись!</h1>
+    <p style="color:#666;text-align:center;margin:0 0 24px;font-size:14px;">{organizer_name}, кто-то записался на вашу встречу</p>
+    <div style="background:#f8fafc;border-radius:8px;padding:16px;margin-bottom:20px;">
+      <p style="color:#1a1a1a;font-size:15px;font-weight:600;margin:0 0 12px;">📌 {event_title}</p>
+      <table style="width:100%;font-size:13px;color:#444;">
+        <tr><td style="padding:3px 0;color:#888;width:80px;">Дата:</td><td style="padding:3px 0;font-weight:600;">{event_date}, {event_time}</td></tr>
+        <tr><td style="padding:3px 0;color:#888;">Место:</td><td style="padding:3px 0;">{bath_name}</td></tr>
+        <tr><td style="padding:3px 0;color:#888;">Мест осталось:</td><td style="padding:3px 0;font-weight:600;">{spots_left}</td></tr>
+      </table>
+    </div>
+    <div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;">
+      <p style="color:#1a1a1a;font-size:13px;font-weight:600;margin:0 0 10px;">👤 Участник</p>
+      <table style="width:100%;font-size:13px;color:#444;">
+        <tr><td style="padding:3px 0;color:#888;width:80px;">Имя:</td><td style="padding:3px 0;font-weight:600;">{signup_name}</td></tr>
+        <tr><td style="padding:3px 0;color:#888;">Телефон:</td><td style="padding:3px 0;">{signup_phone}</td></tr>
+        <tr><td style="padding:3px 0;color:#888;">Email:</td><td style="padding:3px 0;">{signup_email}</td></tr>
+        {tg_line}
+      </table>
+    </div>
+    <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+    <p style="color:#aaa;font-size:11px;text-align:center;margin:0;">Управляйте участниками в личном кабинете организатора.</p>
+  </div>
+</div>"""
+
+    message = {
+        "recipients": [{"email": to_email, "name": organizer_name}],
+        "from_email": sender_email,
+        "from_name": sender_name,
+        "subject": f"Новая запись — {event_title}",
+        "body": {"html": html},
+        "track_links": 0,
+        "track_read": 0,
+        "tags": ["organizer-signup-notify"],
+    }
+    try:
+        r = requests.post(
+            "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
+            headers={"Content-Type": "application/json", "X-API-KEY": api_key},
+            json={"message": message},
+            timeout=10,
+        )
+        return r.status_code == 200
+    except Exception:
+        return False
+
+
+def send_organizer_vk(vk_user_id, event_title, event_date, event_time,
+                      signup_name, signup_phone, spots_left):
+    """Уведомление организатору через ВКонтакте."""
+    token = os.environ.get('VK_COMMUNITY_TOKEN', '')
+    community_id = int(os.environ.get('VK_COMMUNITY_ID', '0'))
+    if not token or not community_id:
+        return False
+    import random as _random
+    text = (
+        f"🎫 Новая запись на встречу!\n\n"
+        f"📌 {event_title}\n"
+        f"📅 {event_date}, {event_time}\n\n"
+        f"👤 {signup_name}\n"
+        f"📞 {signup_phone}\n"
+        f"🪑 Осталось мест: {spots_left}"
+    )
+    try:
+        r = requests.post(
+            "https://api.vk.com/method/messages.send",
+            data={
+                "user_id": vk_user_id,
+                "message": text,
+                "random_id": _random.randint(1, 2**31),
+                "group_id": community_id,
+                "access_token": token,
+                "v": "5.131",
+            },
+            timeout=10,
+        )
+        return "response" in r.json()
+    except Exception:
+        return False
+
+
 def handle_notify_signup(body):
     organizer_id = body.get('organizer_id')
     if not organizer_id:
-        return respond(400, {'error': 'Не указан идентификатор организатора. Пожалуйста, обратитесь в поддержку.'})
+        return respond(400, {'error': 'Не указан идентификатор организатора.'})
+
+    signup_name     = body.get('signup_name', '')
+    signup_phone    = body.get('signup_phone', '')
+    signup_email    = body.get('signup_email', '')
+    signup_telegram = body.get('signup_telegram', '')
+    event_title     = body.get('event_title', '')
+    event_date      = body.get('event_date', '')
+    event_time      = body.get('event_time', '')
+    bath_name       = body.get('bath_name', '')
+    spots_left      = body.get('spots_left', '—')
 
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     schema = get_schema()
 
+    # Получаем данные организатора: email, vk_id, настройки уведомлений
     cur.execute(f"""
-        SELECT la.telegram_user_id
-        FROM {schema}.tg_linked_accounts la
-        WHERE la.user_id = {organizer_id}
+        SELECT u.email, u.name, u.vk_id,
+               COALESCE(op.notify_telegram, true) AS notify_telegram,
+               COALESCE(op.notify_email, true)    AS notify_email,
+               COALESCE(op.notify_vk, false)      AS notify_vk
+        FROM {schema}.users u
+        LEFT JOIN {schema}.organizer_profiles op ON op.user_id = u.id
+        WHERE u.id = {organizer_id}
     """)
-    link = cur.fetchone()
+    organizer = cur.fetchone()
+
+    # Telegram-аккаунт организатора
+    cur.execute(f"""
+        SELECT telegram_user_id
+        FROM {schema}.tg_linked_accounts
+        WHERE user_id = {organizer_id}
+    """)
+    tg_link = cur.fetchone()
     conn.close()
 
-    if not link:
-        return respond(200, {'ok': True, 'sent': False, 'reason': 'no_telegram_linked'})
+    if not organizer:
+        return respond(200, {'ok': True, 'sent': False, 'reason': 'organizer_not_found'})
 
-    tg_chat_id = link['telegram_user_id']
-    signup_name = body.get('signup_name', '')
-    signup_phone = body.get('signup_phone', '')
-    signup_email = body.get('signup_email', '')
-    signup_telegram = body.get('signup_telegram', '')
-    event_title = body.get('event_title', '')
-    event_date = body.get('event_date', '')
-    event_time = body.get('event_time', '')
-    bath_name = body.get('bath_name', '')
-    spots_left = body.get('spots_left', '—')
+    results = {}
 
-    text = (
-        f"🎫 *Новая запись на событие!*\n\n"
-        f"📌 {event_title}\n"
-        f"📅 {event_date}, {event_time}\n"
-        f"🏠 {bath_name}\n\n"
-        f"👤 {signup_name}\n"
-        f"📞 {signup_phone}\n"
-        f"📧 {signup_email}\n"
-    )
-    if signup_telegram:
-        text += f"✈️ {signup_telegram}\n"
-    text += f"\n🪑 Осталось мест: {spots_left}"
+    # ── Telegram ──────────────────────────────────────────────────────────────
+    if organizer['notify_telegram'] and tg_link:
+        tg_text = (
+            f"🎫 *Новая запись на событие!*\n\n"
+            f"📌 {event_title}\n"
+            f"📅 {event_date}, {event_time}\n"
+            f"🏠 {bath_name}\n\n"
+            f"👤 {signup_name}\n"
+            f"📞 {signup_phone}\n"
+            f"📧 {signup_email}\n"
+        )
+        if signup_telegram:
+            tg_text += f"✈️ {signup_telegram}\n"
+        tg_text += f"\n🪑 Осталось мест: {spots_left}"
+        result = send_message(tg_link['telegram_user_id'], tg_text)
+        results['telegram'] = result.get('ok', False)
 
-    result = send_message(tg_chat_id, text)
-    sent = result.get('ok', False)
+    # ── Email ─────────────────────────────────────────────────────────────────
+    if organizer['notify_email'] and organizer.get('email'):
+        ok = send_organizer_email(
+            to_email=organizer['email'],
+            organizer_name=organizer.get('name') or '',
+            event_title=event_title, event_date=event_date, event_time=event_time,
+            bath_name=bath_name, signup_name=signup_name, signup_phone=signup_phone,
+            signup_email=signup_email, signup_telegram=signup_telegram, spots_left=spots_left,
+        )
+        results['email'] = ok
 
-    return respond(200, {'ok': True, 'sent': sent})
+    # ── VКонтакте ─────────────────────────────────────────────────────────────
+    if organizer['notify_vk'] and organizer.get('vk_id'):
+        ok = send_organizer_vk(
+            vk_user_id=organizer['vk_id'],
+            event_title=event_title, event_date=event_date, event_time=event_time,
+            signup_name=signup_name, signup_phone=signup_phone, spots_left=spots_left,
+        )
+        results['vk'] = ok
+
+    sent = any(results.values()) if results else False
+    return respond(200, {'ok': True, 'sent': sent, 'channels': results})
 
 
 def handle_publish_event(body):

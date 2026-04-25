@@ -234,7 +234,26 @@ export const organizerApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ signup_ids: signupIds, message }),
     }),
+
+  getNotifySettings: (): Promise<OrgNotifySettings> =>
+    authenticatedRequest(`${BASE}/?resource=notify_settings`),
+
+  updateNotifySettings: (settings: Partial<OrgNotifySettings>): Promise<{ ok: boolean }> =>
+    authenticatedRequest(`${BASE}/?resource=notify_settings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    }),
 };
+
+export interface OrgNotifySettings {
+  notify_telegram: boolean;
+  notify_email: boolean;
+  notify_vk: boolean;
+  tg_linked: boolean;
+  email: string | null;
+  vk_id: string | null;
+}
 
 export interface Guest {
   id: number;

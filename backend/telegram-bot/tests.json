@@ -22,5 +22,15 @@
     "expectedStatus": 400,
     "expectedBody": {"error": "string"},
     "bodyMatcher": "partial"
+  },
+  {
+    "name": "Notify signup without organizer_id",
+    "method": "POST",
+    "path": "/",
+    "headers": {"Content-Type": "application/json"},
+    "body": {"action": "notify_signup"},
+    "expectedStatus": 400,
+    "expectedBody": {"error": "string"},
+    "bodyMatcher": "partial"
   }
 ]}

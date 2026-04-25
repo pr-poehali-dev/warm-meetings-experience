@@ -175,6 +175,8 @@ def handler(event, context):
         return handle_guests(event, method, params, cur, conn, user_id, schema, headers)
     elif resource == 'messages':
         return handle_messages(event, method, params, cur, conn, user_id, schema, headers)
+    elif resource == 'notify_settings':
+        return handle_notify_settings(event, method, cur, conn, user_id, schema, headers)
 
     conn.close()
     return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Resource not found'})}
@@ -1426,3 +1428,50 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, headers):
         conn.commit()
         conn.close()
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'sent': sent})}
+
+
+def handle_notify_settings(event, method, cur, conn, user_id, schema, headers):
+    """Настройки каналов уведомлений организатора: Telegram, Email, ВКонтакте"""
+    if method == 'GET':
+        cur.execute(f"""
+            SELECT
+                COALESCE(op.notify_telegram, true)  AS notify_telegram,
+                COALESCE(op.notify_email, true)     AS notify_email,
+                COALESCE(op.notify_vk, false)       AS notify_vk,
+                u.email,
+                u.vk_id,
+                EXISTS(SELECT 1 FROM {schema}.tg_linked_accounts la WHERE la.user_id = {user_id}) AS tg_linked
+            FROM {schema}.users u
+            LEFT JOIN {schema}.organizer_profiles op ON op.user_id = u.id
+            WHERE u.id = {user_id}
+        """)
+        row = cur.fetchone()
+        conn.close()
+        if not row:
+            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Not found'})}
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps(dict(row), default=str)}
+
+    if method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        allowed = {'notify_telegram', 'notify_email', 'notify_vk'}
+        sets = []
+        for field in allowed:
+            if field in body:
+                sets.append(f"{field} = {bool(body[field])}")
+        if not sets:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Nothing to update'})}
+        # upsert organizer_profiles row
+        cur.execute(f"""
+            INSERT INTO {schema}.organizer_profiles (user_id)
+            VALUES ({user_id})
+            ON CONFLICT (user_id) DO NOTHING
+        """)
+        cur.execute(f"""
+            UPDATE {schema}.organizer_profiles
+            SET {', '.join(sets)}, updated_at = NOW()
+            WHERE user_id = {user_id}
+        """)
+        conn.commit()
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True})}
