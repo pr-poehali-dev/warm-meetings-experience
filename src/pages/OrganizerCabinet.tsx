@@ -3,15 +3,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { organizerApi, OrgEvent, OrgParticipant, DashboardData } from "@/lib/organizer-api";
 import OrgDashboard from "@/components/organizer/OrgDashboard";
-import OrgParticipants from "@/components/organizer/OrgParticipants";
-import GuestsPanel from "@/components/organizer/GuestsPanel";
+import EventPeoplePanel from "@/components/organizer/EventPeoplePanel";
 import LiveEventEditor from "@/components/organizer/LiveEventEditor";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import TelegramSettings from "@/components/organizer/TelegramSettings";
 
-type View = "dashboard" | "create" | "edit" | "participants" | "guests" | "telegram";
+type View = "dashboard" | "create" | "edit" | "participants" | "telegram";
 
 export default function OrganizerCabinet() {
   const { user, loading: authLoading } = useAuth();
@@ -154,11 +153,6 @@ export default function OrganizerCabinet() {
     setView("participants");
   };
 
-  const handleManageGuests = (event: OrgEvent) => {
-    setSelectedEvent(event);
-    setView("guests");
-  };
-
   const handleSaveEvent = async (data: Partial<OrgEvent> & { submit_action?: string }) => {
     setFormLoading(true);
     try {
@@ -280,7 +274,7 @@ export default function OrganizerCabinet() {
                 <button
                   key={v}
                   onClick={() => setView(v)}
-                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${view === v || (["create", "edit", "participants", "guests"].includes(view) && v === "dashboard") ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${view === v || (["create", "edit", "participants"].includes(view) && v === "dashboard") ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground"}`}
                 >
                   {label}
                 </button>
@@ -302,7 +296,6 @@ export default function OrganizerCabinet() {
             eventsLoading={eventsLoading}
             onCreateEvent={handleCreateEvent}
             onManageEvent={handleManageParticipants}
-            onManageGuests={handleManageGuests}
             onEditEvent={handleEditEvent}
             onDuplicateEvent={handleDuplicateEvent}
             onToggleVisibility={handleToggleVisibility}
@@ -326,18 +319,11 @@ export default function OrganizerCabinet() {
         )}
 
         {view === "participants" && selectedEvent && (
-          <OrgParticipants
+          <EventPeoplePanel
             event={selectedEvent}
             participants={participants}
             onBack={() => setView("dashboard")}
-            onRefresh={() => loadParticipants(selectedEvent.id)}
-          />
-        )}
-
-        {view === "guests" && selectedEvent && (
-          <GuestsPanel
-            event={selectedEvent}
-            onBack={() => setView("dashboard")}
+            onRefreshParticipants={() => loadParticipants(selectedEvent.id)}
           />
         )}
 

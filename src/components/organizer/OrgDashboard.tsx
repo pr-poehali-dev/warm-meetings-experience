@@ -22,7 +22,6 @@ interface Props {
   eventsLoading: boolean;
   onCreateEvent: () => void;
   onManageEvent: (event: OrgEvent) => void;
-  onManageGuests?: (event: OrgEvent) => void;
   onEditEvent: (event: OrgEvent) => void;
   onDuplicateEvent: (event: OrgEvent) => void;
   onToggleVisibility: (event: OrgEvent) => void;
@@ -31,7 +30,7 @@ interface Props {
 
 export default function OrgDashboard({
   data, events, eventsLoading,
-  onCreateEvent, onManageEvent, onManageGuests, onEditEvent,
+  onCreateEvent, onManageEvent, onEditEvent,
   onDuplicateEvent, onToggleVisibility, onDeleteEvent,
 }: Props) {
   const { user, stats } = data;
@@ -206,12 +205,6 @@ export default function OrgDashboard({
                         <Icon name="Users" size={12} />
                         Участники ({ev.signups_count})
                       </Button>
-                      {onManageGuests && (
-                        <Button size="sm" variant="outline" onClick={() => onManageGuests(ev)} className="h-7 text-xs gap-1 border-primary/40 text-primary hover:bg-primary/5">
-                          <Icon name="MessageSquare" size={12} />
-                          Гости
-                        </Button>
-                      )}
                       <Button size="sm" variant="ghost" onClick={() => handleShare(ev)} className="h-7 text-xs gap-1">
                         <Icon name="Share2" size={12} />
                         Поделиться
