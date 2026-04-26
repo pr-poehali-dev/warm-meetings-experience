@@ -21,6 +21,14 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Get event by short_code not found",
+      "method": "GET",
+      "path": "/?resource=events&short_code=xxxxxx",
+      "expectedStatus": 404,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Get signups list",
       "method": "GET",
       "path": "/?resource=signups",

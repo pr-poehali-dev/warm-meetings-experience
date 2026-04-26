@@ -57,6 +57,9 @@ export const eventsApi = {
   getBySlug: (slug: string): Promise<EventFromAPI> =>
     request(`${EVENTS_API}/?resource=events&slug=${slug}`),
 
+  getByShortCode: (code: string): Promise<EventFromAPI> =>
+    request(`${EVENTS_API}/?resource=events&short_code=${code}`),
+
   create: (data: Partial<EventFromAPI>): Promise<EventFromAPI> =>
     request(`${EVENTS_API}/?resource=events`, {
       method: "POST",

@@ -62,6 +62,17 @@ def handle_events(event, method, params, schema, headers):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     if method == 'GET':
+        short_code = params.get('short_code')
+        if short_code:
+            cur.execute(
+                f"SELECT * FROM {schema}.events WHERE short_code = '{short_code}' AND is_visible = true"
+            )
+            row = cur.fetchone()
+            conn.close()
+            if not row:
+                return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Not found'})}
+            return {'statusCode': 200, 'headers': headers, 'body': json.dumps(serialize_event(row), default=str)}
+
         slug = params.get('slug')
         if slug:
             if slug.startswith('event-') and slug[6:].isdigit():
@@ -107,6 +118,14 @@ def handle_events(event, method, params, schema, headers):
             slug = f"{base_slug}-{counter}"
             counter += 1
 
+        # Генерируем уникальный short_code
+        import random, string
+        while True:
+            short_code = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+            cur.execute(f"SELECT id FROM {schema}.events WHERE short_code = '{short_code}'")
+            if not cur.fetchone():
+                break
+
         program = body.get('program', [])
         rules = body.get('rules', [])
         program_sql = "ARRAY[" + ",".join(f"'{p}'" for p in program) + "]::text[]" if program else "ARRAY[]::text[]"
@@ -122,7 +141,7 @@ def handle_events(event, method, params, schema, headers):
 
         cur.execute(f"""
             INSERT INTO {schema}.events (
-                title, slug, short_description, full_description, description,
+                title, slug, short_code, short_description, full_description, description,
                 event_date, start_time, end_time,
                 event_type, event_type_icon, occupancy,
                 bath_name, bath_address, image_url,
@@ -130,7 +149,7 @@ def handle_events(event, method, params, schema, headers):
                 total_spots, spots_left, featured, is_visible,
                 program, rules
             ) VALUES (
-                '{title}', '{slug}', '{short_desc}', '{full_desc}', '{description}',
+                '{title}', '{slug}', '{short_code}', '{short_desc}', '{full_desc}', '{description}',
                 '{body.get('event_date')}', '{body.get('start_time', '19:00')}', '{body.get('end_time', '23:00')}',
                 '{body.get('event_type', 'знакомство')}', '{body.get('event_type_icon', 'Users')}', '{body.get('occupancy', 'low')}',
                 '{bath_name}', '{bath_address}', '{body.get('image_url', '')}',
