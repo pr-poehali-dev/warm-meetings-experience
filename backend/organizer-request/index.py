@@ -215,6 +215,21 @@ def create_request(event):
     row = cur.fetchone()
     request_id = row['id'] if row else 'N/A'
 
+    # Создаём заявку и в role_applications, чтобы она появилась в админке
+    bath_map_ru = {'yes': 'Да', 'no': 'Нет', 'in_progress': 'В процессе'}
+    role_msg = (
+        f"Город: {city}\n"
+        f"Своя баня: {bath_map_ru.get(has_own_bath, has_own_bath)}\n"
+        f"Формат: {event_format or '—'}\n"
+        f"Доп. инфо: {additional_info or '—'}"
+    ).replace("'", "''")
+    cur.execute(f"""
+        INSERT INTO {schema}.role_applications (user_id, role_id, status, message)
+        SELECT {user_id}, r.id, 'pending', '{role_msg}'
+        FROM {schema}.roles r WHERE r.slug = 'organizer'
+        ON CONFLICT DO NOTHING
+    """)
+
     conn.commit()
     cur.close()
     conn.close()

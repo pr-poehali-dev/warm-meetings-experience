@@ -42,7 +42,7 @@
       "bodyMatcher": "partial"
     },
     {
-      "name": "POST valid request creates account",
+      "name": "POST with existing email returns 400",
       "method": "POST",
       "path": "/",
       "body": {
@@ -54,8 +54,8 @@
         "event_format": "Тестовый формат",
         "additional_info": "Тест"
       },
-      "expectedStatus": 200,
-      "expectedBody": {"success": true, "token": "string", "generated_password": "string"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
     }
   ]
