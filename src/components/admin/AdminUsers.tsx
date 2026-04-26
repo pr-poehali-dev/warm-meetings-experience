@@ -76,6 +76,13 @@ export default function AdminUsers() {
       const res = await fetch(`${ADMIN_USERS_API}?${params}`, {
         headers: { "X-Admin-Token": getAdminToken() },
       });
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("admin_token_expires");
+        toast.error("Сессия администратора истекла — войдите заново");
+        setTimeout(() => window.location.reload(), 800);
+        return;
+      }
       const data = await res.json();
       setUsers(data.users || []);
       setTotal(data.total || 0);

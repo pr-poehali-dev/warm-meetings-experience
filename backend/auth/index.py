@@ -33,8 +33,11 @@ def handler(event, context):
     if password != admin_password:
         return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Неверный пароль'})}
 
-    token = hashlib.sha256(f"{admin_password}:{int(time.time() // 86400)}".encode()).hexdigest()
-    expires_at = time.strftime('%Y-%m-%dT23:59:59Z', time.gmtime(time.time() + 86400))
+    day_index = int(time.time() // 86400)
+    token = hashlib.sha256(f"{admin_password}:{day_index}".encode()).hexdigest()
+    # Токен меняется в 00:00 UTC при смене day_index — выставляем expires ровно до конца UTC-дня
+    expires_ts = (day_index + 1) * 86400 - 1
+    expires_at = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(expires_ts))
 
     return {
         'statusCode': 200,
