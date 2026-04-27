@@ -150,6 +150,14 @@ export default function YandexCallback() {
         clearYandexStorage();
 
         toast.success("Вы вошли через Яндекс");
+
+        const signupReturnUrl = sessionStorage.getItem("signup_return_url");
+        if (signupReturnUrl && sessionStorage.getItem("signup_login_provider") === "yandex") {
+          sessionStorage.removeItem("signup_return_url");
+          sessionStorage.removeItem("signup_login_provider");
+          window.location.replace(signupReturnUrl);
+          return;
+        }
         navigate("/account", { replace: true });
       } catch {
         toast.error("Ошибка соединения");
