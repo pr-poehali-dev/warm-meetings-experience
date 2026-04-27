@@ -242,6 +242,38 @@ def handle_signups(event, method, params, schema, headers):
 
     if method == 'POST':
         body = json.loads(event.get('body', '{}'))
+
+        # ── ЗАЩИТА ОТ СПАМА ──────────────────────────────────────
+        # 1) honeypot — скрытое поле, которое заполняют боты
+        honeypot = (body.get('website') or body.get('hp_field') or '').strip()
+        if honeypot:
+            conn.close()
+            return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'id': 0})}
+
+        # 2) минимальное время заполнения формы (живой человек не успеет за 2 сек)
+        try:
+            form_open_ms = int(body.get('form_open_ms') or 0)
+        except (ValueError, TypeError):
+            form_open_ms = 0
+        if 0 < form_open_ms < 2000:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Слишком быстрое заполнение формы'})}
+
+        # 3) rate-limit по IP: не больше 5 заявок в час и 2 в минуту
+        try:
+            ip_address = (event.get('requestContext', {}) or {}).get('identity', {}).get('sourceIp', '') or ''
+        except Exception:
+            ip_address = ''
+        ip_safe = ip_address.replace("'", "''")[:64]
+        if ip_safe:
+            cur.execute(f"SELECT COUNT(*) AS c FROM {schema}.signup_rate_limit WHERE ip_address = '{ip_safe}' AND created_at > NOW() - INTERVAL '1 minute'")
+            cnt_minute = (cur.fetchone() or {}).get('c', 0) or 0
+            cur.execute(f"SELECT COUNT(*) AS c FROM {schema}.signup_rate_limit WHERE ip_address = '{ip_safe}' AND created_at > NOW() - INTERVAL '1 hour'")
+            cnt_hour = (cur.fetchone() or {}).get('c', 0) or 0
+            if cnt_minute >= 2 or cnt_hour >= 5:
+                conn.close()
+                return {'statusCode': 429, 'headers': headers, 'body': json.dumps({'error': 'Слишком много заявок. Попробуйте позже.'})}
+
         name = body.get('name', '').replace("'", "''")
         phone = body.get('phone', '').replace("'", "''")
         email = (body.get('email') or '').strip().replace("'", "''")
@@ -252,6 +284,11 @@ def handle_signups(event, method, params, schema, headers):
         allowed_channels = {'telegram', 'vk', 'email', 'sms', 'phone', 'site'}
         preferred_channel = preferred_channel_raw if preferred_channel_raw in allowed_channels else 'site'
         preferred_channel = preferred_channel.replace("'", "''")
+
+        # 4) базовая валидация длин (защита от мусора)
+        if len(name) > 200 or len(phone) > 50 or len(email) > 200 or len(telegram) > 100:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Слишком длинные поля'})}
 
         if not name or not phone or not event_id or not email:
             conn.close()
@@ -279,6 +316,11 @@ def handle_signups(event, method, params, schema, headers):
         """)
         row = cur.fetchone()
         cur.execute(f"UPDATE {schema}.events SET spots_left = spots_left - 1 WHERE id = {event_id}")
+
+        if ip_safe:
+            cur.execute(f"INSERT INTO {schema}.signup_rate_limit (ip_address, event_id) VALUES ('{ip_safe}', {int(event_id)})")
+            cur.execute(f"DELETE FROM {schema}.signup_rate_limit WHERE created_at < NOW() - INTERVAL '1 day'")
+
         conn.commit()
         conn.close()
 

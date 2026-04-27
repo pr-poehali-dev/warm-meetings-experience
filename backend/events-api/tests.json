@@ -51,6 +51,22 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Honeypot triggered returns 200 silently",
+      "method": "POST",
+      "path": "/?resource=signups",
+      "body": {"event_id": 1, "name": "Bot", "phone": "+79990000000", "email": "bot@bot.ru", "consent_pd": true, "website": "http://spam.com"},
+      "expectedStatus": 200
+    },
+    {
+      "name": "Form filled too fast returns 400",
+      "method": "POST",
+      "path": "/?resource=signups",
+      "body": {"event_id": 1, "name": "Fast", "phone": "+79990000001", "email": "fast@test.ru", "consent_pd": true, "form_open_ms": 500},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

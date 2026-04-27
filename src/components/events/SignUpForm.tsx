@@ -71,6 +71,18 @@ export default function SignUpForm({
   const [open, setOpen] = useState(false);
   const [screen, setScreen] = useState<Screen>("form");
   const [touched, setTouched] = useState(false);
+  const [honeypot, setHoneypot] = useState("");
+  const [formOpenedAt, setFormOpenedAt] = useState<number>(0);
+
+  useEffect(() => {
+    if (open && screen === "form" && formOpenedAt === 0) {
+      setFormOpenedAt(Date.now());
+    }
+    if (!open) {
+      setFormOpenedAt(0);
+      setHoneypot("");
+    }
+  }, [open, screen, formOpenedAt]);
 
   const handleSocialLogin = (provider: "vk" | "yandex") => {
     const returnUrl = `${window.location.pathname}${window.location.search}${window.location.search.includes("?") ? "&" : "?"}signup_open=1`;
@@ -181,6 +193,7 @@ export default function SignUpForm({
         preferredChannel === "vk" ? vkContact :
         preferredChannel === "email" ? email :
         phone;
+      const formOpenMs = formOpenedAt > 0 ? Date.now() - formOpenedAt : 0;
       await signupsApi.create({
         event_id: eventId,
         name,
@@ -190,10 +203,18 @@ export default function SignUpForm({
         consent_pd: true,
         preferred_channel: preferredChannel === "phone" ? "sms" : preferredChannel,
         preferred_contact_value: channelValue,
+        website: honeypot,
+        form_open_ms: formOpenMs,
       });
       setScreen("success");
-    } catch {
-      toast.error("Не удалось отправить заявку. Попробуйте позже.");
+    } catch (err: unknown) {
+      const e = err as { status?: number; response?: { status?: number }; message?: string };
+      const status = e?.status || e?.response?.status || (e?.message?.includes("429") ? 429 : undefined);
+      if (status === 429) {
+        toast.error("Слишком много заявок. Попробуйте через минуту.");
+      } else {
+        toast.error("Не удалось отправить заявку. Попробуйте позже.");
+      }
     } finally {
       setLoading(false);
     }
@@ -302,6 +323,19 @@ export default function SignUpForm({
               </DialogHeader>
 
               <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5 max-h-[75vh] overflow-y-auto">
+                {/* honeypot — скрытое поле для ботов */}
+                <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", top: "auto", width: 1, height: 1, overflow: "hidden" }}>
+                  <label htmlFor="su-website">Website</label>
+                  <input
+                    id="su-website"
+                    type="text"
+                    name="website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={honeypot}
+                    onChange={(e) => setHoneypot(e.target.value)}
+                  />
+                </div>
 
                 {/* Авторизация / плашка пользователя */}
                 {user ? (
