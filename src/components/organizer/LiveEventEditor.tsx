@@ -9,7 +9,7 @@ interface Props {
   formData: OrgEvent;
   loading: boolean;
   onFormChange: (data: OrgEvent) => void;
-  onSubmit: (e: React.FormEvent, saveAndNew?: boolean) => void;
+  onSubmit: (e: React.FormEvent, saveAndNew?: boolean, override?: Partial<OrgEvent> & { submit_action?: string }) => void;
   onCancel: () => void;
 }
 
@@ -36,8 +36,7 @@ export default function LiveEventEditor({
 
   const handleSaveAsDraft = (e: React.MouseEvent) => {
     e.preventDefault();
-    set({ is_visible: false, submit_action: "draft" } as OrgEvent & { submit_action: string });
-    setTimeout(() => onSubmit(e as unknown as React.FormEvent, false), 0);
+    onSubmit(e as unknown as React.FormEvent, false, { is_visible: false, submit_action: "draft" });
   };
 
   const handleSubmitForReview = (e: React.MouseEvent) => {
@@ -50,8 +49,7 @@ export default function LiveEventEditor({
       toast({ title: "Укажите дату события", variant: "destructive" });
       return;
     }
-    set({ is_visible: false, submit_action: "submit" } as OrgEvent & { submit_action: string });
-    setTimeout(() => onSubmit(e as unknown as React.FormEvent, false), 0);
+    onSubmit(e as unknown as React.FormEvent, false, { is_visible: false, submit_action: "submit" });
   };
 
   const handleSave = (e: React.FormEvent) => {

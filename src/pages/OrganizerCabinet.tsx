@@ -301,9 +301,10 @@ export default function OrganizerCabinet() {
               formData={formData}
               loading={formLoading}
               onFormChange={(data) => setFormData(data as OrgEvent)}
-              onSubmit={async (e) => {
+              onSubmit={async (e, _saveAndNew, override) => {
                 e.preventDefault();
-                await handleSaveEvent(formDataRef.current);
+                const merged = { ...formDataRef.current, ...(override || {}) } as OrgEvent & { submit_action?: string };
+                await handleSaveEvent(merged);
               }}
               onCancel={() => setView("dashboard")}
             />
