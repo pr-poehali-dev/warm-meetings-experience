@@ -35,10 +35,9 @@ interface SignUpFormProps {
   totalSpots?: number;
 }
 
-type Screen = "choose" | "form" | "callback" | "success";
+type Screen = "form" | "success";
 
 const TG_BOT = "https://t.me/sparcom_ru";
-const VK_PAGE = "https://vk.com/sparcom";
 
 export default function SignUpForm({
   eventId,
@@ -70,7 +69,8 @@ export default function SignUpForm({
     },
   });
   const [open, setOpen] = useState(false);
-  const [screen, setScreen] = useState<Screen>("choose");
+  const [screen, setScreen] = useState<Screen>("form");
+  const [touched, setTouched] = useState(false);
 
   const handleSocialLogin = (provider: "vk" | "yandex") => {
     const returnUrl = `${window.location.pathname}${window.location.search}${window.location.search.includes("?") ? "&" : "?"}signup_open=1`;
@@ -88,7 +88,6 @@ export default function SignUpForm({
     const params = new URLSearchParams(window.location.search);
     if (params.get("signup_open") === "1") {
       setOpen(true);
-      setScreen("form");
       const url = new URL(window.location.href);
       url.searchParams.delete("signup_open");
       window.history.replaceState({}, "", url.toString());
@@ -119,13 +118,24 @@ export default function SignUpForm({
     }
   }, [user, open]);
 
+  const errors = {
+    name: !name.trim(),
+    phone: !phone.trim() || phone.trim().length < 6,
+    email: !email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim()),
+    telegramChannel: preferredChannel === "telegram" && !telegram.trim(),
+    vkChannel: preferredChannel === "vk" && !vkContact.trim(),
+    consentPd: !consentPd,
+    consentShare: !consentShare,
+    consentCancel: !consentCancel,
+  };
+
   const channelValueOk =
     (preferredChannel === "telegram" && telegram.trim()) ||
     (preferredChannel === "vk" && vkContact.trim()) ||
-    (preferredChannel === "email" && email.trim()) ||
-    (preferredChannel === "phone" && phone.trim());
+    (preferredChannel === "email" && !errors.email) ||
+    (preferredChannel === "phone" && !errors.phone);
 
-  const canSubmit = consentPd && consentShare && consentCancel && name.trim() && phone.trim() && email.trim() && channelValueOk;
+  const canSubmit = !errors.name && !errors.phone && !errors.email && !errors.consentPd && !errors.consentShare && !errors.consentCancel && !!channelValueOk;
 
   const filledSpots = totalSpots && totalSpots > 0 ? Math.max(0, totalSpots - spotsLeft) : 0;
   const fillPercent = totalSpots && totalSpots > 0 ? Math.min(100, Math.round((filledSpots / totalSpots) * 100)) : 0;
@@ -137,7 +147,8 @@ export default function SignUpForm({
   const timeLabel = timeStart && timeEnd ? `${timeStart.slice(0, 5)}–${timeEnd.slice(0, 5)}` : timeStart?.slice(0, 5);
 
   const openModal = () => {
-    setScreen("choose");
+    setScreen("form");
+    setTouched(false);
     setOpen(true);
   };
 
@@ -147,7 +158,8 @@ export default function SignUpForm({
     }
     setVkContact("");
     setConsentPd(false); setConsentShare(false); setConsentCancel(false);
-    setScreen("choose");
+    setTouched(false);
+    setScreen("form");
   };
 
   const handleClose = (v: boolean) => {
@@ -157,7 +169,11 @@ export default function SignUpForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    setTouched(true);
+    if (!canSubmit) {
+      toast.error("Заполните обязательные поля");
+      return;
+    }
     setLoading(true);
     try {
       const channelValue =
@@ -195,6 +211,9 @@ export default function SignUpForm({
     );
   }
 
+  const showError = (field: keyof typeof errors) => touched && errors[field];
+  const errBorder = (field: keyof typeof errors) => showError(field) ? "border-red-400 focus-visible:ring-red-300" : "";
+
   return (
     <>
       <Button size="lg" className="w-full rounded-xl gap-2 text-base" onClick={openModal}>
@@ -203,10 +222,34 @@ export default function SignUpForm({
       </Button>
 
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden">
+        <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
 
-          {/* ── ВЫБОР СПОСОБА ─────────────────────────────────────── */}
-          {screen === "choose" && (
+          {/* ── УСПЕХ ─────────────────────────────────────────────── */}
+          {screen === "success" && (
+            <div className="px-6 py-10 text-center space-y-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <Icon name="CheckCircle2" size={32} className="text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-1">Заявка отправлена!</h3>
+                <p className="text-sm text-muted-foreground">
+                  Организатор получил вашу заявку и свяжется с вами для подтверждения.
+                </p>
+              </div>
+              {email && (
+                <p className="text-xs text-muted-foreground">
+                  Подтверждение отправлено на <span className="font-medium">{email}</span>
+                </p>
+              )}
+              <Button className="rounded-xl gap-2 w-full" onClick={() => handleClose(false)}>
+                <Icon name="Check" size={16} />
+                Готово
+              </Button>
+            </div>
+          )}
+
+          {/* ── ОСНОВНОЕ ОКНО ─────────────────────────────────────── */}
+          {screen === "form" && (
             <>
               <DialogHeader className="px-6 pt-6 pb-4 border-b">
                 <DialogTitle className="text-base font-semibold leading-tight">
@@ -258,8 +301,10 @@ export default function SignUpForm({
                 )}
               </DialogHeader>
 
-              <div className="px-6 py-5 space-y-3">
-                {user && (
+              <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5 max-h-[75vh] overflow-y-auto">
+
+                {/* Авторизация / плашка пользователя */}
+                {user ? (
                   <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/15">
                     <div className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
                       <Icon name="UserCheck" size={16} className="text-primary" />
@@ -268,28 +313,17 @@ export default function SignUpForm({
                       <div className="text-xs text-muted-foreground">Вы вошли как</div>
                       <div className="text-sm font-medium truncate">{user.name}</div>
                     </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="rounded-lg gap-1.5"
-                      onClick={() => setScreen("form")}
-                    >
-                      <Icon name="CalendarCheck" size={14} />
-                      Участвую
-                    </Button>
+                    <Icon name="CheckCircle2" size={18} className="text-green-600 shrink-0" />
                   </div>
-                )}
-
-                {!user && (
-                  <>
-                    <p className="text-sm text-muted-foreground">Войти за 1 клик и заполнить форму автоматически:</p>
-
+                ) : (
+                  <div className="space-y-2.5">
+                    <p className="text-xs text-muted-foreground">Войти за 1 клик и заполнить форму автоматически:</p>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => handleSocialLogin("vk")}
                         disabled={vkAuth.isLoading}
-                        className="flex items-center justify-center gap-2 p-3 rounded-xl bg-[#0077FF] text-white text-sm font-medium hover:bg-[#0066DD] disabled:opacity-60 transition-colors"
+                        className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-[#0077FF] text-white text-sm font-medium hover:bg-[#0066DD] disabled:opacity-60 transition-colors"
                       >
                         {vkAuth.isLoading ? (
                           <Icon name="Loader2" size={16} className="animate-spin" />
@@ -304,7 +338,7 @@ export default function SignUpForm({
                         type="button"
                         onClick={() => handleSocialLogin("yandex")}
                         disabled={yandexAuth.isLoading}
-                        className="flex items-center justify-center gap-2 p-3 rounded-xl bg-[#FC3F1D] text-white text-sm font-medium hover:bg-[#E63818] disabled:opacity-60 transition-colors"
+                        className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-[#FC3F1D] text-white text-sm font-medium hover:bg-[#E63818] disabled:opacity-60 transition-colors"
                       >
                         {yandexAuth.isLoading ? (
                           <Icon name="Loader2" size={16} className="animate-spin" />
@@ -316,117 +350,26 @@ export default function SignUpForm({
                         Яндекс
                       </button>
                     </div>
-
-                    <div className="flex items-center gap-3 py-1">
+                    <div className="flex items-center gap-3">
                       <div className="flex-1 h-px bg-border" />
-                      <span className="text-xs text-muted-foreground">или</span>
+                      <span className="text-xs text-muted-foreground">или заполните вручную</span>
                       <div className="flex-1 h-px bg-border" />
                     </div>
-                  </>
-                )}
-
-                <p className="text-sm text-muted-foreground">
-                  {user ? "Или выберите другой способ:" : "Заполнить вручную:"}
-                </p>
-
-                {/* Форма на сайте */}
-                <button
-                  onClick={() => setScreen("form")}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border hover:border-primary/40 hover:bg-muted/40 transition-colors text-left group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Icon name="ClipboardList" size={18} className="text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">Заполнить форму</div>
-                    <div className="text-xs text-muted-foreground">Быстро, прямо здесь</div>
-                  </div>
-                  <Icon name="ChevronRight" size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
-                </button>
-
-                {/* Telegram */}
-                <a
-                  href={`${TG_BOT}?start=signup_${eventId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border hover:border-[#229ED9]/40 hover:bg-[#229ED9]/5 transition-colors text-left group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-[#229ED9]/10 flex items-center justify-center shrink-0">
-                    <Icon name="Send" size={18} className="text-[#229ED9]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">Написать в Telegram</div>
-                    <div className="text-xs text-muted-foreground">Ответим быстро</div>
-                  </div>
-                  <Icon name="ExternalLink" size={14} className="text-muted-foreground" />
-                </a>
-
-                {/* ВКонтакте */}
-                <a
-                  href={VK_PAGE}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border hover:border-[#4680C2]/40 hover:bg-[#4680C2]/5 transition-colors text-left group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-[#4680C2]/10 flex items-center justify-center shrink-0 text-[#4680C2] font-bold text-sm">
-                    ВК
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">Написать ВКонтакте</div>
-                    <div className="text-xs text-muted-foreground">Сообщество СПАРКОМ</div>
-                  </div>
-                  <Icon name="ExternalLink" size={14} className="text-muted-foreground" />
-                </a>
-
-                {/* Перезвонить */}
-                <button
-                  onClick={() => setScreen("callback")}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border hover:border-green-400/40 hover:bg-green-50 transition-colors text-left group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                    <Icon name="Phone" size={18} className="text-green-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">Попросить перезвонить</div>
-                    <div className="text-xs text-muted-foreground">Оставьте номер — мы свяжемся</div>
-                  </div>
-                  <Icon name="ChevronRight" size={16} className="text-muted-foreground group-hover:text-green-600 transition-colors" />
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* ── ФОРМА ЗАПИСИ ──────────────────────────────────────── */}
-          {screen === "form" && (
-            <>
-              <DialogHeader className="px-6 pt-6 pb-4 border-b">
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setScreen("choose")} className="text-muted-foreground hover:text-foreground transition-colors">
-                    <Icon name="ArrowLeft" size={18} />
-                  </button>
-                  <DialogTitle className="text-base font-semibold">Заполните данные</DialogTitle>
-                </div>
-              </DialogHeader>
-
-              <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
-                {user && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-xs">
-                    <Icon name="CheckCircle2" size={14} className="text-green-600 shrink-0" />
-                    <span className="text-green-800">
-                      Данные подставлены автоматически. Можно отредактировать.
-                    </span>
                   </div>
                 )}
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
+
+                {/* Контактные данные */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
                     <Label htmlFor="su-name" className="text-sm">Имя *</Label>
                     <Input
                       id="su-name"
                       placeholder="Как к вам обращаться"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="mt-1.5 rounded-lg"
+                      className={`mt-1.5 rounded-lg ${errBorder("name")}`}
                     />
+                    {showError("name") && <p className="text-xs text-red-500 mt-1">Укажите имя</p>}
                   </div>
                   <div>
                     <Label htmlFor="su-phone" className="text-sm">Телефон *</Label>
@@ -436,8 +379,9 @@ export default function SignUpForm({
                       placeholder="+7 (___) ___-__-__"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="mt-1.5 rounded-lg"
+                      className={`mt-1.5 rounded-lg ${errBorder("phone")}`}
                     />
+                    {showError("phone") && <p className="text-xs text-red-500 mt-1">Укажите корректный номер</p>}
                   </div>
                   <div>
                     <Label htmlFor="su-email" className="text-sm">Email *</Label>
@@ -447,22 +391,14 @@ export default function SignUpForm({
                       placeholder="your@email.ru"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="mt-1.5 rounded-lg"
+                      className={`mt-1.5 rounded-lg ${errBorder("email")}`}
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor="su-tg" className="text-sm text-muted-foreground">Telegram <span className="font-normal">(необязательно)</span></Label>
-                    <Input
-                      id="su-tg"
-                      placeholder="@username"
-                      value={telegram}
-                      onChange={(e) => setTelegram(e.target.value)}
-                      className="mt-1.5 rounded-lg"
-                    />
+                    {showError("email") && <p className="text-xs text-red-500 mt-1">Введите корректный email</p>}
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-border space-y-3">
+                {/* Способ связи */}
+                <div className="pt-1 border-t border-border space-y-3">
                   <Label className="text-sm font-medium">Как организатору связаться с вами? *</Label>
                   <div className="grid grid-cols-2 gap-2">
                     {[
@@ -489,26 +425,28 @@ export default function SignUpForm({
 
                   {preferredChannel === "telegram" && (
                     <div>
-                      <Label htmlFor="ch-tg" className="text-xs text-muted-foreground">Telegram-юзернейм или номер</Label>
+                      <Label htmlFor="ch-tg" className="text-xs text-muted-foreground">Telegram-юзернейм или номер *</Label>
                       <Input
                         id="ch-tg"
                         placeholder="@username или +7..."
                         value={telegram}
                         onChange={(e) => setTelegram(e.target.value)}
-                        className="mt-1 rounded-lg"
+                        className={`mt-1 rounded-lg ${errBorder("telegramChannel")}`}
                       />
+                      {showError("telegramChannel") && <p className="text-xs text-red-500 mt-1">Укажите Telegram</p>}
                     </div>
                   )}
                   {preferredChannel === "vk" && (
                     <div>
-                      <Label htmlFor="ch-vk" className="text-xs text-muted-foreground">Ссылка на профиль или ID</Label>
+                      <Label htmlFor="ch-vk" className="text-xs text-muted-foreground">Ссылка на профиль или ID *</Label>
                       <Input
                         id="ch-vk"
                         placeholder="vk.com/username"
                         value={vkContact}
                         onChange={(e) => setVkContact(e.target.value)}
-                        className="mt-1 rounded-lg"
+                        className={`mt-1 rounded-lg ${errBorder("vkChannel")}`}
                       />
+                      {showError("vkChannel") && <p className="text-xs text-red-500 mt-1">Укажите профиль ВК</p>}
                     </div>
                   )}
                   {preferredChannel === "email" && (
@@ -519,14 +457,31 @@ export default function SignUpForm({
                   )}
                 </div>
 
-                <div className="space-y-3 pt-1 border-t border-border">
+                {/* Мотивирующий блок гарантий */}
+                <div className="rounded-xl bg-muted/40 border border-border px-3 py-2.5 space-y-1.5">
+                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <Icon name="Lock" size={13} className="text-green-600 mt-0.5 shrink-0" />
+                    <span>Ваши данные защищены и передаются только организатору события</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <Icon name="ShieldCheck" size={13} className="text-green-600 mt-0.5 shrink-0" />
+                    <span>Бесплатная отмена за 48 часов до события</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                    <Icon name="Bell" size={13} className="text-green-600 mt-0.5 shrink-0" />
+                    <span>Напомним за день и за час до начала</span>
+                  </div>
+                </div>
+
+                {/* Согласия */}
+                <div className="space-y-2.5 pt-1 border-t border-border">
                   <label className="flex items-start gap-3 cursor-pointer">
                     <Checkbox
                       checked={consentPd}
                       onCheckedChange={(v) => setConsentPd(v === true)}
-                      className="mt-0.5 shrink-0"
+                      className={`mt-0.5 shrink-0 ${showError("consentPd") ? "border-red-400" : ""}`}
                     />
-                    <span className="text-xs text-muted-foreground leading-relaxed">
+                    <span className={`text-xs leading-relaxed ${showError("consentPd") ? "text-red-600" : "text-muted-foreground"}`}>
                       Даю{" "}<ConsentModal trigger="согласие на обработку персональных данных" />{" "}в соответствии с ФЗ №152-ФЗ
                     </span>
                   </label>
@@ -534,9 +489,9 @@ export default function SignUpForm({
                     <Checkbox
                       checked={consentShare}
                       onCheckedChange={(v) => setConsentShare(v === true)}
-                      className="mt-0.5 shrink-0"
+                      className={`mt-0.5 shrink-0 ${showError("consentShare") ? "border-red-400" : ""}`}
                     />
-                    <span className="text-xs text-muted-foreground leading-relaxed">
+                    <span className={`text-xs leading-relaxed ${showError("consentShare") ? "text-red-600" : "text-muted-foreground"}`}>
                       Согласен(на) на передачу контактных данных организатору для связи
                     </span>
                   </label>
@@ -544,9 +499,9 @@ export default function SignUpForm({
                     <Checkbox
                       checked={consentCancel}
                       onCheckedChange={(v) => setConsentCancel(v === true)}
-                      className="mt-0.5 shrink-0"
+                      className={`mt-0.5 shrink-0 ${showError("consentCancel") ? "border-red-400" : ""}`}
                     />
-                    <span className="text-xs text-muted-foreground leading-relaxed">
+                    <span className={`text-xs leading-relaxed ${showError("consentCancel") ? "text-red-600" : "text-muted-foreground"}`}>
                       Ознакомлен(а) с условиями отмены участия
                     </span>
                   </label>
@@ -554,134 +509,21 @@ export default function SignUpForm({
 
                 <Button
                   type="submit"
-                  disabled={!canSubmit || loading}
+                  disabled={loading}
                   className="w-full rounded-xl gap-2"
                   size="lg"
                 >
                   {loading
                     ? <><Icon name="Loader2" size={16} className="animate-spin" /> Отправляю...</>
-                    : <><Icon name="CalendarCheck" size={16} /> Записаться</>
+                    : <><Icon name="CalendarCheck" size={16} /> Участвую</>
                   }
                 </Button>
               </form>
             </>
           )}
 
-          {/* ── ПЕРЕЗВОНИТЬ ───────────────────────────────────────── */}
-          {screen === "callback" && (
-            <>
-              <DialogHeader className="px-6 pt-6 pb-4 border-b">
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setScreen("choose")} className="text-muted-foreground hover:text-foreground transition-colors">
-                    <Icon name="ArrowLeft" size={18} />
-                  </button>
-                  <DialogTitle className="text-base font-semibold">Оставьте номер</DialogTitle>
-                </div>
-              </DialogHeader>
-
-              <CallbackScreen
-                eventId={eventId}
-                onSuccess={() => setScreen("success")}
-                onBack={() => setScreen("choose")}
-              />
-            </>
-          )}
-
-          {/* ── УСПЕХ ─────────────────────────────────────────────── */}
-          {screen === "success" && (
-            <div className="px-6 py-10 text-center space-y-4">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <Icon name="CheckCircle2" size={32} className="text-green-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-1">Заявка отправлена!</h3>
-                <p className="text-sm text-muted-foreground">
-                  Организатор получил вашу заявку и свяжется с вами для подтверждения.
-                </p>
-              </div>
-              {email && (
-                <p className="text-xs text-muted-foreground">
-                  Подтверждение отправлено на <span className="font-medium">{email}</span>
-                </p>
-              )}
-              <Button className="rounded-xl gap-2 w-full" onClick={() => handleClose(false)}>
-                <Icon name="Check" size={16} />
-                Готово
-              </Button>
-            </div>
-          )}
-
         </DialogContent>
       </Dialog>
     </>
-  );
-}
-
-/* ── Экран «Перезвонить» ──────────────────────────────────────────────── */
-function CallbackScreen({ eventId, onSuccess, onBack }: {
-  eventId: number;
-  onSuccess: () => void;
-  onBack: () => void;
-}) {
-  const [cbName, setCbName] = useState("");
-  const [cbPhone, setCbPhone] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cbName.trim() || !cbPhone.trim()) {
-      toast.error("Заполните имя и телефон");
-      return;
-    }
-    setLoading(true);
-    try {
-      await signupsApi.create({
-        event_id: eventId,
-        name: cbName,
-        phone: cbPhone,
-        email: `callback_${Date.now()}@sparcom.local`,
-        consent_pd: true,
-      });
-      onSuccess();
-    } catch {
-      toast.error("Не удалось отправить. Попробуйте ещё раз.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Оставьте имя и телефон — мы перезвоним и поможем с записью.
-      </p>
-      <div>
-        <Label htmlFor="cb-name" className="text-sm">Имя *</Label>
-        <Input
-          id="cb-name"
-          placeholder="Как к вам обращаться"
-          value={cbName}
-          onChange={(e) => setCbName(e.target.value)}
-          className="mt-1.5 rounded-lg"
-        />
-      </div>
-      <div>
-        <Label htmlFor="cb-phone" className="text-sm">Телефон *</Label>
-        <Input
-          id="cb-phone"
-          type="tel"
-          placeholder="+7 (___) ___-__-__"
-          value={cbPhone}
-          onChange={(e) => setCbPhone(e.target.value)}
-          className="mt-1.5 rounded-lg"
-        />
-      </div>
-      <Button type="submit" disabled={loading} className="w-full rounded-xl gap-2" size="lg">
-        {loading
-          ? <><Icon name="Loader2" size={16} className="animate-spin" /> Отправляю...</>
-          : <><Icon name="Phone" size={16} /> Перезвоните мне</>
-        }
-      </Button>
-    </form>
   );
 }

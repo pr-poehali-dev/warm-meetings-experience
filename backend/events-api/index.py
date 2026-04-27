@@ -282,9 +282,11 @@ def handle_signups(event, method, params, schema, headers):
         conn.commit()
         conn.close()
 
+        preferred_contact_value = (body.get('preferred_contact_value') or '').strip()
+
         send_signup_confirmation(email, name, ev)
-        send_signup_telegram(name, phone, email, telegram, ev)
-        notify_organizer_telegram(ev, name, phone, email, telegram)
+        send_signup_telegram(name, phone, email, telegram, ev, preferred_channel, preferred_contact_value)
+        notify_organizer_telegram(ev, name, phone, email, telegram, preferred_channel, preferred_contact_value)
 
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(dict(row), default=str)}
 
@@ -404,7 +406,17 @@ def send_signup_confirmation(to_email, name, event_data):
         pass
 
 
-def send_signup_telegram(signup_name, signup_phone, signup_email, signup_telegram, event_data):
+CHANNEL_LABEL_MAP = {
+    'telegram': '✈️ Telegram',
+    'vk': '🟦 ВКонтакте',
+    'email': '📧 Email',
+    'sms': '📱 Звонок / SMS',
+    'phone': '📱 Звонок / SMS',
+    'site': '🌐 Сайт',
+}
+
+
+def send_signup_telegram(signup_name, signup_phone, signup_email, signup_telegram, event_data, preferred_channel='', preferred_contact_value=''):
     bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
     chat_id = os.environ.get('TELEGRAM_CHAT_ID')
     if not bot_token or not chat_id:
@@ -427,7 +439,12 @@ def send_signup_telegram(signup_name, signup_phone, signup_email, signup_telegra
     )
     if signup_telegram:
         text += f"✈️ {signup_telegram}\n"
-    text += f"\n🪑 Осталось мест: {max(spots, 0)}"
+    if preferred_channel:
+        ch_label = CHANNEL_LABEL_MAP.get(preferred_channel, preferred_channel)
+        text += f"\n💬 <b>Предпочтительный канал:</b> {ch_label}"
+        if preferred_contact_value:
+            text += f"\n   {preferred_contact_value}"
+    text += f"\n\n🪑 Осталось мест: {max(spots, 0)}"
 
     try:
         requests.post(
@@ -439,7 +456,7 @@ def send_signup_telegram(signup_name, signup_phone, signup_email, signup_telegra
         pass
 
 
-def notify_organizer_telegram(event_data, signup_name, signup_phone, signup_email, signup_telegram):
+def notify_organizer_telegram(event_data, signup_name, signup_phone, signup_email, signup_telegram, preferred_channel='', preferred_contact_value=''):
     organizer_id = event_data.get('organizer_id')
     if not organizer_id:
         return
@@ -460,6 +477,8 @@ def notify_organizer_telegram(event_data, signup_name, signup_phone, signup_emai
                 'signup_phone': signup_phone,
                 'signup_email': signup_email,
                 'signup_telegram': signup_telegram,
+                'preferred_channel': preferred_channel,
+                'preferred_contact_value': preferred_contact_value,
             },
             timeout=5
         )
