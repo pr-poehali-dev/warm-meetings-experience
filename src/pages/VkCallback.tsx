@@ -37,7 +37,7 @@ export default function VkCallback() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const isLinkFlow = params.get("vk_link") === "1";
+    const isLinkFlow = sessionStorage.getItem("vk_link_pending") === "1";
     const urlStateEarly = params.get("state");
     const urlCodeEarly = params.get("code");
     const deviceIdEarly = params.get("device_id") || "";

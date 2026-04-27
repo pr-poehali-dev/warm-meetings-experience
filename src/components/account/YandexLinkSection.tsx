@@ -29,8 +29,10 @@ export default function YandexLinkSection({ yandexId, hasPassword, onLinked, onU
 
   const handleCallback = useCallback(async () => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("yandex_link") !== "1") return;
+    const isLinkFlow = sessionStorage.getItem("yandex_link_pending") === "1";
+    if (!isLinkFlow || !params.get("code")) return;
 
+    sessionStorage.removeItem("yandex_link_pending");
     const success = await yandexAuth.handleCallback(params);
     if (success && yandexAuth.user && yandexAuth.accessToken) {
       try {
@@ -45,7 +47,6 @@ export default function YandexLinkSection({ yandexId, hasPassword, onLinked, onU
       toast.error("Не удалось войти через Яндекс");
     }
     const url = new URL(window.location.href);
-    url.searchParams.delete("yandex_link");
     url.searchParams.delete("code");
     url.searchParams.delete("state");
     window.history.replaceState({}, "", url.toString());
@@ -60,11 +61,8 @@ export default function YandexLinkSection({ yandexId, hasPassword, onLinked, onU
     const data = await response.json();
     if (data.auth_url) {
       if (data.state) sessionStorage.setItem("yandex_auth_state", data.state);
-      const callbackUrl = new URL(`${window.location.origin}/auth/yandex/callback`);
-      callbackUrl.searchParams.set("yandex_link", "1");
-      const authUrl = new URL(data.auth_url);
-      authUrl.searchParams.set("redirect_uri", callbackUrl.toString());
-      window.location.href = authUrl.toString();
+      sessionStorage.setItem("yandex_link_pending", "1");
+      window.location.href = data.auth_url;
     }
   };
 

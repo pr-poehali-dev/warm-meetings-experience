@@ -31,7 +31,7 @@ export default function YandexCallback() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const isLinkFlow = params.get("yandex_link") === "1";
+    const isLinkFlow = sessionStorage.getItem("yandex_link_pending") === "1";
     const urlStateEarly = params.get("state");
     const urlCodeEarly = params.get("code");
 

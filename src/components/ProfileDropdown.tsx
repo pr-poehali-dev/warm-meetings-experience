@@ -42,14 +42,9 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
         const active = roles.filter((r) => r.status === "active");
         setUserRoles(active);
         const hasAdminRole = active.some((r) => r.slug === "admin");
-        const token = localStorage.getItem("admin_token");
-        const expires = localStorage.getItem("admin_token_expires");
-        const hasAdminToken = !!(token && expires && new Date(expires) > new Date());
-        setIsAdmin(hasAdminRole || hasAdminToken);
+        setIsAdmin(hasAdminRole);
       }).catch(() => {
-        const token = localStorage.getItem("admin_token");
-        const expires = localStorage.getItem("admin_token_expires");
-        setIsAdmin(!!(token && expires && new Date(expires) > new Date()));
+        setIsAdmin(false);
       });
     } else {
       setUserRoles([]);

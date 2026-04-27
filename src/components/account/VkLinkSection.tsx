@@ -29,8 +29,10 @@ export default function VkLinkSection({ vkId, hasPassword, onLinked, onUnlinked 
 
   const handleCallback = useCallback(async () => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("vk_link") !== "1") return;
+    const isLinkFlow = sessionStorage.getItem("vk_link_pending") === "1";
+    if (!isLinkFlow || !params.get("code")) return;
 
+    sessionStorage.removeItem("vk_link_pending");
     const success = await vkAuth.handleCallback(params);
     if (success && vkAuth.user && vkAuth.accessToken) {
       try {
@@ -45,7 +47,6 @@ export default function VkLinkSection({ vkId, hasPassword, onLinked, onUnlinked 
       toast.error("Не удалось войти через VK");
     }
     const url = new URL(window.location.href);
-    url.searchParams.delete("vk_link");
     url.searchParams.delete("code");
     url.searchParams.delete("state");
     url.searchParams.delete("device_id");
@@ -62,11 +63,8 @@ export default function VkLinkSection({ vkId, hasPassword, onLinked, onUnlinked 
     if (data.auth_url) {
       if (data.state) sessionStorage.setItem("vk_auth_state", data.state);
       if (data.code_verifier) sessionStorage.setItem("vk_auth_code_verifier", data.code_verifier);
-      const callbackUrl = new URL(`${window.location.origin}/auth/vk/callback`);
-      callbackUrl.searchParams.set("vk_link", "1");
-      const authUrl = new URL(data.auth_url);
-      authUrl.searchParams.set("redirect_uri", callbackUrl.toString());
-      window.location.href = authUrl.toString();
+      sessionStorage.setItem("vk_link_pending", "1");
+      window.location.href = data.auth_url;
     }
   };
 
