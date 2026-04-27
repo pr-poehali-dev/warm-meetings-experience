@@ -248,6 +248,10 @@ def handle_signups(event, method, params, schema, headers):
         telegram = (body.get('telegram') or '').replace("'", "''")
         consent_pd = body.get('consent_pd', False)
         event_id = body.get('event_id')
+        preferred_channel_raw = (body.get('preferred_channel') or '').strip().lower()
+        allowed_channels = {'telegram', 'vk', 'email', 'sms', 'phone', 'site'}
+        preferred_channel = preferred_channel_raw if preferred_channel_raw in allowed_channels else 'site'
+        preferred_channel = preferred_channel.replace("'", "''")
 
         if not name or not phone or not event_id or not email:
             conn.close()
@@ -269,8 +273,8 @@ def handle_signups(event, method, params, schema, headers):
         user_id = find_or_create_user(cur, schema, email, name, phone, telegram)
 
         cur.execute(f"""
-            INSERT INTO {schema}.event_signups (event_id, name, phone, email, telegram, consent_pd, user_id)
-            VALUES ({event_id}, '{name}', '{phone}', '{email}', '{telegram}', true, {user_id})
+            INSERT INTO {schema}.event_signups (event_id, name, phone, email, telegram, consent_pd, user_id, preferred_channel)
+            VALUES ({event_id}, '{name}', '{phone}', '{email}', '{telegram}', true, {user_id}, '{preferred_channel}')
             RETURNING *
         """)
         row = cur.fetchone()

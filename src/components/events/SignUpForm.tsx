@@ -100,6 +100,8 @@ export default function SignUpForm({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [telegram, setTelegram] = useState("");
+  const [preferredChannel, setPreferredChannel] = useState<"telegram" | "vk" | "email" | "phone">("telegram");
+  const [vkContact, setVkContact] = useState("");
   const [consentPd, setConsentPd] = useState(false);
   const [consentShare, setConsentShare] = useState(false);
   const [consentCancel, setConsentCancel] = useState(false);
@@ -112,10 +114,18 @@ export default function SignUpForm({
       setPhone((prev) => prev || user.phone || "");
       setEmail((prev) => prev || user.email || "");
       setTelegram((prev) => prev || user.telegram || "");
+      if (user.telegram) setPreferredChannel((prev) => prev || "telegram");
+      else if (user.vk_id) setPreferredChannel("vk");
     }
   }, [user, open]);
 
-  const canSubmit = consentPd && consentShare && consentCancel && name.trim() && phone.trim() && email.trim();
+  const channelValueOk =
+    (preferredChannel === "telegram" && telegram.trim()) ||
+    (preferredChannel === "vk" && vkContact.trim()) ||
+    (preferredChannel === "email" && email.trim()) ||
+    (preferredChannel === "phone" && phone.trim());
+
+  const canSubmit = consentPd && consentShare && consentCancel && name.trim() && phone.trim() && email.trim() && channelValueOk;
 
   const filledSpots = totalSpots && totalSpots > 0 ? Math.max(0, totalSpots - spotsLeft) : 0;
   const fillPercent = totalSpots && totalSpots > 0 ? Math.min(100, Math.round((filledSpots / totalSpots) * 100)) : 0;
@@ -135,6 +145,7 @@ export default function SignUpForm({
     if (!user) {
       setName(""); setPhone(""); setEmail(""); setTelegram("");
     }
+    setVkContact("");
     setConsentPd(false); setConsentShare(false); setConsentCancel(false);
     setScreen("choose");
   };
@@ -149,7 +160,21 @@ export default function SignUpForm({
     if (!canSubmit) return;
     setLoading(true);
     try {
-      await signupsApi.create({ event_id: eventId, name, phone, email, telegram, consent_pd: true });
+      const channelValue =
+        preferredChannel === "telegram" ? telegram :
+        preferredChannel === "vk" ? vkContact :
+        preferredChannel === "email" ? email :
+        phone;
+      await signupsApi.create({
+        event_id: eventId,
+        name,
+        phone,
+        email,
+        telegram,
+        consent_pd: true,
+        preferred_channel: preferredChannel === "phone" ? "sms" : preferredChannel,
+        preferred_contact_value: channelValue,
+      });
       setScreen("success");
     } catch {
       toast.error("Не удалось отправить заявку. Попробуйте позже.");
@@ -435,6 +460,63 @@ export default function SignUpForm({
                       className="mt-1.5 rounded-lg"
                     />
                   </div>
+                </div>
+
+                <div className="pt-2 border-t border-border space-y-3">
+                  <Label className="text-sm font-medium">Как организатору связаться с вами? *</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { v: "telegram" as const, label: "Telegram", icon: "Send" },
+                      { v: "vk" as const, label: "ВКонтакте", icon: "MessageCircle" },
+                      { v: "email" as const, label: "Email", icon: "Mail" },
+                      { v: "phone" as const, label: "Звонок / SMS", icon: "Phone" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.v}
+                        type="button"
+                        onClick={() => setPreferredChannel(opt.v)}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-colors ${
+                          preferredChannel === opt.v
+                            ? "border-primary bg-primary/5 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/40"
+                        }`}
+                      >
+                        <Icon name={opt.icon} size={15} />
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {preferredChannel === "telegram" && (
+                    <div>
+                      <Label htmlFor="ch-tg" className="text-xs text-muted-foreground">Telegram-юзернейм или номер</Label>
+                      <Input
+                        id="ch-tg"
+                        placeholder="@username или +7..."
+                        value={telegram}
+                        onChange={(e) => setTelegram(e.target.value)}
+                        className="mt-1 rounded-lg"
+                      />
+                    </div>
+                  )}
+                  {preferredChannel === "vk" && (
+                    <div>
+                      <Label htmlFor="ch-vk" className="text-xs text-muted-foreground">Ссылка на профиль или ID</Label>
+                      <Input
+                        id="ch-vk"
+                        placeholder="vk.com/username"
+                        value={vkContact}
+                        onChange={(e) => setVkContact(e.target.value)}
+                        className="mt-1 rounded-lg"
+                      />
+                    </div>
+                  )}
+                  {preferredChannel === "email" && (
+                    <p className="text-xs text-muted-foreground">Свяжемся по email, который вы указали выше.</p>
+                  )}
+                  {preferredChannel === "phone" && (
+                    <p className="text-xs text-muted-foreground">Позвоним или напишем SMS на указанный номер.</p>
+                  )}
                 </div>
 
                 <div className="space-y-3 pt-1 border-t border-border">
