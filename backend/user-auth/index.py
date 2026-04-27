@@ -154,8 +154,8 @@ def handle_register(body, ip=None):
         return respond(400, {'error': 'Заполните email, имя и пароль'})
     if '@' not in email:
         return respond(400, {'error': 'Некорректный email'})
-    if len(password) < 6:
-        return respond(400, {'error': 'Пароль должен быть не менее 6 символов'})
+    if len(password) < 8:
+        return respond(400, {'error': 'Пароль должен быть не менее 8 символов'})
     if not consent_pd:
         return respond(400, {'error': 'Необходимо согласие на обработку персональных данных'})
 
@@ -343,8 +343,8 @@ def handle_reset(body, ip=None):
 
     if not token or not new_password:
         return respond(400, {'error': 'Токен и новый пароль обязательны'})
-    if len(new_password) < 6:
-        return respond(400, {'error': 'Пароль должен быть не менее 6 символов'})
+    if len(new_password) < 8:
+        return respond(400, {'error': 'Пароль должен быть не менее 8 символов'})
 
     schema = get_schema()
     conn = get_conn()

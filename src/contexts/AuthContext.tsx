@@ -20,6 +20,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     checkAuth();
+    const onUnauthorized = (e: Event) => {
+      const detail = (e as CustomEvent<{ scope?: string }>).detail;
+      if (!detail || detail.scope === "user") {
+        setUser(null);
+      }
+    };
+    window.addEventListener("auth:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("auth:unauthorized", onUnauthorized);
   }, []);
 
   const checkAuth = async () => {

@@ -17,6 +17,12 @@ export function useAdmin() {
     if (savedToken && expires && new Date(expires) > new Date()) {
       setToken(savedToken);
     }
+    const onUnauthorized = (e: Event) => {
+      const detail = (e as CustomEvent<{ scope?: string }>).detail;
+      if (detail?.scope === "admin") setToken(null);
+    };
+    window.addEventListener("auth:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("auth:unauthorized", onUnauthorized);
   }, []);
 
   const fetchEvents = useCallback(async () => {
