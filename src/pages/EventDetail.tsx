@@ -181,6 +181,11 @@ export default function EventDetail() {
               eventTitle={event.title}
               spotsLeft={event.spotsLeft}
               priceLabel={priceDisplay ?? undefined}
+              eventDate={event.date}
+              timeStart={event.timeStart}
+              timeEnd={event.timeEnd}
+              bathName={event.bathName}
+              totalSpots={event.totalSpots}
             />
           )}
         </div>
@@ -269,6 +274,11 @@ function SidebarCard({ event, spotsColor, spotsLabel, priceDisplay, dateObj }: {
               eventTitle={event.title}
               spotsLeft={event.spotsLeft}
               priceLabel={priceDisplay ?? undefined}
+              eventDate={event.date}
+              timeStart={event.timeStart}
+              timeEnd={event.timeEnd}
+              bathName={event.bathName}
+              totalSpots={event.totalSpots}
             />
           )}
         </CardContent>

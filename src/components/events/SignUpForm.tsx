@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,9 @@ import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { signupsApi } from "@/lib/api";
 import ConsentModal from "@/components/ConsentModal";
+import { useAuth } from "@/contexts/AuthContext";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
 
 interface SignUpFormProps {
   eventId: number;
@@ -20,6 +23,11 @@ interface SignUpFormProps {
   spotsLeft: number;
   price?: number;
   priceLabel?: string;
+  eventDate?: string;
+  timeStart?: string;
+  timeEnd?: string;
+  bathName?: string;
+  totalSpots?: number;
 }
 
 type Screen = "choose" | "form" | "callback" | "success";
@@ -27,7 +35,19 @@ type Screen = "choose" | "form" | "callback" | "success";
 const TG_BOT = "https://t.me/sparcom_ru";
 const VK_PAGE = "https://vk.com/sparcom";
 
-export default function SignUpForm({ eventId, eventTitle, spotsLeft, price, priceLabel }: SignUpFormProps) {
+export default function SignUpForm({
+  eventId,
+  eventTitle,
+  spotsLeft,
+  price,
+  priceLabel,
+  eventDate,
+  timeStart,
+  timeEnd,
+  bathName,
+  totalSpots,
+}: SignUpFormProps) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [screen, setScreen] = useState<Screen>("choose");
 
@@ -41,7 +61,26 @@ export default function SignUpForm({ eventId, eventTitle, spotsLeft, price, pric
   const [consentCancel, setConsentCancel] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Авто-подстановка данных авторизованного пользователя
+  useEffect(() => {
+    if (user && open) {
+      setName((prev) => prev || user.name || "");
+      setPhone((prev) => prev || user.phone || "");
+      setEmail((prev) => prev || user.email || "");
+      setTelegram((prev) => prev || user.telegram || "");
+    }
+  }, [user, open]);
+
   const canSubmit = consentPd && consentShare && consentCancel && name.trim() && phone.trim() && email.trim();
+
+  const filledSpots = totalSpots && totalSpots > 0 ? Math.max(0, totalSpots - spotsLeft) : 0;
+  const fillPercent = totalSpots && totalSpots > 0 ? Math.min(100, Math.round((filledSpots / totalSpots) * 100)) : 0;
+
+  const dateObj = eventDate ? new Date(eventDate) : null;
+  const dateLabel = dateObj && !isNaN(dateObj.getTime())
+    ? format(dateObj, "d MMMM", { locale: ru })
+    : null;
+  const timeLabel = timeStart && timeEnd ? `${timeStart.slice(0, 5)}–${timeEnd.slice(0, 5)}` : timeStart?.slice(0, 5);
 
   const openModal = () => {
     setScreen("choose");
@@ -49,7 +88,9 @@ export default function SignUpForm({ eventId, eventTitle, spotsLeft, price, pric
   };
 
   const reset = () => {
-    setName(""); setPhone(""); setEmail(""); setTelegram("");
+    if (!user) {
+      setName(""); setPhone(""); setEmail(""); setTelegram("");
+    }
     setConsentPd(false); setConsentShare(false); setConsentCancel(false);
     setScreen("choose");
   };
@@ -102,13 +143,77 @@ export default function SignUpForm({ eventId, eventTitle, spotsLeft, price, pric
                 <DialogTitle className="text-base font-semibold leading-tight">
                   Запись на «{eventTitle}»
                 </DialogTitle>
+                {(dateLabel || timeLabel || bathName) && (
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground mt-2">
+                    {dateLabel && (
+                      <span className="inline-flex items-center gap-1">
+                        <Icon name="Calendar" size={12} />
+                        {dateLabel}
+                      </span>
+                    )}
+                    {timeLabel && (
+                      <span className="inline-flex items-center gap-1">
+                        <Icon name="Clock" size={12} />
+                        {timeLabel}
+                      </span>
+                    )}
+                    {bathName && (
+                      <span className="inline-flex items-center gap-1">
+                        <Icon name="MapPin" size={12} />
+                        {bathName}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {priceLabel && (
-                  <p className="text-sm text-muted-foreground mt-0.5">{priceLabel}</p>
+                  <p className="text-sm font-medium text-accent mt-1.5">{priceLabel}</p>
+                )}
+
+                {totalSpots && totalSpots > 0 && (
+                  <div className="mt-2.5">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">
+                        Заполнено {filledSpots} из {totalSpots}
+                      </span>
+                      <span className={`font-medium ${spotsLeft <= 2 ? "text-orange-600" : "text-green-600"}`}>
+                        {spotsLeft <= 2 ? `Осталось ${spotsLeft}!` : `Осталось ${spotsLeft}`}
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${spotsLeft <= 2 ? "bg-orange-500" : "bg-green-500"}`}
+                        style={{ width: `${fillPercent}%` }}
+                      />
+                    </div>
+                  </div>
                 )}
               </DialogHeader>
 
               <div className="px-6 py-5 space-y-3">
-                <p className="text-sm text-muted-foreground">Выберите удобный способ:</p>
+                {user && (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/15">
+                    <div className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                      <Icon name="UserCheck" size={16} className="text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs text-muted-foreground">Вы вошли как</div>
+                      <div className="text-sm font-medium truncate">{user.name}</div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="rounded-lg gap-1.5"
+                      onClick={() => setScreen("form")}
+                    >
+                      <Icon name="CalendarCheck" size={14} />
+                      Участвую
+                    </Button>
+                  </div>
+                )}
+
+                <p className="text-sm text-muted-foreground">
+                  {user ? "Или выберите другой способ:" : "Выберите удобный способ:"}
+                </p>
 
                 {/* Форма на сайте */}
                 <button
@@ -190,6 +295,14 @@ export default function SignUpForm({ eventId, eventTitle, spotsLeft, price, pric
               </DialogHeader>
 
               <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                {user && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-xs">
+                    <Icon name="CheckCircle2" size={14} className="text-green-600 shrink-0" />
+                    <span className="text-green-800">
+                      Данные подставлены автоматически. Можно отредактировать.
+                    </span>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 gap-4">
                   <div>
                     <Label htmlFor="su-name" className="text-sm">Имя *</Label>
