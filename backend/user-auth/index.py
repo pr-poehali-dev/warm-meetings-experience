@@ -164,7 +164,7 @@ def handle_register(body, ip=None):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     e = email.replace("'", "''")
-    cur.execute(f"SELECT id FROM {schema}.users WHERE email = '{e}'")
+    cur.execute(f"SELECT id FROM {schema}.users WHERE LOWER(email) = LOWER('{e}')")
     if cur.fetchone():
         conn.close()
         return respond(400, {'error': 'Пользователь с таким email уже зарегистрирован'})
@@ -228,7 +228,7 @@ def handle_login(body, ip=None, user_agent=''):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     e = email.replace("'", "''")
-    cur.execute(f"SELECT id, email, name, phone, password_hash, is_active, vk_id, yandex_id, totp_enabled, totp_secret, totp_backup_codes, login_2fa_method, created_at FROM {schema}.users WHERE email = '{e}'")
+    cur.execute(f"SELECT id, email, name, phone, password_hash, is_active, vk_id, yandex_id, totp_enabled, totp_secret, totp_backup_codes, login_2fa_method, created_at FROM {schema}.users WHERE LOWER(email) = LOWER('{e}')")
     user = cur.fetchone()
 
     if not user:
@@ -315,7 +315,7 @@ def handle_forgot(body, ip=None):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     e = email.replace("'", "''")
-    cur.execute(f"SELECT id, name FROM {schema}.users WHERE email = '{e}' AND is_active = true")
+    cur.execute(f"SELECT id, name FROM {schema}.users WHERE LOWER(email) = LOWER('{e}') AND is_active = true")
     user = cur.fetchone()
 
     if not user:

@@ -301,10 +301,10 @@ def handle_callback(event: dict, origin: str) -> dict:
                 name = db_name or name
                 picture = db_avatar or picture
             else:
-                # 2. Check if user exists by email - link Yandex account
+                # 2. Check if user exists by email - link Yandex account (case-insensitive)
                 if email:
                     cur.execute(
-                        f"SELECT id, name, avatar_url FROM {S}users WHERE email = %s",
+                        f"SELECT id, name, avatar_url FROM {S}users WHERE LOWER(email) = LOWER(%s)",
                         (email,)
                     )
                     row = cur.fetchone()

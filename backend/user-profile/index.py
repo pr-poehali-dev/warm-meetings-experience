@@ -39,6 +39,16 @@ def respond(status, body):
         'body': json.dumps(body, default=str)
     }
 
+def mask_email(email):
+    if not email or '@' not in email:
+        return email or ''
+    local, domain = email.split('@', 1)
+    if len(local) <= 2:
+        masked_local = local[0] + '*'
+    else:
+        masked_local = local[0] + '***' + local[-1]
+    return f'{masked_local}@{domain}'
+
 def hash_password(password):
     hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=12))
     return hashed.decode('utf-8')
@@ -415,10 +425,16 @@ def handle_link_vk(cur, conn, schema, user, body, ip=None):
 
     # Проверяем что vk_id не занят другим пользователем
     safe_vk_id = vk_id.replace("'", "''")
-    cur.execute(f"SELECT id FROM {schema}.users WHERE vk_id = '{safe_vk_id}' AND id != {user['id']}")
-    if cur.fetchone():
+    cur.execute(f"SELECT id, email FROM {schema}.users WHERE vk_id = '{safe_vk_id}' AND id != {user['id']}")
+    other = cur.fetchone()
+    if other:
         conn.close()
-        return respond(400, {'error': 'Этот VK аккаунт уже привязан к другому пользователю'})
+        masked = mask_email(other.get('email') or '')
+        return respond(409, {
+            'error': f'Этот ВКонтакте уже привязан к другому аккаунту ({masked}). Войдите в тот аккаунт, если он ваш, или используйте другой ВК.',
+            'code': 'vk_already_linked',
+            'masked_email': masked,
+        })
 
     cur.execute(f"""
         UPDATE {schema}.users SET vk_id = '{safe_vk_id}', updated_at = CURRENT_TIMESTAMP
@@ -453,10 +469,16 @@ def handle_link_yandex(cur, conn, schema, user, body, ip=None):
         return respond(400, {'error': 'Не передан yandex_id или access_token'})
 
     safe_yandex_id = yandex_id.replace("'", "''")
-    cur.execute(f"SELECT id FROM {schema}.users WHERE yandex_id = '{safe_yandex_id}' AND id != {user['id']}")
-    if cur.fetchone():
+    cur.execute(f"SELECT id, email FROM {schema}.users WHERE yandex_id = '{safe_yandex_id}' AND id != {user['id']}")
+    other = cur.fetchone()
+    if other:
         conn.close()
-        return respond(400, {'error': 'Этот Яндекс аккаунт уже привязан к другому пользователю'})
+        masked = mask_email(other.get('email') or '')
+        return respond(409, {
+            'error': f'Этот Яндекс уже привязан к другому аккаунту ({masked}). Войдите в тот аккаунт, если он ваш, или используйте другой Яндекс.',
+            'code': 'yandex_already_linked',
+            'masked_email': masked,
+        })
 
     cur.execute(f"""
         UPDATE {schema}.users SET yandex_id = '{safe_yandex_id}', updated_at = CURRENT_TIMESTAMP

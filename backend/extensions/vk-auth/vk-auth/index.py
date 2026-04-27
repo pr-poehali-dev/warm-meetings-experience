@@ -310,7 +310,8 @@ def handle_callback(event: dict, origin: str) -> dict:
         vk_user_id = user_info.get('user_id', user_info.get('id', ''))
         first_name = user_info.get('first_name', '')
         last_name = user_info.get('last_name', '')
-        vk_email = user_info.get('email')
+        vk_email_raw = user_info.get('email') or ''
+        vk_email = vk_email_raw.strip().lower() if vk_email_raw else None
         photo_url = user_info.get('avatar', '')
         full_name = f"{first_name} {last_name}".strip()
 
@@ -343,10 +344,10 @@ def handle_callback(event: dict, origin: str) -> dict:
                 name = name or full_name
                 photo_url = db_avatar or photo_url
             else:
-                # 2. Check if user exists by email - link VK account
+                # 2. Check if user exists by email - link VK account (case-insensitive)
                 if vk_email:
                     cur.execute(
-                        f"SELECT id, name, avatar_url FROM {S}users WHERE email = %s",
+                        f"SELECT id, name, avatar_url FROM {S}users WHERE LOWER(email) = LOWER(%s)",
                         (vk_email,)
                     )
                     row = cur.fetchone()
@@ -369,9 +370,9 @@ def handle_callback(event: dict, origin: str) -> dict:
                     safe_email = vk_email or f"vk_{vk_user_id}@vk.local"
                     safe_name = full_name or f"VK пользователь {vk_user_id}"
 
-                    # Check if user with this email already exists (e.g. after unlink+relink)
+                    # Check if user with this email already exists (e.g. after unlink+relink, case-insensitive)
                     cur.execute(
-                        f"SELECT id, name, avatar_url FROM {S}users WHERE email = %s",
+                        f"SELECT id, name, avatar_url FROM {S}users WHERE LOWER(email) = LOWER(%s)",
                         (safe_email,)
                     )
                     existing = cur.fetchone()
