@@ -61,7 +61,7 @@ export default function EventDetail() {
     : event.priceLabel || null;
 
   return (
-    <div className="min-h-screen bg-background pb-24 lg:pb-0">
+    <div className="min-h-screen bg-background pb-32 lg:pb-0">
       <Header />
 
       {/* Hero */}
@@ -163,9 +163,9 @@ export default function EventDetail() {
       </div>
 
       {/* Мобильная sticky-панель снизу */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-border px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-border px-4 pt-2 pb-3">
+        {(priceDisplay || event.totalSpots > 0) && (
+          <div className="flex items-center gap-3 mb-2">
             {priceDisplay && (
               <div className="text-lg font-bold text-accent leading-tight">{priceDisplay}</div>
             )}
@@ -175,20 +175,20 @@ export default function EventDetail() {
               </div>
             )}
           </div>
-          {event.id && (
-            <SignUpForm
-              eventId={event.id}
-              eventTitle={event.title}
-              spotsLeft={event.spotsLeft}
-              priceLabel={priceDisplay ?? undefined}
-              eventDate={event.date}
-              timeStart={event.timeStart}
-              timeEnd={event.timeEnd}
-              bathName={event.bathName}
-              totalSpots={event.totalSpots}
-            />
-          )}
-        </div>
+        )}
+        {event.id && (
+          <SignUpForm
+            eventId={event.id}
+            eventTitle={event.title}
+            spotsLeft={event.spotsLeft}
+            priceLabel={priceDisplay ?? undefined}
+            eventDate={event.date}
+            timeStart={event.timeStart}
+            timeEnd={event.timeEnd}
+            bathName={event.bathName}
+            totalSpots={event.totalSpots}
+          />
+        )}
       </div>
     </div>
   );
