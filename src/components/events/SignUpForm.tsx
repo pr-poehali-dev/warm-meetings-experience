@@ -111,7 +111,7 @@ export default function SignUpForm({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [telegram, setTelegram] = useState("");
-  const [preferredChannel, setPreferredChannel] = useState<"telegram" | "vk" | "email" | "phone">("telegram");
+  const [preferredChannel, setPreferredChannel] = useState<"telegram" | "vk" | "email" | "phone">("phone");
   const [vkContact, setVkContact] = useState("");
   const [consentPd, setConsentPd] = useState(false);
   const [consentShare, setConsentShare] = useState(false);
