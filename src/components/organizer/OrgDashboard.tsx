@@ -5,8 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-
 import Icon from "@/components/ui/icon";
+import RepeatEventDialog from "@/components/admin/RepeatEventDialog";
 
 type StatusFilter = "all" | "active" | "past" | "drafts";
 
@@ -25,18 +25,22 @@ interface Props {
   onManageEvent: (event: OrgEvent) => void;
   onEditEvent: (event: OrgEvent) => void;
   onDuplicateEvent: (event: OrgEvent) => void;
+  onRepeat: (event: OrgEvent, dates: string[]) => void;
   onToggleVisibility: (event: OrgEvent) => void;
   onDeleteEvent: (event: OrgEvent) => void;
+  repeatLoading?: boolean;
 }
 
 export default function OrgDashboard({
   data, events, eventsLoading,
   onCreateEvent, onManageEvent, onEditEvent,
-  onDuplicateEvent, onToggleVisibility, onDeleteEvent,
+  onDuplicateEvent, onRepeat, onToggleVisibility, onDeleteEvent,
+  repeatLoading,
 }: Props) {
   const { user, stats } = data;
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
+  const [repeatEvent, setRepeatEvent] = useState<OrgEvent | null>(null);
   const { toast } = useToast();
 
   const now = new Date().toISOString().split("T")[0];
@@ -184,6 +188,14 @@ export default function OrgDashboard({
                   </Button>
                   <Button
                     size="sm" variant="secondary"
+                    onClick={() => setRepeatEvent(ev)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
+                    title="Повторить"
+                  >
+                    <Icon name="Repeat" size={16} />
+                  </Button>
+                  <Button
+                    size="sm" variant="secondary"
                     onClick={() => handleShare(ev)}
                     className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
                     title="Поделиться"
@@ -261,6 +273,18 @@ export default function OrgDashboard({
             </Card>
           ))}
         </div>
+      )}
+      {repeatEvent && (
+        <RepeatEventDialog
+          eventTitle={repeatEvent.title}
+          eventDate={repeatEvent.event_date}
+          loading={!!repeatLoading}
+          onConfirm={(dates) => {
+            onRepeat(repeatEvent, dates);
+            setRepeatEvent(null);
+          }}
+          onCancel={() => setRepeatEvent(null)}
+        />
       )}
     </div>
   );

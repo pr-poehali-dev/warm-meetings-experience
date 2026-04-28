@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Icon from "@/components/ui/icon";
+import RepeatEventDialog from "@/components/admin/RepeatEventDialog";
 
 type StatusFilter = "all" | "active" | "past" | "drafts";
 
@@ -16,9 +17,11 @@ interface Props {
   onEditEvent: (event: OrgEvent) => void;
   onManageParticipants: (event: OrgEvent) => void;
   onDuplicateEvent: (event: OrgEvent) => void;
+  onRepeat: (event: OrgEvent, dates: string[]) => void;
   onToggleVisibility: (event: OrgEvent) => void;
   onDeleteEvent: (event: OrgEvent) => void;
   initialFilter?: StatusFilter;
+  repeatLoading?: boolean;
 }
 
 const STATUS_LABELS: Record<StatusFilter, string> = {
@@ -30,11 +33,12 @@ const STATUS_LABELS: Record<StatusFilter, string> = {
 
 export default function OrgEventsList({
   events, loading, onCreateEvent, onEditEvent,
-  onManageParticipants, onDuplicateEvent, onToggleVisibility, onDeleteEvent,
-  initialFilter = "all",
+  onManageParticipants, onDuplicateEvent, onRepeat, onToggleVisibility, onDeleteEvent,
+  initialFilter = "all", repeatLoading,
 }: Props) {
   const [filter, setFilter] = useState<StatusFilter>(initialFilter);
   const [search, setSearch] = useState("");
+  const [repeatEvent, setRepeatEvent] = useState<OrgEvent | null>(null);
   const { toast } = useToast();
 
   const handleShare = (ev: OrgEvent) => {
@@ -154,6 +158,14 @@ export default function OrgEventsList({
                   </Button>
                   <Button
                     size="sm" variant="secondary"
+                    onClick={() => setRepeatEvent(ev)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
+                    title="Повторить"
+                  >
+                    <Icon name="Repeat" size={16} />
+                  </Button>
+                  <Button
+                    size="sm" variant="secondary"
                     onClick={() => handleShare(ev)}
                     className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
                     title="Поделиться"
@@ -231,6 +243,18 @@ export default function OrgEventsList({
             </Card>
           ))}
         </div>
+      )}
+      {repeatEvent && (
+        <RepeatEventDialog
+          eventTitle={repeatEvent.title}
+          eventDate={repeatEvent.event_date}
+          loading={!!repeatLoading}
+          onConfirm={(dates) => {
+            onRepeat(repeatEvent, dates);
+            setRepeatEvent(null);
+          }}
+          onCancel={() => setRepeatEvent(null)}
+        />
       )}
     </div>
   );

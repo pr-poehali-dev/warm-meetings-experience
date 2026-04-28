@@ -217,6 +217,27 @@ export default function OrganizerCabinet() {
     }
   };
 
+  const handleRepeatEvent = async (event: OrgEvent, dates: string[]) => {
+    setFormLoading(true);
+    let created = 0;
+    for (const date of dates) {
+      try {
+        await organizerApi.createEvent({
+          ...event,
+          id: 0,
+          event_date: date,
+          is_visible: false,
+          spots_left: event.total_spots,
+          submit_action: "draft",
+        } as Partial<OrgEvent> & { submit_action: string });
+        created++;
+      } catch { /* skip */ }
+    }
+    setFormLoading(false);
+    await Promise.all([loadEvents(), loadDashboard()]);
+    toast({ title: `Создано ${created} из ${dates.length} событий` });
+  };
+
   if (authLoading || dashLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -290,6 +311,8 @@ export default function OrganizerCabinet() {
             onManageEvent={handleManageParticipants}
             onEditEvent={handleEditEvent}
             onDuplicateEvent={handleDuplicateEvent}
+            onRepeat={handleRepeatEvent}
+            repeatLoading={formLoading}
             onToggleVisibility={handleToggleVisibility}
             onDeleteEvent={handleDeleteEvent}
           />
