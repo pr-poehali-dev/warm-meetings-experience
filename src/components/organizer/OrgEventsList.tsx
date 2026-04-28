@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { OrgEvent } from "@/lib/organizer-api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -116,94 +116,117 @@ export default function OrgEventsList({
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((ev) => (
-            <Card key={ev.id} className={`transition-all ${!ev.is_visible ? "opacity-70" : ""}`}>
-              <CardContent className="p-4">
-                <div className="flex gap-4">
-                  {ev.image_url && (
-                    <img
-                      src={ev.image_url}
-                      alt={ev.title}
-                      className="w-16 h-16 rounded-lg object-cover shrink-0 hidden sm:block"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm truncate">{ev.title}</span>
-                          {!ev.is_visible && <Badge variant="secondary" className="text-xs shrink-0">черновик</Badge>}
-                          {ev.event_date >= now && ev.is_visible && occupancyBadge(ev)}
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
-                          <span className="flex items-center gap-1">
-                            <Icon name="Calendar" size={12} />
-                            {formatDate(ev.event_date)}
-                          </span>
-                          {ev.start_time && (
-                            <span className="flex items-center gap-1">
-                              <Icon name="Clock" size={12} />
-                              {ev.start_time.slice(0, 5)}–{ev.end_time?.slice(0, 5)}
-                            </span>
-                          )}
-                          {ev.bath_name && (
-                            <span className="flex items-center gap-1 truncate">
-                              <Icon name="MapPin" size={12} />
-                              {ev.bath_name}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-sm font-semibold">
-                          {ev.signups_count}/{ev.total_spots || "∞"}
-                        </div>
-                        <div className="text-xs text-muted-foreground">участников</div>
-                        {ev.price_amount > 0 && (
-                          <div className="text-xs text-green-600 font-medium mt-0.5">
-                            {(ev.signups_count * ev.price_amount).toLocaleString("ru")} ₽
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex gap-2 mt-3 flex-wrap">
-                      <Button size="sm" variant="outline" onClick={() => onEditEvent(ev)} className="h-7 text-xs gap-1">
-                        <Icon name="Pencil" size={12} />
-                        Редактировать
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => onManageParticipants(ev)} className="h-7 text-xs gap-1">
-                        <Icon name="Users" size={12} />
-                        Участники ({ev.signups_count})
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleShare(ev)} className="h-7 text-xs gap-1">
-                        <Icon name="Share2" size={12} />
-                        Поделиться
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => onDuplicateEvent(ev)} className="h-7 text-xs gap-1">
-                        <Icon name="Copy" size={12} />
-                        Копировать
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => onToggleVisibility(ev)}
-                        className="h-7 text-xs gap-1"
-                      >
-                        <Icon name={ev.is_visible ? "EyeOff" : "Eye"} size={12} />
-                        {ev.is_visible ? "Скрыть" : "Опубликовать"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => onDeleteEvent(ev)}
-                        className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
-                      >
-                        <Icon name="Trash2" size={12} />
-                      </Button>
-                    </div>
+            <Card key={ev.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+              <div className="relative">
+                {ev.image_url ? (
+                  <img src={ev.image_url} alt={ev.title} className="w-full h-48 object-cover" />
+                ) : (
+                  <div className="w-full h-32 bg-muted flex items-center justify-center">
+                    <Icon name={ev.event_type_icon || "Calendar"} size={32} className="text-muted-foreground/40" />
                   </div>
+                )}
+                <div className="absolute top-2 right-2 flex gap-1">
+                  <Button
+                    size="sm" variant="secondary"
+                    onClick={() => onEditEvent(ev)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
+                    title="Редактировать"
+                  >
+                    <Icon name="Edit" size={16} />
+                  </Button>
+                  <Button
+                    size="sm" variant="secondary"
+                    onClick={() => onManageParticipants(ev)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
+                    title={`Участники (${ev.signups_count})`}
+                  >
+                    <Icon name="Users" size={16} />
+                  </Button>
+                  <Button
+                    size="sm" variant="secondary"
+                    onClick={() => onDuplicateEvent(ev)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
+                    title="Дублировать"
+                  >
+                    <Icon name="Copy" size={16} />
+                  </Button>
+                  <Button
+                    size="sm" variant="secondary"
+                    onClick={() => handleShare(ev)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
+                    title="Поделиться"
+                  >
+                    <Icon name="Share2" size={16} />
+                  </Button>
+                  <Button
+                    size="sm" variant="secondary"
+                    onClick={() => onToggleVisibility(ev)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
+                    title={ev.is_visible ? "Скрыть" : "Опубликовать"}
+                  >
+                    <Icon name={ev.is_visible ? "Eye" : "EyeOff"} size={16} />
+                  </Button>
+                  <Button
+                    size="sm" variant="secondary"
+                    onClick={() => onDeleteEvent(ev)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700 hover:text-red-600"
+                    title="Удалить"
+                  >
+                    <Icon name="Trash2" size={16} />
+                  </Button>
                 </div>
+                {!ev.is_visible && (
+                  <div className="absolute top-2 left-2">
+                    <span className="text-xs bg-gray-800/80 text-white px-2 py-1 rounded">Скрыто</span>
+                  </div>
+                )}
+              </div>
+
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  {ev.event_type && (
+                    <div className="flex items-center gap-1.5 text-blue-600 text-xs bg-blue-50 px-2 py-1 rounded">
+                      <Icon name={ev.event_type_icon || "Users"} size={14} />
+                      <span>{ev.event_type}</span>
+                    </div>
+                  )}
+                  {ev.event_date >= now && ev.is_visible && occupancyBadge(ev)}
+                </div>
+
+                <h3 className="font-bold text-base text-foreground mb-1 line-clamp-2">{ev.title}</h3>
+
+                <div className="flex items-center gap-3 text-sm text-muted-foreground mb-2">
+                  <span className="flex items-center gap-1">
+                    <Icon name="Calendar" size={14} />
+                    {formatDate(ev.event_date)}
+                  </span>
+                  {ev.start_time && (
+                    <span className="flex items-center gap-1">
+                      <Icon name="Clock" size={14} />
+                      {ev.start_time.slice(0, 5)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    {ev.price_amount > 0 && (
+                      <span className="text-sm font-semibold">{ev.price_amount.toLocaleString("ru")} ₽</span>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {ev.signups_count}/{ev.total_spots || "∞"} мест
+                  </span>
+                </div>
+
+                {ev.bath_name && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
+                    <Icon name="MapPin" size={12} />
+                    {ev.bath_name}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
