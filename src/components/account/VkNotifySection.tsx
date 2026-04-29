@@ -89,7 +89,7 @@ export default function VkNotifySection({ vkId }: VkNotifySectionProps) {
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-normal cursor-pointer">
                   Служебные сообщения
-                  <div className="text-xs text-muted-foreground font-normal">Подтверждения записей, изменения</div>
+                  <div className="text-xs text-muted-foreground font-normal">Когда что-то меняется в ваших встречах</div>
                 </Label>
                 <Switch
                   checked={prefs.notify_service}

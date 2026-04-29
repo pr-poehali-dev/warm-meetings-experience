@@ -90,7 +90,7 @@ const AdminPromoCodes = () => {
         body: JSON.stringify(body),
       });
 
-      if (!response.ok) throw new Error("Failed to save promo code");
+      if (!response.ok) throw new Error("Не удалось сохранить промо-код");
 
       toast({
         title: "Успешно!",
@@ -136,7 +136,7 @@ const AdminPromoCodes = () => {
         method: "DELETE",
       });
 
-      if (!response.ok) throw new Error("Failed to delete promo code");
+      if (!response.ok) throw new Error("Не удалось удалить промо-код");
 
       toast({
         title: "Успешно!",
@@ -167,7 +167,7 @@ const AdminPromoCodes = () => {
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to toggle status");
+      if (!response.ok) throw new Error("Не удалось изменить статус");
 
       toast({
         title: "Успешно!",

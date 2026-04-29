@@ -56,7 +56,7 @@ export interface RitualBooking {
 export const ritualApi = {
   async getConfig(): Promise<RitualConfig> {
     const response = await fetch(`${API_BASE}/ritual-config`);
-    if (!response.ok) throw new Error('Failed to fetch config');
+    if (!response.ok) throw new Error('Не удалось загрузить конфигурацию');
     return response.json();
   },
 
@@ -68,7 +68,7 @@ export const ritualApi = {
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to create booking');
+      throw new Error(error.error || 'Не удалось оформить участие');
     }
     return response.json();
   },
@@ -84,7 +84,7 @@ export const ritualApi = {
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to update format');
+      throw new Error(error.error || 'Не удалось обновить формат');
     }
   },
 

@@ -17,9 +17,9 @@ interface SignupsListProps {
 export default function SignupsList({
   signups,
   signupsLoading,
-  title = "Мои записи",
+  title = "Моё присутствие",
   emptyIcon = "Calendar",
-  emptyText = "У вас пока нет записей на события",
+  emptyText = "Пока не запланировано ни одного события",
   showEventsLink = false,
 }: SignupsListProps) {
   return (
@@ -45,7 +45,7 @@ export default function SignupsList({
             {showEventsLink && (
               <Link to="/events">
                 <Button variant="outline" size="sm" className="mt-3">
-                  Посмотреть события
+                  Можно присоединиться
                 </Button>
               </Link>
             )}

@@ -63,7 +63,7 @@ const Step4Booking: React.FC<Step4BookingProps> = ({
         <Input
           value={email}
           onChange={(e) => onEmailChange(e.target.value)}
-          placeholder="your@email.com"
+          placeholder="адрес электронной почты"
           type="email"
         />
       </div>

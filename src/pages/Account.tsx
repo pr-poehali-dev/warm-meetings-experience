@@ -127,9 +127,9 @@ export default function Account() {
           <SignupsList
             signups={upcomingSignups}
             signupsLoading={signupsLoading}
-            title="Ближайшие события"
+            title="Ближайшие встречи"
             emptyIcon="CalendarCheck"
-            emptyText="Нет предстоящих записей"
+            emptyText="Пока нет запланированных встреч — будем рады видеть вас"
             showEventsLink
           />
 
@@ -189,7 +189,7 @@ export default function Account() {
             <SignupsList
               signups={pastSignups}
               signupsLoading={false}
-              title="Посещённые события"
+              title="Были вместе"
               emptyIcon="Calendar"
               emptyText=""
             />

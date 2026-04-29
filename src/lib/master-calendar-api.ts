@@ -131,7 +131,7 @@ async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json", ...options?.headers },
   });
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: "Request failed" }));
+    const err = await response.json().catch(() => ({ error: "Что-то пошло не так" }));
     throw new Error(err.error || `HTTP ${response.status}`);
   }
   return response.json();

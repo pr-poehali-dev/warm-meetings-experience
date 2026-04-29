@@ -97,7 +97,7 @@ export default function MyDataExport() {
 
           <Card className="border-0 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Записи на события ({signups.length})</CardTitle>
+              <CardTitle className="text-lg">Участие в событиях ({signups.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {signups.length > 0 ? (
@@ -112,7 +112,7 @@ export default function MyDataExport() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Нет записей</p>
+                <p className="text-sm text-muted-foreground">Событий пока не было</p>
               )}
             </CardContent>
           </Card>
@@ -155,7 +155,7 @@ export default function MyDataExport() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Нет записей</p>
+                <p className="text-sm text-muted-foreground">История действий пуста</p>
               )}
             </CardContent>
           </Card>

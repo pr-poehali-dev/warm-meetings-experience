@@ -9,7 +9,7 @@ export class HttpError extends Error {
 export async function request(url: string, options?: RequestInit) {
   const res = await fetch(url, options);
   const data = await res.json();
-  if (!res.ok) throw new HttpError(data.error || "Request failed", res.status);
+  if (!res.ok) throw new HttpError(data.error || "Что-то пошло не так", res.status);
   return data;
 }
 
@@ -43,7 +43,7 @@ export async function authenticatedRequest(url: string, options?: RequestInit) {
     handleUnauthorized("user");
     throw new HttpError(data.error || "Сессия истекла", 401);
   }
-  if (!res.ok) throw new HttpError(data.error || "Request failed", res.status);
+  if (!res.ok) throw new HttpError(data.error || "Что-то пошло не так", res.status);
   return data;
 }
 
@@ -64,6 +64,6 @@ export async function adminModerationRequest(url: string, options?: RequestInit)
     handleUnauthorized(usingAdmin ? "admin" : "user");
     throw new HttpError(data.error || "Сессия истекла", res.status);
   }
-  if (!res.ok) throw new HttpError(data.error || "Request failed", res.status);
+  if (!res.ok) throw new HttpError(data.error || "Что-то пошло не так", res.status);
   return data;
 }

@@ -78,7 +78,7 @@ const AdminPackages = () => {
         body: JSON.stringify(body),
       });
 
-      if (!response.ok) throw new Error("Failed to save package");
+      if (!response.ok) throw new Error("Не удалось сохранить пакет");
 
       toast({
         title: "Успешно!",
