@@ -358,6 +358,7 @@ def handle_callback(event: dict, origin: str) -> dict:
                     cur.execute(
                         f"""UPDATE {S}users
                             SET vk_id = %s, avatar_url = COALESCE(avatar_url, %s),
+                                notify_vk = TRUE, vk_notify_allowed = TRUE,
                                 last_login_at = %s, updated_at = %s
                             WHERE id = %s""",
                         (str(vk_user_id), photo_url, now, now, user_id)
@@ -382,6 +383,7 @@ def handle_callback(event: dict, origin: str) -> dict:
                         cur.execute(
                             f"""UPDATE {S}users
                                 SET vk_id = %s, avatar_url = COALESCE(avatar_url, %s),
+                                    notify_vk = TRUE, vk_notify_allowed = TRUE,
                                     last_login_at = %s, updated_at = %s, is_active = TRUE
                                 WHERE id = %s""",
                             (str(vk_user_id), photo_url, now, now, user_id)
@@ -392,8 +394,8 @@ def handle_callback(event: dict, origin: str) -> dict:
                     else:
                         cur.execute(
                             f"""INSERT INTO {S}users
-                                (vk_id, email, name, avatar_url, email_verified, created_at, updated_at, last_login_at)
-                                VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s)
+                                (vk_id, email, name, avatar_url, email_verified, notify_vk, vk_notify_allowed, created_at, updated_at, last_login_at)
+                                VALUES (%s, %s, %s, %s, TRUE, TRUE, TRUE, %s, %s, %s)
                                 RETURNING id""",
                             (str(vk_user_id), safe_email, safe_name, photo_url, now, now, now)
                         )
