@@ -9,6 +9,7 @@ import {
   CHANNEL_LABELS, CHANNEL_ICONS, TEMPLATE_VARS,
   notifyApi, SendResult,
 } from "@/lib/notify-api";
+import { organizerApi, OrgEvent } from "@/lib/organizer-api";
 
 interface Props {
   scenario: NotifyScenario | null;
@@ -17,7 +18,9 @@ interface Props {
   onSent: (result: SendResult) => void;
 }
 
-export default function SendPanel({ scenario, eventId, onClose, onSent }: Props) {
+export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onSent }: Props) {
+  const [events, setEvents] = useState<OrgEvent[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(eventIdProp);
   const [recipients, setRecipients] = useState<NotifyRecipient[]>([]);
   const [loadingRec, setLoadingRec] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -26,6 +29,16 @@ export default function SendPanel({ scenario, eventId, onClose, onSent }: Props)
   const [bodyHtml, setBodyHtml] = useState("");
   const [sending, setSending] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+
+  const eventId = selectedEventId;
+
+  useEffect(() => {
+    organizerApi.getEvents("active").then(setEvents).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    setSelectedEventId(eventIdProp);
+  }, [eventIdProp]);
 
   useEffect(() => {
     if (scenario) {
@@ -36,7 +49,7 @@ export default function SendPanel({ scenario, eventId, onClose, onSent }: Props)
   }, [scenario]);
 
   useEffect(() => {
-    if (!eventId) return;
+    if (!eventId) { setRecipients([]); setSelected(new Set()); return; }
     setLoadingRec(true);
     notifyApi.getRecipients(eventId)
       .then(({ recipients: r }) => {
@@ -123,6 +136,26 @@ export default function SendPanel({ scenario, eventId, onClose, onSent }: Props)
         </div>
       </div>
 
+      {/* Выбор события */}
+      <div className="space-y-1.5">
+        <Label className="text-xs">Событие</Label>
+        <div className="relative">
+          <select
+            value={selectedEventId ?? ""}
+            onChange={(e) => setSelectedEventId(e.target.value ? Number(e.target.value) : null)}
+            className="w-full h-9 rounded-xl border bg-background px-3 pr-8 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">— выберите событие —</option>
+            {events.map((ev) => (
+              <option key={ev.id} value={ev.id}>
+                {ev.title}{ev.event_date ? ` · ${new Date(ev.event_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}` : ""}
+              </option>
+            ))}
+          </select>
+          <Icon name="ChevronDown" size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        </div>
+      </div>
+
       {/* Получатели */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -148,8 +181,9 @@ export default function SendPanel({ scenario, eventId, onClose, onSent }: Props)
         </div>
 
         {!eventId ? (
-          <div className="text-center py-6 border-2 border-dashed rounded-xl">
-            <p className="text-sm text-muted-foreground">Выберите событие для загрузки участников</p>
+          <div className="text-center py-6 border-2 border-dashed rounded-xl text-muted-foreground">
+            <Icon name="CalendarSearch" size={20} className="mx-auto mb-1.5 opacity-40" />
+            <p className="text-sm">Выберите событие выше</p>
           </div>
         ) : loadingRec ? (
           <div className="flex items-center justify-center py-6">
