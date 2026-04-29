@@ -274,7 +274,7 @@ def handle_update_profile(cur, conn, schema, user, body, ip=None):
             conn.close()
             return respond(400, {'error': 'Email уже подтверждён и не может быть изменён'})
         e_safe = new_email.replace("'", "''")
-        cur.execute(f"SELECT id FROM {schema}.users WHERE email = '{e_safe}' AND id != {user['id']}")
+        cur.execute(f"SELECT id FROM {schema}.users WHERE LOWER(email) = '{e_safe}' AND id != {user['id']}")
         if cur.fetchone():
             conn.close()
             return respond(400, {'error': 'Этот email уже используется другим аккаунтом'})
@@ -296,11 +296,15 @@ def handle_update_profile(cur, conn, schema, user, body, ip=None):
         return respond(400, {'error': 'Нечего обновлять'})
 
     sets.append("updated_at = CURRENT_TIMESTAMP")
-    cur.execute(f"""
-        UPDATE {schema}.users SET {', '.join(sets)}
-        WHERE id = {user['id']}
-        RETURNING id, email, name, phone, telegram, vk_id, password_hash, totp_enabled, created_at
-    """)
+    try:
+        cur.execute(f"""
+            UPDATE {schema}.users SET {', '.join(sets)}
+            WHERE id = {user['id']}
+            RETURNING id, email, name, phone, telegram, vk_id, password_hash, totp_enabled, created_at
+        """)
+    except psycopg2.errors.UniqueViolation:
+        conn.close()
+        return respond(400, {'error': 'Этот email уже используется другим аккаунтом'})
     updated = cur.fetchone()
     updated_data = dict(updated)
     updated_data['has_password'] = bool(updated_data.pop('password_hash', None))
