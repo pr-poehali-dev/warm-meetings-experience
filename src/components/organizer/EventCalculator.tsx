@@ -153,7 +153,11 @@ function Slider({ value, min, max, step = 1, onChange, formatValue, colorClass =
       />
       {formatValue && (
         <span className="absolute -top-6 text-xs font-semibold text-foreground whitespace-nowrap pointer-events-none"
-          style={{ left: `calc(${pct}% - 20px)`, minWidth: 40, textAlign: "center" }}>
+          style={{
+            left: `clamp(0px, calc(${pct}% - 20px), calc(100% - 40px))`,
+            minWidth: 40,
+            textAlign: "center"
+          }}>
           {formatValue(value)}
         </span>
       )}
@@ -224,11 +228,15 @@ function CostSection({ title, hint, items, unit, onAdd, onChangeLabel, onChangeA
             />
             <div className="relative w-28 shrink-0">
               <Input
-                type="number"
-                value={item.amount || ""}
-                onChange={(e) => onChangeAmount(item.id, +e.target.value)}
+                type="text"
+                inputMode="numeric"
+                value={item.amount === 0 ? "" : String(item.amount)}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/[^0-9]/g, "");
+                  const num = raw === "" ? 0 : parseInt(raw, 10);
+                  onChangeAmount(item.id, num);
+                }}
                 className="pr-8 h-8 text-sm border-0 bg-muted/50 focus-visible:ring-1"
-                min={0}
                 placeholder="0"
               />
               <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">{unit}</span>
