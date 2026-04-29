@@ -63,7 +63,7 @@ function ChannelRow({ channelKey, info, meta, onToggle, onPrefToggle }: ChannelR
     setSaving(false);
   };
 
-  const isConnected = channelKey === "email" ? info.connected : info.connected && (info.allowed !== false);
+  const isConnected = info.connected;
 
   return (
     <div className="border border-border rounded-lg overflow-hidden">
