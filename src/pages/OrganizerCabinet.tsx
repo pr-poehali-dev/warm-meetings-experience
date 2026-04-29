@@ -9,8 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import TelegramSettings from "@/components/organizer/TelegramSettings";
+import EventCalculator from "@/components/organizer/EventCalculator";
 
-type View = "dashboard" | "create" | "edit" | "participants" | "telegram";
+type View = "dashboard" | "create" | "edit" | "participants" | "telegram" | "calculator";
 
 export default function OrganizerCabinet() {
   const { user, loading: authLoading } = useAuth();
@@ -123,6 +124,20 @@ export default function OrganizerCabinet() {
     setSelectedEvent(null);
     setFormData(emptyForm());
     setView("create");
+  };
+
+  const handleCreateFromCalc = (calcParams: { guestPrice: number; participants: number }) => {
+    setSelectedEvent(null);
+    setFormData({
+      ...emptyForm(),
+      price_amount: calcParams.guestPrice,
+      price_label: `${calcParams.guestPrice.toLocaleString("ru")} ₽`,
+      price: `${calcParams.guestPrice.toLocaleString("ru")} ₽`,
+      total_spots: calcParams.participants,
+      spots_left: calcParams.participants,
+    });
+    setView("create");
+    toast({ title: "Данные из калькулятора перенесены в форму события" });
   };
 
   const handleEditEvent = async (event: OrgEvent) => {
@@ -283,7 +298,7 @@ export default function OrganizerCabinet() {
             </button>
             <span className="text-muted-foreground">/</span>
             <nav className="flex gap-1">
-              {([["dashboard", "Дашборд"], ["telegram", "Telegram"]] as [View, string][]).map(([v, label]) => (
+              {([["dashboard", "Дашборд"], ["calculator", "Калькулятор"], ["telegram", "Telegram"]] as [View, string][]).map(([v, label]) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
@@ -339,6 +354,10 @@ export default function OrganizerCabinet() {
             event={selectedEvent}
             onBack={() => setView("dashboard")}
           />
+        )}
+
+        {view === "calculator" && (
+          <EventCalculator onCreateEvent={handleCreateFromCalc} />
         )}
 
         {view === "telegram" && (
