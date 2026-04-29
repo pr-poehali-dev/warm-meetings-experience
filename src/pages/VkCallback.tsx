@@ -154,10 +154,16 @@ export default function VkCallback() {
         const user_id = vkData.user?.id;
 
         // 2. Создаём сессию основной системы по vk_id + user_id
+        // Передаём имя и аватар из VK, чтобы бэкенд записал их в БД если пустые
         const sessionRes = await fetch(`${USER_AUTH_URL}/?action=vk_session`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ vk_id, user_id }),
+          body: JSON.stringify({
+            vk_id,
+            user_id,
+            name: vkData.user?.name || "",
+            avatar_url: vkData.user?.avatar_url || "",
+          }),
         });
         const sessionData = await sessionRes.json();
 
@@ -168,9 +174,15 @@ export default function VkCallback() {
         }
 
         // 3. Сохраняем сессию и входим
+        // Мержим имя и аватар из VK-ответа, если в БД они ещё пустые
+        const mergedUser = {
+          ...sessionData.user,
+          name: sessionData.user?.name || vkData.user?.name || "",
+          avatar_url: sessionData.user?.avatar_url || vkData.user?.avatar_url || "",
+        };
         localStorage.setItem("user_token", sessionData.token);
-        localStorage.setItem("user_data", JSON.stringify(sessionData.user));
-        updateUser(sessionData.user);
+        localStorage.setItem("user_data", JSON.stringify(mergedUser));
+        updateUser(mergedUser);
         clearVkStorage();
 
         toast.success("Вы вошли через ВКонтакте");

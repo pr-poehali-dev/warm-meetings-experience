@@ -425,6 +425,8 @@ def handle_vk_session(body, ip=None, user_agent=''):
     """Создаёт сессию основной системы для пользователя, вошедшего через VK."""
     vk_id = str(body.get('vk_id') or '').strip()
     user_id = body.get('user_id')
+    vk_name = str(body.get('name') or '').strip()
+    vk_avatar = str(body.get('avatar_url') or '').strip()
     if not vk_id and not user_id:
         return respond(400, {'error': 'vk_id или user_id обязателен'})
 
@@ -449,6 +451,15 @@ def handle_vk_session(body, ip=None, user_agent=''):
     if not user.get('is_active'):
         conn.close()
         return respond(403, {'error': 'Аккаунт заблокирован'})
+
+    # Обновляем имя и аватар из VK, если в БД они пустые
+    if vk_name and not user.get('name'):
+        safe_name = vk_name.replace("'", "''")
+        cur.execute(f"UPDATE {schema}.users SET name = '{safe_name}', updated_at = NOW() WHERE id = {user['id']}")
+        user['name'] = vk_name
+    if vk_avatar and not user.get('avatar_url'):
+        safe_avatar = vk_avatar.replace("'", "''")
+        cur.execute(f"UPDATE {schema}.users SET avatar_url = '{safe_avatar}', updated_at = NOW() WHERE id = {user['id']}")
 
     token = generate_token()
     expires = (datetime.utcnow() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
