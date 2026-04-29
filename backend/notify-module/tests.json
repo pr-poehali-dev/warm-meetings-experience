@@ -1,0 +1,42 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get scenarios without token returns 401",
+      "method": "GET",
+      "path": "/?resource=scenarios",
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Необходима авторизация"}
+    },
+    {
+      "name": "Get recipients without token returns 401",
+      "method": "GET",
+      "path": "/?resource=recipients&event_id=1",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Send without token returns 401",
+      "method": "POST",
+      "path": "/?resource=send",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Get log without token returns 401",
+      "method": "GET",
+      "path": "/?resource=log",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Unknown resource returns 404",
+      "method": "GET",
+      "path": "/?resource=unknown",
+      "expectedStatus": 401
+    }
+  ]
+}

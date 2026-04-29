@@ -10,8 +10,9 @@ import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import TelegramSettings from "@/components/organizer/TelegramSettings";
 import EventCalculator from "@/components/organizer/EventCalculator";
+import NotifyModule from "@/components/notify/NotifyModule";
 
-type View = "dashboard" | "create" | "edit" | "participants" | "telegram" | "calculator";
+type View = "dashboard" | "create" | "edit" | "participants" | "telegram" | "calculator" | "notify";
 
 export default function OrganizerCabinet() {
   const { user, loading: authLoading } = useAuth();
@@ -298,7 +299,7 @@ export default function OrganizerCabinet() {
             </button>
             <span className="text-muted-foreground">/</span>
             <nav className="flex gap-1">
-              {([["dashboard", "Дашборд"], ["calculator", "Калькулятор"], ["telegram", "Telegram"]] as [View, string][]).map(([v, label]) => (
+              {([["dashboard", "Дашборд"], ["calculator", "Калькулятор"], ["notify", "Уведомления"], ["telegram", "Telegram"]] as [View, string][]).map(([v, label]) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
@@ -358,6 +359,12 @@ export default function OrganizerCabinet() {
 
         {view === "calculator" && (
           <EventCalculator onCreateEvent={handleCreateFromCalc} />
+        )}
+
+        {view === "notify" && (
+          <div className="max-w-2xl mx-auto">
+            <NotifyModule role="organizer" eventId={selectedEvent?.id ?? null} />
+          </div>
         )}
 
         {view === "telegram" && (
