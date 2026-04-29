@@ -126,7 +126,10 @@ export default function SignUpForm({
       setEmail((prev) => prev || user.email || "");
       setTelegram((prev) => prev || user.telegram || "");
       if (user.telegram) setPreferredChannel((prev) => prev || "telegram");
-      else if (user.vk_id) setPreferredChannel("vk");
+      else if (user.vk_id) {
+        setPreferredChannel("vk");
+        setVkContact((prev) => prev || `vk.com/id${user.vk_id}`);
+      }
     }
   }, [user, open]);
 
