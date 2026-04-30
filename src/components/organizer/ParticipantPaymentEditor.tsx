@@ -25,14 +25,22 @@ export function PaymentBadge({ type, amount }: { type: string | null; amount: nu
 }
 
 interface PaymentEditorProps {
-  participant: OrgParticipant;
+  participant?: OrgParticipant;
+  participantId?: number;
+  currentType?: string | null;
+  currentAmount?: number;
   eventPrice: number;
   onSave: (id: number, data: { payment_type: string | null; payment_amount: number }) => Promise<void>;
+  onCancel?: () => void;
 }
 
-export default function ParticipantPaymentEditor({ participant, eventPrice, onSave }: PaymentEditorProps) {
-  const [paymentType, setPaymentType] = useState<string>(participant.payment_type || "");
-  const [paymentAmount, setPaymentAmount] = useState<number>(participant.payment_amount || 0);
+export default function ParticipantPaymentEditor({ participant, participantId, currentType, currentAmount, eventPrice, onSave, onCancel }: PaymentEditorProps) {
+  const initType = participant?.payment_type ?? currentType ?? "";
+  const initAmount = participant?.payment_amount ?? currentAmount ?? 0;
+  const id = participant?.id ?? participantId ?? 0;
+
+  const [paymentType, setPaymentType] = useState<string>(initType || "");
+  const [paymentAmount, setPaymentAmount] = useState<number>(initAmount);
   const [saving, setSaving] = useState(false);
 
   const handleTypeChange = (val: string) => {
@@ -48,7 +56,7 @@ export default function ParticipantPaymentEditor({ participant, eventPrice, onSa
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave(participant.id, {
+    await onSave(id, {
       payment_type: paymentType === "none" || !paymentType ? null : paymentType,
       payment_amount: paymentType === "none" || !paymentType ? 0 : paymentAmount,
     });
@@ -56,8 +64,8 @@ export default function ParticipantPaymentEditor({ participant, eventPrice, onSa
   };
 
   const hasChanges =
-    (paymentType || "") !== (participant.payment_type || "") ||
-    paymentAmount !== (participant.payment_amount || 0);
+    (paymentType || "") !== (initType || "") ||
+    paymentAmount !== initAmount;
 
   return (
     <div className="mt-3 border-t pt-3 space-y-3">
@@ -110,7 +118,7 @@ export default function ParticipantPaymentEditor({ participant, eventPrice, onSa
           </div>
         )}
 
-        <div className="flex items-end">
+        <div className="flex items-end gap-2">
           <Button
             size="sm"
             onClick={handleSave}
@@ -124,6 +132,9 @@ export default function ParticipantPaymentEditor({ participant, eventPrice, onSa
             )}
             Сохранить
           </Button>
+          {onCancel && (
+            <Button size="sm" variant="ghost" onClick={onCancel} className="h-9">Отмена</Button>
+          )}
         </div>
       </div>
 
