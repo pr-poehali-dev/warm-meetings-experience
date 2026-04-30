@@ -135,13 +135,17 @@ def handler(event, context):
             conn.close()
             return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Доступ только для пармастеров'})}
         body = json.loads(event.get('body') or '{}')
-        allowed = ['name', 'tagline', 'bio', 'experience_years', 'city', 'phone', 'telegram', 'instagram', 'price_from']
+        allowed = ['name', 'tagline', 'bio', 'experience_years', 'city', 'phone', 'telegram', 'instagram', 'price_from', 'avatar']
         fields = []
         vals = []
         for f in allowed:
             if f in body:
                 fields.append(f'{f} = %s')
                 vals.append(body[f])
+        for jsonf in ['portfolio', 'photos']:
+            if jsonf in body:
+                fields.append(f'{jsonf} = %s')
+                vals.append(json.dumps(body[jsonf], ensure_ascii=False))
         if not fields:
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Нет полей для обновления'})}

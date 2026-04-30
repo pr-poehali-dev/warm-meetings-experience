@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { rolesApi } from "@/lib/roles-api";
@@ -12,6 +12,34 @@ import MasterTemplates from "@/components/admin/MasterTemplates";
 import MasterCalendarSettings from "@/components/admin/MasterCalendarSettings";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
+import func2url from "../../backend/func2url.json";
+
+const UPLOAD_URL = func2url["upload-image"];
+
+type PortfolioItem = { url: string; type: "image" | "video"; caption?: string };
+
+async function uploadFile(file: File): Promise<PortfolioItem> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target?.result as string;
+      const isVideo = file.type.startsWith("video/");
+      try {
+        const res = await fetch(UPLOAD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ file: base64, filename: file.name, folder: "masters" }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Ошибка загрузки");
+        resolve({ url: data.url, type: isVideo ? "video" : "image" });
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 type Section = "dashboard" | "profile" | "schedule" | "bookings" | "reviews" | "finances" | "notifications";
 
@@ -134,6 +162,14 @@ function ProfileSection({ masterId: _masterId }: { masterId: number }) {
   });
   const [activeTab, setActiveTab] = useState<"info" | "portfolio">("info");
 
+  // Portfolio state
+  const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [portfolioSaving, setPortfolioSaving] = useState(false);
+  const [portfolioSaved, setPortfolioSaved] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     mastersApi.getMyProfile().then((m) => {
       setMaster(m);
@@ -148,6 +184,15 @@ function ProfileSection({ masterId: _masterId }: { masterId: number }) {
         experience_years: m.experience_years || 0,
         price_from: m.price_from || 0,
       });
+      // Load existing portfolio
+      if (m.portfolio && Array.isArray(m.portfolio)) {
+        const items: PortfolioItem[] = m.portfolio.map((p) => {
+          if (typeof p === "string") return { url: p, type: "image" as const };
+          const raw = p as { url: string; type?: string; caption?: string };
+          return { url: raw.url, type: (raw.type === "video" ? "video" : "image") as "image" | "video", caption: raw.caption };
+        });
+        setPortfolio(items);
+      }
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
@@ -162,6 +207,40 @@ function ProfileSection({ masterId: _masterId }: { masterId: number }) {
       setError(e instanceof Error ? e.message : "Ошибка сохранения");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploading(true);
+    setUploadError("");
+    try {
+      const uploaded = await Promise.all(files.map(uploadFile));
+      setPortfolio((prev) => [...prev, ...uploaded]);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Ошибка загрузки");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemove = (idx: number) => {
+    setPortfolio((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSavePortfolio = async () => {
+    setPortfolioSaving(true);
+    setUploadError("");
+    try {
+      await mastersApi.updateMyProfile({ portfolio: portfolio } as Parameters<typeof mastersApi.updateMyProfile>[0]);
+      setPortfolioSaved(true);
+      setTimeout(() => setPortfolioSaved(false), 2500);
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "Ошибка сохранения");
+    } finally {
+      setPortfolioSaving(false);
     }
   };
 
@@ -251,28 +330,106 @@ function ProfileSection({ masterId: _masterId }: { masterId: number }) {
       )}
 
       {activeTab === "portfolio" && (
-        <div className="max-w-xl space-y-4">
-          {master?.portfolio && master.portfolio.length > 0 ? (
-            <div className="grid grid-cols-3 gap-3">
-              {master.portfolio.map((p, i) => (
+        <div className="max-w-2xl space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Добавьте фото и видео своих работ. Клиенты увидят их в вашем публичном профиле.
+          </p>
+
+          {/* Сетка медиа */}
+          {portfolio.length > 0 && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+              {portfolio.map((item, i) => (
                 <div key={i} className="aspect-square rounded-xl overflow-hidden bg-muted relative group">
-                  <img src={p.url} alt={p.caption || ""} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                    <Icon name="Trash2" size={18} className="text-white" />
-                  </div>
+                  {item.type === "video" ? (
+                    <video src={item.url} className="w-full h-full object-cover" muted playsInline />
+                  ) : (
+                    <img src={item.url} alt={item.caption || `Фото ${i + 1}`} className="w-full h-full object-cover" />
+                  )}
+                  {/* Тип медиа */}
+                  {item.type === "video" && (
+                    <div className="absolute top-1.5 left-1.5 bg-black/60 rounded-md px-1.5 py-0.5 flex items-center gap-1">
+                      <Icon name="Play" size={10} className="text-white fill-white" />
+                      <span className="text-white text-[10px] font-medium">Видео</span>
+                    </div>
+                  )}
+                  {/* Кнопка удаления */}
+                  <button
+                    onClick={() => handleRemove(i)}
+                    className="absolute top-1.5 right-1.5 w-7 h-7 bg-black/60 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:bg-destructive"
+                  >
+                    <Icon name="Trash2" size={13} className="text-white" />
+                  </button>
                 </div>
               ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-2xl">
-              <Icon name="Images" size={32} className="mx-auto mb-2 opacity-30" />
-              Нет фото в портфолио
+
+              {/* Кнопка добавить ещё */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="aspect-square rounded-xl border-2 border-dashed border-border hover:border-primary/50 bg-muted/30 hover:bg-muted/50 flex flex-col items-center justify-center gap-1 transition disabled:opacity-50"
+              >
+                {uploading ? (
+                  <Icon name="Loader2" size={20} className="animate-spin text-muted-foreground" />
+                ) : (
+                  <>
+                    <Icon name="Plus" size={20} className="text-muted-foreground" />
+                    <span className="text-[10px] text-muted-foreground">Добавить</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
-          <div className="bg-muted/50 rounded-xl p-4 text-sm text-muted-foreground flex items-center gap-2">
-            <Icon name="Info" size={15} />
-            Управление фото портфолио доступно через администратора
-          </div>
+
+          {/* Зона загрузки (если пусто) */}
+          {portfolio.length === 0 && (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="w-full border-2 border-dashed rounded-2xl p-10 flex flex-col items-center gap-3 hover:border-primary/50 hover:bg-muted/30 transition disabled:opacity-50"
+            >
+              {uploading ? (
+                <>
+                  <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Загружаем файлы...</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-14 h-14 bg-muted rounded-2xl flex items-center justify-center">
+                    <Icon name="ImagePlus" size={24} className="text-muted-foreground" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-medium text-sm">Нажмите, чтобы добавить фото или видео</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">JPG, PNG, WEBP, MP4, MOV — до 50 МБ каждый</p>
+                  </div>
+                </>
+              )}
+            </button>
+          )}
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+
+          {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
+
+          {portfolio.length > 0 && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSavePortfolio}
+                disabled={portfolioSaving}
+                className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-primary/90 transition disabled:opacity-50"
+              >
+                {portfolioSaving ? <Icon name="Loader2" size={15} className="animate-spin" /> : portfolioSaved ? <Icon name="Check" size={15} /> : <Icon name="Save" size={15} />}
+                {portfolioSaving ? "Сохраняем..." : portfolioSaved ? "Сохранено!" : "Сохранить портфолио"}
+              </button>
+              <span className="text-xs text-muted-foreground">{portfolio.length} файл{portfolio.length === 1 ? "" : portfolio.length < 5 ? "а" : "ов"}</span>
+            </div>
+          )}
         </div>
       )}
     </div>

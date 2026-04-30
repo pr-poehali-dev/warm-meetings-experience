@@ -88,7 +88,7 @@ export const mastersApi = {
     return data.master;
   },
 
-  updateMyProfile: async (profile: Partial<Pick<Master, "name" | "tagline" | "bio" | "experience_years" | "city" | "phone" | "telegram" | "instagram" | "price_from">>): Promise<void> => {
+  updateMyProfile: async (profile: Partial<Pick<Master, "name" | "tagline" | "bio" | "experience_years" | "city" | "phone" | "telegram" | "instagram" | "price_from" | "portfolio" | "avatar">>): Promise<void> => {
     const token = localStorage.getItem("user_token") || "";
     const res = await fetch(`${MASTERS_API}/?me=1`, {
       method: "PUT",
