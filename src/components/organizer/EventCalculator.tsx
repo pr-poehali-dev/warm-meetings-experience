@@ -124,93 +124,92 @@ interface SliderProps {
   max: number;
   step?: number;
   onChange: (v: number) => void;
-  formatValue?: (v: number) => string;
   colorClass?: string;
-  unit?: string;
 }
 
-function Slider({ value, min, max, step = 1, onChange, formatValue, colorClass = "bg-primary", unit }: SliderProps) {
+function Slider({ value, min, max, step = 1, onChange, colorClass = "bg-primary" }: SliderProps) {
+  const pct = Math.round(((value - min) / (max - min)) * 100);
+  return (
+    <div className="relative h-6 flex items-center">
+      <div className="w-full h-2 rounded-full bg-muted relative">
+        <div
+          className={`absolute left-0 top-0 h-2 rounded-full ${colorClass} opacity-80`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(+e.target.value)}
+        className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
+      />
+      <div
+        className={`absolute w-5 h-5 rounded-full border-2 border-white shadow-md ${colorClass} pointer-events-none`}
+        style={{ left: `calc(${pct}% - 10px)` }}
+      />
+    </div>
+  );
+}
+
+// ─── Редактируемое значение ────────────────────────────────────────────────────
+
+interface EditableValueProps {
+  value: number;
+  min: number;
+  max: number;
+  suffix?: string;
+  className?: string;
+  style?: React.CSSProperties;
+  onChange: (v: number) => void;
+  format?: (v: number) => string;
+}
+
+function EditableValue({ value, min, max, suffix = "", className = "", style, onChange, format }: EditableValueProps) {
   const [editing, setEditing] = useState(false);
   const [inputVal, setInputVal] = useState("");
-  const pct = Math.round(((value - min) / (max - min)) * 100);
 
-  const startEdit = () => {
-    setInputVal(String(value));
-    setEditing(true);
-  };
+  const display = format ? format(value) : String(value);
 
-  const commitEdit = () => {
-    const raw = inputVal.replace(/[^0-9]/g, "");
-    if (raw !== "") {
-      const num = Math.min(max, Math.max(min, parseInt(raw, 10)));
+  const commit = (raw: string) => {
+    const cleaned = raw.replace(/[^0-9]/g, "");
+    if (cleaned !== "") {
+      const num = Math.min(max, Math.max(min, parseInt(cleaned, 10)));
       onChange(num);
     }
     setEditing(false);
   };
 
-  return (
-    <div className="relative" style={{ touchAction: "none" }}>
-      {/* Метка над ползунком */}
-      {formatValue && (
-        <div className="relative h-7 mb-1">
-          {!editing ? (
-            <button
-              type="button"
-              onClick={startEdit}
-              className="absolute z-10 text-xs font-semibold text-foreground whitespace-nowrap bg-muted hover:bg-muted/80 rounded px-1.5 py-0.5 cursor-pointer transition-colors"
-              style={{
-                left: `clamp(0px, calc(${pct}% - 20px), calc(100% - 44px))`,
-              }}
-            >
-              {formatValue(value)}
-            </button>
-          ) : (
-            <div
-              className="absolute z-20"
-              style={{ left: `clamp(0px, calc(${pct}% - 32px), calc(100% - 80px))` }}
-            >
-              <div className="flex items-center gap-1 bg-background border rounded-lg shadow-lg px-2 py-0.5">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  autoFocus
-                  value={inputVal}
-                  onChange={(e) => setInputVal(e.target.value.replace(/[^0-9]/g, ""))}
-                  onBlur={commitEdit}
-                  onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") setEditing(false); }}
-                  className="w-16 text-xs font-semibold bg-transparent outline-none text-center"
-                />
-                {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Сам ползунок */}
-      <div className="relative h-6 flex items-center">
-        <div className="w-full h-2 rounded-full bg-muted relative">
-          <div
-            className={`absolute left-0 top-0 h-2 rounded-full ${colorClass} opacity-80`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
         <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(+e.target.value)}
-          className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
-          style={{ touchAction: "none" }}
+          type="text"
+          inputMode="numeric"
+          autoFocus
+          value={inputVal}
+          onChange={(e) => setInputVal(e.target.value.replace(/[^0-9]/g, ""))}
+          onBlur={(e) => commit(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") commit(inputVal); if (e.key === "Escape") setEditing(false); }}
+          className="w-20 text-2xl font-bold tabular-nums bg-muted rounded-lg px-2 py-0.5 outline-none text-right border border-primary"
+          style={style}
         />
-        <div
-          className={`absolute w-5 h-5 rounded-full border-2 border-white shadow-md ${colorClass} pointer-events-none`}
-          style={{ left: `calc(${pct}% - 10px)` }}
-        />
+        {suffix && <span className="text-2xl font-bold" style={style}>{suffix}</span>}
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onPointerDown={() => { setInputVal(String(value)); setEditing(true); }}
+      className={`text-2xl font-bold tabular-nums underline decoration-dotted underline-offset-4 cursor-pointer select-none ${className}`}
+      style={style}
+    >
+      {display}{suffix}
+    </button>
   );
 }
 
@@ -455,16 +454,19 @@ export default function EventCalculator({ onCreateEvent }: Props) {
                   Участников
                   <Hint text="Сколько человек вы ожидаете. Перемещайте ползунок — прибыль пересчитается мгновенно." />
                 </span>
-                <span className="text-2xl font-bold tabular-nums text-primary">{params.participants}</span>
+                <EditableValue
+                  value={params.participants}
+                  min={2} max={40}
+                  className="text-primary"
+                  onChange={(v) => set("participants", v)}
+                />
               </div>
               <div className="pt-4">
                 <Slider
                   value={params.participants}
                   min={2} max={40} step={1}
                   onChange={(v) => set("participants", v)}
-                  formatValue={(v) => `${v}`}
                   colorClass="bg-primary"
-                  unit="чел"
                 />
               </div>
               <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
@@ -482,9 +484,20 @@ export default function EventCalculator({ onCreateEvent }: Props) {
                   <Hint text="Сколько платит каждый гость. Ориентир: цена должна быть выше себестоимости + комиссия + ваша прибыль." />
                 </span>
                 <div className="flex items-center gap-1">
-                  <span className="text-2xl font-bold tabular-nums" style={{ color: statusColor }}>
-                    {fmt(r.guestPrice)} ₽
-                  </span>
+                  {params.priceMode === "manual" ? (
+                    <EditableValue
+                      value={params.guestPrice}
+                      min={priceMin} max={priceMax}
+                      suffix=" ₽"
+                      style={{ color: statusColor }}
+                      format={(v) => fmt(v)}
+                      onChange={(v) => setParams((p) => ({ ...p, guestPrice: v, priceMode: "manual" }))}
+                    />
+                  ) : (
+                    <span className="text-2xl font-bold tabular-nums" style={{ color: statusColor }}>
+                      {fmt(r.guestPrice)} ₽
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -512,9 +525,7 @@ export default function EventCalculator({ onCreateEvent }: Props) {
                     max={priceMax}
                     step={50}
                     onChange={(v) => setParams((p) => ({ ...p, guestPrice: v, priceMode: "manual" }))}
-                    formatValue={(v) => `${fmt(v)} ₽`}
                     colorClass={isLoss ? "bg-red-400" : isWarn ? "bg-amber-400" : "bg-green-500"}
-                    unit="₽"
                   />
                   <div className="flex justify-between text-[10px] text-muted-foreground mt-3">
                     <span>{fmt(priceMin)} ₽</span>
@@ -524,13 +535,21 @@ export default function EventCalculator({ onCreateEvent }: Props) {
                 </div>
               ) : (
                 <div className="pt-4 space-y-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">Наценка:</span>
+                    <EditableValue
+                      value={params.markup}
+                      min={0} max={100}
+                      suffix="%"
+                      className="text-primary"
+                      onChange={(v) => setParams((p) => ({ ...p, markup: v, priceMode: "markup" }))}
+                    />
+                  </div>
                   <Slider
                     value={params.markup}
                     min={0} max={100} step={5}
                     onChange={(v) => setParams((p) => ({ ...p, markup: v, priceMode: "markup" }))}
-                    formatValue={(v) => `${v}%`}
                     colorClass="bg-primary"
-                    unit="%"
                   />
                   <div className="flex justify-between text-[10px] text-muted-foreground mt-3">
                     <span>0%</span><span>50%</span><span>100%</span>
