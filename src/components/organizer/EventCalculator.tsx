@@ -149,61 +149,67 @@ function Slider({ value, min, max, step = 1, onChange, formatValue, colorClass =
   };
 
   return (
-    <div className="relative h-6 flex items-center group" style={{ touchAction: "none" }}>
-      <div className="w-full h-2 rounded-full bg-muted relative overflow-visible">
-        <div
-          className={`absolute left-0 top-0 h-2 rounded-full transition-all ${colorClass} opacity-80`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(+e.target.value)}
-        className="absolute inset-0 w-full opacity-0 cursor-pointer h-full touch-none"
-        style={{ touchAction: "none" }}
-      />
-      <div
-        className={`absolute w-5 h-5 rounded-full border-2 border-white shadow-md ${colorClass} transition-all`}
-        style={{ left: `calc(${pct}% - 10px)` }}
-      />
-      {formatValue && !editing && (
-        <button
-          type="button"
-          onClick={startEdit}
-          className="absolute -top-6 text-xs font-semibold text-foreground whitespace-nowrap underline-offset-2 hover:underline cursor-text"
-          style={{
-            left: `clamp(0px, calc(${pct}% - 20px), calc(100% - 40px))`,
-            minWidth: 40,
-            textAlign: "center"
-          }}
-        >
-          {formatValue(value)}
-        </button>
-      )}
-      {editing && (
-        <div
-          className="absolute -top-8 z-20"
-          style={{ left: `clamp(0px, calc(${pct}% - 32px), calc(100% - 80px))` }}
-        >
-          <div className="flex items-center gap-1 bg-background border rounded-lg shadow-lg px-2 py-1">
-            <input
-              type="text"
-              inputMode="numeric"
-              autoFocus
-              value={inputVal}
-              onChange={(e) => setInputVal(e.target.value.replace(/[^0-9]/g, ""))}
-              onBlur={commitEdit}
-              onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") setEditing(false); }}
-              className="w-16 text-xs font-semibold bg-transparent outline-none text-center"
-            />
-            {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
-          </div>
+    <div className="relative" style={{ touchAction: "none" }}>
+      {/* Метка над ползунком */}
+      {formatValue && (
+        <div className="relative h-7 mb-1">
+          {!editing ? (
+            <button
+              type="button"
+              onClick={startEdit}
+              className="absolute z-10 text-xs font-semibold text-foreground whitespace-nowrap bg-muted hover:bg-muted/80 rounded px-1.5 py-0.5 cursor-pointer transition-colors"
+              style={{
+                left: `clamp(0px, calc(${pct}% - 20px), calc(100% - 44px))`,
+              }}
+            >
+              {formatValue(value)}
+            </button>
+          ) : (
+            <div
+              className="absolute z-20"
+              style={{ left: `clamp(0px, calc(${pct}% - 32px), calc(100% - 80px))` }}
+            >
+              <div className="flex items-center gap-1 bg-background border rounded-lg shadow-lg px-2 py-0.5">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoFocus
+                  value={inputVal}
+                  onChange={(e) => setInputVal(e.target.value.replace(/[^0-9]/g, ""))}
+                  onBlur={commitEdit}
+                  onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") setEditing(false); }}
+                  className="w-16 text-xs font-semibold bg-transparent outline-none text-center"
+                />
+                {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Сам ползунок */}
+      <div className="relative h-6 flex items-center">
+        <div className="w-full h-2 rounded-full bg-muted relative">
+          <div
+            className={`absolute left-0 top-0 h-2 rounded-full ${colorClass} opacity-80`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(+e.target.value)}
+          className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
+          style={{ touchAction: "none" }}
+        />
+        <div
+          className={`absolute w-5 h-5 rounded-full border-2 border-white shadow-md ${colorClass} pointer-events-none`}
+          style={{ left: `calc(${pct}% - 10px)` }}
+        />
+      </div>
     </div>
   );
 }
