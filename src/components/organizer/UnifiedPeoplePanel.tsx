@@ -72,11 +72,12 @@ const FILTERS: { key: Filter; label: string }[] = [
 interface Props {
   event: OrgEvent;
   onBack: () => void;
+  onNotify?: () => void;
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export default function UnifiedPeoplePanel({ event, onBack }: Props) {
+export default function UnifiedPeoplePanel({ event, onBack, onNotify }: Props) {
   const { toast } = useToast();
 
   const [participants, setParticipants] = useState<OrgParticipant[]>([]);
@@ -94,9 +95,6 @@ export default function UnifiedPeoplePanel({ event, onBack }: Props) {
   const [saving, setSaving] = useState(false);
 
   const [dialogGuest, setDialogGuest] = useState<Guest | null>(null);
-  const [bulkText, setBulkText] = useState("");
-  const [bulkSending, setBulkSending] = useState(false);
-  const [showBulk, setShowBulk] = useState(false);
 
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", telegram: "" });
@@ -295,29 +293,6 @@ export default function UnifiedPeoplePanel({ event, onBack }: Props) {
     }
   };
 
-  const handleBulkSend = async () => {
-    if (!bulkText.trim() || selected.size === 0) return;
-    const guestIds = Array.from(selected)
-      .map((key) => filtered.find((p) => p.key === key)?.guest?.id)
-      .filter((id): id is number => id !== undefined);
-    if (guestIds.length === 0) {
-      toast({ title: "Среди выбранных нет гостей с каналом связи", variant: "destructive" });
-      return;
-    }
-    setBulkSending(true);
-    try {
-      await organizerApi.sendMessages(guestIds, bulkText.trim());
-      toast({ title: `Отправлено ${guestIds.length} гостям` });
-      setSelected(new Set());
-      setBulkText("");
-      setShowBulk(false);
-    } catch {
-      toast({ title: "Ошибка отправки", variant: "destructive" });
-    } finally {
-      setBulkSending(false);
-    }
-  };
-
   // ── CSV export ────────────────────────────────────────────────────────────
 
   const exportCSV = () => {
@@ -367,6 +342,12 @@ export default function UnifiedPeoplePanel({ event, onBack }: Props) {
           <Icon name="Link" size={13} />
           <span className="hidden sm:inline">Ссылка</span>
         </Button>
+        {onNotify && (
+          <Button variant="outline" size="sm" onClick={onNotify} className="gap-1.5 text-xs shrink-0">
+            <Icon name="Bell" size={13} />
+            <span className="hidden sm:inline">Уведомления</span>
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -441,30 +422,19 @@ export default function UnifiedPeoplePanel({ event, onBack }: Props) {
 
       {/* Bulk panel */}
       {selected.size > 0 && (
-        <div className="rounded-xl border bg-muted/40 p-3 space-y-2">
+        <div className="rounded-xl border bg-muted/40 p-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Выбрано: {selected.size}</span>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>Снять</Button>
-              <Button size="sm" onClick={() => setShowBulk(!showBulk)} className="gap-1.5">
-                <Icon name="Send" size={13} />
-                Написать всем
-              </Button>
+              {onNotify && (
+                <Button size="sm" onClick={onNotify} className="gap-1.5">
+                  <Icon name="Bell" size={13} />
+                  Отправить уведомление
+                </Button>
+              )}
             </div>
           </div>
-          {showBulk && (
-            <div className="flex gap-2">
-              <textarea
-                value={bulkText}
-                onChange={(e) => setBulkText(e.target.value)}
-                placeholder="Сообщение для всех выбранных гостей..."
-                className="flex-1 text-sm rounded-lg border p-2 min-h-[60px] resize-none focus:outline-none focus:ring-2 focus:ring-ring bg-background"
-              />
-              <Button onClick={handleBulkSend} disabled={bulkSending || !bulkText.trim()} className="self-end">
-                {bulkSending ? <Icon name="Loader2" size={15} className="animate-spin" /> : <Icon name="Send" size={15} />}
-              </Button>
-            </div>
-          )}
         </div>
       )}
 

@@ -354,6 +354,7 @@ export default function OrganizerCabinet() {
           <UnifiedPeoplePanel
             event={selectedEvent}
             onBack={() => setView("dashboard")}
+            onNotify={() => setView("notify")}
           />
         )}
 
