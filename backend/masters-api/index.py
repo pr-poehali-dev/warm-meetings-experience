@@ -47,7 +47,7 @@ def cors_headers():
     return {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Authorization, X-Admin-Token',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Authorization, X-Admin-Token, X-Session-Token',
         'Access-Control-Max-Age': '86400',
         'Content-Type': 'application/json'
     }
