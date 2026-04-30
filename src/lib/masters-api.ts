@@ -77,4 +77,25 @@ export const mastersApi = {
     const data = await res.json();
     return data.specializations || [];
   },
+
+  getMyProfile: async (): Promise<Master> => {
+    const token = localStorage.getItem("user_token") || "";
+    const res = await fetch(`${MASTERS_API}/?me=1`, {
+      headers: { "X-Session-Token": token },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Ошибка загрузки профиля");
+    return data.master;
+  },
+
+  updateMyProfile: async (profile: Partial<Pick<Master, "name" | "tagline" | "bio" | "experience_years" | "city" | "phone" | "telegram" | "instagram" | "price_from">>): Promise<void> => {
+    const token = localStorage.getItem("user_token") || "";
+    const res = await fetch(`${MASTERS_API}/?me=1`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Session-Token": token },
+      body: JSON.stringify(profile),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Ошибка сохранения");
+  },
 };

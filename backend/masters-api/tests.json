@@ -23,6 +23,23 @@
       "expectedStatus": 401,
       "expectedBody": {"error": "Не авторизован"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Мой профиль — без токена",
+      "method": "GET",
+      "path": "/?me=1",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Не авторизован"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Обновить профиль — без токена",
+      "method": "PUT",
+      "path": "/?me=1",
+      "body": {"name": "Test"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Не авторизован"},
+      "bodyMatcher": "partial"
     }
   ]
 }

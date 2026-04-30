@@ -64,6 +64,25 @@ def row_to_dict(row, cursor):
     return result
 
 
+def get_user_from_token(cur, token, schema):
+    t = token.replace("'", "''")
+    cur.execute(f"""
+        SELECT u.id FROM {schema}.user_sessions s
+        JOIN {schema}.users u ON u.id = s.user_id
+        WHERE s.token = '{t}' AND s.expires_at > NOW() AND u.is_active = true
+    """)
+    return cur.fetchone()
+
+
+def is_parmaster(cur, user_id, schema):
+    cur.execute(f"""
+        SELECT 1 FROM {schema}.user_roles ur
+        JOIN {schema}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = {user_id} AND r.slug IN ('parmaster', 'admin') AND ur.status = 'active'
+    """)
+    return cur.fetchone() is not None
+
+
 def handler(event, context):
     """API для управления мастерями — список, детали, специализации, связь с банями"""
     if event.get('httpMethod') == 'OPTIONS':
@@ -74,6 +93,67 @@ def handler(event, context):
     params = event.get('queryStringParameters') or {}
     schema = get_schema()
     admin_token = (event.get('headers') or {}).get('X-Admin-Token', '')
+    hdrs = event.get('headers') or {}
+    user_token = (hdrs.get('X-Authorization') or hdrs.get('X-Session-Token') or '').replace('Bearer ', '')
+
+    # GET /masters?me=1 — профиль текущего мастера
+    if method == 'GET' and params.get('me') == '1':
+        if not user_token:
+            return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Не авторизован'})}
+        conn = get_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        user = get_user_from_token(cur, user_token, schema)
+        if not user:
+            conn.close()
+            return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Не авторизован'})}
+        if not is_parmaster(cur, user['id'], schema):
+            conn.close()
+            return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Доступ только для пармастеров'})}
+        cur.execute(f"SELECT * FROM {schema}.masters WHERE id = %s", [user['id']])
+        row = cur.fetchone()
+        conn.close()
+        if not row:
+            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Профиль не найден'})}
+        master = dict(row)
+        master['rating'] = float(master['rating']) if master.get('rating') else 0
+        for k, v in master.items():
+            if hasattr(v, 'isoformat'):
+                master[k] = v.isoformat()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'master': master}, ensure_ascii=False)}
+
+    # PUT /masters?me=1 — обновить свой профиль
+    if method == 'PUT' and params.get('me') == '1':
+        if not user_token:
+            return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Не авторизован'})}
+        conn = get_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        user = get_user_from_token(cur, user_token, schema)
+        if not user:
+            conn.close()
+            return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Не авторизован'})}
+        if not is_parmaster(cur, user['id'], schema):
+            conn.close()
+            return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Доступ только для пармастеров'})}
+        body = json.loads(event.get('body') or '{}')
+        allowed = ['name', 'tagline', 'bio', 'experience_years', 'city', 'phone', 'telegram', 'instagram', 'price_from']
+        fields = []
+        vals = []
+        for f in allowed:
+            if f in body:
+                fields.append(f'{f} = %s')
+                vals.append(body[f])
+        if not fields:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Нет полей для обновления'})}
+        fields.append('updated_at = NOW()')
+        vals.append(user['id'])
+        cur.execute(f"UPDATE {schema}.masters SET {', '.join(fields)} WHERE id = %s RETURNING id, name, slug", vals)
+        row = cur.fetchone()
+        conn.commit()
+        conn.close()
+        if not row:
+            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Профиль не найден. Обратитесь к администратору.'})}
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'master': dict(row)}, ensure_ascii=False)}
 
     # GET /masters?admin=1 — список всех мастеров для админа
     if method == 'GET' and params.get('admin') == '1':

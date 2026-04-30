@@ -122,11 +122,12 @@ function DashboardSection({ masterId }: { masterId: number }) {
 
 // ─── Профиль ──────────────────────────────────────────────────────────────────
 
-function ProfileSection({ masterId }: { masterId: number }) {
+function ProfileSection({ masterId: _masterId }: { masterId: number }) {
   const [master, setMaster] = useState<Master | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     name: "", tagline: "", bio: "", phone: "", telegram: "", instagram: "",
     city: "", experience_years: 0, price_from: 0,
@@ -134,31 +135,34 @@ function ProfileSection({ masterId }: { masterId: number }) {
   const [activeTab, setActiveTab] = useState<"info" | "portfolio">("info");
 
   useEffect(() => {
-    mastersApi.getAll().then((all) => {
-      const m = all.find((x) => x.id === masterId);
-      if (m) {
-        setMaster(m);
-        setForm({
-          name: m.name || "",
-          tagline: m.tagline || "",
-          bio: m.bio || "",
-          phone: m.phone || "",
-          telegram: m.telegram || "",
-          instagram: m.instagram || "",
-          city: m.city || "",
-          experience_years: m.experience_years || 0,
-          price_from: m.price_from || 0,
-        });
-      }
+    mastersApi.getMyProfile().then((m) => {
+      setMaster(m);
+      setForm({
+        name: m.name || "",
+        tagline: m.tagline || "",
+        bio: m.bio || "",
+        phone: m.phone || "",
+        telegram: m.telegram || "",
+        instagram: m.instagram || "",
+        city: m.city || "",
+        experience_years: m.experience_years || 0,
+        price_from: m.price_from || 0,
+      });
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [masterId]);
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setError("");
+    try {
+      await mastersApi.updateMyProfile(form);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка сохранения");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) return <div className="flex justify-center py-16"><Icon name="Loader2" size={28} className="animate-spin text-muted-foreground" /></div>;
@@ -232,6 +236,8 @@ function ProfileSection({ masterId }: { masterId: number }) {
               className="w-full px-3 py-2.5 rounded-xl border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/30 transition resize-none"
             />
           </div>
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
 
           <button
             onClick={handleSave}
