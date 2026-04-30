@@ -42,6 +42,8 @@ def handler(event, context):
             return handle_public_book(event, method, params, schema, headers)
         elif resource == 'stats':
             return handle_stats(event, method, params, schema, headers)
+        elif resource == 'reviews':
+            return handle_reviews(event, method, params, schema, headers)
         else:
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown resource'})}
     except Exception as e:
@@ -321,6 +323,75 @@ def handle_public_book(event, method, params, schema, headers):
             'price': price
         })
     }
+
+
+def handle_reviews(event, method, params, schema, headers):
+    """Отзывы о мастере: GET — список, POST — создать"""
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    if method == 'GET':
+        master_id = params.get('master_id', '1')
+        cur.execute(f"""
+            SELECT id, master_id, client_name, rating, text, created_at
+            FROM {schema}.master_reviews
+            WHERE master_id = {int(master_id)} AND is_published = TRUE
+            ORDER BY created_at DESC
+            LIMIT 50
+        """)
+        rows = cur.fetchall()
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps(rows, default=str)}
+
+    if method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        master_id = int(body.get('master_id', 0))
+        client_name = (body.get('client_name') or '').strip().replace("'", "''")
+        client_phone = (body.get('client_phone') or '').strip().replace("'", "''")
+        rating = int(body.get('rating', 5))
+        text = (body.get('text') or '').strip().replace("'", "''")
+        booking_id = body.get('booking_id')
+
+        if not master_id or not client_name or not (1 <= rating <= 5):
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Заполните обязательные поля'})}
+
+        cur.execute(f"SELECT id FROM {schema}.masters WHERE id = {master_id}")
+        if not cur.fetchone():
+            conn.close()
+            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Мастер не найден'})}
+
+        booking_val = f"{int(booking_id)}" if booking_id else "NULL"
+        phone_val = f"'{client_phone}'" if client_phone else "NULL"
+
+        cur.execute(f"""
+            INSERT INTO {schema}.master_reviews (master_id, booking_id, client_name, client_phone, rating, text)
+            VALUES ({master_id}, {booking_val}, '{client_name}', {phone_val}, {rating}, '{text}')
+            RETURNING id, master_id, client_name, rating, text, created_at
+        """)
+        review = cur.fetchone()
+
+        cur.execute(f"""
+            UPDATE {schema}.masters SET
+                rating = (
+                    SELECT ROUND(AVG(rating)::numeric, 2)
+                    FROM {schema}.master_reviews
+                    WHERE master_id = {master_id} AND is_published = TRUE
+                ),
+                reviews_count = (
+                    SELECT COUNT(*) FROM {schema}.master_reviews
+                    WHERE master_id = {master_id} AND is_published = TRUE
+                ),
+                updated_at = NOW()
+            WHERE id = {master_id}
+        """)
+
+        conn.commit()
+        conn.close()
+        return {'statusCode': 201, 'headers': headers, 'body': json.dumps(review, default=str)}
+
+    conn.close()
+    return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
 
 
 def handle_stats(event, method, params, schema, headers):

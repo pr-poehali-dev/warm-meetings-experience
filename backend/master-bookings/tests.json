@@ -25,6 +25,14 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Get reviews",
+      "method": "GET",
+      "path": "/?resource=reviews&master_id=1",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "OPTIONS CORS",
       "method": "OPTIONS",
       "path": "/",

@@ -281,6 +281,24 @@ export const masterBookingsApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  getReviews: (masterId: number) =>
+    fetchApi<MasterReview[]>(`${BOOKINGS_URL}?resource=reviews&master_id=${masterId}`),
+
+  createReview: (data: { master_id: number; client_name: string; client_phone?: string; rating: number; text?: string }) =>
+    fetchApi<MasterReview>(`${BOOKINGS_URL}?resource=reviews`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
+
+export interface MasterReview {
+  id: number;
+  master_id: number;
+  client_name: string;
+  rating: number;
+  text?: string;
+  created_at: string;
+}
 
 export default { masterCalendarApi, masterBookingsApi };

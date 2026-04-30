@@ -6,7 +6,7 @@ import Icon from "@/components/ui/icon";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { mastersApi, Master } from "@/lib/masters-api";
-import { masterCalendarApi, masterBookingsApi, MasterService, MasterSlot } from "@/lib/master-calendar-api";
+import { masterCalendarApi, masterBookingsApi, MasterService, MasterSlot, MasterReview } from "@/lib/master-calendar-api";
 
 // ─── Утилиты ──────────────────────────────────────────────────────────────────
 
@@ -411,31 +411,163 @@ function ScheduleBlock({
   );
 }
 
-// ─── Отзывы (заглушка) ────────────────────────────────────────────────────────
+// ─── Отзывы ───────────────────────────────────────────────────────────────────
 
-const MOCK_REVIEWS = [
-  { id: 1, name: "Анна К.", rating: 5, text: "Потрясающий мастер! Очень профессиональный подход, атмосфера была невероятной. Обязательно приду ещё.", date: "2025-03-15" },
-  { id: 2, name: "Михаил Р.", rating: 5, text: "Первый раз был на банном ритуале — и это было открытием. Рекомендую всем.", date: "2025-02-28" },
-  { id: 3, name: "Елена В.", rating: 4, text: "Всё понравилось, мастер внимательный и чуткий. Отдохнула на все 100%.", date: "2025-02-10" },
-];
+function ReviewsBlock({ masterId, rating }: { masterId: number; rating: number; reviewsCount: number }) {
+  const [reviews, setReviews] = useState<MasterReview[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [formName, setFormName] = useState("");
+  const [formPhone, setFormPhone] = useState("");
+  const [formRating, setFormRating] = useState(5);
+  const [formText, setFormText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
 
-function ReviewsBlock({ rating, reviewsCount }: { rating: number; reviewsCount: number }) {
-  const reviews = reviewsCount > 0 ? MOCK_REVIEWS : [];
+  const load = useCallback(async () => {
+    setLoadingReviews(true);
+    try {
+      const data = await masterBookingsApi.getReviews(masterId);
+      setReviews(data);
+    } catch {
+      setReviews([]);
+    } finally {
+      setLoadingReviews(false);
+    }
+  }, [masterId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formName.trim()) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      await masterBookingsApi.createReview({
+        master_id: masterId,
+        client_name: formName.trim(),
+        client_phone: formPhone.trim() || undefined,
+        rating: formRating,
+        text: formText.trim() || undefined,
+      });
+      setSubmitted(true);
+      setShowForm(false);
+      load();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Ошибка при отправке");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const displayRating = reviews.length > 0
+    ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+    : rating;
+
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">Отзывы</h2>
-        {reviewsCount > 0 && (
-          <div className="flex items-center gap-2">
-            <StarRating rating={rating} />
-            <span className="text-sm text-muted-foreground">({reviewsCount})</span>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {reviews.length > 0 && (
+            <div className="flex items-center gap-2">
+              <StarRating rating={displayRating} />
+              <span className="text-sm text-muted-foreground">({reviews.length})</span>
+            </div>
+          )}
+          {!submitted && (
+            <button
+              onClick={() => setShowForm((v) => !v)}
+              className="text-xs text-primary font-medium hover:underline flex items-center gap-1"
+            >
+              <Icon name="PenLine" size={13} />
+              {showForm ? "Отмена" : "Написать отзыв"}
+            </button>
+          )}
+        </div>
       </div>
-      {reviews.length === 0 ? (
+
+      {/* Форма отзыва */}
+      {showForm && (
+        <form onSubmit={handleSubmit} className="bg-muted/50 rounded-xl p-4 mb-4 space-y-3">
+          <div>
+            <label className="text-xs font-medium block mb-1">Ваше имя *</label>
+            <input
+              type="text"
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              placeholder="Иван"
+              required
+              className="w-full px-3 py-2 rounded-xl border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/30 transition"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium block mb-1">Телефон (необязательно)</label>
+            <input
+              type="tel"
+              value={formPhone}
+              onChange={(e) => setFormPhone(e.target.value)}
+              placeholder="+7 (999) 000-00-00"
+              className="w-full px-3 py-2 rounded-xl border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/30 transition"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium block mb-2">Оценка *</label>
+            <div className="flex gap-1">
+              {[1,2,3,4,5].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setFormRating(s)}
+                  className="p-1 transition-transform hover:scale-110"
+                >
+                  <Icon
+                    name="Star"
+                    size={24}
+                    className={s <= formRating ? "text-amber-400 fill-amber-400" : "text-muted-foreground/30"}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium block mb-1">Отзыв</label>
+            <textarea
+              value={formText}
+              onChange={(e) => setFormText(e.target.value)}
+              placeholder="Расскажите о своих впечатлениях..."
+              rows={3}
+              className="w-full px-3 py-2 rounded-xl border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/30 transition resize-none"
+            />
+          </div>
+          {error && <div className="text-xs text-destructive">{error}</div>}
+          <button
+            type="submit"
+            disabled={submitting || !formName.trim()}
+            className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl font-semibold text-sm hover:bg-primary/90 transition disabled:opacity-50"
+          >
+            {submitting ? "Отправляем..." : "Оставить отзыв"}
+          </button>
+        </form>
+      )}
+
+      {submitted && (
+        <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl px-4 py-3 mb-4 flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+          <Icon name="CheckCircle" size={16} />
+          Спасибо за ваш отзыв!
+        </div>
+      )}
+
+      {loadingReviews ? (
+        <div className="flex justify-center py-6">
+          <Icon name="Loader2" size={24} className="animate-spin text-muted-foreground" />
+        </div>
+      ) : reviews.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground text-sm">
           <Icon name="MessageSquare" size={32} className="mx-auto mb-2 opacity-30" />
-          Пока нет отзывов
+          Пока нет отзывов — будьте первым!
         </div>
       ) : (
         <div className="space-y-3">
@@ -444,9 +576,9 @@ function ReviewsBlock({ rating, reviewsCount }: { rating: number; reviewsCount: 
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-sm font-bold text-primary">
-                    {r.name[0]}
+                    {r.client_name[0].toUpperCase()}
                   </div>
-                  <span className="font-medium text-sm">{r.name}</span>
+                  <span className="font-medium text-sm">{r.client_name}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   {[1,2,3,4,5].map((s) => (
@@ -454,9 +586,9 @@ function ReviewsBlock({ rating, reviewsCount }: { rating: number; reviewsCount: 
                   ))}
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">{r.text}</p>
+              {r.text && <p className="text-sm text-muted-foreground leading-relaxed">{r.text}</p>}
               <div className="text-xs text-muted-foreground mt-2">
-                {format(parseISO(r.date), "d MMMM yyyy", { locale: ru })}
+                {format(parseISO(r.created_at), "d MMMM yyyy", { locale: ru })}
               </div>
             </div>
           ))}
@@ -666,7 +798,7 @@ export default function MasterDetail() {
             )}
 
             {/* Отзывы */}
-            <ReviewsBlock rating={master.rating} reviewsCount={master.reviews_count} />
+            <ReviewsBlock masterId={master.id} rating={master.rating} reviewsCount={master.reviews_count} />
 
             {/* Бани */}
             {(master.baths || []).length > 0 && (
