@@ -162,6 +162,11 @@ function ProfileSection({ masterId: _masterId }: { masterId: number }) {
   });
   const [activeTab, setActiveTab] = useState<"info" | "portfolio">("info");
 
+  // Avatar state
+  const [avatar, setAvatar] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
   // Portfolio state
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -184,6 +189,7 @@ function ProfileSection({ masterId: _masterId }: { masterId: number }) {
         experience_years: m.experience_years || 0,
         price_from: m.price_from || 0,
       });
+      setAvatar(m.avatar || "");
       // Load existing portfolio
       if (m.portfolio && Array.isArray(m.portfolio)) {
         const items: PortfolioItem[] = m.portfolio.map((p) => {
@@ -200,13 +206,28 @@ function ProfileSection({ masterId: _masterId }: { masterId: number }) {
     setSaving(true);
     setError("");
     try {
-      await mastersApi.updateMyProfile(form);
+      await mastersApi.updateMyProfile({ ...form, avatar });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка сохранения");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAvatarSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    try {
+      const item = await uploadFile(file);
+      setAvatar(item.url);
+    } catch {
+      // ignore
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
     }
   };
 
@@ -264,6 +285,49 @@ function ProfileSection({ masterId: _masterId }: { masterId: number }) {
 
       {activeTab === "info" && (
         <div className="space-y-4 max-w-xl">
+          {/* Аватар */}
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-2xl overflow-hidden bg-muted flex items-center justify-center">
+                {avatar ? (
+                  <img src={avatar} alt="Аватар" className="w-full h-full object-cover" />
+                ) : (
+                  <Icon name="User" size={32} className="text-muted-foreground" />
+                )}
+              </div>
+              {avatarUploading && (
+                <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center">
+                  <Icon name="Loader2" size={20} className="animate-spin text-white" />
+                </div>
+              )}
+            </div>
+            <div>
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarUploading}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium hover:bg-muted transition disabled:opacity-50"
+              >
+                <Icon name="Camera" size={15} />
+                {avatarUploading ? "Загружаем..." : "Изменить фото"}
+              </button>
+              {avatar && (
+                <button
+                  onClick={() => setAvatar("")}
+                  className="mt-1 text-xs text-muted-foreground hover:text-destructive transition"
+                >
+                  Удалить фото
+                </button>
+              )}
+            </div>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarSelect}
+            />
+          </div>
+
           {[
             { key: "name", label: "Имя", placeholder: "Иван Иванов" },
             { key: "tagline", label: "Короткое описание", placeholder: "Мастер банных ритуалов" },
