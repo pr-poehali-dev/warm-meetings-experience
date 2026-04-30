@@ -14,6 +14,13 @@ import NotifyModule from "@/components/notify/NotifyModule";
 
 type View = "dashboard" | "create" | "edit" | "participants" | "telegram" | "calculator" | "notify";
 
+const NAV_ITEMS: { view: View; label: string; icon: string; group?: "dashboard" | "edit" }[] = [
+  { view: "dashboard", label: "Дашборд", icon: "LayoutDashboard" },
+  { view: "calculator", label: "Калькулятор", icon: "Calculator" },
+  { view: "notify", label: "Уведомления", icon: "Bell" },
+  { view: "telegram", label: "Telegram", icon: "Send" },
+];
+
 export default function OrganizerCabinet() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -24,6 +31,7 @@ export default function OrganizerCabinet() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [events, setEvents] = useState<OrgEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<OrgEvent | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [dashLoading, setDashLoading] = useState(true);
   const [eventsLoading, setEventsLoading] = useState(false);
@@ -32,7 +40,6 @@ export default function OrganizerCabinet() {
   const [formData, setFormData] = useState<OrgEvent & { submit_action?: string }>({} as OrgEvent);
   const formDataRef = React.useRef(formData);
   formDataRef.current = formData;
-
 
   const loadDashboard = useCallback(async () => {
     setDashLoading(true);
@@ -63,8 +70,6 @@ export default function OrganizerCabinet() {
     }
   }, [toast]);
 
-
-
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -76,30 +81,19 @@ export default function OrganizerCabinet() {
     const eventId = inviteEventId ? parseInt(inviteEventId) : null;
 
     if (eventId) {
-      // Убираем параметр из URL сразу
       window.history.replaceState({}, "", window.location.pathname);
-
       organizerApi.joinByInvite(eventId)
         .then((res) => {
           if (!res.already) {
-            if (res.status === 'active') {
-              toast({
-                title: "Вы добавлены как соорганизатор",
-                description: "Теперь вы можете управлять этой встречей",
-              });
-            } else if (res.status === 'pending') {
-              toast({
-                title: "Заявка отправлена на рассмотрение",
-                description: "После одобрения администратором вы получите доступ к кабинету организатора.",
-                duration: 8000,
-              });
+            if (res.status === "active") {
+              toast({ title: "Вы добавлены как соорганизатор", description: "Теперь вы можете управлять этой встречей" });
+            } else if (res.status === "pending") {
+              toast({ title: "Заявка отправлена на рассмотрение", description: "После одобрения администратором вы получите доступ к кабинету организатора.", duration: 8000 });
             }
           }
         })
         .catch(() => {})
-        .finally(() => {
-          loadDashboard();
-        });
+        .finally(() => { loadDashboard(); });
     } else {
       loadDashboard();
     }
@@ -117,7 +111,7 @@ export default function OrganizerCabinet() {
     price: "", price_amount: 0, price_label: "",
     total_spots: 10, spots_left: 10, occupancy: "low",
     image_url: "", is_visible: false, featured: false,
-    program: [], rules: [], pricing_lines: [], pricing_type: 'fixed', pricing_tiers: [], slug: "", organizer_id: 0,
+    program: [], rules: [], pricing_lines: [], pricing_type: "fixed", pricing_tiers: [], slug: "", organizer_id: 0,
     signups_count: 0, paid_count: 0, created_at: "",
   });
 
@@ -125,6 +119,7 @@ export default function OrganizerCabinet() {
     setSelectedEvent(null);
     setFormData(emptyForm());
     setView("create");
+    setSidebarOpen(false);
   };
 
   const handleCreateFromCalc = (calcParams: { guestPrice: number; participants: number }) => {
@@ -138,20 +133,19 @@ export default function OrganizerCabinet() {
       spots_left: calcParams.participants,
     });
     setView("create");
+    setSidebarOpen(false);
     toast({ title: "Данные из калькулятора перенесены в форму события" });
   };
 
   const handleEditEvent = async (event: OrgEvent) => {
     setSelectedEvent(event);
     setView("edit");
-    // Загружаем полный объект события — дашборд возвращает только краткие поля
+    setSidebarOpen(false);
     let fullEvent = event;
-    try {
-      fullEvent = await organizerApi.getEvent(event.id);
-    } catch (_) { /* fallback to passed event */ }
+    try { fullEvent = await organizerApi.getEvent(event.id); } catch { /* fallback */ }
     let tiers = fullEvent.pricing_tiers || [];
-    if (fullEvent.pricing_type === 'dynamic' && fullEvent.id && !tiers.length) {
-      try { tiers = await organizerApi.getPricingTiers(fullEvent.id); } catch (_) { /* ignore */ }
+    if (fullEvent.pricing_type === "dynamic" && fullEvent.id && !tiers.length) {
+      try { tiers = await organizerApi.getPricingTiers(fullEvent.id); } catch { /* ignore */ }
     }
     setFormData({ ...emptyForm(), ...fullEvent, pricing_tiers: tiers });
   };
@@ -159,6 +153,7 @@ export default function OrganizerCabinet() {
   const handleManageParticipants = (event: OrgEvent) => {
     setSelectedEvent(event);
     setView("participants");
+    setSidebarOpen(false);
   };
 
   const handleSaveEvent = async (data: Partial<OrgEvent> & { submit_action?: string }) => {
@@ -171,20 +166,12 @@ export default function OrganizerCabinet() {
 
       if (selectedEvent?.id) {
         savedEvent = await organizerApi.updateEvent({ ...payload, id: selectedEvent.id, submit_action: submitAction } as OrgEvent & { id: number; submit_action: string });
-        if (submitAction === "submit") {
-          toast({ title: "Событие отправлено на модерацию", description: "Администратор проверит его в ближайшее время." });
-        } else {
-          toast({ title: "Черновик сохранён" });
-        }
+        toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
       } else {
         savedEvent = await organizerApi.createEvent({ ...payload, submit_action: submitAction } as Partial<OrgEvent> & { submit_action: string });
-        if (submitAction === "submit") {
-          toast({ title: "Событие отправлено на модерацию", description: "Администратор проверит его в ближайшее время." });
-        } else {
-          toast({ title: "Черновик сохранён" });
-        }
+        toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
       }
-      if (data.pricing_type === 'dynamic' && data.pricing_tiers) {
+      if (data.pricing_type === "dynamic" && data.pricing_tiers) {
         await organizerApi.savePricingTiers(savedEvent.id, data.pricing_tiers);
       }
       await Promise.all([loadDashboard(), loadEvents()]);
@@ -200,15 +187,8 @@ export default function OrganizerCabinet() {
   const handleDuplicateEvent = (event: OrgEvent) => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const dup = {
-      ...emptyForm(), ...event,
-      id: 0,
-      event_date: tomorrow.toISOString().split("T")[0],
-      is_visible: false,
-      spots_left: event.total_spots,
-    };
     setSelectedEvent(null);
-    setFormData(dup);
+    setFormData({ ...emptyForm(), ...event, id: 0, event_date: tomorrow.toISOString().split("T")[0], is_visible: false, spots_left: event.total_spots });
     setView("create");
     toast({ title: "Событие скопировано — измените дату и сохраните" });
   };
@@ -238,20 +218,18 @@ export default function OrganizerCabinet() {
     let created = 0;
     for (const date of dates) {
       try {
-        await organizerApi.createEvent({
-          ...event,
-          id: 0,
-          event_date: date,
-          is_visible: false,
-          spots_left: event.total_spots,
-          submit_action: "draft",
-        } as Partial<OrgEvent> & { submit_action: string });
+        await organizerApi.createEvent({ ...event, id: 0, event_date: date, is_visible: false, spots_left: event.total_spots, submit_action: "draft" } as Partial<OrgEvent> & { submit_action: string });
         created++;
       } catch { /* skip */ }
     }
     setFormLoading(false);
     await Promise.all([loadEvents(), loadDashboard()]);
     toast({ title: `Создано ${created} из ${dates.length} событий` });
+  };
+
+  const navigateTo = (v: View) => {
+    setView(v);
+    setSidebarOpen(false);
   };
 
   if (authLoading || dashLoading) {
@@ -284,31 +262,26 @@ export default function OrganizerCabinet() {
     );
   }
 
+  const activeNav = ["create", "edit", "participants"].includes(view) ? "dashboard" : view;
+
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b sticky top-0 bg-background/95 backdrop-blur z-10">
-        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Top header */}
+      <header className="border-b sticky top-0 bg-background/95 backdrop-blur z-20 flex-shrink-0">
+        <div className="h-14 px-4 flex items-center justify-between max-w-screen-xl mx-auto">
           <div className="flex items-center gap-3">
+            {/* Hamburger (mobile only) */}
             <button
-              onClick={() => { setView("dashboard"); loadDashboard(); }}
-              className="font-semibold text-sm flex items-center gap-2 hover:text-primary transition-colors"
+              className="lg:hidden p-1.5 rounded-md hover:bg-muted transition-colors"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label="Меню"
             >
-              <Icon name="LayoutDashboard" size={18} />
-              <span className="hidden sm:inline">Кабинет организатора</span>
-              <span className="sm:hidden">ЛК</span>
+              <Icon name={sidebarOpen ? "X" : "Menu"} size={20} />
             </button>
-            <span className="text-muted-foreground">/</span>
-            <nav className="flex gap-1">
-              {([["dashboard", "Дашборд"], ["calculator", "Калькулятор"], ["notify", "Уведомления"], ["telegram", "Telegram"]] as [View, string][]).map(([v, label]) => (
-                <button
-                  key={v}
-                  onClick={() => setView(v)}
-                  className={`px-3 py-1.5 rounded-md text-sm transition-colors ${view === v || (["create", "edit", "participants"].includes(view) && v === "dashboard") ? "bg-muted font-medium" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
+            <span className="font-semibold text-sm flex items-center gap-2">
+              <Icon name="LayoutDashboard" size={17} className="text-primary hidden sm:block" />
+              Кабинет организатора
+            </span>
           </div>
           <Button variant="ghost" size="sm" onClick={() => navigate("/account")} className="gap-2 text-xs">
             <Icon name="User" size={14} />
@@ -317,67 +290,156 @@ export default function OrganizerCabinet() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 max-w-6xl">
-        {view === "dashboard" && dashboard && (
-          <OrgDashboard
-            data={dashboard}
-            events={events}
-            eventsLoading={eventsLoading}
-            onCreateEvent={handleCreateEvent}
-            onManageEvent={handleManageParticipants}
-            onEditEvent={handleEditEvent}
-            onDuplicateEvent={handleDuplicateEvent}
-            onRepeat={handleRepeatEvent}
-            repeatLoading={formLoading}
-            onToggleVisibility={handleToggleVisibility}
-            onDeleteEvent={handleDeleteEvent}
+      <div className="flex flex-1 max-w-screen-xl mx-auto w-full">
+        {/* Mobile overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
           />
         )}
 
-        {(view === "create" || view === "edit") && (
-          <div className="max-w-2xl mx-auto">
-            <LiveEventEditor
-              formData={formData}
-              loading={formLoading}
-              onFormChange={(data) => setFormData(data as OrgEvent)}
-              onSubmit={async (e, _saveAndNew, override) => {
-                e.preventDefault();
-                const merged = { ...formDataRef.current, ...(override || {}) } as OrgEvent & { submit_action?: string };
-                await handleSaveEvent(merged);
-              }}
-              onCancel={() => setView("dashboard")}
+        {/* Sidebar */}
+        <aside
+          className={`
+            fixed top-14 left-0 bottom-0 z-40 w-60 bg-background border-r flex flex-col py-4 transition-transform duration-200
+            lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:translate-x-0 lg:w-56 lg:flex-shrink-0
+            ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+          `}
+        >
+          {/* User info */}
+          <div className="px-4 mb-4 pb-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                {user?.name?.charAt(0)?.toUpperCase() ?? "О"}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{user?.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Nav items */}
+          <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
+            {NAV_ITEMS.map(({ view: v, label, icon }) => (
+              <button
+                key={v}
+                onClick={() => navigateTo(v)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-left ${
+                  activeNav === v
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                <Icon name={icon} size={16} className={activeNav === v ? "text-primary" : "text-muted-foreground"} />
+                {label}
+              </button>
+            ))}
+
+            <div className="pt-3 mt-3 border-t">
+              <Button
+                size="sm"
+                className="w-full gap-2"
+                onClick={handleCreateEvent}
+              >
+                <Icon name="Plus" size={14} />
+                Новое событие
+              </Button>
+            </div>
+          </nav>
+
+          {/* Bottom: back to account */}
+          <div className="px-3 mt-4 pt-4 border-t">
+            <button
+              onClick={() => navigate("/account")}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <Icon name="ArrowLeft" size={16} />
+              Мой профиль
+            </button>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 min-w-0 px-4 py-6 lg:px-6">
+          {/* Breadcrumb for sub-views */}
+          {(view === "create" || view === "edit" || view === "participants") && (
+            <div className="flex items-center gap-2 mb-5 text-sm text-muted-foreground">
+              <button onClick={() => setView("dashboard")} className="hover:text-foreground transition-colors flex items-center gap-1.5">
+                <Icon name="LayoutDashboard" size={13} />
+                Дашборд
+              </button>
+              <Icon name="ChevronRight" size={13} />
+              <span className="text-foreground font-medium">
+                {view === "create" && "Новое событие"}
+                {view === "edit" && (selectedEvent?.title || "Редактирование")}
+                {view === "participants" && `Участники${selectedEvent ? ` — ${selectedEvent.title}` : ""}`}
+              </span>
+            </div>
+          )}
+
+          {view === "dashboard" && dashboard && (
+            <OrgDashboard
+              data={dashboard}
+              events={events}
+              eventsLoading={eventsLoading}
+              onCreateEvent={handleCreateEvent}
+              onManageEvent={handleManageParticipants}
+              onEditEvent={handleEditEvent}
+              onDuplicateEvent={handleDuplicateEvent}
+              onRepeat={handleRepeatEvent}
+              repeatLoading={formLoading}
+              onToggleVisibility={handleToggleVisibility}
+              onDeleteEvent={handleDeleteEvent}
             />
-          </div>
-        )}
+          )}
 
-        {view === "participants" && selectedEvent && (
-          <UnifiedPeoplePanel
-            event={selectedEvent}
-            onBack={() => setView("dashboard")}
-            onNotify={() => setView("notify")}
-          />
-        )}
+          {(view === "create" || view === "edit") && (
+            <div className="max-w-2xl mx-auto">
+              <LiveEventEditor
+                formData={formData}
+                loading={formLoading}
+                onFormChange={(data) => setFormData(data as OrgEvent)}
+                onSubmit={async (e, _saveAndNew, override) => {
+                  e.preventDefault();
+                  const merged = { ...formDataRef.current, ...(override || {}) } as OrgEvent & { submit_action?: string };
+                  await handleSaveEvent(merged);
+                }}
+                onCancel={() => setView("dashboard")}
+              />
+            </div>
+          )}
 
-        {view === "calculator" && (
-          <EventCalculator onCreateEvent={handleCreateFromCalc} />
-        )}
-
-        {view === "notify" && (
-          <div className="max-w-2xl mx-auto">
-            <NotifyModule role="organizer" eventId={selectedEvent?.id ?? null} />
-          </div>
-        )}
-
-        {view === "telegram" && (
-          <div className="max-w-lg mx-auto">
-            <TelegramSettings
-              tgLinked={dashboard?.tg_linked ?? false}
-              tgChannelsCount={dashboard?.tg_channels_count ?? 0}
-              onRefresh={loadDashboard}
+          {view === "participants" && selectedEvent && (
+            <UnifiedPeoplePanel
+              event={selectedEvent}
+              onBack={() => setView("dashboard")}
+              onNotify={() => setView("notify")}
             />
-          </div>
-        )}
-      </main>
+          )}
+
+          {view === "calculator" && (
+            <EventCalculator onCreateEvent={handleCreateFromCalc} />
+          )}
+
+          {view === "notify" && (
+            <div className="max-w-2xl mx-auto">
+              <NotifyModule role="organizer" eventId={selectedEvent?.id ?? null} />
+            </div>
+          )}
+
+          {view === "telegram" && (
+            <div className="max-w-lg mx-auto">
+              <TelegramSettings
+                tgLinked={dashboard?.tg_linked ?? false}
+                tgChannelsCount={dashboard?.tg_channels_count ?? 0}
+                onRefresh={loadDashboard}
+              />
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
