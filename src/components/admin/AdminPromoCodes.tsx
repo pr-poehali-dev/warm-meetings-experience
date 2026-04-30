@@ -376,7 +376,7 @@ const AdminPromoCodes = () => {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingPromoCode ? "Редактировать промо-код" : "Новый промо-код"}

@@ -208,7 +208,7 @@ const AdminSettings = () => {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingSetting ? "Редактировать настройку" : "Новая настройка"}

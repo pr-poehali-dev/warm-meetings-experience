@@ -37,7 +37,7 @@ const SlotDetailDialog = ({
 }: SlotDetailDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="sm:max-w-[520px] max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon name="CalendarClock" size={20} className="text-nature-forest" />

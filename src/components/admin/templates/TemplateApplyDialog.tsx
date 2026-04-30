@@ -46,7 +46,7 @@ const TemplateApplyDialog = ({
 }: TemplateApplyDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[440px]">
+      <DialogContent className="sm:max-w-[440px] max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon name="Play" size={20} className="text-nature-forest" />
@@ -131,7 +131,7 @@ export const TemplateDeleteDialog = ({
 }: TemplateDeleteDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent className="sm:max-w-[400px] max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon name="Trash2" size={20} className="text-red-500" />

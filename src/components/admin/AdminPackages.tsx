@@ -255,7 +255,7 @@ const AdminPackages = () => {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingPackage ? "Редактировать пакет" : "Новый пакет"}

@@ -263,7 +263,7 @@ const AdminMultipliers = () => {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingMultiplier ? "Редактировать мультипликатор" : "Новый мультипликатор"}

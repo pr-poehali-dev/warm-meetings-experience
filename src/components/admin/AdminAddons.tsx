@@ -245,7 +245,7 @@ const AdminAddons = () => {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingAddon ? "Редактировать услугу" : "Новая услуга"}

@@ -22,7 +22,7 @@ const DeleteConfirmDialog = ({
 }: DeleteConfirmDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Подтверждение удаления</DialogTitle>
           <DialogDescription>
