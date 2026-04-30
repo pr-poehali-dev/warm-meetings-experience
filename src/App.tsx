@@ -31,6 +31,7 @@ import Masters from "./pages/Masters";
 import MasterDetail from "./pages/MasterDetail";
 import About from "./pages/About";
 import OrganizerCabinet from "./pages/OrganizerCabinet";
+import MasterCabinet from "./pages/MasterCabinet";
 import InviteRegister from "./pages/InviteRegister";
 import InviteVerify from "./pages/InviteVerify";
 import PastEvents from "./pages/PastEvents";
@@ -67,6 +68,7 @@ const AppContent = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/organizer-cabinet" element={<OrganizerCabinet />} />
+        <Route path="/master" element={<MasterCabinet />} />
         <Route path="/invite" element={<InviteRegister />} />
         <Route path="/invite-verify" element={<InviteVerify />} />
         <Route path="/principles" element={<Principles />} />
