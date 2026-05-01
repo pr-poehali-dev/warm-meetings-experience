@@ -32,6 +32,7 @@ import MasterDetail from "./pages/MasterDetail";
 import About from "./pages/About";
 import OrganizerCabinet from "./pages/OrganizerCabinet";
 import MasterCabinet from "./pages/MasterCabinet";
+import PartnerCabinet from "./pages/PartnerCabinet";
 import RoleGuard from "./components/RoleGuard";
 import InviteRegister from "./pages/InviteRegister";
 import InviteVerify from "./pages/InviteVerify";
@@ -70,6 +71,7 @@ const AppContent = () => {
         <Route path="/admin" element={<RoleGuard role="admin"><Admin /></RoleGuard>} />
         <Route path="/organizer-cabinet" element={<RoleGuard role="organizer"><OrganizerCabinet /></RoleGuard>} />
         <Route path="/master" element={<RoleGuard role="parmaster"><MasterCabinet /></RoleGuard>} />
+        <Route path="/partner" element={<RoleGuard role="partner"><PartnerCabinet /></RoleGuard>} />
         <Route path="/invite" element={<InviteRegister />} />
         <Route path="/invite-verify" element={<InviteVerify />} />
         <Route path="/principles" element={<Principles />} />
