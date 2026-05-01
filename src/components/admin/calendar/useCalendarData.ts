@@ -209,7 +209,7 @@ export const useCalendarData = (masterId: number) => {
       });
       fetchWeekData();
     } catch (error) {
-      toast({ title: "Ошибка", description: "Не удалось создать слот", variant: "destructive" });
+      toast({ title: "Ошибка", description: error instanceof Error ? error.message : "Не удалось создать слот", variant: "destructive" });
     } finally {
       setSaving(false);
     }
