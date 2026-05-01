@@ -68,11 +68,17 @@ export const getMonday = (date: Date): Date => {
   return d;
 };
 
+const parseLocalTime = (dateStr: string): { hours: number; minutes: number } => {
+  const timePart = dateStr.includes("T") ? dateStr.split("T")[1] : dateStr;
+  const [h, m] = timePart.split(":").map(Number);
+  return { hours: h, minutes: m };
+};
+
 export const getSlotPosition = (slot: MasterSlot) => {
-  const start = new Date(slot.datetime_start);
-  const end = new Date(slot.datetime_end);
-  const startHour = start.getHours() + start.getMinutes() / 60;
-  const endHour = end.getHours() + end.getMinutes() / 60;
+  const start = parseLocalTime(slot.datetime_start);
+  const end = parseLocalTime(slot.datetime_end);
+  const startHour = start.hours + start.minutes / 60;
+  const endHour = end.hours + end.minutes / 60;
   const top = (startHour - HOURS_START) * PX_PER_HOUR;
   const height = (endHour - startHour) * PX_PER_HOUR;
   return { top: `${top}px`, height: `${Math.max(height, 30)}px` };
@@ -116,8 +122,8 @@ export const getBookingStatusColor = (status: string): string => {
 };
 
 export const formatTime = (dateStr: string): string => {
-  const d = new Date(dateStr);
-  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+  const { hours, minutes } = parseLocalTime(dateStr);
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 };
 
 export const formatPrice = (price: number): string => {
