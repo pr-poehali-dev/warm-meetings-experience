@@ -69,7 +69,9 @@ export const getMonday = (date: Date): Date => {
 };
 
 const parseLocalTime = (dateStr: string): { hours: number; minutes: number } => {
-  const d = new Date(dateStr);
+  // Убираем timezone offset чтобы не было сдвига UTC→локальное
+  const clean = dateStr.replace("T", " ").replace(/\+.*$/, "").replace(/Z$/, "").trim();
+  const d = new Date(clean);
   return { hours: d.getHours(), minutes: d.getMinutes() };
 };
 

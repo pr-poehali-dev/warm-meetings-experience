@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
-import { format, addDays, startOfToday, parseISO } from "date-fns";
+import { format, addDays, startOfToday } from "date-fns";
 import { ru } from "date-fns/locale";
 import Icon from "@/components/ui/icon";
 import Header from "@/components/Header";
@@ -36,8 +36,14 @@ function fmt(n: number) {
   return n.toLocaleString("ru-RU");
 }
 
+function parseLocalISO(iso: string): Date {
+  // Берём дату и время без timezone, чтобы не было сдвига UTC→локальное
+  const clean = iso.replace("T", " ").replace(/\+.*$/, "").replace(/Z$/, "").trim();
+  return new Date(clean);
+}
+
 function fmtTime(iso: string) {
-  return format(parseISO(iso), "HH:mm");
+  return format(parseLocalISO(iso), "HH:mm");
 }
 
 function fmtDuration(min: number) {
@@ -103,7 +109,7 @@ function BookingModal({ slot, service, masterName, onClose, onSuccess }: Booking
           <div className="flex items-center gap-3 mt-2">
             <div className="flex items-center gap-1.5 text-primary font-medium">
               <Icon name="Calendar" size={14} />
-              {format(parseISO(slot.datetime_start), "d MMMM yyyy", { locale: ru })}
+              {format(parseLocalISO(slot.datetime_start), "d MMMM yyyy", { locale: ru })}
             </div>
             <div className="flex items-center gap-1.5 text-primary font-medium">
               <Icon name="Clock" size={14} />
