@@ -6,8 +6,7 @@ import ProfileDropdown from "@/components/ProfileDropdown";
 
 const MOBILE_CABINETS = [
   { label: "Личный кабинет", to: "/account", icon: "User" },
-  { label: "Рабочий (мастер)", to: "/workspace?tab=master", icon: "Flame", roleSlug: "parmaster" },
-  { label: "Рабочий (организатор)", to: "/workspace?tab=organizer", icon: "CalendarDays", roleSlug: "organizer" },
+  { label: "Рабочий кабинет", to: "/workspace", icon: "Briefcase", roleSlugAny: ["parmaster", "organizer"] },
   { label: "Партнёрский кабинет", to: "/partner", icon: "Building2", roleSlug: "partner" },
   { label: "Администратор", to: "/admin", icon: "ShieldCheck", roleSlug: "admin" },
 ];
@@ -180,7 +179,11 @@ export default function Header({ transparent = false }: HeaderProps) {
                 <div className="px-4 py-2">
                   <div className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Мои кабинеты</div>
                   <div className="space-y-0.5">
-                    {MOBILE_CABINETS.filter((c) => !c.roleSlug || hasRole(c.roleSlug)).map((c) => (
+                    {MOBILE_CABINETS.filter((c) => {
+                      if (c.roleSlugAny) return c.roleSlugAny.some((r) => hasRole(r));
+                      if (c.roleSlug) return hasRole(c.roleSlug);
+                      return true;
+                    }).map((c) => (
                       <Link
                         key={c.to}
                         to={c.to}

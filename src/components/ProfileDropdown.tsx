@@ -8,48 +8,55 @@ interface Cabinet {
   description: string;
   to: string;
   icon: string;
-  roleSlug?: string;
   color: string;
   bgColor: string;
 }
 
-const CABINETS: Cabinet[] = [
-  {
-    label: "Личный кабинет",
-    description: "События, избранное, профиль",
-    to: "/account",
-    icon: "User",
-    color: "text-blue-600",
-    bgColor: "bg-blue-50 group-hover:bg-blue-100",
-  },
-  {
-    label: "Рабочий кабинет",
-    description: "Мастер-сеансы и мероприятия",
-    to: "/workspace?tab=master",
-    icon: "Flame",
-    roleSlug: "parmaster",
-    color: "text-orange-600",
-    bgColor: "bg-orange-50 group-hover:bg-orange-100",
-  },
-  {
-    label: "Рабочий кабинет",
-    description: "Создание и управление событиями",
-    to: "/workspace?tab=organizer",
-    icon: "CalendarDays",
-    roleSlug: "organizer",
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-50 group-hover:bg-emerald-100",
-  },
-  {
-    label: "Партнёрский кабинет",
-    description: "Управление баней",
-    to: "/partner",
-    icon: "Building2",
-    roleSlug: "partner",
-    color: "text-violet-600",
-    bgColor: "bg-violet-50 group-hover:bg-violet-100",
-  },
-];
+function getWorkspaceDescription(isMaster: boolean, isOrganizer: boolean): string {
+  if (isMaster && isOrganizer) return "Мастер-сеансы, события, расписание";
+  if (isMaster) return "Мастер-сеансы и расписание";
+  if (isOrganizer) return "Создание и управление событиями";
+  return "Сеансы и события";
+}
+
+function buildCabinets(hasRole: (slug: string) => boolean): Cabinet[] {
+  const list: Cabinet[] = [
+    {
+      label: "Личный кабинет",
+      description: "События, избранное, профиль",
+      to: "/account",
+      icon: "User",
+      color: "text-blue-600",
+      bgColor: "bg-blue-50 group-hover:bg-blue-100",
+    },
+  ];
+
+  const isMaster = hasRole("parmaster");
+  const isOrganizer = hasRole("organizer");
+  if (isMaster || isOrganizer) {
+    list.push({
+      label: "Рабочий кабинет",
+      description: getWorkspaceDescription(isMaster, isOrganizer),
+      to: "/workspace",
+      icon: "Briefcase",
+      color: "text-orange-600",
+      bgColor: "bg-orange-50 group-hover:bg-orange-100",
+    });
+  }
+
+  if (hasRole("partner")) {
+    list.push({
+      label: "Партнёрский кабинет",
+      description: "Управление баней",
+      to: "/partner",
+      icon: "Building2",
+      color: "text-violet-600",
+      bgColor: "bg-violet-50 group-hover:bg-violet-100",
+    });
+  }
+
+  return list;
+}
 
 interface ProfileDropdownProps {
   variant?: "default" | "transparent" | "compact";
@@ -89,10 +96,7 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
     }
   };
 
-  const visibleCabinets = CABINETS.filter((c) => {
-    if (!c.roleSlug) return true;
-    return hasRole(c.roleSlug);
-  });
+  const visibleCabinets = buildCabinets(hasRole);
 
   const isAdmin = hasRole("admin");
 
