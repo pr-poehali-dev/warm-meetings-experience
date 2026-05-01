@@ -116,6 +116,7 @@ def handle_bookings(event, method, params, schema, headers):
         auto_confirm = settings['auto_confirm'] if settings else False
         status = 'confirmed' if auto_confirm else 'pending'
 
+        confirmed_at_val = 'CURRENT_TIMESTAMP' if auto_confirm else 'NULL'
         cur.execute(f"""
             INSERT INTO {schema}.master_bookings
             (slot_id, master_id, client_name, client_phone, client_email, service_id,
@@ -123,7 +124,7 @@ def handle_bookings(event, method, params, schema, headers):
              confirmed_at)
             VALUES ({slot_val}, {int(master_id)}, '{client_name}', '{client_phone}', '{client_email}',
              {svc_val}, '{dt_start}', '{dt_end}', {price}, '{status}', '{source}', '{comment}',
-             {'CURRENT_TIMESTAMP' if auto_confirm else 'NULL'})
+             {confirmed_at_val})
             RETURNING *
         """)
         booking = cur.fetchone()
@@ -286,6 +287,9 @@ def handle_public_book(event, method, params, schema, headers):
     status = 'confirmed' if auto_confirm else 'pending'
 
     svc_val = f"{int(slot['service_id'])}" if slot['service_id'] else "NULL"
+    confirmed_at_val = 'CURRENT_TIMESTAMP' if auto_confirm else 'NULL'
+    dt_start = str(slot['datetime_start'])
+    dt_end = str(slot['datetime_end'])
 
     cur.execute(f"""
         INSERT INTO {schema}.master_bookings
@@ -293,8 +297,8 @@ def handle_public_book(event, method, params, schema, headers):
          datetime_start, datetime_end, price, status, source, comment,
          confirmed_at)
         VALUES ({int(slot_id)}, {int(master_id)}, '{client_name}', '{client_phone}', '{client_email}',
-         {svc_val}, '{slot['datetime_start']}', '{slot['datetime_end']}', {price}, '{status}', 'public', '{comment}',
-         {'CURRENT_TIMESTAMP' if auto_confirm else 'NULL'})
+         {svc_val}, '{dt_start}', '{dt_end}', {price}, '{status}', 'public', '{comment}',
+         {confirmed_at_val})
         RETURNING *
     """)
     booking = cur.fetchone()
