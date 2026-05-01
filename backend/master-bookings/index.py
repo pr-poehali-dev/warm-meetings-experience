@@ -226,7 +226,7 @@ def handle_public_slots(event, method, params, schema, headers):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     query = f"""
-        SELECT s.id, s.datetime_start, s.datetime_end, s.max_clients, s.booked_count,
+        SELECT s.id, s.datetime_start, s.datetime_end, s.max_clients, s.booked_count, s.status,
                ms.name as service_name, ms.duration_minutes, ms.price as service_price, ms.description as service_description
         FROM {schema}.master_slots s
         LEFT JOIN {schema}.master_services ms ON s.service_id = ms.id
