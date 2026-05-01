@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface RoleGuardProps {
-  role: string;
+  role: string | string[];
   children: React.ReactNode;
   redirectTo?: string;
 }
@@ -14,7 +14,10 @@ export default function RoleGuard({ role, children, redirectTo = "/" }: RoleGuar
 
   if (!user) return <Navigate to="/login" replace />;
 
-  if (role !== "auth" && !hasRole(role)) {
+  const roles = Array.isArray(role) ? role : [role];
+  const hasAccess = roles.includes("auth") || roles.some((r) => hasRole(r));
+
+  if (!hasAccess) {
     return <Navigate to={redirectTo} replace />;
   }
 

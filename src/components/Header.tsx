@@ -6,8 +6,8 @@ import ProfileDropdown from "@/components/ProfileDropdown";
 
 const MOBILE_CABINETS = [
   { label: "Личный кабинет", to: "/account", icon: "User" },
-  { label: "Рабочий (мастер)", to: "/master", icon: "Flame", roleSlug: "parmaster" },
-  { label: "Рабочий (организатор)", to: "/organizer-cabinet", icon: "CalendarDays", roleSlug: "organizer" },
+  { label: "Рабочий (мастер)", to: "/workspace?tab=master", icon: "Flame", roleSlug: "parmaster" },
+  { label: "Рабочий (организатор)", to: "/workspace?tab=organizer", icon: "CalendarDays", roleSlug: "organizer" },
   { label: "Партнёрский кабинет", to: "/partner", icon: "Building2", roleSlug: "partner" },
   { label: "Администратор", to: "/admin", icon: "ShieldCheck", roleSlug: "admin" },
 ];

@@ -33,6 +33,7 @@ import About from "./pages/About";
 import OrganizerCabinet from "./pages/OrganizerCabinet";
 import MasterCabinet from "./pages/MasterCabinet";
 import PartnerCabinet from "./pages/PartnerCabinet";
+import Workspace from "./pages/Workspace";
 import RoleGuard from "./components/RoleGuard";
 import InviteRegister from "./pages/InviteRegister";
 import InviteVerify from "./pages/InviteVerify";
@@ -69,8 +70,9 @@ const AppContent = () => {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/admin" element={<RoleGuard role="admin"><Admin /></RoleGuard>} />
-        <Route path="/organizer-cabinet" element={<RoleGuard role="organizer"><OrganizerCabinet /></RoleGuard>} />
-        <Route path="/master" element={<RoleGuard role="parmaster"><MasterCabinet /></RoleGuard>} />
+        <Route path="/workspace" element={<RoleGuard role={["parmaster", "organizer"]}><Workspace /></RoleGuard>} />
+        <Route path="/organizer-cabinet" element={<Navigate to="/workspace?tab=organizer" replace />} />
+        <Route path="/master" element={<Navigate to="/workspace?tab=master" replace />} />
         <Route path="/partner" element={<RoleGuard role="partner"><PartnerCabinet /></RoleGuard>} />
         <Route path="/invite" element={<InviteRegister />} />
         <Route path="/invite-verify" element={<InviteVerify />} />

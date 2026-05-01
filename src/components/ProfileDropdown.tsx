@@ -25,7 +25,7 @@ const CABINETS: Cabinet[] = [
   {
     label: "Рабочий кабинет",
     description: "Мастер-сеансы и мероприятия",
-    to: "/master",
+    to: "/workspace?tab=master",
     icon: "Flame",
     roleSlug: "parmaster",
     color: "text-orange-600",
@@ -34,7 +34,7 @@ const CABINETS: Cabinet[] = [
   {
     label: "Рабочий кабинет",
     description: "Создание и управление событиями",
-    to: "/organizer-cabinet",
+    to: "/workspace?tab=organizer",
     icon: "CalendarDays",
     roleSlug: "organizer",
     color: "text-emerald-600",
