@@ -69,9 +69,8 @@ export const getMonday = (date: Date): Date => {
 };
 
 const parseLocalTime = (dateStr: string): { hours: number; minutes: number } => {
-  const timePart = dateStr.includes("T") ? dateStr.split("T")[1] : dateStr;
-  const [h, m] = timePart.split(":").map(Number);
-  return { hours: h, minutes: m };
+  const d = new Date(dateStr);
+  return { hours: d.getHours(), minutes: d.getMinutes() };
 };
 
 export const getSlotPosition = (slot: MasterSlot) => {

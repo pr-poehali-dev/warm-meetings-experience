@@ -153,8 +153,8 @@ export const useCalendarData = (masterId: number) => {
     if (!weekData?.slots) return [];
     const dateStr = formatDateISO(dayDate);
     return weekData.slots.filter((slot) => {
-      const slotDate = slot.datetime_start.split("T")[0];
-      return slotDate === dateStr;
+      const localDate = formatDateISO(new Date(slot.datetime_start));
+      return localDate === dateStr;
     });
   };
 
