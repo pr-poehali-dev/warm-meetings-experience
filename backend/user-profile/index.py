@@ -65,7 +65,7 @@ def get_user_from_token(cur, schema, token):
         return None
     t = token.replace("'", "''")
     cur.execute(f"""
-        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.vk_id, u.yandex_id, u.password_hash, u.totp_enabled, u.login_2fa_method, u.consent_photo, u.email_verified, u.created_at
+        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.vk_id, u.yandex_id, u.password_hash, u.totp_enabled, u.login_2fa_method, u.consent_photo, u.email_verified, u.created_at, u.avatar_url
         FROM {schema}.user_sessions s
         JOIN {schema}.users u ON u.id = s.user_id
         WHERE s.token = '{t}' AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true
@@ -101,10 +101,20 @@ def handler(event, context):
 
     if resource == 'profile':
         if method == 'GET':
+            cur.execute(f"""
+                SELECT r.id, r.name, r.slug, r.description, r.icon, ur.status,
+                       ur.verified_at, ur.created_at
+                FROM {schema}.user_roles ur
+                JOIN {schema}.roles r ON r.id = ur.role_id
+                WHERE ur.user_id = {user['id']} AND ur.status = 'active'
+                ORDER BY r.sort_order
+            """)
+            roles = [dict(r) for r in cur.fetchall()]
             conn.close()
             user_data = dict(user)
             user_data['has_password'] = bool(user_data.pop('password_hash', None))
             user_data['email_verified'] = bool(user_data.get('email_verified'))
+            user_data['roles'] = roles
             return respond(200, {'user': user_data})
         if method == 'PUT':
             body = json.loads(event.get('body', '{}'))

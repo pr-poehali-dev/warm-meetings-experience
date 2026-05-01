@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { User, userAuthApi } from "@/lib/user-api";
+import { User, userAuthApi, userProfileApi } from "@/lib/user-api";
 import { HttpError } from "@/lib/http";
 
 interface AuthContextType {
@@ -10,6 +10,8 @@ interface AuthContextType {
   register: (data: { email: string; name: string; phone: string; password: string; consent_pd: boolean; consent_photo?: string | null }) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
+  hasRole: (slug: string) => boolean;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -38,14 +40,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const data = await userAuthApi.check(token);
-      setUser(data.user);
+      // Сразу подгружаем полный профиль с ролями
+      try {
+        const profileData = await userProfileApi.getProfile();
+        setUser(profileData.user);
+        localStorage.setItem("user_data", JSON.stringify(profileData.user));
+      } catch {
+        setUser(data.user);
+      }
     } catch (err) {
       if (err instanceof HttpError && err.status === 401) {
-        // Токен точно невалиден — очищаем
         localStorage.removeItem("user_token");
         localStorage.removeItem("user_data");
       } else {
-        // Сетевая или серверная ошибка — восстанавливаем из кэша
         const cached = localStorage.getItem("user_data");
         if (cached) {
           try { setUser(JSON.parse(cached)); } catch { /* ignore */ }
@@ -106,8 +113,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("user_data", JSON.stringify(updatedUser));
   };
 
+  const hasRole = (slug: string): boolean => {
+    return user?.roles?.some((r) => r.slug === slug) ?? false;
+  };
+
+  const refreshProfile = async () => {
+    try {
+      const data = await userProfileApi.getProfile();
+      setUser(data.user);
+      localStorage.setItem("user_data", JSON.stringify(data.user));
+    } catch { /* ignore */ }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithToken, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithToken, register, logout, updateUser, hasRole, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

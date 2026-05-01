@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
-import { rolesApi, UserRole } from "@/lib/roles-api";
 
 interface MenuItem {
   label: string;
@@ -26,31 +25,13 @@ interface ProfileDropdownProps {
 }
 
 export default function ProfileDropdown({ variant = "default", onLogout }: ProfileDropdownProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, hasRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (user) {
-      rolesApi.getMyRoles().then(({ roles }) => {
-        const active = roles.filter((r) => r.status === "active");
-        setUserRoles(active);
-        const hasAdminRole = active.some((r) => r.slug === "admin");
-        setIsAdmin(hasAdminRole);
-      }).catch(() => {
-        setIsAdmin(false);
-      });
-    } else {
-      setUserRoles([]);
-      setIsAdmin(false);
-    }
-  }, [user]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -77,8 +58,10 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
 
   const visibleCabinets = CABINET_ITEMS.filter((item) => {
     if (!item.roleSlug) return true;
-    return userRoles.some((r) => r.slug === item.roleSlug);
+    return hasRole(item.roleSlug);
   });
+
+  const isAdmin = hasRole("admin");
 
   if (!user) return null;
 
@@ -104,8 +87,12 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
         }}
         className={buttonClass}
       >
-        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-          <Icon name="User" size={13} className={isTransparent ? "text-white" : "text-primary"} />
+        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden">
+          {user.avatar_url ? (
+            <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <Icon name="User" size={13} className={isTransparent ? "text-white" : "text-primary"} />
+          )}
         </div>
         <span className="hidden sm:inline max-w-[120px] truncate">{user.name}</span>
         <Icon

@@ -4,6 +4,17 @@ const USER_AUTH_API = "https://functions.poehali.dev/d5d9f568-ba92-4605-9b95-646
 const USER_PROFILE_API = "https://functions.poehali.dev/5322ffd0-7079-40ce-9d4e-8d7fee29624c";
 const VK_NOTIFY_API = "https://functions.poehali.dev/d80d1556-27a6-4477-b864-c621e0b9eaf7";
 
+export interface UserRole {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  status: string;
+  verified_at?: string;
+  created_at: string;
+}
+
 export interface User {
   id: number;
   email: string;
@@ -16,6 +27,8 @@ export interface User {
   totp_enabled?: boolean;
   email_verified?: boolean;
   created_at: string;
+  avatar_url?: string | null;
+  roles?: UserRole[];
 }
 
 export interface UserSignup {
