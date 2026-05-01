@@ -422,6 +422,9 @@ export default function Workspace() {
   const [events, setEvents] = useState<OrgEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<OrgEvent | null>(null);
   const [formData, setFormData] = useState<OrgEvent & { submit_action?: string }>({} as OrgEvent);
+  const formDataRef = { current: formData };
+  formDataRef.current = formData;
+  const [orgFormLoading, setOrgFormLoading] = useState(false);
 
   const loadOrgDashboard = useCallback(async () => {
     try { const data = await organizerApi.getDashboard(); setOrgDashboard(data); } catch { /* ignore */ }
@@ -556,73 +559,90 @@ export default function Workspace() {
     if (roleTab === "organizer" && isOrganizer) {
       switch (orgView) {
         case "dashboard":
-          return (
+          return orgDashboard ? (
             <OrgDashboard
-              dashboard={orgDashboard}
+              data={orgDashboard}
               events={events}
-              loading={false}
+              eventsLoading={false}
               onCreateEvent={() => setOrgView("create")}
-              onEditEvent={(ev) => { setSelectedEvent(ev); setFormData(ev); setOrgView("edit"); }}
-              onViewParticipants={(ev) => { setSelectedEvent(ev); setOrgView("participants"); }}
-              onRefresh={loadOrgDashboard}
+              onManageEvent={(ev) => { setSelectedEvent(ev); setOrgView("participants"); }}
+              onEditEvent={async (ev) => {
+                setSelectedEvent(ev);
+                let fullEvent = ev;
+                try { fullEvent = await organizerApi.getEvent(ev.id); } catch { /* fallback */ }
+                setFormData({ ...fullEvent });
+                setOrgView("edit");
+              }}
+              onDuplicateEvent={(ev) => {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                setSelectedEvent(null);
+                setFormData({ ...ev, id: 0, event_date: tomorrow.toISOString().split("T")[0], is_visible: false, spots_left: ev.total_spots });
+                setOrgView("create");
+              }}
+              onRepeat={async (ev, dates) => {
+                for (const date of dates) {
+                  try { await organizerApi.createEvent({ ...ev, id: 0, event_date: date, is_visible: false, submit_action: "draft" } as Parameters<typeof organizerApi.createEvent>[0]); } catch { /* skip */ }
+                }
+                await Promise.all([loadOrgDashboard(), loadOrgEvents()]);
+                toast({ title: `Создано ${dates.length} событий` });
+              }}
+              onToggleVisibility={async (ev) => {
+                try {
+                  await organizerApi.updateEvent({ id: ev.id, is_visible: !ev.is_visible } as OrgEvent & { id: number });
+                  await Promise.all([loadOrgEvents(), loadOrgDashboard()]);
+                } catch { toast({ title: "Ошибка", variant: "destructive" }); }
+              }}
+              onDeleteEvent={async (ev) => {
+                if (!confirm(`Скрыть событие «${ev.title}»?`)) return;
+                try { await organizerApi.deleteEvent(ev.id); await Promise.all([loadOrgEvents(), loadOrgDashboard()]); } catch { toast({ title: "Ошибка", variant: "destructive" }); }
+              }}
             />
-          );
+          ) : <div className="flex justify-center py-16"><Icon name="Loader2" size={28} className="animate-spin text-muted-foreground" /></div>;
         case "create":
-          return (
-            <LiveEventEditor
-              mode="create"
-              formData={formData}
-              setFormData={setFormData}
-              loading={false}
-              onSave={async (action) => {
-                try {
-                  const fd = { ...formData, submit_action: action };
-                  await organizerApi.createEvent(fd);
-                  toast({ title: action === "publish" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
-                  setOrgView("dashboard");
-                  loadOrgEvents();
-                  loadOrgDashboard();
-                } catch (e: unknown) {
-                  toast({ title: "Ошибка", description: e instanceof Error ? e.message : "Не удалось сохранить", variant: "destructive" });
-                }
-              }}
-              onCancel={() => setOrgView("dashboard")}
-            />
-          );
         case "edit":
-          return selectedEvent ? (
-            <LiveEventEditor
-              mode="edit"
-              event={selectedEvent}
-              formData={formData}
-              setFormData={setFormData}
-              loading={false}
-              onSave={async (action) => {
-                try {
-                  const fd = { ...formData, submit_action: action };
-                  await organizerApi.updateEvent(selectedEvent.id, fd);
-                  toast({ title: "Событие обновлено" });
-                  setOrgView("dashboard");
-                  loadOrgEvents();
-                  loadOrgDashboard();
-                } catch (e: unknown) {
-                  toast({ title: "Ошибка", description: e instanceof Error ? e.message : "Не удалось сохранить", variant: "destructive" });
-                }
-              }}
-              onCancel={() => setOrgView("dashboard")}
-            />
-          ) : null;
+          return (
+            <div className="max-w-2xl mx-auto">
+              <LiveEventEditor
+                formData={formData}
+                loading={orgFormLoading}
+                onFormChange={(data) => setFormData(data as OrgEvent)}
+                onSubmit={async (e, _saveAndNew, override) => {
+                  e.preventDefault();
+                  const merged = { ...formDataRef.current, ...(override || {}) } as OrgEvent & { submit_action?: string };
+                  setOrgFormLoading(true);
+                  try {
+                    const submitAction = merged.submit_action || "draft";
+                    if (selectedEvent?.id) {
+                      await organizerApi.updateEvent({ ...merged, id: selectedEvent.id, submit_action: submitAction } as OrgEvent & { id: number; submit_action: string });
+                      toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
+                    } else {
+                      await organizerApi.createEvent({ ...merged, submit_action: submitAction } as Parameters<typeof organizerApi.createEvent>[0]);
+                      toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
+                    }
+                    await Promise.all([loadOrgDashboard(), loadOrgEvents()]);
+                    setOrgView("dashboard");
+                  } catch (e: unknown) {
+                    toast({ title: "Ошибка", description: e instanceof Error ? e.message : "Не удалось сохранить", variant: "destructive" });
+                  } finally {
+                    setOrgFormLoading(false);
+                  }
+                }}
+                onCancel={() => setOrgView("dashboard")}
+              />
+            </div>
+          );
         case "participants":
           return selectedEvent ? (
             <UnifiedPeoplePanel
               event={selectedEvent}
               onBack={() => setOrgView("dashboard")}
-              onRefresh={loadOrgEvents}
+              onNotify={() => setOrgView("notify")}
             />
           ) : null;
-        case "calculator": return <EventCalculator />;
-        case "notify": return <NotifyModule role="organizer" eventId={selectedEvent?.id ?? null} />;
-        case "telegram": return <TelegramSettings />;
+        case "calculator": return <EventCalculator onCreateEvent={(data) => { setFormData(data as OrgEvent); setSelectedEvent(null); setOrgView("create"); }} />;
+        case "notify": return <div className="max-w-2xl mx-auto"><NotifyModule role="organizer" eventId={selectedEvent?.id ?? null} /></div>;
+        case "telegram": return <TelegramSettings tgLinked={orgDashboard?.tg_linked ?? false} tgChannelsCount={orgDashboard?.tg_channels_count ?? 0} onRefresh={loadOrgDashboard} />;
       }
     }
 
