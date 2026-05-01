@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
 import { partnerApi, PartnerBath } from "@/lib/partner-api";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import Icon from "@/components/ui/icon";
 import BathCard from "@/components/partner/BathCard";
 import BathForm from "@/components/partner/BathForm";
 import PartnerStats from "@/components/partner/PartnerStats";
+import CabinetHeader from "@/components/CabinetHeader";
 
 type View = "dashboard" | "baths" | "add" | "edit";
 
@@ -54,31 +54,13 @@ export default function PartnerCabinet() {
   return (
     <div className="min-h-screen bg-background">
       {/* Шапка */}
-      <header className="border-b border-border bg-card sticky top-0 z-50">
-        <div className="container mx-auto px-4 sm:px-6 h-14 flex items-center justify-between max-w-5xl">
-          <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-2 text-foreground hover:text-primary transition-colors">
-              <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center">
-                <Icon name="Building2" size={15} className="text-violet-600" />
-              </div>
-              <span className="text-sm font-semibold hidden sm:inline">Партнёрский кабинет</span>
-              <span className="text-sm font-semibold sm:hidden">Партнёр</span>
-            </Link>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground hidden sm:inline truncate max-w-[150px]">{user?.name}</span>
-            <Link to="/account">
-              <Button size="sm" variant="ghost" className="text-xs gap-1.5">
-                <Icon name="User" size={14} />
-                <span className="hidden sm:inline">Профиль</span>
-              </Button>
-            </Link>
-            <Button size="sm" variant="ghost" onClick={logout} className="text-xs gap-1.5 text-muted-foreground">
-              <Icon name="LogOut" size={14} />
-            </Button>
-          </div>
-        </div>
-      </header>
+      <CabinetHeader
+        icon="Building2"
+        title="Партнёрский кабинет"
+        iconBgClass="bg-violet-100"
+        iconColorClass="text-violet-600"
+        onLogout={logout}
+      />
 
       <div className="container mx-auto px-4 sm:px-6 py-6 max-w-5xl">
         <div className="flex gap-6">

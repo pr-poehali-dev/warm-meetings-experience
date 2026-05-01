@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
+import CabinetHeader from "@/components/CabinetHeader";
 
 // Master imports
 import { masterBookingsApi, masterCalendarApi, MasterReview } from "@/lib/master-calendar-api";
@@ -701,41 +702,25 @@ export default function Workspace() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Шапка */}
-      <header className="border-b bg-card/95 backdrop-blur sticky top-0 z-40">
-        <div className="flex items-center gap-3 px-4 h-14">
-          <button onClick={() => setSidebarOpen((v) => !v)} className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-muted transition">
-            <Icon name={sidebarOpen ? "X" : "Menu"} size={20} />
-          </button>
-          <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition">
-            <div className="w-8 h-8 bg-primary/10 rounded-xl flex items-center justify-center">
-              <Icon name="Briefcase" size={15} className="text-primary" />
-            </div>
-            <div className="hidden sm:block leading-tight">
-              <div className="font-semibold text-sm">Рабочий кабинет</div>
-              <div className="text-[11px] text-muted-foreground">{currentLabel()}</div>
-            </div>
-          </Link>
-
-          {/* Быстрая кнопка создания события (если организатор) */}
-          <div className="ml-auto flex items-center gap-2">
-            {isOrganizer && roleTab !== "organizer" && (
-              <Button
-                size="sm"
-                onClick={() => { setSelectedEvent(null); setFormData({} as OrgEvent); switchOrgView("create"); }}
-                className="gap-1.5 h-9 hidden sm:inline-flex"
-              >
-                <Icon name="Plus" size={14} />Создать событие
-              </Button>
-            )}
-            <Link to="/account" className="flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs hover:bg-muted transition-colors">
-              <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center overflow-hidden">
-                {user?.avatar_url ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" /> : <Icon name="User" size={13} className="text-primary" />}
-              </div>
-              <span className="hidden md:inline truncate max-w-[120px] text-foreground font-medium">{user?.name}</span>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <CabinetHeader
+        icon="Briefcase"
+        title="Рабочий кабинет"
+        subtitle={currentLabel()}
+        onMenuToggle={() => setSidebarOpen((v) => !v)}
+        menuOpen={sidebarOpen}
+        actions={
+          isOrganizer ? (
+            <Button
+              size="sm"
+              onClick={() => { setSelectedEvent(null); setFormData({} as OrgEvent); switchOrgView("create"); }}
+              className="gap-1.5 h-9 hidden sm:inline-flex"
+            >
+              <Icon name="Plus" size={14} />Создать событие
+            </Button>
+          ) : undefined
+        }
+        onLogout={logout}
+      />
 
       {/* Мобильное меню */}
       {sidebarOpen && (

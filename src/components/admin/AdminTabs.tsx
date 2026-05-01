@@ -297,16 +297,16 @@ export default function AdminTabs({
   return (
     <>
       {/* Десктоп: боковая панель */}
-      <aside className="hidden lg:flex flex-col w-60 flex-shrink-0 bg-white border-r border-gray-200 h-screen sticky top-0 overflow-y-auto">
-        <div className="flex items-center justify-between px-4 h-14 border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-              <Icon name="ShieldCheck" size={14} className="text-white" />
+      <aside className="hidden lg:flex flex-col w-60 flex-shrink-0 bg-card border-r border-border h-screen sticky top-0 overflow-y-auto">
+        <div className="flex items-center gap-2.5 px-4 h-14 border-b border-border flex-shrink-0">
+          <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition">
+            <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
+              <Icon name="ShieldCheck" size={15} className="text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-sm">
-              Админ-панель
-            </span>
-          </div>
+            <div className="leading-tight">
+              <div className="font-semibold text-sm">Админ-панель</div>
+            </div>
+          </Link>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -326,33 +326,35 @@ export default function AdminTabs({
       </aside>
 
       {/* Мобильный: верхняя шапка */}
-      <header className="lg:hidden bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="flex items-center justify-between px-4 h-14">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="p-2 rounded-lg hover:bg-gray-100"
-            >
-              <Icon name={mobileOpen ? "X" : "Menu"} size={20} />
-            </button>
-            <span className="font-bold text-gray-900 text-sm">
-              {NAV.flatMap((g) => g.items).find((i) => i.view === currentView)
-                ?.label ?? "Админ"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/events"
-              className="p-2 text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100"
-            >
-              <Icon name="ArrowLeft" size={18} />
+      <header className="lg:hidden bg-card/95 backdrop-blur border-b border-border sticky top-0 z-30">
+        <div className="flex items-center gap-3 px-4 h-14">
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="p-2 -ml-2 rounded-lg hover:bg-muted transition"
+          >
+            <Icon name={mobileOpen ? "X" : "Menu"} size={20} />
+          </button>
+          <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
+              <Icon name="ShieldCheck" size={15} className="text-white" />
+            </div>
+            <div className="leading-tight">
+              <div className="font-semibold text-sm">Админ-панель</div>
+              <div className="text-[11px] text-muted-foreground hidden sm:block">
+                {NAV.flatMap((g) => g.items).find((i) => i.view === currentView)?.label ?? "Управление"}
+              </div>
+            </div>
+          </Link>
+          <div className="ml-auto flex items-center gap-2">
+            <Link to="/events" className="p-2 rounded-lg hover:bg-muted transition text-muted-foreground hover:text-foreground">
+              <Icon name="ArrowUpRight" size={16} />
             </Link>
             <ProfileDropdown variant="compact" onLogout={onLogout} />
           </div>
         </div>
 
         {mobileOpen && (
-          <div className="border-t border-gray-100 bg-white shadow-xl max-h-[80vh] overflow-y-auto">
+          <div className="border-t border-border bg-card shadow-xl max-h-[80vh] overflow-y-auto">
             <SidebarContent />
           </div>
         )}
