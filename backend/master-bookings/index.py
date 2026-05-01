@@ -269,7 +269,7 @@ def handle_public_book(event, method, params, schema, headers):
         WHERE s.id = {int(slot_id)}
           AND s.status = 'available'
           AND s.booked_count < s.max_clients
-        FOR UPDATE
+        FOR UPDATE OF s
     """)
     slot = cur.fetchone()
     if not slot:
