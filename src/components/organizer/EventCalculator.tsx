@@ -14,8 +14,6 @@ interface Props {
   onCreateEvent?: (params: CalcParams) => void;
 }
 
-export { CalcParams };
-
 export default function EventCalculator({ onCreateEvent }: Props) {
   const [params, setParams] = useState<CalcParams>(defaultParams());
   const [templates, setTemplates] = useState<Template[]>(loadTemplates());
