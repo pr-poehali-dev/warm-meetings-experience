@@ -4,6 +4,14 @@ import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileDropdown from "@/components/ProfileDropdown";
 
+const MOBILE_CABINETS = [
+  { label: "Личный кабинет", to: "/account", icon: "User" },
+  { label: "Рабочий (мастер)", to: "/master", icon: "Flame", roleSlug: "parmaster" },
+  { label: "Рабочий (организатор)", to: "/organizer-cabinet", icon: "CalendarDays", roleSlug: "organizer" },
+  { label: "Партнёрский кабинет", to: "/partner", icon: "Building2", roleSlug: "partner" },
+  { label: "Администратор", to: "/admin", icon: "ShieldCheck", roleSlug: "admin" },
+];
+
 interface NavLink {
   label: string;
   to: string;
@@ -22,7 +30,7 @@ interface HeaderProps {
 }
 
 export default function Header({ transparent = false }: HeaderProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, hasRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -166,23 +174,48 @@ export default function Header({ transparent = false }: HeaderProps) {
               </Link>
             ))}
           </nav>
-          <div className="mt-auto pt-6 border-t border-white/20">
+          <div className="mt-auto pt-4 border-t border-white/20 space-y-1">
             {user ? (
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
-              >
-                <Icon name="LogOut" size={16} />
-                Выйти
-              </button>
+              <>
+                <div className="px-4 py-2">
+                  <div className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Мои кабинеты</div>
+                  <div className="space-y-0.5">
+                    {MOBILE_CABINETS.filter((c) => !c.roleSlug || hasRole(c.roleSlug)).map((c) => (
+                      <Link
+                        key={c.to}
+                        to={c.to}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
+                          location.pathname === c.to
+                            ? "bg-white/25 text-white"
+                            : "text-white/80 hover:bg-white/15 hover:text-white"
+                        }`}
+                      >
+                        <Icon name={c.icon} size={16} />
+                        {c.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+                <div className="border-t border-white/20 pt-2 px-4 pb-2">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white/60 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
+                  >
+                    <Icon name="LogOut" size={16} />
+                    Выйти
+                  </button>
+                </div>
+              </>
             ) : (
-              <Link
-                to="/login"
-                className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-white/20 hover:bg-white/30 text-white rounded-xl text-sm font-medium transition-colors"
-              >
-                <Icon name="LogIn" size={16} />
-                Войти
-              </Link>
+              <div className="px-4 pb-4">
+                <Link
+                  to="/login"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-white/20 hover:bg-white/30 text-white rounded-xl text-sm font-medium transition-colors"
+                >
+                  <Icon name="LogIn" size={16} />
+                  Войти
+                </Link>
+              </div>
             )}
           </div>
         </div>
