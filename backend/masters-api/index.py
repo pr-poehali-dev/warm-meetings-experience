@@ -96,7 +96,7 @@ def handler(event, context):
     hdrs = event.get('headers') or {}
     user_token = (hdrs.get('X-Authorization') or hdrs.get('X-Session-Token') or '').replace('Bearer ', '')
 
-    # GET /masters?me=1 — профиль текущего мастера
+    # GET /masters?me=1 — профиль текущего мастера (автосоздание если нет)
     if method == 'GET' and params.get('me') == '1':
         if not user_token:
             return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Не авторизован'})}
@@ -109,16 +109,35 @@ def handler(event, context):
         if not is_parmaster(cur, user['id'], schema):
             conn.close()
             return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Доступ только для пармастеров'})}
-        cur.execute(f"SELECT * FROM {schema}.masters WHERE id = %s", [user['id']])
+        cur.execute(f"SELECT * FROM {schema}.masters WHERE user_id = %s", [user['id']])
         row = cur.fetchone()
-        conn.close()
         if not row:
-            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Профиль не найден'})}
+            cur2 = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur2.execute(f"SELECT name, avatar_url, phone FROM {schema}.users WHERE id = %s", [user['id']])
+            urow = cur2.fetchone() or {}
+            uname = (urow.get('name') or 'Мастер')
+            uphone = urow.get('phone') or ''
+            uavatar = urow.get('avatar_url') or ''
+            base_slug = slugify(uname) or 'master'
+            cur2.execute(f"SELECT slug FROM {schema}.masters WHERE slug LIKE %s", [f'{base_slug}%'])
+            existing = [r['slug'] for r in cur2.fetchall()]
+            slug = base_slug
+            i = 2
+            while slug in existing:
+                slug = f'{base_slug}-{i}'
+                i += 1
+            cur2.execute(
+                f"INSERT INTO {schema}.masters (user_id, name, slug, phone, avatar) VALUES (%s, %s, %s, %s, %s) RETURNING *",
+                [user['id'], uname, slug, uphone, uavatar]
+            )
+            row = cur2.fetchone()
+            conn.commit()
         master = dict(row)
         master['rating'] = float(master['rating']) if master.get('rating') else 0
         for k, v in master.items():
             if hasattr(v, 'isoformat'):
                 master[k] = v.isoformat()
+        conn.close()
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'master': master}, ensure_ascii=False)}
 
     # PUT /masters?me=1 — обновить свой профиль
@@ -151,7 +170,7 @@ def handler(event, context):
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Нет полей для обновления'})}
         fields.append('updated_at = NOW()')
         vals.append(user['id'])
-        cur.execute(f"UPDATE {schema}.masters SET {', '.join(fields)} WHERE id = %s RETURNING id, name, slug", vals)
+        cur.execute(f"UPDATE {schema}.masters SET {', '.join(fields)} WHERE user_id = %s RETURNING id, name, slug", vals)
         row = cur.fetchone()
         conn.commit()
         conn.close()
