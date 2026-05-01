@@ -14,10 +14,13 @@ import MyDataExport from "@/components/account/MyDataExport";
 import MyArticles from "@/components/account/MyArticles";
 import MyCalendar from "@/components/account/MyCalendar";
 import NotificationsSection from "@/components/account/NotificationsSection";
+import FavoritesSection from "@/components/account/FavoritesSection";
+import WalletSection from "@/components/account/WalletSection";
+import ReferralsSection from "@/components/account/ReferralsSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-type Tab = "main" | "articles" | "calendar" | "my-data";
+type Tab = "main" | "articles" | "calendar" | "my-data" | "favorites" | "wallet" | "referrals";
 
 export default function Account() {
   const [searchParams] = useSearchParams();
@@ -136,7 +139,7 @@ export default function Account() {
           {/* 3. Уведомления */}
           <NotificationsSection />
 
-          {/* 4. Быстрые действия — безопасность и данные */}
+          {/* 4. Быстрые действия */}
           <div className="grid grid-cols-2 gap-3">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4 flex flex-col gap-2 h-full">
@@ -167,14 +170,44 @@ export default function Account() {
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4 flex flex-col gap-2 h-full">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
-                    <Icon name="Download" size={15} className="text-muted-foreground" />
+                  <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+                    <Icon name="Wallet" size={15} className="text-violet-600" />
                   </div>
-                  <span className="text-sm font-medium">Мои данные</span>
+                  <span className="text-sm font-medium">Кошелёк</span>
                 </div>
-                <p className="text-xs text-muted-foreground">Скачать всё о себе</p>
-                <Link to="/account?tab=my-data" className="mt-auto">
-                  <Button size="sm" variant="outline" className="w-full">Скачать</Button>
+                <p className="text-xs text-muted-foreground">Баланс и бонусы</p>
+                <Link to="/account?tab=wallet" className="mt-auto">
+                  <Button size="sm" variant="outline" className="w-full">Открыть</Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 flex flex-col gap-2 h-full">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center">
+                    <Icon name="Heart" size={15} className="text-rose-500" />
+                  </div>
+                  <span className="text-sm font-medium">Избранное</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Бани и мастера</p>
+                <Link to="/account?tab=favorites" className="mt-auto">
+                  <Button size="sm" variant="outline" className="w-full">Смотреть</Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 flex flex-col gap-2 h-full">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Icon name="Users" size={15} className="text-blue-600" />
+                  </div>
+                  <span className="text-sm font-medium">Приглашения</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Реферальная ссылка</p>
+                <Link to="/account?tab=referrals" className="mt-auto">
+                  <Button size="sm" variant="outline" className="w-full">Пригласить</Button>
                 </Link>
               </CardContent>
             </Card>
@@ -215,6 +248,18 @@ export default function Account() {
               onToggled={(enabled) => authUser && updateUser({ ...authUser, totp_enabled: enabled })}
             />
           </div>
+
+          {/* Дополнительные ссылки */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2">
+            <Link to="/account?tab=my-data" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              <Icon name="Download" size={11} />
+              Скачать мои данные
+            </Link>
+            <Link to="/account?tab=articles" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              <Icon name="FileText" size={11} />
+              Мои статьи
+            </Link>
+          </div>
         </div>
       )}
 
@@ -233,6 +278,42 @@ export default function Account() {
       {tab === "calendar" && (
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-6">
           <MyCalendar />
+        </div>
+      )}
+
+      {tab === "favorites" && (
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl pt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Link to="/account" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Icon name="ArrowLeft" size={18} />
+            </Link>
+            <h2 className="text-lg font-semibold text-foreground">Избранное</h2>
+          </div>
+          <FavoritesSection />
+        </div>
+      )}
+
+      {tab === "wallet" && (
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl pt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Link to="/account" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Icon name="ArrowLeft" size={18} />
+            </Link>
+            <h2 className="text-lg font-semibold text-foreground">Кошелёк и бонусы</h2>
+          </div>
+          <WalletSection />
+        </div>
+      )}
+
+      {tab === "referrals" && (
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl pt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Link to="/account" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Icon name="ArrowLeft" size={18} />
+            </Link>
+            <h2 className="text-lg font-semibold text-foreground">Приглашения</h2>
+          </div>
+          <ReferralsSection />
         </div>
       )}
     </div>

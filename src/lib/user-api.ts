@@ -114,7 +114,49 @@ export const userProfileApi = {
 
   verifyEmail: (token: string): Promise<{ message: string }> =>
     authRequest(`${USER_PROFILE_API}/?resource=verify-email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }),
+
+  getFavorites: (): Promise<{ favorites: FavoriteItem[] }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=favorites`),
+
+  addFavorite: (item_type: string, item_id: number): Promise<{ ok: boolean }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=favorites`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item_type, item_id }) }),
+
+  removeFavorite: (item_type: string, item_id: number): Promise<{ ok: boolean }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=favorites`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item_type, item_id }) }),
+
+  getWallet: (): Promise<{ wallet_balance: number; bonus_balance: number; transactions: WalletTransaction[] }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=wallet`),
+
+  getReferrals: (): Promise<{ referral_code: string; invited: ReferralInvite[]; total_invited: number; total_bonuses_earned: number }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=referrals`),
 };
+
+export interface FavoriteItem {
+  id: number;
+  item_type: "bath" | "master" | "event";
+  item_id: number;
+  name: string;
+  slug: string;
+  image?: string;
+  subtitle?: string;
+  created_at: string;
+}
+
+export interface WalletTransaction {
+  id: number;
+  type: "deposit" | "withdrawal" | "bonus" | "cashback" | "fee" | "refund";
+  amount: number;
+  description?: string;
+  ref_type?: string;
+  ref_id?: number;
+  created_at: string;
+}
+
+export interface ReferralInvite {
+  name: string;
+  created_at: string;
+  bonus_paid: boolean;
+}
 
 export interface LoginChallenge {
   requires_2fa: true;

@@ -180,6 +180,24 @@ def handler(event, context):
         if method == 'POST':
             return handle_send_verify(cur, conn, schema, user, ip)
 
+    if resource == 'favorites':
+        if method == 'GET':
+            return handle_get_favorites(cur, conn, schema, user)
+        if method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            return handle_add_favorite(cur, conn, schema, user, body)
+        if method == 'DELETE':
+            body = json.loads(event.get('body', '{}'))
+            return handle_remove_favorite(cur, conn, schema, user, body)
+
+    if resource == 'wallet':
+        if method == 'GET':
+            return handle_get_wallet(cur, conn, schema, user)
+
+    if resource == 'referrals':
+        if method == 'GET':
+            return handle_get_referrals(cur, conn, schema, user)
+
     conn.close()
     return respond(400, {'error': 'Unknown resource'})
 
@@ -771,3 +789,150 @@ def send_verify_email(to_email, name, token):
         )
     except Exception:
         pass
+
+
+# =============================================================================
+# ИЗБРАННОЕ
+# =============================================================================
+
+def handle_get_favorites(cur, conn, schema, user):
+    """Получить избранные бани и мастера пользователя"""
+    uid = user['id']
+
+    cur.execute(f"""
+        SELECT uf.id, uf.item_type, uf.item_id, uf.created_at,
+               CASE
+                 WHEN uf.item_type = 'bath' THEN b.name
+                 WHEN uf.item_type = 'master' THEN m.name
+                 ELSE NULL
+               END as name,
+               CASE
+                 WHEN uf.item_type = 'bath' THEN b.slug
+                 WHEN uf.item_type = 'master' THEN m.slug
+                 ELSE NULL
+               END as slug,
+               CASE
+                 WHEN uf.item_type = 'bath' THEN (b.photos::jsonb -> 0) #>> '{{}}'
+                 WHEN uf.item_type = 'master' THEN m.avatar
+                 ELSE NULL
+               END as image,
+               CASE
+                 WHEN uf.item_type = 'bath' THEN b.address
+                 WHEN uf.item_type = 'master' THEN m.tagline
+                 ELSE NULL
+               END as subtitle
+        FROM {schema}.user_favorites uf
+        LEFT JOIN {schema}.baths b ON b.id = uf.item_id AND uf.item_type = 'bath'
+        LEFT JOIN {schema}.masters m ON m.id = uf.item_id AND uf.item_type = 'master'
+        WHERE uf.user_id = {uid}
+        ORDER BY uf.created_at DESC
+    """)
+    favorites = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return respond(200, {'favorites': favorites})
+
+
+def handle_add_favorite(cur, conn, schema, user, body):
+    """Добавить в избранное"""
+    uid = user['id']
+    item_type = (body.get('item_type') or '').strip()
+    item_id = body.get('item_id')
+    if item_type not in ('bath', 'master', 'event') or not item_id:
+        conn.close()
+        return respond(400, {'error': 'Укажите item_type и item_id'})
+    cur.execute(f"""
+        INSERT INTO {schema}.user_favorites (user_id, item_type, item_id)
+        VALUES ({uid}, '{item_type}', {int(item_id)})
+        ON CONFLICT (user_id, item_type, item_id) DO NOTHING
+    """)
+    conn.commit()
+    conn.close()
+    return respond(200, {'ok': True})
+
+
+def handle_remove_favorite(cur, conn, schema, user, body):
+    """Удалить из избранного"""
+    uid = user['id']
+    item_type = (body.get('item_type') or '').strip()
+    item_id = body.get('item_id')
+    if not item_type or not item_id:
+        conn.close()
+        return respond(400, {'error': 'Укажите item_type и item_id'})
+    cur.execute(f"""
+        UPDATE {schema}.user_favorites
+        SET user_id = user_id
+        WHERE user_id = {uid} AND item_type = '{item_type}' AND item_id = {int(item_id)}
+        RETURNING id
+    """)
+    # Мягкое удаление через флаг — или прямое через DELETE (нет ограничения для user's own data)
+    cur.execute(f"""
+        DELETE FROM {schema}.user_favorites
+        WHERE user_id = {uid} AND item_type = '{item_type}' AND item_id = {int(item_id)}
+    """)
+    conn.commit()
+    conn.close()
+    return respond(200, {'ok': True})
+
+
+# =============================================================================
+# КОШЕЛЁК
+# =============================================================================
+
+def handle_get_wallet(cur, conn, schema, user):
+    """Баланс и история транзакций кошелька"""
+    uid = user['id']
+    cur.execute(f"""
+        SELECT wallet_balance, bonus_balance FROM {schema}.users WHERE id = {uid}
+    """)
+    balances = cur.fetchone()
+    cur.execute(f"""
+        SELECT id, type, amount, description, ref_type, ref_id, created_at
+        FROM {schema}.wallet_transactions
+        WHERE user_id = {uid}
+        ORDER BY created_at DESC
+        LIMIT 50
+    """)
+    transactions = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return respond(200, {
+        'wallet_balance': balances['wallet_balance'] if balances else 0,
+        'bonus_balance': balances['bonus_balance'] if balances else 0,
+        'transactions': transactions
+    })
+
+
+# =============================================================================
+# РЕФЕРАЛЫ
+# =============================================================================
+
+def handle_get_referrals(cur, conn, schema, user):
+    """Реферальный код и список приглашённых"""
+    uid = user['id']
+
+    # Генерируем реферальный код если нет
+    cur.execute(f"SELECT referral_code FROM {schema}.users WHERE id = {uid}")
+    row = cur.fetchone()
+    ref_code = row['referral_code'] if row else None
+    if not ref_code:
+        import secrets as _s
+        ref_code = _s.token_urlsafe(8).upper()[:12]
+        cur.execute(f"""
+            UPDATE {schema}.users SET referral_code = '{ref_code}' WHERE id = {uid}
+        """)
+        conn.commit()
+
+    cur.execute(f"""
+        SELECT u.name, u.created_at, r.bonus_paid
+        FROM {schema}.referrals r
+        JOIN {schema}.users u ON u.id = r.referred_id
+        WHERE r.referrer_id = {uid}
+        ORDER BY r.created_at DESC
+    """)
+    invited = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return respond(200, {
+        'referral_code': ref_code,
+        'invited': invited,
+        'total_invited': len(invited),
+        'total_bonuses_earned': sum(1 for r in invited if r['bonus_paid'])
+    })
