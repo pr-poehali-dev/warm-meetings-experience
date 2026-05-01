@@ -205,11 +205,15 @@ export default function CalcInputPanel({
                   </span>
                   <div className="flex items-center gap-2">
                     <input
-                      type="number"
-                      value={params.platformCommission}
-                      onChange={(e) => set("platformCommission", +e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      value={params.platformCommission === 0 ? "" : String(params.platformCommission)}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, "");
+                        set("platformCommission", raw === "" ? 0 : Math.min(100, parseInt(raw, 10)));
+                      }}
+                      placeholder="0"
                       className="w-14 h-7 text-sm text-center rounded-md border bg-muted/50 focus:outline-none focus:ring-1 focus:ring-primary"
-                      min={0} max={100}
                     />
                     <span className="text-xs text-muted-foreground">%</span>
                   </div>
@@ -221,11 +225,15 @@ export default function CalcInputPanel({
                   </span>
                   <div className="flex items-center gap-2">
                     <input
-                      type="number"
-                      value={params.clubFee}
-                      onChange={(e) => set("clubFee", +e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      value={params.clubFee === 0 ? "" : String(params.clubFee)}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^0-9]/g, "");
+                        set("clubFee", raw === "" ? 0 : parseInt(raw, 10));
+                      }}
+                      placeholder="0"
                       className="w-20 h-7 text-sm text-center rounded-md border bg-muted/50 focus:outline-none focus:ring-1 focus:ring-primary"
-                      min={0}
                     />
                     <span className="text-xs text-muted-foreground">₽/чел</span>
                   </div>
