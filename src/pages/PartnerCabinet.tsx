@@ -52,7 +52,7 @@ export default function PartnerCabinet() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Шапка */}
       <CabinetHeader
         icon="Building2"
@@ -62,48 +62,54 @@ export default function PartnerCabinet() {
         onLogout={logout}
       />
 
-      <div className="container mx-auto px-4 sm:px-6 py-6 max-w-5xl">
-        <div className="flex gap-6">
-          {/* Боковая навигация */}
-          <aside className="hidden md:block w-48 flex-shrink-0">
-            <nav className="space-y-1 sticky top-20">
+      <div className="flex flex-1 overflow-hidden">
+          {/* Десктопная боковая навигация */}
+          <aside className="hidden lg:flex flex-col w-56 flex-shrink-0 border-r bg-card p-3 overflow-y-auto sticky top-14 h-[calc(100vh-56px)]">
+            <nav className="space-y-0.5">
+              <div className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-1.5 mt-1">Партнёрский кабинет</div>
               {navItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => { setView(item.id as View); setEditingBath(null); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
                     view === item.id
-                      ? "bg-muted font-medium text-foreground"
+                      ? "bg-primary/10 text-primary font-medium"
                       : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   }`}
                 >
                   <Icon name={item.icon} size={16} />
-                  {item.label}
+                  <span className="flex-1 text-left">{item.label}</span>
                 </button>
               ))}
-              <div className="pt-2 border-t border-border">
+              <div className="border-t border-border/60 pt-2 mt-3">
                 <button
                   onClick={() => { setView("add"); setEditingBath(null); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-primary hover:bg-primary/5 transition-colors"
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
+                    view === "add"
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  }`}
                 >
                   <Icon name="Plus" size={16} />
-                  Добавить баню
+                  <span className="flex-1 text-left">Добавить баню</span>
                 </button>
               </div>
             </nav>
           </aside>
 
+        <div className="flex-1 overflow-y-auto">
+        <div className="p-4 sm:p-6 max-w-5xl mx-auto">
           {/* Мобильная навигация */}
-          <div className="md:hidden w-full mb-4">
-            <div className="flex gap-2">
+          <div className="lg:hidden mb-4">
+            <div className="flex gap-1.5 flex-wrap">
               {navItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => { setView(item.id as View); setEditingBath(null); }}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors ${
                     view === item.id
-                      ? "bg-muted font-medium text-foreground"
-                      : "text-muted-foreground hover:bg-muted/60"
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   }`}
                 >
                   <Icon name={item.icon} size={14} />
@@ -112,7 +118,11 @@ export default function PartnerCabinet() {
               ))}
               <button
                 onClick={() => { setView("add"); setEditingBath(null); }}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-primary hover:bg-primary/5"
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors ${
+                  view === "add"
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                }`}
               >
                 <Icon name="Plus" size={14} />
                 Добавить
@@ -121,7 +131,7 @@ export default function PartnerCabinet() {
           </div>
 
           {/* Основной контент */}
-          <main className="flex-1 min-w-0 space-y-4">
+          <main className="flex-1 min-w-0 space-y-4 pb-8">
             {/* DASHBOARD */}
             {view === "dashboard" && (
               <>
@@ -255,6 +265,7 @@ export default function PartnerCabinet() {
               <BathForm bath={editingBath} onSaved={handleSaved} onCancel={handleCancel} />
             )}
           </main>
+        </div>
         </div>
       </div>
     </div>

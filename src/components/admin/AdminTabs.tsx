@@ -226,7 +226,7 @@ export default function AdminTabs({
   };
 
   const SidebarContent = () => (
-    <nav className="flex flex-col gap-1 p-3">
+    <nav className="flex flex-col gap-0.5 p-3">
       {NAV.map((group) => {
         const groupBadge = getBadgeCount(group.items);
         const open = isGroupOpen(group.id);
@@ -234,10 +234,10 @@ export default function AdminTabs({
           <div key={group.id}>
             <button
               onClick={() => toggleGroup(group.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 activeGroupId === group.id
                   ? "bg-primary/10 text-primary"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
               }`}
             >
               <Icon name={group.icon} size={16} className="flex-shrink-0" />
@@ -246,12 +246,12 @@ export default function AdminTabs({
               <Icon
                 name="ChevronDown"
                 size={14}
-                className={`flex-shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+                className={`flex-shrink-0 transition-transform ${open ? "rotate-180" : ""} ${activeGroupId === group.id ? "text-primary/50" : "text-muted-foreground/40"}`}
               />
             </button>
 
             {open && (
-              <div className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-gray-100 pl-3">
+              <div className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-border/60 pl-3">
                 {group.items.map((item) => {
                   const count = item.badgeKey ? badges[item.badgeKey] : 0;
                   const active = currentView === item.view;
@@ -259,25 +259,17 @@ export default function AdminTabs({
                     <button
                       key={item.view}
                       onClick={() => handleClick(item.view)}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors group ${
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm transition-all ${
                         active
-                          ? "bg-primary text-white"
-                          : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                       }`}
                     >
-                      <Icon
-                        name={item.icon}
-                        size={14}
-                        className="flex-shrink-0"
-                      />
+                      <Icon name={item.icon} size={14} className="flex-shrink-0" />
                       <div className="flex-1 text-left min-w-0">
-                        <div className="font-medium leading-tight">
-                          {item.label}
-                        </div>
+                        <div className="leading-tight">{item.label}</div>
                         {item.hint && (
-                          <div
-                            className={`text-[11px] truncate ${active ? "text-white/70" : "text-gray-400"}`}
-                          >
+                          <div className={`text-[11px] truncate ${active ? "text-primary/60" : "text-muted-foreground/60"}`}>
                             {item.hint}
                           </div>
                         )}
@@ -313,13 +305,13 @@ export default function AdminTabs({
           <SidebarContent />
         </div>
 
-        <div className="border-t border-gray-100 p-3 flex items-center justify-between flex-shrink-0">
+        <div className="border-t border-border p-3 flex items-center justify-between flex-shrink-0">
           <ProfileDropdown variant="compact" onLogout={onLogout} />
           <Link
             to="/events"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/60 transition-colors"
           >
-            <Icon name="ArrowLeft" size={13} />
+            <Icon name="ArrowUpRight" size={13} />
             На сайт
           </Link>
         </div>
