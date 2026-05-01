@@ -79,12 +79,12 @@ export function useAccount() {
   const handleSaveProfile = async () => {
     setSavingProfile(true);
     try {
-      const isVkEmail = user?.email?.includes("@vk.local");
+      const canChangeEmail = user?.email?.includes("@vk.local") || !user?.email_verified;
       const data = await userProfileApi.updateProfile({
         name: editName,
         phone: editPhone,
         telegram: editTelegram,
-        ...(isVkEmail && editEmail ? { email: editEmail } : {}),
+        ...(canChangeEmail && editEmail ? { email: editEmail } : {}),
       });
       updateUser(data.user);
       setEditing(false);
