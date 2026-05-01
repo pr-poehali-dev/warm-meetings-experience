@@ -448,12 +448,14 @@ export default function Workspace() {
   };
 
   const switchMasterSection = (s: MasterSection) => {
+    setRoleTab("master");
     setMasterSection(s);
     setSearchParams({ tab: "master", section: s });
     setSidebarOpen(false);
   };
 
   const switchOrgView = (v: OrgView) => {
+    setRoleTab("organizer");
     setOrgView(v);
     setSearchParams({ tab: "organizer" });
     setSidebarOpen(false);
@@ -465,67 +467,114 @@ export default function Workspace() {
 
   // Текущее название раздела в шапке
   const currentLabel = () => {
-    if (roleTab === "dashboard") return "Рабочий кабинет";
-    if (roleTab === "master") return MASTER_NAV.find((n) => n.id === masterSection)?.label ?? "Мастер";
-    return ORG_NAV.find((n) => n.id === orgView)?.label ?? "Организатор";
+    if (roleTab === "dashboard") return "Обзор";
+    if (roleTab === "master") {
+      const label = MASTER_NAV.find((n) => n.id === masterSection)?.label ?? "Мастер";
+      return `Мастер · ${label}`;
+    }
+    const label = ORG_NAV.find((n) => n.id === orgView)?.label
+      ?? (orgView === "create" ? "Создание события" : orgView === "edit" ? "Редактирование" : orgView === "participants" ? "Участники" : "Организатор");
+    return `Организатор · ${label}`;
   };
 
-  // Боковая навигация зависит от roleTab
+  // Боковая навигация — плоская, понятная, единая
+  const NavItem = ({ active, onClick, icon, label, accent, badge }: { active: boolean; onClick: () => void; icon: string; label: string; accent?: string; badge?: string | number }) => (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
+        active
+          ? "bg-primary/10 text-primary font-medium"
+          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+      }`}
+    >
+      <Icon name={icon} size={16} className={active ? "" : accent || ""} />
+      <span className="flex-1 text-left truncate">{label}</span>
+      {badge !== undefined && badge !== 0 && badge !== "" && (
+        <span className="text-[10px] font-semibold bg-primary/15 text-primary rounded-full px-1.5 py-0.5 min-w-[18px] text-center">{badge}</span>
+      )}
+    </button>
+  );
+
+  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+    <div className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-1.5 mt-3">{children}</div>
+  );
+
   const renderSidebar = () => (
-    <nav className="space-y-1">
-      {/* Роль-табы */}
-      <div className="mb-3">
-        <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1">Кабинет</div>
-        <button onClick={() => switchRoleTab("dashboard")}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${roleTab === "dashboard" ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"}`}>
-          <Icon name="LayoutDashboard" size={16} />Сводка
-        </button>
-      </div>
+    <nav className="space-y-0.5">
+      {/* Сводка — всегда сверху */}
+      <SectionLabel>Главное</SectionLabel>
+      <NavItem
+        active={roleTab === "dashboard"}
+        onClick={() => switchRoleTab("dashboard")}
+        icon="LayoutDashboard"
+        label="Обзор"
+      />
 
+      {/* Мастер-разделы (плоско, без вложенности) */}
       {isMaster && (
-        <div className="mb-3">
-          <button onClick={() => switchRoleTab("master")}
-            className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-colors mb-1 ${roleTab === "master" ? "text-orange-600" : "text-muted-foreground hover:text-foreground"}`}>
-            <Icon name="Flame" size={13} />Мастер
-          </button>
-          {roleTab === "master" && MASTER_NAV.map((n) => (
-            <button key={n.id} onClick={() => switchMasterSection(n.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${masterSection === n.id ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"}`}>
-              <Icon name={n.icon} size={15} />{n.label}
-            </button>
+        <>
+          <SectionLabel>
+            <span className="inline-flex items-center gap-1.5"><Icon name="Flame" size={11} className="text-orange-500" />Мастер-услуги</span>
+          </SectionLabel>
+          {MASTER_NAV.filter((n) => n.id !== "dashboard").map((n) => (
+            <NavItem
+              key={n.id}
+              active={roleTab === "master" && masterSection === n.id}
+              onClick={() => switchMasterSection(n.id)}
+              icon={n.icon}
+              label={n.label}
+            />
           ))}
-        </div>
+        </>
       )}
 
+      {/* Организатор-разделы */}
       {isOrganizer && (
-        <div className="mb-3">
-          <button onClick={() => switchRoleTab("organizer")}
-            className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-colors mb-1 ${roleTab === "organizer" ? "text-emerald-600" : "text-muted-foreground hover:text-foreground"}`}>
-            <Icon name="CalendarDays" size={13} />Организатор
-          </button>
-          {roleTab === "organizer" && (
-            <>
-              {ORG_NAV.map((n) => (
-                <button key={n.id} onClick={() => switchOrgView(n.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${orgView === n.id ? "bg-muted font-medium text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"}`}>
-                  <Icon name={n.icon} size={15} />{n.label}
-                </button>
-              ))}
-              <button onClick={() => { setOrgView("create"); setSidebarOpen(false); }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-primary hover:bg-primary/5 transition-colors mt-1">
-                <Icon name="Plus" size={15} />Новое событие
-              </button>
-            </>
-          )}
-        </div>
+        <>
+          <SectionLabel>
+            <span className="inline-flex items-center gap-1.5"><Icon name="CalendarDays" size={11} className="text-emerald-500" />Мероприятия</span>
+          </SectionLabel>
+          <NavItem
+            active={roleTab === "organizer" && orgView === "dashboard"}
+            onClick={() => switchOrgView("dashboard")}
+            icon="LayoutGrid"
+            label="Мои события"
+            badge={events.length || undefined}
+          />
+          <NavItem
+            active={roleTab === "organizer" && (orgView === "create" || orgView === "edit")}
+            onClick={() => { setSelectedEvent(null); setFormData({} as OrgEvent); switchOrgView("create"); }}
+            icon="Plus"
+            label="Создать событие"
+          />
+          <NavItem
+            active={roleTab === "organizer" && orgView === "calculator"}
+            onClick={() => switchOrgView("calculator")}
+            icon="Calculator"
+            label="Калькулятор"
+          />
+          <NavItem
+            active={roleTab === "organizer" && orgView === "notify"}
+            onClick={() => switchOrgView("notify")}
+            icon="Bell"
+            label="Рассылки"
+          />
+          <NavItem
+            active={roleTab === "organizer" && orgView === "telegram"}
+            onClick={() => switchOrgView("telegram")}
+            icon="Send"
+            label="Telegram"
+          />
+        </>
       )}
 
-      <div className="border-t border-border pt-2 mt-2">
-        <Link to="/account" className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors">
-          <Icon name="User" size={15} />Личный кабинет
+      {/* Низ: личный кабинет + выход */}
+      <div className="border-t border-border/60 pt-2 mt-3">
+        <Link to="/account" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors">
+          <Icon name="User" size={16} />Личный кабинет
         </Link>
-        <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-muted/60 transition-colors">
-          <Icon name="LogOut" size={15} />Выйти
+        <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
+          <Icon name="LogOut" size={16} />Выйти
         </button>
       </div>
     </nav>
@@ -652,37 +701,38 @@ export default function Workspace() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Шапка */}
-      <header className="border-b bg-card sticky top-0 z-40">
+      <header className="border-b bg-card/95 backdrop-blur sticky top-0 z-40">
         <div className="flex items-center gap-3 px-4 h-14">
-          <button onClick={() => setSidebarOpen((v) => !v)} className="lg:hidden p-2 rounded-lg hover:bg-muted transition">
+          <button onClick={() => setSidebarOpen((v) => !v)} className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-muted transition">
             <Icon name={sidebarOpen ? "X" : "Menu"} size={20} />
           </button>
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Icon name="Briefcase" size={14} className="text-primary" />
+          <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition">
+            <div className="w-8 h-8 bg-primary/10 rounded-xl flex items-center justify-center">
+              <Icon name="Briefcase" size={15} className="text-primary" />
             </div>
-            <span className="font-semibold text-sm hidden sm:inline">Рабочий кабинет</span>
-          </div>
-          <div className="flex items-center gap-1.5 ml-2 text-sm text-muted-foreground hidden sm:flex">
-            <Icon name="ChevronRight" size={14} />
-            <span>{currentLabel()}</span>
-          </div>
+            <div className="hidden sm:block leading-tight">
+              <div className="font-semibold text-sm">Рабочий кабинет</div>
+              <div className="text-[11px] text-muted-foreground">{currentLabel()}</div>
+            </div>
+          </Link>
 
-          {/* Роль-переключатели в шапке */}
-          <div className="ml-auto flex items-center gap-1.5">
-            {isMaster && (
-              <button onClick={() => switchRoleTab(roleTab === "master" ? "dashboard" : "master")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${roleTab === "master" ? "bg-orange-100 text-orange-700" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
-                <Icon name="Flame" size={13} /><span className="hidden sm:inline">Мастер</span>
-              </button>
+          {/* Быстрая кнопка создания события (если организатор) */}
+          <div className="ml-auto flex items-center gap-2">
+            {isOrganizer && roleTab !== "organizer" && (
+              <Button
+                size="sm"
+                onClick={() => { setSelectedEvent(null); setFormData({} as OrgEvent); switchOrgView("create"); }}
+                className="gap-1.5 h-9 hidden sm:inline-flex"
+              >
+                <Icon name="Plus" size={14} />Создать событие
+              </Button>
             )}
-            {isOrganizer && (
-              <button onClick={() => switchRoleTab(roleTab === "organizer" ? "dashboard" : "organizer")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${roleTab === "organizer" ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
-                <Icon name="CalendarDays" size={13} /><span className="hidden sm:inline">Организатор</span>
-              </button>
-            )}
-            <span className="text-sm text-muted-foreground hidden md:inline truncate max-w-[120px] ml-1">{user?.name}</span>
+            <Link to="/account" className="flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs hover:bg-muted transition-colors">
+              <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center overflow-hidden">
+                {user?.avatar_url ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" /> : <Icon name="User" size={13} className="text-primary" />}
+              </div>
+              <span className="hidden md:inline truncate max-w-[120px] text-foreground font-medium">{user?.name}</span>
+            </Link>
           </div>
         </div>
       </header>
