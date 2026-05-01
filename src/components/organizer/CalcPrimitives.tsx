@@ -35,7 +35,7 @@ export function Slider({ value, min, max, step = 1, onChange, colorClass = "bg-p
       />
       <div
         className={`absolute w-5 h-5 rounded-full border-2 border-white shadow-md ${colorClass} pointer-events-none`}
-        style={{ left: `calc(${pct}% - 10px)` }}
+        style={{ left: `clamp(0px, calc(${pct}% - 10px), calc(100% - 20px))` }}
       />
     </div>
   );
