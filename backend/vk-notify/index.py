@@ -6,44 +6,10 @@ import psycopg2.extras
 import requests
 from datetime import datetime
 
+from shared import *
+
 VK_API_URL = "https://api.vk.com/method"
 VK_API_VERSION = "5.131"
-
-
-def get_conn():
-    return psycopg2.connect(os.environ["DATABASE_URL"])
-
-
-def get_schema():
-    return os.environ.get("MAIN_DB_SCHEMA", "public")
-
-
-def cors_headers():
-    return {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, X-User-Id, X-Auth-Token, X-Session-Id, X-Session-Token",
-        "Content-Type": "application/json",
-    }
-
-
-def respond(code, body):
-    return {"statusCode": code, "headers": cors_headers(), "body": json.dumps(body, default=str)}
-
-
-def get_user_from_token(cur, schema, token):
-    if not token:
-        return None
-    t = token.replace("'", "''")
-    cur.execute(f"""
-        SELECT u.id, u.email, u.name, u.vk_id, u.vk_notify_allowed,
-               u.tg_user_id, u.tg_chat_id, u.tg_notify_allowed,
-               u.notify_email, u.notify_telegram, u.notify_vk, u.notify_sms, u.phone
-        FROM {schema}.user_sessions s
-        JOIN {schema}.users u ON u.id = s.user_id
-        WHERE s.token = '{t}' AND s.expires_at > NOW()
-    """)
-    return cur.fetchone()
 
 
 def vk_api(method, params):
@@ -83,7 +49,7 @@ def send_tg_message(chat_id: int, message: str) -> dict:
 def handler(event: dict, context) -> dict:
     """Управление каналами уведомлений пользователя: VK, Telegram, Email, SMS."""
     if event.get("httpMethod") == "OPTIONS":
-        return respond(200, {})
+        return options_response()
 
     method = event.get("httpMethod", "GET")
     params = event.get("queryStringParameters") or {}
@@ -103,8 +69,10 @@ def handler(event: dict, context) -> dict:
     schema = get_schema()
 
     # ── GET /channels — текущие настройки каналов пользователя ──────────────
+    _VK_EXTRA = 'u.vk_id, u.vk_notify_allowed, u.tg_user_id, u.tg_chat_id, u.tg_notify_allowed, u.notify_email, u.notify_telegram, u.notify_vk, u.notify_sms'
+
     if method == "GET" and action == "channels":
-        user = get_user_from_token(cur, schema, token)
+        user = get_user_from_token(cur, schema, token, extra_fields=_VK_EXTRA)
         if not user:
             conn.close()
             return respond(401, {"error": "Необходима авторизация"})
@@ -149,7 +117,7 @@ def handler(event: dict, context) -> dict:
 
     # ── POST /set_channel — включить/выключить канал ─────────────────────────
     if method == "POST" and action == "set_channel":
-        user = get_user_from_token(cur, schema, token)
+        user = get_user_from_token(cur, schema, token, extra_fields=_VK_EXTRA)
         if not user:
             conn.close()
             return respond(401, {"error": "Необходима авторизация"})
@@ -170,7 +138,7 @@ def handler(event: dict, context) -> dict:
 
     # ── POST /set_prefs — тонкие настройки конкретного канала ───────────────
     if method == "POST" and action == "set_prefs":
-        user = get_user_from_token(cur, schema, token)
+        user = get_user_from_token(cur, schema, token, extra_fields=_VK_EXTRA)
         if not user:
             conn.close()
             return respond(401, {"error": "Необходима авторизация"})
@@ -204,7 +172,7 @@ def handler(event: dict, context) -> dict:
 
     # ── POST /allow_vk — пользователь разрешает VK-уведомления ─────────────
     if method == "POST" and action == "allow_vk":
-        user = get_user_from_token(cur, schema, token)
+        user = get_user_from_token(cur, schema, token, extra_fields=_VK_EXTRA)
         if not user:
             conn.close()
             return respond(401, {"error": "Необходима авторизация"})

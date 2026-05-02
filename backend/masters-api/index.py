@@ -1,56 +1,9 @@
-import hashlib
 import json
 import os
-import re
-import time
 import psycopg2
 import psycopg2.extras
 import datetime
-
-
-def verify_admin_token(token):
-    if not token:
-        return False
-    admin_pwd = os.environ.get('ADMIN_PASSWORD', '')
-    if not admin_pwd:
-        return False
-    expected = hashlib.sha256(f"{admin_pwd}:{int(time.time() // 86400)}".encode()).hexdigest()
-    return token == expected
-
-
-def get_conn():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
-
-
-def get_schema():
-    return os.environ.get('MAIN_DB_SCHEMA', 'public')
-
-
-def slugify(text):
-    text = text.lower().strip()
-    translit = {
-        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
-        'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
-        'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts',
-        'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
-        ' ': '-'
-    }
-    result = ''
-    for char in text:
-        result += translit.get(char, char)
-    result = re.sub(r'[^a-z0-9-]', '', result)
-    result = re.sub(r'-+', '-', result).strip('-')
-    return result
-
-
-def cors_headers():
-    return {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Authorization, X-Admin-Token, X-Session-Token',
-        'Access-Control-Max-Age': '86400',
-        'Content-Type': 'application/json'
-    }
+from shared import *
 
 
 def row_to_dict(row, cursor):
@@ -64,31 +17,12 @@ def row_to_dict(row, cursor):
     return result
 
 
-def get_user_from_token(cur, token, schema):
-    t = token.replace("'", "''")
-    cur.execute(f"""
-        SELECT u.id FROM {schema}.user_sessions s
-        JOIN {schema}.users u ON u.id = s.user_id
-        WHERE s.token = '{t}' AND s.expires_at > NOW() AND u.is_active = true
-    """)
-    return cur.fetchone()
-
-
-def is_parmaster(cur, user_id, schema):
-    cur.execute(f"""
-        SELECT 1 FROM {schema}.user_roles ur
-        JOIN {schema}.roles r ON r.id = ur.role_id
-        WHERE ur.user_id = {user_id} AND r.slug IN ('parmaster', 'admin') AND ur.status = 'active'
-    """)
-    return cur.fetchone() is not None
-
-
 def handler(event, context):
     """API для управления мастерями — список, детали, специализации, связь с банями"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {'statusCode': 200, 'headers': cors_headers(), 'body': ''}
+        return options_response()
 
-    headers = cors_headers()
+    headers = CORS_HEADERS
     method = event.get('httpMethod', 'GET')
     params = event.get('queryStringParameters') or {}
     schema = get_schema()
@@ -102,11 +36,11 @@ def handler(event, context):
             return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Не авторизован'})}
         conn = get_conn()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        user = get_user_from_token(cur, user_token, schema)
+        user = get_user_from_token(cur, schema, user_token)
         if not user:
             conn.close()
             return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Не авторизован'})}
-        if not is_parmaster(cur, user['id'], schema):
+        if not has_role(cur, schema, user['id'], 'parmaster', 'admin'):
             conn.close()
             return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Доступ только для пармастеров'})}
         cur.execute(f"SELECT * FROM {schema}.masters WHERE user_id = %s", [user['id']])
@@ -146,11 +80,11 @@ def handler(event, context):
             return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Не авторизован'})}
         conn = get_conn()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        user = get_user_from_token(cur, user_token, schema)
+        user = get_user_from_token(cur, schema, user_token)
         if not user:
             conn.close()
             return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Не авторизован'})}
-        if not is_parmaster(cur, user['id'], schema):
+        if not has_role(cur, schema, user['id'], 'parmaster', 'admin'):
             conn.close()
             return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Доступ только для пармастеров'})}
         body = json.loads(event.get('body') or '{}')

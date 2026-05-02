@@ -1,40 +1,11 @@
 import json
 import os
-import hashlib
 
 import psycopg2
 import psycopg2.extras
 
+from shared import *
 
-def get_conn():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
-
-def get_schema():
-    return os.environ.get('MAIN_DB_SCHEMA', 'public')
-
-CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Token',
-    'Access-Control-Max-Age': '86400'
-}
-
-def respond(status, body):
-    return {
-        'statusCode': status,
-        'headers': {**CORS_HEADERS, 'Content-Type': 'application/json'},
-        'body': json.dumps(body, default=str)
-    }
-
-def verify_admin_token(token):
-    if not token:
-        return False
-    import time
-    admin_pwd = os.environ.get('ADMIN_PASSWORD', '')
-    if not admin_pwd:
-        return False
-    expected = hashlib.sha256(f"{admin_pwd}:{int(time.time() // 86400)}".encode()).hexdigest()
-    return token == expected
 
 def get_user_full(cur, schema, user_id):
     cur.execute(f"""
@@ -57,7 +28,7 @@ def get_user_full(cur, schema, user_id):
 def handler(event, context):
     """Управление пользователями в админ-панели: список, просмотр, редактирование, блокировка, роли"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
+        return options_response()
 
     headers_in = event.get('headers') or {}
     admin_token = headers_in.get('X-Admin-Token') or headers_in.get('x-admin-token') or ''

@@ -2,20 +2,13 @@ import json
 import os
 import hashlib
 import secrets
-import urllib.request
 from datetime import datetime, timedelta
 
 import psycopg2
 import psycopg2.extras
 import requests as http_requests
 
-
-def get_conn():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
-
-
-def get_schema():
-    return os.environ.get('MAIN_DB_SCHEMA', 'public')
+from shared import *
 
 
 def hash_password(password):
@@ -29,24 +22,6 @@ def generate_token():
 def generate_password(length=10):
     alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
     return ''.join(secrets.choice(alphabet) for _ in range(length))
-
-
-def send_telegram(text):
-    token = os.environ.get('TELEGRAM_BOT_TOKEN')
-    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
-    if not token or not chat_id:
-        return
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = json.dumps({
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "HTML"
-    }).encode('utf-8')
-    req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-    try:
-        urllib.request.urlopen(req)
-    except Exception:
-        pass
 
 
 def send_organizer_welcome_email(to_email, name, password):
@@ -110,26 +85,10 @@ def send_organizer_welcome_email(to_email, name, password):
         pass
 
 
-CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json'
-}
-
-
-def respond(status, body):
-    return {
-        'statusCode': status,
-        'headers': CORS_HEADERS,
-        'body': json.dumps(body, default=str)
-    }
-
-
 def handler(event, context):
     """Приём заявок от организаторов с автоматической регистрацией аккаунта"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
+        return options_response()
 
     method = event.get('httpMethod', 'GET')
 
@@ -246,7 +205,7 @@ def create_request(event):
         f"💬 <b>Доп. инфо:</b> {additional_info or '—'}\n"
         f"✅ <b>Аккаунт создан:</b> ID {user_id}"
     )
-    send_telegram(tg_text)
+    tg_notify_admin(tg_text)
     send_organizer_welcome_email(email, name, password)
 
     return respond(200, {

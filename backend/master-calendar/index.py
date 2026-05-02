@@ -4,30 +4,15 @@ import psycopg2
 import psycopg2.extras
 from datetime import datetime, timedelta, date, time
 
-
-def get_conn():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
-
-
-def get_schema():
-    return os.environ.get('MAIN_DB_SCHEMA', 'public')
+from shared import *
 
 
 def handler(event, context):
     """API календаря мастера: слоты, шаблоны, услуги, настройки, блокировки"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Authorization',
-                'Access-Control-Max-Age': '86400'
-            },
-            'body': ''
-        }
+        return options_response()
 
-    headers = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
+    headers = CORS_HEADERS
     method = event.get('httpMethod', 'GET')
     params = event.get('queryStringParameters') or {}
     resource = params.get('resource', 'slots')

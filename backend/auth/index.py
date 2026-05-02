@@ -2,22 +2,14 @@ import json
 import os
 import hashlib
 import time
+from shared import options_response, respond, CORS_HEADERS
 
 def handler(event, context):
     """Авторизация в админ-панели по паролю"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type',
-                'Access-Control-Max-Age': '86400'
-            },
-            'body': ''
-        }
+        return options_response()
 
-    headers = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
+    headers = CORS_HEADERS
 
     if event.get('httpMethod') != 'POST':
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}

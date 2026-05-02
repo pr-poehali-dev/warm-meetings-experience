@@ -8,54 +8,13 @@ import psycopg2
 import psycopg2.extras
 import requests
 
-
-def get_conn():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
-
-def get_schema():
-    return os.environ.get('MAIN_DB_SCHEMA', 'public')
-
-CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Session-Token, X-Admin-Token',
-    'Access-Control-Max-Age': '86400'
-}
-
-def respond(status, body):
-    return {
-        'statusCode': status,
-        'headers': {**CORS_HEADERS, 'Content-Type': 'application/json'},
-        'body': json.dumps(body, default=str)
-    }
-
-def get_user_from_token(cur, schema, token):
-    if not token:
-        return None
-    t = token.replace("'", "''")
-    cur.execute(f"""
-        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.created_at
-        FROM {schema}.user_sessions s
-        JOIN {schema}.users u ON u.id = s.user_id
-        WHERE s.token = '{t}' AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true
-    """)
-    return cur.fetchone()
-
-def verify_admin_token(token):
-    if not token:
-        return False
-    import time
-    admin_pwd = os.environ.get('ADMIN_PASSWORD', '')
-    if not admin_pwd:
-        return False
-    expected = hashlib.sha256(f"{admin_pwd}:{int(time.time() // 86400)}".encode()).hexdigest()
-    return token == expected
+from shared import *
 
 
 def handler(event, context):
     """Система ролей: получение ролей пользователя, прогресса, бейджей, подача заявок и администрирование"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
+        return options_response()
 
     headers_in = event.get('headers') or {}
     token = headers_in.get('X-Session-Token') or headers_in.get('x-session-token') or ''

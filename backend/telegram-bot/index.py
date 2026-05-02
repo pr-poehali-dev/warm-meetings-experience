@@ -6,9 +6,10 @@ import psycopg2.extras
 import requests
 from datetime import datetime, timedelta
 
+from shared import *
+
 
 BOT_TOKEN = None
-SCHEMA = None
 
 DEFAULT_TEMPLATE = """📅 *{title}*
 
@@ -30,30 +31,6 @@ def get_bot_token():
     return BOT_TOKEN
 
 
-def get_schema():
-    global SCHEMA
-    if not SCHEMA:
-        SCHEMA = os.environ.get('MAIN_DB_SCHEMA', 'public')
-    return SCHEMA
-
-
-def get_conn():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
-
-
-def cors_headers():
-    return {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Content-Type': 'application/json'
-    }
-
-
-def respond(code, body):
-    return {'statusCode': code, 'headers': cors_headers(), 'body': json.dumps(body, default=str)}
-
-
 def tg_api(method, data=None):
     url = f"https://api.telegram.org/bot{get_bot_token()}/{method}"
     r = requests.post(url, json=data or {}, timeout=10)
@@ -70,7 +47,7 @@ def send_message(chat_id, text, parse_mode='Markdown', reply_markup=None):
 def handler(event, context):
     """Telegram-бот: webhook для команд организаторов (verify, add, list, remove, template, test, help)"""
     if event.get('httpMethod') == 'OPTIONS':
-        return respond(200, {})
+        return options_response()
 
     method = event.get('httpMethod', 'GET')
     params = event.get('queryStringParameters') or {}

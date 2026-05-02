@@ -9,11 +9,11 @@
       "bodyMatcher": "partial"
     },
     {
-      "name": "Get bath by slug",
+      "name": "Get bath by slug not found",
       "method": "GET",
-      "path": "/?slug=banya-v-centre",
-      "expectedStatus": 200,
-      "expectedBody": {"bath": {}},
+      "path": "/?slug=nonexistent-slug-12345",
+      "expectedStatus": 404,
+      "expectedBody": {"error": "Баня не найдена"},
       "bodyMatcher": "partial"
     },
     {

@@ -5,6 +5,8 @@ import uuid
 import boto3
 import psycopg2
 
+from shared import *
+
 # Форматы медиа для бань:
 # Фото:              16:9, JPG/PNG/WebP, до 10 МБ — обложка и галерея
 # Видео горизонт.:   16:9 (1920x1080), MP4/MOV, до 100 МБ — экскурсия, обзор
@@ -17,12 +19,6 @@ MAX_IMAGE_SIZE = 10 * 1024 * 1024   # 10 МБ
 MAX_VIDEO_H_SIZE = 100 * 1024 * 1024  # 100 МБ горизонтальное
 MAX_VIDEO_V_SIZE = 50 * 1024 * 1024   # 50 МБ вертикальное
 
-CORS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Authorization",
-    "Content-Type": "application/json"
-}
 
 def get_s3():
     return boto3.client(
@@ -31,12 +27,6 @@ def get_s3():
         aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
         aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"]
     )
-
-def get_conn():
-    return psycopg2.connect(os.environ["DATABASE_URL"])
-
-def get_schema():
-    return os.environ.get("MAIN_DB_SCHEMA", "public")
 
 def cdn_url(key):
     project_id = os.environ["AWS_ACCESS_KEY_ID"]
@@ -51,7 +41,7 @@ def handler(event, context):
     - video_vertical: 9:16 (1080×1920), MP4/MOV до 50 МБ
     """
     if event.get("httpMethod") == "OPTIONS":
-        return {"statusCode": 200, "headers": CORS, "body": ""}
+        return options_response()
 
     method = event.get("httpMethod", "POST")
     params = event.get("queryStringParameters") or {}
@@ -62,7 +52,7 @@ def handler(event, context):
         bath_slug = params.get("slug")
         media_type = params.get("media_type", "photo")
         if not key or not bath_slug:
-            return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "key и slug обязательны"})}
+            return {"statusCode": 400, "headers": CORS_HEADERS, "body": json.dumps({"error": "key и slug обязательны"})}
 
         s3 = get_s3()
         s3.delete_object(Bucket="files", Key=key)
@@ -91,7 +81,7 @@ def handler(event, context):
         conn.commit()
         cur.close()
         conn.close()
-        return {"statusCode": 200, "headers": CORS, "body": json.dumps({"ok": True})}
+        return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({"ok": True})}
 
     # POST — загрузить файл
     body = json.loads(event.get("body") or "{}")
@@ -101,7 +91,7 @@ def handler(event, context):
     media_type = body.get("media_type", "photo")  # photo | video_horizontal | video_vertical
 
     if not file_data or not bath_slug:
-        return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "file и slug обязательны"})}
+        return {"statusCode": 400, "headers": CORS_HEADERS, "body": json.dumps({"error": "file и slug обязательны"})}
 
     # Декодируем base64
     if "base64," in file_data:
@@ -119,16 +109,16 @@ def handler(event, context):
     is_video = file_type in ALLOWED_VIDEO_TYPES
 
     if not is_image and not is_video:
-        return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": f"Неподдерживаемый тип: {file_type}"})}
+        return {"statusCode": 400, "headers": CORS_HEADERS, "body": json.dumps({"error": f"Неподдерживаемый тип: {file_type}"})}
 
     if is_image and size > MAX_IMAGE_SIZE:
-        return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Фото не должно превышать 10 МБ"})}
+        return {"statusCode": 400, "headers": CORS_HEADERS, "body": json.dumps({"error": "Фото не должно превышать 10 МБ"})}
 
     if media_type == "video_vertical" and size > MAX_VIDEO_V_SIZE:
-        return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Вертикальное видео не должно превышать 50 МБ"})}
+        return {"statusCode": 400, "headers": CORS_HEADERS, "body": json.dumps({"error": "Вертикальное видео не должно превышать 50 МБ"})}
 
     if media_type == "video_horizontal" and size > MAX_VIDEO_H_SIZE:
-        return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Горизонтальное видео не должно превышать 100 МБ"})}
+        return {"statusCode": 400, "headers": CORS_HEADERS, "body": json.dumps({"error": "Горизонтальное видео не должно превышать 100 МБ"})}
 
     # Расширение
     ext_map = {
@@ -171,7 +161,7 @@ def handler(event, context):
     cur.close()
     conn.close()
 
-    return {"statusCode": 200, "headers": CORS, "body": json.dumps({
+    return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps({
         "url": url,
         "key": key,
         "media_type": media_type,

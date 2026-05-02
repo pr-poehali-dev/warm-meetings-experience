@@ -1,51 +1,20 @@
 import json
 import os
-import re
 import hashlib
 import secrets
 import psycopg2
 import psycopg2.extras
 import requests
 
-def get_conn():
-    """Подключение к БД"""
-    return psycopg2.connect(os.environ['DATABASE_URL'])
+from shared import *
 
-def get_schema():
-    return os.environ.get('MAIN_DB_SCHEMA', 'public')
-
-def slugify(text):
-    """Генерация slug из текста"""
-    text = text.lower().strip()
-    translit = {
-        'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh',
-        'з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o',
-        'п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'kh','ц':'ts',
-        'ч':'ch','ш':'sh','щ':'shch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya',
-        ' ':'-'
-    }
-    result = ''
-    for char in text:
-        result += translit.get(char, char)
-    result = re.sub(r'[^a-z0-9-]', '', result)
-    result = re.sub(r'-+', '-', result).strip('-')
-    return result
 
 def handler(event, context):
     """API для управления событиями и записями на них"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Authorization',
-                'Access-Control-Max-Age': '86400'
-            },
-            'body': ''
-        }
+        return options_response()
 
-    headers = {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'}
+    headers = CORS_HEADERS
     method = event.get('httpMethod', 'GET')
     params = event.get('queryStringParameters') or {}
     resource = params.get('resource', 'events')

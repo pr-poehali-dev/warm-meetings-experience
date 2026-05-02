@@ -1,75 +1,15 @@
 import json
 import os
 import secrets
-import urllib.request
 from datetime import datetime, timedelta
 
 import psycopg2
 import psycopg2.extras
 import requests as http_requests
 
+from shared import *
+
 TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
-
-
-def notify_admin_tg(text):
-    token = os.environ.get('TELEGRAM_BOT_TOKEN')
-    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
-    if not token or not chat_id:
-        return
-    payload = json.dumps({'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'}).encode('utf-8')
-    req = urllib.request.Request(
-        f'https://api.telegram.org/bot{token}/sendMessage',
-        data=payload,
-        headers={'Content-Type': 'application/json'}
-    )
-    try:
-        urllib.request.urlopen(req, timeout=5)
-    except Exception:
-        pass
-
-
-def get_conn():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
-
-def get_schema():
-    return os.environ.get('MAIN_DB_SCHEMA', 'public')
-
-def cors_headers():
-    return {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, X-Authorization, X-Session-Token, X-Admin-Token',
-        'Content-Type': 'application/json'
-    }
-
-def get_user_from_token(cur, token, schema):
-    cur.execute(f"""
-        SELECT u.id, u.name, u.email, u.phone, u.telegram
-        FROM {schema}.user_sessions s
-        JOIN {schema}.users u ON u.id = s.user_id
-        WHERE s.token = '{token}' AND s.expires_at > NOW()
-    """)
-    return cur.fetchone()
-
-def is_organizer(cur, user_id, schema):
-    cur.execute(f"""
-        SELECT 1 FROM {schema}.user_roles ur
-        JOIN {schema}.roles r ON r.id = ur.role_id
-        WHERE ur.user_id = {user_id}
-          AND r.slug IN ('organizer', 'admin')
-          AND ur.status = 'active'
-    """)
-    return cur.fetchone() is not None
-
-def is_admin(cur, user_id, schema):
-    cur.execute(f"""
-        SELECT 1 FROM {schema}.user_roles ur
-        JOIN {schema}.roles r ON r.id = ur.role_id
-        WHERE ur.user_id = {user_id}
-          AND r.slug = 'admin'
-          AND ur.status = 'active'
-    """)
-    return cur.fetchone() is not None
 
 
 def trigger_tg_publish(event_id, organizer_id):
@@ -82,22 +22,13 @@ def trigger_tg_publish(event_id, organizer_id):
     except Exception:
         pass
 
-def verify_admin_token(token):
-    """Проверяет admin_token — тот же алгоритм что в auth/index.py"""
-    import hashlib, time
-    admin_password = os.environ.get('ADMIN_PASSWORD', '')
-    if not admin_password or not token:
-        return False
-    expected = hashlib.sha256(f"{admin_password}:{int(time.time() // 86400)}".encode()).hexdigest()
-    return token == expected
-
 
 def handler(event, context):
     """Личный кабинет организатора: дашборд, события, участники"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {'statusCode': 200, 'headers': cors_headers(), 'body': ''}
+        return options_response()
 
-    headers = cors_headers()
+    headers = CORS_HEADERS
     method = event.get('httpMethod', 'GET')
     params = event.get('queryStringParameters') or {}
     resource = params.get('resource', 'dashboard')
@@ -131,7 +62,7 @@ def handler(event, context):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     schema = get_schema()
 
-    user = get_user_from_token(cur, token, schema)
+    user = get_user_from_token(cur, schema, token)
     if not user:
         conn.close()
         return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'Invalid token'})}
@@ -148,7 +79,7 @@ def handler(event, context):
         body_raw = json.loads(event.get('body', '{}'))
         return handle_verify_invite(body_raw, cur, conn, user_id, schema, headers)
 
-    if not is_organizer(cur, user_id, schema):
+    if not has_role(cur, schema, user_id, 'organizer', 'admin'):
         conn.close()
         return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Forbidden: organizer role required'})}
 
@@ -184,7 +115,7 @@ def handler(event, context):
 
 def handle_dashboard(cur, conn, user_id, user, schema, headers):
     """Дашборд: статистика и ближайшие события организатора"""
-    admin = is_admin(cur, user_id, schema)
+    admin = has_role(cur, schema, user_id, 'admin')
 
     events_filter = f"organizer_id = {user_id}" if not admin else "1=1"
 
@@ -262,7 +193,7 @@ def handle_dashboard(cur, conn, user_id, user, schema, headers):
 
 def handle_events(event, method, params, cur, conn, user_id, schema, headers):
     """CRUD событий организатора"""
-    admin = is_admin(cur, user_id, schema)
+    admin = has_role(cur, schema, user_id, 'admin')
     owner_filter = f"e.organizer_id = {user_id}" if not admin else "1=1"
 
     if method == 'GET':
@@ -326,15 +257,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             conn.close()
             return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True})}
 
-        import re
-        def slugify(text):
-            text = text.lower().strip()
-            translit = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'kh','ц':'ts','ч':'ch','ш':'sh','щ':'shch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya',' ':'-'}
-            result = ''.join(translit.get(c, c) for c in text)
-            result = re.sub(r'[^a-z0-9-]', '', result)
-            return re.sub(r'-+', '-', result).strip('-')
-
-        slug = slugify(body.get('title', ''))[:200]
+        slug = slugify(body.get('title', ''), max_length=200)
         base_slug = slug
         counter = 1
         while True:
@@ -362,7 +285,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         if pricing_type not in ('fixed', 'dynamic'):
             pricing_type = 'fixed'
 
-        admin = is_admin(cur, user_id, schema)
+        admin = has_role(cur, schema, user_id, 'admin')
         requested_visible = body.get('is_visible', False)
         if admin:
             event_status = 'published' if requested_visible else 'draft'
@@ -678,7 +601,7 @@ def handle_participants(event, method, params, cur, conn, user_id, schema, heade
 
 def handle_pricing_tiers(event, method, params, cur, conn, user_id, schema, headers):
     """Управление ступенями динамического ценообразования"""
-    admin = is_admin(cur, user_id, schema)
+    admin = has_role(cur, schema, user_id, 'admin')
 
     if method == 'GET':
         event_id = params.get('event_id')
@@ -760,7 +683,7 @@ def handle_profile(event, method, cur, conn, user_id, schema, headers):
 
 def handle_co_organizers(event, method, params, cur, conn, user_id, schema, headers):
     """Соорганизаторы события: GET список, POST добавить, DELETE удалить"""
-    admin = is_admin(cur, user_id, schema)
+    admin = has_role(cur, schema, user_id, 'admin')
 
     def check_event_owner(event_id):
         cur.execute(f"SELECT organizer_id FROM {schema}.events WHERE id = {event_id}")
@@ -1264,7 +1187,7 @@ def handle_verify_invite(body, cur, conn, user_id, schema, headers):
 
 def handle_guests(event, method, params, cur, conn, user_id, schema, headers):
     """Гости события: список, обновление статуса"""
-    admin = is_admin(cur, user_id, schema)
+    admin = has_role(cur, schema, user_id, 'admin')
     event_id = params.get('event_id')
     if not event_id:
         conn.close()
@@ -1351,7 +1274,7 @@ def handle_guests(event, method, params, cur, conn, user_id, schema, headers):
 
 def handle_messages(event, method, params, cur, conn, user_id, schema, headers):
     """История диалогов и отправка сообщений гостям"""
-    admin = is_admin(cur, user_id, schema)
+    admin = has_role(cur, schema, user_id, 'admin')
     signup_id = params.get('signup_id')
 
     if method == 'GET':

@@ -8,12 +8,8 @@ import pyotp
 import psycopg2
 import psycopg2.extras
 
+from shared import *
 
-def get_conn():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
-
-def get_schema():
-    return os.environ.get('MAIN_DB_SCHEMA', 'public')
 
 def write_audit_log(cur, schema, user_id, action, resource=None, resource_id=None, ip_address=None, details=None):
     details_str = json.dumps(details) if details else 'null'
@@ -24,20 +20,6 @@ def write_audit_log(cur, schema, user_id, action, resource=None, resource_id=Non
         INSERT INTO {schema}.audit_logs (user_id, action, resource, resource_id, ip_address, details)
         VALUES ({user_id}, '{action}', {res_str}, {res_id_str}, {ip_str}, '{details_str}'::jsonb)
     """)
-
-CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Session-Token',
-    'Access-Control-Max-Age': '86400'
-}
-
-def respond(status, body):
-    return {
-        'statusCode': status,
-        'headers': {**CORS_HEADERS, 'Content-Type': 'application/json'},
-        'body': json.dumps(body, default=str)
-    }
 
 def mask_email(email):
     if not email or '@' not in email:
@@ -60,23 +42,14 @@ def verify_password(password, stored_hash):
         return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
     return hashlib.sha256(password.encode()).hexdigest() == stored_hash
 
-def get_user_from_token(cur, schema, token):
-    if not token:
-        return None
-    t = token.replace("'", "''")
-    cur.execute(f"""
-        SELECT u.id, u.email, u.name, u.phone, u.telegram, u.vk_id, u.yandex_id, u.password_hash, u.totp_enabled, u.login_2fa_method, u.consent_photo, u.email_verified, u.created_at, u.avatar_url
-        FROM {schema}.user_sessions s
-        JOIN {schema}.users u ON u.id = s.user_id
-        WHERE s.token = '{t}' AND s.expires_at > CURRENT_TIMESTAMP AND u.is_active = true
-    """)
-    return cur.fetchone()
+
+_PROFILE_EXTRA_FIELDS = 'u.vk_id, u.yandex_id, u.password_hash, u.totp_enabled, u.login_2fa_method, u.consent_photo, u.email_verified, u.created_at, u.avatar_url'
 
 
 def handler(event, context):
     """Личный кабинет: профиль пользователя, записи на события, смена пароля, удаление аккаунта"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
+        return options_response()
 
     headers_in = event.get('headers') or {}
     token = headers_in.get('X-Session-Token') or headers_in.get('x-session-token') or ''
@@ -94,7 +67,7 @@ def handler(event, context):
         body = json.loads(event.get('body', '{}'))
         return handle_verify_email(cur, conn, schema, body, ip)
 
-    user = get_user_from_token(cur, schema, token)
+    user = get_user_from_token(cur, schema, token, extra_fields=_PROFILE_EXTRA_FIELDS)
     if not user:
         conn.close()
         return respond(401, {'error': 'Не авторизован'})

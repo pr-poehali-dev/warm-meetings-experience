@@ -10,26 +10,8 @@ import psycopg2
 import psycopg2.extras
 import requests
 
+from shared import *
 
-def get_conn():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
-
-def get_schema():
-    return os.environ.get('MAIN_DB_SCHEMA', 'public')
-
-CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Session-Token',
-    'Access-Control-Max-Age': '86400'
-}
-
-def respond(status, body):
-    return {
-        'statusCode': status,
-        'headers': {**CORS_HEADERS, 'Content-Type': 'application/json'},
-        'body': json.dumps(body, default=str)
-    }
 
 def hash_password(password):
     hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=12))
@@ -97,7 +79,7 @@ def check_device_and_notify(cur, schema, user_id, user_email, user_name, ip, use
 def handler(event, context):
     """Авторизация пользователей: регистрация, вход, сброс пароля, 2FA"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
+        return options_response()
 
     if event.get('httpMethod') != 'POST':
         return respond(405, {'error': 'Method not allowed'})

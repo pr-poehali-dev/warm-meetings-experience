@@ -18,45 +18,7 @@ import psycopg2
 import psycopg2.extras
 import requests
 
-
-def get_conn():
-    return psycopg2.connect(os.environ["DATABASE_URL"])
-
-def schema():
-    return os.environ.get("MAIN_DB_SCHEMA", "public")
-
-def cors():
-    return {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, X-Session-Token, X-Authorization",
-        "Content-Type": "application/json",
-    }
-
-def ok(data, status=200):
-    return {"statusCode": status, "headers": cors(), "body": json.dumps(data, ensure_ascii=False, default=str)}
-
-def err(msg, status=400):
-    return {"statusCode": status, "headers": cors(), "body": json.dumps({"error": msg}, ensure_ascii=False)}
-
-
-def get_user(cur, token, s):
-    cur.execute(f"""
-        SELECT u.id, u.name, u.email FROM {s}.user_sessions ss
-        JOIN {s}.users u ON u.id = ss.user_id
-        WHERE ss.token = %s AND ss.expires_at > NOW() AND u.is_active = true
-    """, (token,))
-    return cur.fetchone()
-
-
-def has_role(cur, user_id, slugs, s):
-    placeholders = ",".join(["%s"] * len(slugs))
-    cur.execute(f"""
-        SELECT 1 FROM {s}.user_roles ur
-        JOIN {s}.roles r ON r.id = ur.role_id
-        WHERE ur.user_id = %s AND r.slug IN ({placeholders}) AND ur.status = 'active'
-    """, (user_id, *slugs))
-    return cur.fetchone() is not None
+from shared import *
 
 
 def send_email_via_unisender(to_email, to_name, subject, body_html):
@@ -152,7 +114,7 @@ def handle_scenarios_post(cur, conn, user_id, owner_role, body, s):
     ))
     new_id = cur.fetchone()[0]
     conn.commit()
-    return ok({"id": new_id, "message": "Сценарий создан"}, 201)
+    return respond(201, {"id": new_id, "message": "Сценарий создан"})
 
 
 def handle_scenarios_put(cur, conn, user_id, body, s):
@@ -342,7 +304,7 @@ def handle_log_get(cur, user_id, params, s):
 def handler(event: dict, context) -> dict:
     """Модуль персонализированных уведомлений для организаторов и мастеров."""
     if event.get("httpMethod") == "OPTIONS":
-        return {"statusCode": 200, "headers": cors(), "body": ""}
+        return options_response()
 
     token = (event.get("headers") or {}).get("X-Session-Token") or \
             (event.get("headers") or {}).get("x-session-token") or \
@@ -362,18 +324,18 @@ def handler(event: dict, context) -> dict:
         except Exception:
             return err("Некорректный JSON")
 
-    s = schema()
+    s = get_schema()
     conn = get_conn()
     cur = conn.cursor()
 
-    user = get_user(cur, token, s)
+    user = get_user_from_token(cur, s, token)
     if not user:
         cur.close(); conn.close()
         return err("Сессия истекла или недействительна", 401)
 
-    user_id, user_name, user_email = user
+    user_id, user_name, user_email = user['id'], user['name'], user['email']
 
-    if not has_role(cur, user_id, ("organizer", "master", "admin"), s):
+    if not has_role(cur, s, user_id, "organizer", "master", "admin"):
         cur.close(); conn.close()
         return err("Нет доступа. Модуль доступен организаторам и мастерам.", 403)
 

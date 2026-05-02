@@ -1,39 +1,8 @@
 import json
 import os
-import re
 import psycopg2
 import psycopg2.extras
-
-def get_conn():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
-
-def get_schema():
-    return os.environ.get('MAIN_DB_SCHEMA', 'public')
-
-def slugify(text):
-    text = text.lower().strip()
-    translit = {
-        'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh',
-        'з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o',
-        'п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'kh','ц':'ts',
-        'ч':'ch','ш':'sh','щ':'shch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya',
-        ' ':'-'
-    }
-    result = ''
-    for char in text:
-        result += translit.get(char, char)
-    result = re.sub(r'[^a-z0-9-]', '', result)
-    result = re.sub(r'-+', '-', result).strip('-')
-    return result
-
-def cors_headers():
-    return {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Authorization',
-        'Access-Control-Max-Age': '86400',
-        'Content-Type': 'application/json'
-    }
+from shared import *
 
 def row_to_dict(row, cursor):
     import datetime
@@ -49,9 +18,9 @@ def row_to_dict(row, cursor):
 def handler(event, context):
     """API для управления банями — список, детали, CRUD, фильтрация"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {'statusCode': 200, 'headers': cors_headers(), 'body': ''}
+        return options_response()
 
-    headers = cors_headers()
+    headers = CORS_HEADERS
     method = event.get('httpMethod', 'GET')
     params = event.get('queryStringParameters') or {}
     schema = get_schema()

@@ -1,49 +1,14 @@
-import hashlib
 import json
 import os
-import re
-import time
 from datetime import datetime
 
 import psycopg2
 import psycopg2.extras
 
-
-def verify_admin_token(token):
-    if not token:
-        return False
-    admin_pwd = os.environ.get('ADMIN_PASSWORD', '')
-    if not admin_pwd:
-        return False
-    expected = hashlib.sha256(f"{admin_pwd}:{int(time.time() // 86400)}".encode()).hexdigest()
-    return token == expected
+from shared import *
 
 
-def get_conn():
-    return psycopg2.connect(os.environ['DATABASE_URL'])
-
-
-def get_schema():
-    return os.environ.get('MAIN_DB_SCHEMA', 'public')
-
-
-CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Session-Token, X-Admin-Token',
-    'Access-Control-Max-Age': '86400'
-}
-
-
-def respond(status, body):
-    return {
-        'statusCode': status,
-        'headers': {**CORS_HEADERS, 'Content-Type': 'application/json'},
-        'body': json.dumps(body, default=str)
-    }
-
-
-def get_user_from_token(cur, schema, token):
+def get_user_and_roles(cur, schema, token):
     """Получить пользователя и его роли по токену сессии"""
     t = token.replace("'", "''")
     cur.execute(f"""
@@ -65,22 +30,10 @@ def get_user_from_token(cur, schema, token):
     return dict(user), roles
 
 
-def slugify(text):
-    text = text.lower().strip()
-    text = re.sub(r'[а-яё]', lambda m: {
-        'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z',
-        'и':'i','й':'j','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r',
-        'с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'sch',
-        'ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'
-    }.get(m.group(), ''), text)
-    text = re.sub(r'[^a-z0-9]+', '-', text)
-    return text.strip('-')[:80]
-
-
 def handler(event, context):
     """API для статей блога: чтение, создание, редактирование, модерация"""
     if event.get('httpMethod') == 'OPTIONS':
-        return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
+        return options_response()
 
     method = event.get('httpMethod', 'GET')
     params = event.get('queryStringParameters') or {}
@@ -138,7 +91,7 @@ def handler(event, context):
         if not token:
             conn.close()
             return respond(401, {'error': 'Не авторизован'})
-        user, roles = get_user_from_token(cur, schema, token)
+        user, roles = get_user_and_roles(cur, schema, token)
         if not user:
             conn.close()
             return respond(401, {'error': 'Сессия истекла'})
@@ -158,7 +111,7 @@ def handler(event, context):
     if method == 'GET' and action == 'admin':
         is_admin = verify_admin_token(admin_token)
         if not is_admin and token:
-            _, roles = get_user_from_token(cur, schema, token)
+            _, roles = get_user_and_roles(cur, schema, token)
             is_admin = 'admin' in roles
         if not is_admin:
             conn.close()
@@ -191,7 +144,7 @@ def handler(event, context):
         if not token:
             conn.close()
             return respond(401, {'error': 'Не авторизован'})
-        user, roles = get_user_from_token(cur, schema, token)
+        user, roles = get_user_and_roles(cur, schema, token)
         if not user:
             conn.close()
             return respond(401, {'error': 'Сессия истекла'})
@@ -247,7 +200,7 @@ def handler(event, context):
         if not token:
             conn.close()
             return respond(401, {'error': 'Не авторизован'})
-        user, roles = get_user_from_token(cur, schema, token)
+        user, roles = get_user_and_roles(cur, schema, token)
         if not user:
             conn.close()
             return respond(401, {'error': 'Сессия истекла'})
@@ -312,7 +265,7 @@ def handler(event, context):
     if method == 'PUT' and action == 'moderate':
         is_admin = verify_admin_token(admin_token)
         if not is_admin and token:
-            _, roles = get_user_from_token(cur, schema, token)
+            _, roles = get_user_and_roles(cur, schema, token)
             is_admin = 'admin' in roles
         if not is_admin:
             conn.close()
@@ -352,7 +305,7 @@ def handler(event, context):
     if method == 'PUT' and action == 'set-popular':
         is_admin = verify_admin_token(admin_token)
         if not is_admin and token:
-            _, roles = get_user_from_token(cur, schema, token)
+            _, roles = get_user_and_roles(cur, schema, token)
             is_admin = 'admin' in roles
         if not is_admin:
             conn.close()
