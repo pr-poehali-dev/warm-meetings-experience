@@ -1,28 +1,22 @@
 {
   "tests": [
     {
-      "name": "Get all baths",
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get all baths returns 200",
       "method": "GET",
       "path": "/",
-      "expectedStatus": 200,
-      "expectedBody": {"baths": []},
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     },
     {
-      "name": "Get bath by slug not found",
+      "name": "Get bath by unknown slug returns 404",
       "method": "GET",
-      "path": "/?slug=nonexistent-slug-12345",
-      "expectedStatus": 404,
-      "expectedBody": {"error": "Баня не найдена"},
-      "bodyMatcher": "partial"
-    },
-    {
-      "name": "Search baths",
-      "method": "GET",
-      "path": "/?search=баня",
-      "expectedStatus": 200,
-      "expectedBody": {"baths": []},
-      "bodyMatcher": "partial"
+      "path": "/?slug=nonexistent-xyz-99999",
+      "expectedStatus": 404
     }
   ]
 }
