@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MediaItem, MEDIA_CONFIG } from "./bathMediaTypes";
 import func2url from "../../../../backend/func2url.json";
 
-const MEDIA_API = func2url["bath-media"];
+const MEDIA_API = func2url["upload-media"];
 
 interface MediaCardProps {
   item: MediaItem;

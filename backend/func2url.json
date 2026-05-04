@@ -1,4 +1,5 @@
 {
+  "upload-media": "https://functions.poehali.dev/e6e2f730-156b-45ba-a546-5ad53042182a",
   "partner-cabinet": "https://functions.poehali.dev/3989724b-e648-40f8-9642-5310fb7fcb5d",
   "notify-module": "https://functions.poehali.dev/47bb36f1-5d1a-45e7-86e3-bd7a07a3d8de",
   "vk-notify": "https://functions.poehali.dev/d80d1556-27a6-4477-b864-c621e0b9eaf7",
@@ -7,8 +8,6 @@
   "telegram-bot": "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1",
   "organizer-cabinet": "https://functions.poehali.dev/730d60f4-a9cf-4f56-90d9-f48caaa9007d",
   "masters-api": "https://functions.poehali.dev/5e680421-cf43-4b07-abc1-8005b1b68de6",
-  "upload-image": "https://functions.poehali.dev/bc598664-ac65-4fb1-af0a-cba338dcfaf7",
-  "bath-media": "https://functions.poehali.dev/1370ba71-fbc4-4ea5-97ee-a4ceedcd905d",
   "baths-api": "https://functions.poehali.dev/50b2bc49-0fa2-423a-9f22-9053d7808c30",
   "master-calendar": "https://functions.poehali.dev/ed332843-31df-404c-9639-f17a73504c7e",
   "master-bookings": "https://functions.poehali.dev/4aa1df05-4997-4019-b133-c55128f1720f",

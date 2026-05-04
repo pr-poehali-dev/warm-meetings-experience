@@ -30,7 +30,7 @@ import func2url from "../../backend/func2url.json";
 // Workspace dashboard
 import WorkspaceDashboard from "@/components/workspace/WorkspaceDashboard";
 
-const UPLOAD_URL = func2url["upload-image"];
+const UPLOAD_URL = func2url["upload-media"];
 
 // ─── Типы ─────────────────────────────────────────────────────────────────────
 

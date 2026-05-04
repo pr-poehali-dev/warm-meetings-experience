@@ -4,8 +4,8 @@ import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
 import PhotoBank, { useRecentPhotos } from "./PhotoBank";
-const UPLOAD_URL =
-  "https://functions.poehali.dev/bc598664-ac65-4fb1-af0a-cba338dcfaf7";
+import func2url from "../../../backend/func2url.json";
+const UPLOAD_URL = func2url["upload-media"];
 
 const ASPECT_W = 16;
 const ASPECT_H = 9;

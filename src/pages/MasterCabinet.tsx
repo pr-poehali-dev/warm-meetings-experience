@@ -14,7 +14,7 @@ import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import func2url from "../../backend/func2url.json";
 
-const UPLOAD_URL = func2url["upload-image"];
+const UPLOAD_URL = func2url["upload-media"];
 
 type PortfolioItem = { url: string; type: "image" | "video"; caption?: string };
 
