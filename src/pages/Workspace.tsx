@@ -27,6 +27,13 @@ import NotifyModule from "@/components/notify/NotifyModule";
 import { useToast } from "@/hooks/use-toast";
 import func2url from "../../backend/func2url.json";
 
+// Partner imports
+import { partnerApi, PartnerBath } from "@/lib/partner-api";
+import BathCard from "@/components/partner/BathCard";
+import BathForm from "@/components/partner/BathForm";
+import PartnerStats from "@/components/partner/PartnerStats";
+import { Card, CardContent } from "@/components/ui/card";
+
 // Workspace dashboard
 import WorkspaceDashboard from "@/components/workspace/WorkspaceDashboard";
 
@@ -34,9 +41,10 @@ const UPLOAD_URL = func2url["upload-media"];
 
 // ─── Типы ─────────────────────────────────────────────────────────────────────
 
-type RoleTab = "dashboard" | "master" | "organizer";
+type RoleTab = "dashboard" | "master" | "organizer" | "partner";
 type MasterSection = "dashboard" | "profile" | "schedule" | "bookings" | "reviews" | "finances" | "notifications";
 type OrgView = "dashboard" | "create" | "edit" | "participants" | "telegram" | "calculator" | "notify";
+type PartnerView = "dashboard" | "baths" | "add" | "edit";
 
 const MASTER_NAV: { id: MasterSection; label: string; icon: string }[] = [
   { id: "dashboard", label: "Обзор", icon: "LayoutDashboard" },
@@ -404,19 +412,35 @@ export default function Workspace() {
 
   const isMaster = hasRole("parmaster");
   const isOrganizer = hasRole("organizer");
+  const isPartner = hasRole("partner");
 
   // Определяем начальный таб по ролям и URL
   const initialTab = (): RoleTab => {
     const p = searchParams.get("tab") as RoleTab | null;
     if (p === "master" && isMaster) return "master";
     if (p === "organizer" && isOrganizer) return "organizer";
+    if (p === "partner" && isPartner) return "partner";
     return "dashboard";
   };
 
   const [roleTab, setRoleTab] = useState<RoleTab>(initialTab);
   const [masterSection, setMasterSection] = useState<MasterSection>((searchParams.get("section") as MasterSection) || "dashboard");
   const [orgView, setOrgView] = useState<OrgView>("dashboard");
+  const [partnerView, setPartnerView] = useState<PartnerView>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Partner state
+  const [baths, setBaths] = useState<PartnerBath[]>([]);
+  const [bathsLoading, setBathsLoading] = useState(false);
+  const [editingBath, setEditingBath] = useState<PartnerBath | null>(null);
+
+  const loadBaths = useCallback(() => {
+    setBathsLoading(true);
+    partnerApi.listBaths()
+      .then((d) => setBaths(d.baths))
+      .catch(() => {})
+      .finally(() => setBathsLoading(false));
+  }, []);
 
   // Organizer state
   const [orgDashboard, setOrgDashboard] = useState<DashboardData | null>(null);
@@ -438,9 +462,10 @@ export default function Workspace() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { navigate("/login?redirect=/workspace"); return; }
-    if (!isMaster && !isOrganizer) { navigate("/account"); return; }
+    if (!isMaster && !isOrganizer && !isPartner) { navigate("/account"); return; }
     if (isOrganizer) { loadOrgDashboard(); loadOrgEvents(); }
-  }, [authLoading, user, isMaster, isOrganizer, navigate, loadOrgDashboard, loadOrgEvents]);
+    if (isPartner) { loadBaths(); }
+  }, [authLoading, user, isMaster, isOrganizer, isPartner, navigate, loadOrgDashboard, loadOrgEvents, loadBaths]);
 
   const switchRoleTab = (tab: RoleTab) => {
     setRoleTab(tab);
@@ -462,6 +487,14 @@ export default function Workspace() {
     setSidebarOpen(false);
   };
 
+  const switchPartnerView = (v: PartnerView) => {
+    setRoleTab("partner");
+    setPartnerView(v);
+    if (v !== "edit") setEditingBath(null);
+    setSearchParams({ tab: "partner" });
+    setSidebarOpen(false);
+  };
+
   if (authLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" /></div>;
 
   const masterId = user!.id;
@@ -472,6 +505,15 @@ export default function Workspace() {
     if (roleTab === "master") {
       const label = MASTER_NAV.find((n) => n.id === masterSection)?.label ?? "Мастер";
       return `Мастер · ${label}`;
+    }
+    if (roleTab === "partner") {
+      const map: Record<PartnerView, string> = {
+        dashboard: "Обзор",
+        baths: "Мои бани",
+        add: "Добавить баню",
+        edit: "Редактирование бани",
+      };
+      return `Партнёр · ${map[partnerView]}`;
     }
     const label = ORG_NAV.find((n) => n.id === orgView)?.label
       ?? (orgView === "create" ? "Создание события" : orgView === "edit" ? "Редактирование" : orgView === "participants" ? "Участники" : "Организатор");
@@ -529,6 +571,28 @@ export default function Workspace() {
         </>
       )}
 
+      {/* Партнёр-разделы */}
+      {isPartner && (
+        <>
+          <SectionLabel>
+            <span className="inline-flex items-center gap-1.5"><Icon name="Building2" size={11} className="text-violet-500" />Партнёр</span>
+          </SectionLabel>
+          <NavItem
+            active={roleTab === "partner" && partnerView === "baths"}
+            onClick={() => switchPartnerView("baths")}
+            icon="Building2"
+            label="Мои бани"
+            badge={baths.length || undefined}
+          />
+          <NavItem
+            active={roleTab === "partner" && partnerView === "add"}
+            onClick={() => switchPartnerView("add")}
+            icon="Plus"
+            label="Добавить баню"
+          />
+        </>
+      )}
+
       {/* Организатор-разделы */}
       {isOrganizer && (
         <>
@@ -572,7 +636,7 @@ export default function Workspace() {
       {/* Низ: личный кабинет + выход */}
       <div className="border-t border-border/60 pt-2 mt-3">
         <Link to="/account" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors">
-          <Icon name="User" size={16} />Личный кабинет
+          <Icon name="User" size={16} />Профиль
         </Link>
         <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
           <Icon name="LogOut" size={16} />Выйти
@@ -603,6 +667,78 @@ export default function Workspace() {
         case "reviews": return <MasterReviewsSection masterId={masterId} />;
         case "finances": return <MasterFinancesSection masterId={masterId} />;
         case "notifications": return <MasterNotificationsSection masterId={masterId} />;
+      }
+    }
+
+    if (roleTab === "partner" && isPartner) {
+      if (partnerView === "dashboard" || partnerView === "baths") {
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold">{partnerView === "baths" ? "Мои бани" : "Партнёр"}</h2>
+              <Button size="sm" onClick={() => switchPartnerView("add")} className="gap-1.5">
+                <Icon name="Plus" size={14} />
+                Добавить баню
+              </Button>
+            </div>
+
+            {partnerView === "dashboard" && <PartnerStats />}
+
+            {bathsLoading ? (
+              <div className="flex justify-center py-16">
+                <Icon name="Loader2" size={28} className="animate-spin text-muted-foreground" />
+              </div>
+            ) : baths.length > 0 ? (
+              <div className="space-y-2">
+                {baths.map((bath) => (
+                  <BathCard
+                    key={bath.id}
+                    bath={bath}
+                    onEdit={(b) => { setEditingBath(b); switchPartnerView("edit"); }}
+                    onChanged={loadBaths}
+                  />
+                ))}
+              </div>
+            ) : (
+              <Card className="border-0 shadow-sm border-dashed">
+                <CardContent className="p-8 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-3">
+                    <Icon name="Building2" size={24} className="text-violet-400" />
+                  </div>
+                  <h3 className="text-base font-semibold text-foreground mb-1">Добавьте первую баню</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Зарегистрируйте свою баню в каталоге, чтобы клиенты могли вас найти
+                  </p>
+                  <Button onClick={() => switchPartnerView("add")} className="gap-2">
+                    <Icon name="Plus" size={15} />
+                    Добавить баню
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        );
+      }
+      if (partnerView === "add") {
+        return (
+          <div className="max-w-2xl mx-auto">
+            <BathForm
+              onSaved={() => { loadBaths(); switchPartnerView("baths"); }}
+              onCancel={() => switchPartnerView("baths")}
+            />
+          </div>
+        );
+      }
+      if (partnerView === "edit" && editingBath) {
+        return (
+          <div className="max-w-2xl mx-auto">
+            <BathForm
+              bath={editingBath}
+              onSaved={() => { loadBaths(); setEditingBath(null); switchPartnerView("baths"); }}
+              onCancel={() => { setEditingBath(null); switchPartnerView("baths"); }}
+            />
+          </div>
+        );
       }
     }
 
@@ -704,7 +840,7 @@ export default function Workspace() {
       {/* Шапка */}
       <CabinetHeader
         icon="Briefcase"
-        title="Рабочий кабинет"
+        title="Моё дело"
         subtitle={currentLabel()}
         onMenuToggle={() => setSidebarOpen((v) => !v)}
         menuOpen={sidebarOpen}

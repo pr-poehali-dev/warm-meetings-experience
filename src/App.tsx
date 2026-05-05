@@ -30,9 +30,6 @@ import BathDetail from "./pages/BathDetail";
 import Masters from "./pages/Masters";
 import MasterDetail from "./pages/MasterDetail";
 import About from "./pages/About";
-import OrganizerCabinet from "./pages/OrganizerCabinet";
-import MasterCabinet from "./pages/MasterCabinet";
-import PartnerCabinet from "./pages/PartnerCabinet";
 import Workspace from "./pages/Workspace";
 import RoleGuard from "./components/RoleGuard";
 import InviteRegister from "./pages/InviteRegister";
@@ -70,10 +67,10 @@ const AppContent = () => {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/admin" element={<RoleGuard role="admin"><Admin /></RoleGuard>} />
-        <Route path="/workspace" element={<RoleGuard role={["parmaster", "organizer"]}><Workspace /></RoleGuard>} />
+        <Route path="/workspace" element={<RoleGuard role={["parmaster", "organizer", "partner"]}><Workspace /></RoleGuard>} />
         <Route path="/organizer-cabinet" element={<Navigate to="/workspace?tab=organizer" replace />} />
         <Route path="/master" element={<Navigate to="/workspace?tab=master" replace />} />
-        <Route path="/partner" element={<RoleGuard role="partner"><PartnerCabinet /></RoleGuard>} />
+        <Route path="/partner" element={<Navigate to="/workspace?tab=partner" replace />} />
         <Route path="/invite" element={<InviteRegister />} />
         <Route path="/invite-verify" element={<InviteVerify />} />
         <Route path="/principles" element={<Principles />} />
