@@ -444,7 +444,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
 
 def handle_moderation(event, method, params, cur, conn, user_id, schema, headers):
     """Модерация событий (только для админа)"""
-    admin = is_admin(cur, user_id, schema)
+    admin = has_role(cur, schema, user_id, 'admin')
     if not admin:
         conn.close()
         return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Forbidden: admin only'})}
@@ -521,7 +521,7 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
 
 def handle_participants(event, method, params, cur, conn, user_id, schema, headers):
     """Управление участниками события"""
-    admin = is_admin(cur, user_id, schema)
+    admin = has_role(cur, schema, user_id, 'admin')
     event_id = params.get('event_id') or (json.loads(event.get('body', '{}')).get('event_id') if method != 'GET' else None)
 
     if event_id:
@@ -1019,7 +1019,7 @@ def handle_send_invite(body, cur, conn, user_id, schema, headers):
         conn.close()
         return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Событие не найдено'})}
 
-    admin = is_admin(cur, user_id, schema)
+    admin = has_role(cur, schema, user_id, 'admin')
     if not admin and ev['organizer_id'] != user_id:
         conn.close()
         return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Нет доступа к этому событию'})}
