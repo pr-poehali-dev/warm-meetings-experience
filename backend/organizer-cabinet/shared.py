@@ -8,6 +8,8 @@ import urllib.request
 import psycopg2
 import psycopg2.extras
 
+# --- DB ---
+
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
 
@@ -16,6 +18,8 @@ def get_schema():
 
 def get_cursor(conn):
     return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+# --- CORS ---
 
 CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
@@ -36,6 +40,8 @@ def ok(body):
 
 def err(message, status=400):
     return respond(status, {'error': message})
+
+# --- Auth ---
 
 def get_user_from_token(cur, schema, token, extra_fields=''):
     if not token:
@@ -68,6 +74,8 @@ def verify_admin_token(token):
     expected = hashlib.sha256(f"{admin_pwd}:{int(time.time() // 86400)}".encode()).hexdigest()
     return token == expected
 
+# --- Slugify ---
+
 _TRANSLIT = {
     'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
     'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
@@ -82,6 +90,8 @@ def slugify(text, max_length=80, fallback='item'):
     result = re.sub(r'[^a-z0-9-]', '', result)
     result = re.sub(r'-+', '-', result).strip('-')
     return (result or fallback)[:max_length]
+
+# --- Telegram ---
 
 def tg_send(chat_id, text, token=None, parse_mode='HTML'):
     bot_token = token or os.environ.get('TELEGRAM_BOT_TOKEN', '')
