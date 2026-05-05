@@ -12,11 +12,13 @@ interface Cabinet {
   bgColor: string;
 }
 
-function getWorkspaceDescription(isMaster: boolean, isOrganizer: boolean): string {
-  if (isMaster && isOrganizer) return "Мастер-сеансы, события, расписание";
-  if (isMaster) return "Мастер-сеансы и расписание";
-  if (isOrganizer) return "Создание и управление событиями";
-  return "Сеансы и события";
+function getBusinessDescription(isMaster: boolean, isOrganizer: boolean, isPartner: boolean): string {
+  const parts: string[] = [];
+  if (isMaster) parts.push("сеансы");
+  if (isOrganizer) parts.push("события");
+  if (isPartner) parts.push("бани");
+  if (parts.length === 0) return "Расписание и записи";
+  return parts.join(" · ").replace(/^./, (c) => c.toUpperCase());
 }
 
 function buildCabinets(hasRole: (slug: string) => boolean): Cabinet[] {
@@ -33,25 +35,15 @@ function buildCabinets(hasRole: (slug: string) => boolean): Cabinet[] {
 
   const isMaster = hasRole("parmaster");
   const isOrganizer = hasRole("organizer");
-  if (isMaster || isOrganizer) {
+  const isPartner = hasRole("partner");
+  if (isMaster || isOrganizer || isPartner) {
     list.push({
-      label: "Рабочий кабинет",
-      description: getWorkspaceDescription(isMaster, isOrganizer),
+      label: "Моё дело",
+      description: getBusinessDescription(isMaster, isOrganizer, isPartner),
       to: "/workspace",
       icon: "Briefcase",
       color: "text-orange-600",
       bgColor: "bg-orange-50 group-hover:bg-orange-100",
-    });
-  }
-
-  if (hasRole("partner")) {
-    list.push({
-      label: "Партнёрский кабинет",
-      description: "Управление баней",
-      to: "/partner",
-      icon: "Building2",
-      color: "text-violet-600",
-      bgColor: "bg-violet-50 group-hover:bg-violet-100",
     });
   }
 
