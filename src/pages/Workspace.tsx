@@ -428,6 +428,13 @@ export default function Workspace() {
   const [orgView, setOrgView] = useState<OrgView>("dashboard");
   const [partnerView, setPartnerView] = useState<PartnerView>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    master: true,
+    partner: true,
+    organizer: true,
+  });
+  const toggleSection = (key: string) =>
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
 
   // Partner state
   const [baths, setBaths] = useState<PartnerBath[]>([]);
@@ -542,6 +549,35 @@ export default function Workspace() {
     <div className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 mb-1.5 mt-3">{children}</div>
   );
 
+  const CollapsibleSection = ({
+    sectionKey,
+    icon,
+    accent,
+    label,
+    children,
+  }: {
+    sectionKey: string;
+    icon: string;
+    accent: string;
+    label: string;
+    children: React.ReactNode;
+  }) => {
+    const open = openSections[sectionKey] ?? true;
+    return (
+      <div>
+        <button
+          onClick={() => toggleSection(sectionKey)}
+          className="w-full flex items-center gap-1.5 px-3 mb-1.5 mt-3 text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider hover:text-foreground transition-colors"
+        >
+          <Icon name={icon} size={11} className={accent} />
+          <span className="flex-1 text-left">{label}</span>
+          <Icon name="ChevronDown" size={12} className={`transition-transform ${open ? "" : "-rotate-90"}`} />
+        </button>
+        {open && <div className="space-y-0.5">{children}</div>}
+      </div>
+    );
+  };
+
   const renderSidebar = () => (
     <nav className="space-y-0.5">
       {/* Сводка — всегда сверху */}
@@ -553,12 +589,9 @@ export default function Workspace() {
         label="Обзор"
       />
 
-      {/* Мастер-разделы (плоско, без вложенности) */}
+      {/* Мастер-разделы */}
       {isMaster && (
-        <>
-          <SectionLabel>
-            <span className="inline-flex items-center gap-1.5"><Icon name="Flame" size={11} className="text-orange-500" />Мастер-услуги</span>
-          </SectionLabel>
+        <CollapsibleSection sectionKey="master" icon="Flame" accent="text-orange-500" label="Мастер-услуги">
           {MASTER_NAV.filter((n) => n.id !== "dashboard").map((n) => (
             <NavItem
               key={n.id}
@@ -568,15 +601,12 @@ export default function Workspace() {
               label={n.label}
             />
           ))}
-        </>
+        </CollapsibleSection>
       )}
 
       {/* Партнёр-разделы */}
       {isPartner && (
-        <>
-          <SectionLabel>
-            <span className="inline-flex items-center gap-1.5"><Icon name="Building2" size={11} className="text-violet-500" />Партнёр</span>
-          </SectionLabel>
+        <CollapsibleSection sectionKey="partner" icon="Building2" accent="text-violet-500" label="Партнёр">
           <NavItem
             active={roleTab === "partner" && partnerView === "baths"}
             onClick={() => switchPartnerView("baths")}
@@ -590,15 +620,12 @@ export default function Workspace() {
             icon="Plus"
             label="Добавить баню"
           />
-        </>
+        </CollapsibleSection>
       )}
 
       {/* Организатор-разделы */}
       {isOrganizer && (
-        <>
-          <SectionLabel>
-            <span className="inline-flex items-center gap-1.5"><Icon name="CalendarDays" size={11} className="text-emerald-500" />Мероприятия</span>
-          </SectionLabel>
+        <CollapsibleSection sectionKey="organizer" icon="CalendarDays" accent="text-emerald-500" label="Мероприятия">
           <NavItem
             active={roleTab === "organizer" && orgView === "dashboard"}
             onClick={() => switchOrgView("dashboard")}
@@ -630,7 +657,7 @@ export default function Workspace() {
             icon="Send"
             label="Telegram"
           />
-        </>
+        </CollapsibleSection>
       )}
 
       {/* Низ: личный кабинет + выход */}
