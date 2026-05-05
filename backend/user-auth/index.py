@@ -279,11 +279,14 @@ def handle_login(body, ip=None, user_agent=''):
     """)
     check_device_and_notify(cur, schema, user['id'], user['email'], user['name'], ip, user_agent)
     write_audit_log(cur, schema, user['id'], 'login', 'users', user['id'], ip, {'method': 'email'})
+
+    roles = fetch_user_roles(cur, schema, user['id'])
     conn.commit()
     conn.close()
 
     user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'created_at']}
     user_data['has_password'] = bool(user.get('password_hash'))
+    user_data['roles'] = roles
     return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
 
 
@@ -451,12 +454,14 @@ def handle_vk_session(body, ip=None, user_agent=''):
     """)
     check_device_and_notify(cur, schema, user['id'], user['email'], user.get('name', ''), ip, user_agent)
     write_audit_log(cur, schema, user['id'], 'login', 'users', user['id'], ip, {'method': 'vk'})
+    roles = fetch_user_roles(cur, schema, user['id'])
     conn.commit()
     conn.close()
 
     user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'created_at']}
     user_data['has_password'] = bool(user.get('password_hash'))
     user_data['email_verified'] = bool(user.get('email_verified'))
+    user_data['roles'] = roles
     return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
 
 
@@ -497,12 +502,14 @@ def handle_yandex_session(body, ip=None, user_agent=''):
     """)
     check_device_and_notify(cur, schema, user['id'], user['email'], user.get('name', ''), ip, user_agent)
     write_audit_log(cur, schema, user['id'], 'login', 'users', user['id'], ip, {'method': 'yandex'})
+    roles = fetch_user_roles(cur, schema, user['id'])
     conn.commit()
     conn.close()
 
     user_data = {k: user[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'yandex_id', 'created_at']}
     user_data['has_password'] = bool(user.get('password_hash'))
     user_data['email_verified'] = bool(user.get('email_verified'))
+    user_data['roles'] = roles
     return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
 
 
@@ -555,11 +562,13 @@ def handle_verify_2fa(body, ip=None, user_agent=''):
     """)
     check_device_and_notify(cur, schema, row['id'], row['email'], row.get('name', ''), ip, user_agent)
     write_audit_log(cur, schema, row['id'], 'login', 'users', row['id'], ip, {'method': 'email_2fa'})
+    roles = fetch_user_roles(cur, schema, row['id'])
     conn.commit()
     conn.close()
 
     user_data = {k: row[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'created_at']}
     user_data['has_password'] = True
+    user_data['roles'] = roles
     return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
 
 
@@ -609,6 +618,17 @@ def log_login_2fa(cur, schema, user_id, method, event, success, ip, user_agent, 
             (user_id, method, event, success, ip_address, user_agent, details)
         VALUES ({uid_val}, '{method}', '{event}', {str(bool(success)).upper()}, {ip_val}, '{ua}', '{det}'::jsonb)
     """)
+
+
+def fetch_user_roles(cur, schema, user_id):
+    cur.execute(f"""
+        SELECT r.id, r.name, r.slug, r.description, r.icon, ur.status, ur.verified_at, ur.created_at
+        FROM {schema}.user_roles ur
+        JOIN {schema}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = {user_id} AND ur.status = 'active'
+        ORDER BY r.sort_order
+    """)
+    return [dict(r) for r in cur.fetchall()]
 
 
 def has_privileged_role(cur, schema, user_id):
@@ -666,6 +686,7 @@ def finalize_login_session(cur, schema, user_row, method_used, ip, user_agent, p
     check_device_and_notify(cur, schema, user_row['id'], user_row['email'], user_row.get('name', ''), ip, user_agent)
     write_audit_log(cur, schema, user_row['id'], 'login', 'users', user_row['id'], ip, {'method': method_used})
 
+    roles = fetch_user_roles(cur, schema, user_row['id'])
     user_data = {
         'id': user_row['id'],
         'email': user_row['email'],
@@ -675,6 +696,7 @@ def finalize_login_session(cur, schema, user_row, method_used, ip, user_agent, p
         'yandex_id': user_row.get('yandex_id'),
         'created_at': user_row.get('created_at'),
         'has_password': True,
+        'roles': roles,
     }
     return user_data, token, expires
 

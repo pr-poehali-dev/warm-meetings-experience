@@ -81,8 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw err;
     }
     localStorage.setItem("user_token", data.token);
-    localStorage.setItem("user_data", JSON.stringify(data.user));
-    setUser(data.user);
+    // Роли приходят в ответе login; дополнительно обновляем профиль для актуальности
+    let userWithRoles = data.user;
+    try {
+      const profileData = await userProfileApi.getProfile();
+      userWithRoles = profileData.user;
+    } catch { /* используем данные из login */ }
+    localStorage.setItem("user_data", JSON.stringify(userWithRoles));
+    setUser(userWithRoles);
   };
 
   const loginWithToken = (token: string, userData: User) => {
