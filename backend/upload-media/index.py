@@ -6,7 +6,26 @@ import boto3
 import psycopg2
 from datetime import datetime
 
-from shared import *
+CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Authorization, X-Session-Token, X-Admin-Token',
+    'Access-Control-Max-Age': '86400',
+    'Content-Type': 'application/json',
+}
+
+
+def options_response():
+    return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
+
+
+def get_conn():
+    return psycopg2.connect(os.environ['DATABASE_URL'])
+
+
+def get_schema():
+    return os.environ.get('MAIN_DB_SCHEMA', 'public')
+
 
 # Форматы медиа:
 # Фото:              JPG/PNG/WebP/GIF/HEIC, до 10 МБ
@@ -65,6 +84,19 @@ def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
         return options_response()
 
+    headers = CORS_HEADERS
+
+    try:
+        return _process(event)
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "headers": headers,
+            "body": json.dumps({"error": f"Ошибка сервера: {str(e)[:200]}"}, ensure_ascii=False)
+        }
+
+
+def _process(event: dict) -> dict:
     method = event.get("httpMethod", "POST")
     params = event.get("queryStringParameters") or {}
     headers = CORS_HEADERS

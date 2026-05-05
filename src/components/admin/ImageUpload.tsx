@@ -180,19 +180,25 @@ const ImageUpload = ({
       const response = await fetch(UPLOAD_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: base64Image, filename }),
+        body: JSON.stringify({ image: base64Image, filename, folder: "events" }),
       });
 
-      if (!response.ok) throw new Error("Upload failed");
+      const text = await response.text();
+      let data: { url?: string; error?: string } = {};
+      try { data = text ? JSON.parse(text) : {}; } catch { /* not json */ }
 
-      const data = await response.json();
+      if (!response.ok || !data.url) {
+        const msg = data.error || `Ошибка сервера (${response.status})`;
+        throw new Error(msg);
+      }
+
       onImageUploaded(data.url);
-
       toast({ title: "Готово!", description: "Изображение загружено" });
-    } catch {
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Не удалось загрузить изображение";
       toast({
         title: "Ошибка",
-        description: "Не удалось загрузить изображение",
+        description: msg,
         variant: "destructive",
       });
       setPreviewUrl(currentImageUrl);
