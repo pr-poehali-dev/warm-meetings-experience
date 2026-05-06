@@ -125,16 +125,31 @@ export default function ProfileCard({
                 }
               </div>
             )}
-            {/* Бейджи привязанных аккаунтов */}
-            <div className="flex gap-1.5 mt-2 flex-wrap">
+            {/* Значки подключённых каналов */}
+            <div className="flex gap-1.5 mt-2 flex-wrap items-center">
               {user.email_verified && (
-                <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">Email ✓</span>
+                <span
+                  title="Email подтверждён"
+                  className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center"
+                >
+                  <Icon name="Mail" size={12} />
+                </span>
               )}
               {user.vk_id && (
-                <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">VK</span>
+                <span
+                  title="ВКонтакте привязан"
+                  className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-bold"
+                >
+                  VK
+                </span>
               )}
               {user.yandex_id && (
-                <span className="text-xs bg-yellow-500 text-white px-2 py-0.5 rounded-full">Яндекс</span>
+                <span
+                  title="Яндекс привязан"
+                  className="w-6 h-6 rounded-full bg-yellow-500 text-white flex items-center justify-center text-[11px] font-bold"
+                >
+                  Я
+                </span>
               )}
             </div>
           </div>

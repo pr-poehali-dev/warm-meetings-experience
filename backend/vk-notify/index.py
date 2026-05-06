@@ -107,8 +107,8 @@ def handler(event: dict, context) -> dict:
                     "prefs": prefs.get("telegram", {"notify_service": True, "notify_reminders": True, "notify_marketing": False, "notify_booking": True, "notify_urgent": True}),
                 },
                 "sms": {
-                    "connected": bool(user["phone"]),
-                    "active": bool(user["notify_sms"]),
+                    "connected": False,
+                    "active": False,
                     "value": user["phone"],
                     "prefs": prefs.get("sms", {"notify_service": False, "notify_reminders": False, "notify_marketing": False, "notify_booking": False, "notify_urgent": True}),
                 },
