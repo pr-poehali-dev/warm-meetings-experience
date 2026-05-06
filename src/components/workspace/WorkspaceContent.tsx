@@ -1,0 +1,286 @@
+import Icon from "@/components/ui/icon";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { OrgEvent, DashboardData } from "@/lib/organizer-api";
+import { PartnerBath } from "@/lib/partner-api";
+import OrgDashboard from "@/components/organizer/OrgDashboard";
+import LiveEventEditor from "@/components/organizer/LiveEventEditor";
+import UnifiedPeoplePanel from "@/components/organizer/UnifiedPeoplePanel";
+import TelegramSettings from "@/components/organizer/TelegramSettings";
+import EventCalculator from "@/components/organizer/EventCalculator";
+import NotifyModule from "@/components/notify/NotifyModule";
+import BathCard from "@/components/partner/BathCard";
+import BathForm from "@/components/partner/BathForm";
+import PartnerStats from "@/components/partner/PartnerStats";
+import WorkspaceDashboard from "@/components/workspace/WorkspaceDashboard";
+import {
+  MasterDashboardSection,
+  MasterProfileSection,
+  MasterScheduleSection,
+  MasterBookingsSection,
+  MasterReviewsSection,
+  MasterFinancesSection,
+  MasterNotificationsSection,
+} from "./MasterSections";
+import { RoleTab, MasterSection, OrgView, PartnerView } from "./workspace-types";
+
+interface WorkspaceContentProps {
+  roleTab: RoleTab;
+  masterSection: MasterSection;
+  orgView: OrgView;
+  partnerView: PartnerView;
+  isMaster: boolean;
+  isOrganizer: boolean;
+  isPartner: boolean;
+  masterId: number;
+
+  // Partner
+  baths: PartnerBath[];
+  bathsLoading: boolean;
+  editingBath: PartnerBath | null;
+  setEditingBath: (b: PartnerBath | null) => void;
+  loadBaths: () => void;
+  switchPartnerView: (v: PartnerView) => void;
+
+  // Organizer
+  orgDashboard: DashboardData | null;
+  events: OrgEvent[];
+  selectedEvent: OrgEvent | null;
+  setSelectedEvent: (e: OrgEvent | null) => void;
+  formData: OrgEvent & { submit_action?: string };
+  setFormData: (d: OrgEvent & { submit_action?: string }) => void;
+  formDataRef: { current: OrgEvent & { submit_action?: string } };
+  orgFormLoading: boolean;
+  setOrgFormLoading: (b: boolean) => void;
+  setOrgView: (v: OrgView) => void;
+  loadOrgDashboard: () => Promise<void>;
+  loadOrgEvents: () => Promise<void>;
+  toast: (args: { title: string; description?: string; variant?: "default" | "destructive" }) => void;
+
+  // Role tab switcher (used by dashboard cards)
+  switchRoleTab: (t: RoleTab) => void;
+
+  // Organizer api passed in to avoid re-importing here? import directly
+}
+
+import { organizerApi } from "@/lib/organizer-api";
+
+export default function WorkspaceContent(props: WorkspaceContentProps) {
+  const {
+    roleTab,
+    masterSection,
+    orgView,
+    partnerView,
+    isMaster,
+    isOrganizer,
+    isPartner,
+    masterId,
+    baths,
+    bathsLoading,
+    editingBath,
+    setEditingBath,
+    loadBaths,
+    switchPartnerView,
+    orgDashboard,
+    events,
+    selectedEvent,
+    setSelectedEvent,
+    formData,
+    setFormData,
+    formDataRef,
+    orgFormLoading,
+    setOrgFormLoading,
+    setOrgView,
+    loadOrgDashboard,
+    loadOrgEvents,
+    toast,
+    switchRoleTab,
+  } = props;
+
+  if (roleTab === "dashboard") {
+    return (
+      <WorkspaceDashboard
+        isMaster={isMaster}
+        isOrganizer={isOrganizer}
+        onGoToMaster={() => switchRoleTab("master")}
+        onGoToOrganizer={() => switchRoleTab("organizer")}
+      />
+    );
+  }
+
+  if (roleTab === "master" && isMaster) {
+    switch (masterSection) {
+      case "dashboard": return <MasterDashboardSection masterId={masterId} />;
+      case "profile": return <MasterProfileSection masterId={masterId} />;
+      case "schedule": return <MasterScheduleSection masterId={masterId} />;
+      case "bookings": return <MasterBookingsSection masterId={masterId} />;
+      case "reviews": return <MasterReviewsSection masterId={masterId} />;
+      case "finances": return <MasterFinancesSection masterId={masterId} />;
+      case "notifications": return <MasterNotificationsSection masterId={masterId} />;
+    }
+  }
+
+  if (roleTab === "partner" && isPartner) {
+    if (partnerView === "dashboard" || partnerView === "baths") {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold">{partnerView === "baths" ? "Мои бани" : "Партнёр"}</h2>
+            <Button size="sm" onClick={() => switchPartnerView("add")} className="gap-1.5">
+              <Icon name="Plus" size={14} />
+              Добавить баню
+            </Button>
+          </div>
+
+          {partnerView === "dashboard" && <PartnerStats />}
+
+          {bathsLoading ? (
+            <div className="flex justify-center py-16">
+              <Icon name="Loader2" size={28} className="animate-spin text-muted-foreground" />
+            </div>
+          ) : baths.length > 0 ? (
+            <div className="space-y-2">
+              {baths.map((bath) => (
+                <BathCard
+                  key={bath.id}
+                  bath={bath}
+                  onEdit={(b) => { setEditingBath(b); switchPartnerView("edit"); }}
+                  onChanged={loadBaths}
+                />
+              ))}
+            </div>
+          ) : (
+            <Card className="border-0 shadow-sm border-dashed">
+              <CardContent className="p-8 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-3">
+                  <Icon name="Building2" size={24} className="text-violet-400" />
+                </div>
+                <h3 className="text-base font-semibold text-foreground mb-1">Добавьте первую баню</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Зарегистрируйте свою баню в каталоге, чтобы клиенты могли вас найти
+                </p>
+                <Button onClick={() => switchPartnerView("add")} className="gap-2">
+                  <Icon name="Plus" size={15} />
+                  Добавить баню
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      );
+    }
+    if (partnerView === "add") {
+      return (
+        <div className="max-w-2xl mx-auto">
+          <BathForm
+            onSaved={() => { loadBaths(); switchPartnerView("baths"); }}
+            onCancel={() => switchPartnerView("baths")}
+          />
+        </div>
+      );
+    }
+    if (partnerView === "edit" && editingBath) {
+      return (
+        <div className="max-w-2xl mx-auto">
+          <BathForm
+            bath={editingBath}
+            onSaved={() => { loadBaths(); setEditingBath(null); switchPartnerView("baths"); }}
+            onCancel={() => { setEditingBath(null); switchPartnerView("baths"); }}
+          />
+        </div>
+      );
+    }
+  }
+
+  if (roleTab === "organizer" && isOrganizer) {
+    switch (orgView) {
+      case "dashboard":
+        return orgDashboard ? (
+          <OrgDashboard
+            data={orgDashboard}
+            events={events}
+            eventsLoading={false}
+            onCreateEvent={() => setOrgView("create")}
+            onManageEvent={(ev) => { setSelectedEvent(ev); setOrgView("participants"); }}
+            onEditEvent={async (ev) => {
+              setSelectedEvent(ev);
+              let fullEvent = ev;
+              try { fullEvent = await organizerApi.getEvent(ev.id); } catch { /* fallback */ }
+              setFormData({ ...fullEvent });
+              setOrgView("edit");
+            }}
+            onDuplicateEvent={(ev) => {
+              const tomorrow = new Date();
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              setSelectedEvent(null);
+              setFormData({ ...ev, id: 0, event_date: tomorrow.toISOString().split("T")[0], is_visible: false, spots_left: ev.total_spots });
+              setOrgView("create");
+            }}
+            onRepeat={async (ev, dates) => {
+              for (const date of dates) {
+                try { await organizerApi.createEvent({ ...ev, id: 0, event_date: date, is_visible: false, submit_action: "draft" } as Parameters<typeof organizerApi.createEvent>[0]); } catch { /* skip */ }
+              }
+              await Promise.all([loadOrgDashboard(), loadOrgEvents()]);
+              toast({ title: `Создано ${dates.length} событий` });
+            }}
+            onToggleVisibility={async (ev) => {
+              try {
+                await organizerApi.updateEvent({ id: ev.id, is_visible: !ev.is_visible } as OrgEvent & { id: number });
+                await Promise.all([loadOrgEvents(), loadOrgDashboard()]);
+              } catch { toast({ title: "Ошибка", variant: "destructive" }); }
+            }}
+            onDeleteEvent={async (ev) => {
+              if (!confirm(`Скрыть событие «${ev.title}»?`)) return;
+              try { await organizerApi.deleteEvent(ev.id); await Promise.all([loadOrgEvents(), loadOrgDashboard()]); } catch { toast({ title: "Ошибка", variant: "destructive" }); }
+            }}
+          />
+        ) : <div className="flex justify-center py-16"><Icon name="Loader2" size={28} className="animate-spin text-muted-foreground" /></div>;
+      case "create":
+      case "edit":
+        return (
+          <div className="max-w-2xl mx-auto">
+            <LiveEventEditor
+              formData={formData}
+              loading={orgFormLoading}
+              onFormChange={(data) => setFormData(data as OrgEvent)}
+              onSubmit={async (e, _saveAndNew, override) => {
+                e.preventDefault();
+                const merged = { ...formDataRef.current, ...(override || {}) } as OrgEvent & { submit_action?: string };
+                setOrgFormLoading(true);
+                try {
+                  const submitAction = merged.submit_action || "draft";
+                  if (selectedEvent?.id) {
+                    await organizerApi.updateEvent({ ...merged, id: selectedEvent.id, submit_action: submitAction } as OrgEvent & { id: number; submit_action: string });
+                    toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
+                  } else {
+                    await organizerApi.createEvent({ ...merged, submit_action: submitAction } as Parameters<typeof organizerApi.createEvent>[0]);
+                    toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
+                  }
+                  await Promise.all([loadOrgDashboard(), loadOrgEvents()]);
+                  setOrgView("dashboard");
+                } catch (e: unknown) {
+                  toast({ title: "Ошибка", description: e instanceof Error ? e.message : "Не удалось сохранить", variant: "destructive" });
+                } finally {
+                  setOrgFormLoading(false);
+                }
+              }}
+              onCancel={() => setOrgView("dashboard")}
+            />
+          </div>
+        );
+      case "participants":
+        return selectedEvent ? (
+          <UnifiedPeoplePanel
+            event={selectedEvent}
+            onBack={() => setOrgView("dashboard")}
+            onNotify={() => setOrgView("notify")}
+          />
+        ) : null;
+      case "calculator": return <EventCalculator onCreateEvent={(data) => { setFormData(data as OrgEvent); setSelectedEvent(null); setOrgView("create"); }} />;
+      case "notify": return <div className="max-w-2xl mx-auto"><NotifyModule role="organizer" eventId={selectedEvent?.id ?? null} /></div>;
+      case "telegram": return <TelegramSettings tgLinked={orgDashboard?.tg_linked ?? false} tgChannelsCount={orgDashboard?.tg_channels_count ?? 0} onRefresh={loadOrgDashboard} />;
+    }
+  }
+
+  return null;
+}
