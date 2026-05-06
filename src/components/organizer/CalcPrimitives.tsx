@@ -91,7 +91,7 @@ export function EditableValue({ value, min, max, suffix = "", className = "", st
   return (
     <button
       type="button"
-      onPointerDown={() => { setInputVal(String(value)); setEditing(true); }}
+      onClick={() => { setInputVal(String(value)); setEditing(true); }}
       className={`text-2xl font-bold tabular-nums underline decoration-dotted underline-offset-4 cursor-pointer select-none ${className}`}
       style={style}
     >
