@@ -133,9 +133,6 @@ export default function ProfileCard({
               {user.vk_id && (
                 <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">VK</span>
               )}
-              {user.telegram && (
-                <span className="text-xs bg-sky-500 text-white px-2 py-0.5 rounded-full">TG</span>
-              )}
               {user.yandex_id && (
                 <span className="text-xs bg-yellow-500 text-white px-2 py-0.5 rounded-full">Яндекс</span>
               )}
