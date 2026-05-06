@@ -686,6 +686,10 @@ def finalize_login_session(cur, schema, user_row, method_used, ip, user_agent, p
     check_device_and_notify(cur, schema, user_row['id'], user_row['email'], user_row.get('name', ''), ip, user_agent)
     write_audit_log(cur, schema, user_row['id'], 'login', 'users', user_row['id'], ip, {'method': method_used})
 
+    cur.execute(f"SELECT email_verified FROM {schema}.users WHERE id = {user_row['id']}")
+    ev_row = cur.fetchone()
+    email_verified = bool(ev_row['email_verified']) if ev_row else False
+
     roles = fetch_user_roles(cur, schema, user_row['id'])
     user_data = {
         'id': user_row['id'],
@@ -696,6 +700,7 @@ def finalize_login_session(cur, schema, user_row, method_used, ip, user_agent, p
         'yandex_id': user_row.get('yandex_id'),
         'created_at': user_row.get('created_at'),
         'has_password': True,
+        'email_verified': email_verified,
         'roles': roles,
     }
     return user_data, token, expires
@@ -818,6 +823,7 @@ def handle_login_2fa_verify_email(body, ip=None, user_agent=''):
         return respond(400, {'error': 'Неверный код', 'attempts_left': max(0, left)})
 
     cur.execute(f"UPDATE {schema}.login_2fa_email_codes SET verified_at = CURRENT_TIMESTAMP WHERE id = {code_row['id']}")
+    cur.execute(f"UPDATE {schema}.users SET email_verified = true, updated_at = CURRENT_TIMESTAMP WHERE id = {user_row['id']} AND email_verified = false")
     log_login_2fa(cur, schema, user_row['id'], 'email', 'verify_success', True, ip, user_agent)
     user_data, token, expires = finalize_login_session(cur, schema, user_row, 'email_code', ip, user_agent, pending_token)
     conn.commit()
