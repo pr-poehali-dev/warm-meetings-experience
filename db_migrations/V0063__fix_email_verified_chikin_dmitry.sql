@@ -1,0 +1,1 @@
+UPDATE t_p99966623_warm_meetings_experi.users SET email_verified = true, updated_at = CURRENT_TIMESTAMP WHERE id = 2 AND email = '5370200@mail.ru';
