@@ -1,0 +1,1 @@
+UPDATE events SET is_visible = false, status = 'rejected' WHERE id IN (22, 23);
