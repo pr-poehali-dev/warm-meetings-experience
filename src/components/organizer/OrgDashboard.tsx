@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Icon from "@/components/ui/icon";
 import RepeatEventDialog from "@/components/admin/RepeatEventDialog";
-import TgPublishModal from "@/components/organizer/TgPublishModal";
+import TgPublishButton from "@/components/tg/TgPublishButton";
 
 type StatusFilter = "all" | "active" | "past" | "drafts";
 
@@ -42,7 +42,7 @@ export default function OrgDashboard({
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
   const [repeatEvent, setRepeatEvent] = useState<OrgEvent | null>(null);
-  const [tgEvent, setTgEvent] = useState<OrgEvent | null>(null);
+
   const { toast } = useToast();
 
   const now = new Date().toISOString().split("T")[0];
@@ -204,14 +204,15 @@ export default function OrgDashboard({
                   >
                     <Icon name="Share2" size={16} />
                   </Button>
-                  <Button
-                    size="sm" variant="secondary"
-                    onClick={() => setTgEvent(ev)}
-                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-blue-500"
-                    title="Опубликовать в Telegram"
-                  >
-                    <Icon name="Send" size={16} />
-                  </Button>
+                  <TgPublishButton
+                    contentType="event"
+                    contentId={ev.id}
+                    userId={user.id}
+                    label=""
+                    allowRepeat
+                    size="sm"
+                    variant="secondary"
+                  />
                   <Button
                     size="sm" variant="secondary"
                     onClick={() => onToggleVisibility(ev)}
@@ -296,13 +297,7 @@ export default function OrgDashboard({
           onCancel={() => setRepeatEvent(null)}
         />
       )}
-      {tgEvent && (
-        <TgPublishModal
-          event={tgEvent}
-          onClose={() => setTgEvent(null)}
-          onDone={() => setTgEvent(null)}
-        />
-      )}
+
     </div>
   );
 }

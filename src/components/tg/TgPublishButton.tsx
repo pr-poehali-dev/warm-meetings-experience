@@ -11,7 +11,8 @@ interface TgPublishButtonProps {
   label?: string;
   allowRepeat?: boolean;
   size?: "sm" | "default";
-  variant?: "default" | "outline" | "ghost";
+  variant?: "default" | "outline" | "ghost" | "secondary";
+  className?: string;
   onSuccess?: (result: PublishResult) => void;
 }
 
@@ -25,6 +26,7 @@ export default function TgPublishButton({
   allowRepeat = false,
   size = "sm",
   variant = "outline",
+  className,
   onSuccess,
 }: TgPublishButtonProps) {
   const [open, setOpen] = useState(false);
@@ -138,9 +140,15 @@ export default function TgPublishButton({
 
   return (
     <>
-      <Button size={size} variant={variant} onClick={() => setOpen(true)} className="gap-1.5">
+      <Button
+        size={size}
+        variant={variant}
+        onClick={() => setOpen(true)}
+        title="Опубликовать в Telegram"
+        className={label ? `gap-1.5 ${className ?? ""}` : `h-8 w-8 p-0 text-blue-500 ${className ?? ""}`}
+      >
         <Icon name="Send" size={14} />
-        {label}
+        {label || null}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>

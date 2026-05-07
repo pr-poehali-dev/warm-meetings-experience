@@ -4,6 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Icon from "@/components/ui/icon";
 import RepeatEventDialog from "./RepeatEventDialog";
+import TgPublishButton from "@/components/tg/TgPublishButton";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Event {
   id?: number;
@@ -48,6 +50,7 @@ const AdminEventsList = ({
 }: AdminEventsListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [repeatEvent, setRepeatEvent] = useState<Event | null>(null);
+  const { user } = useAuth();
 
   const filtered = events.filter((e) =>
     e.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -128,6 +131,17 @@ const AdminEventsList = ({
                   >
                     <Icon name={event.is_visible ? "Eye" : "EyeOff"} size={16} />
                   </Button>
+                  {event.id && user?.id && (
+                    <TgPublishButton
+                      contentType="event"
+                      contentId={event.id}
+                      userId={user.id}
+                      label=""
+                      allowRepeat
+                      size="sm"
+                      variant="secondary"
+                    />
+                  )}
                   <Button
                     size="sm"
                     variant="secondary"
