@@ -353,6 +353,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id required'})}
 
+        admin = has_role(cur, schema, user_id, 'admin')
         cur.execute(f"SELECT organizer_id, is_visible, status FROM {schema}.events WHERE id = {event_id}")
         existing = cur.fetchone()
         if not existing:
