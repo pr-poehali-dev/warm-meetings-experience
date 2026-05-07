@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { tgPublishApi, TgChannel, ContentType, PublishResult } from "@/lib/tg-publish-api";
 
 interface TgPublishButtonProps {
@@ -151,41 +150,60 @@ export default function TgPublishButton({
         {label || null}
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg w-full p-0 overflow-hidden rounded-2xl">
-          <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <DialogTitle className="text-base font-semibold flex items-center gap-2">
-                  <Icon name="Send" size={16} className="text-primary" />
-                  Публикация в каналы
-                </DialogTitle>
-                {step === "preview" && (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Отредактируйте пост перед отправкой
-                  </p>
-                )}
-                {step === "channels" && (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Выберите каналы для публикации
-                  </p>
-                )}
+      {open && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={handleClose}
+          />
+          {/* Sheet */}
+          <div
+            className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl flex flex-col overflow-hidden"
+            style={{
+              maxHeight: "calc(100dvh - 48px)",
+              paddingBottom: "env(safe-area-inset-bottom)",
+            }}
+          >
+            {/* Header */}
+            <div className="px-5 pt-5 pb-3 border-b border-border shrink-0">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h2 className="text-base font-semibold flex items-center gap-2">
+                    <Icon name="Send" size={16} className="text-primary" />
+                    Публикация в каналы
+                  </h2>
+                  {step === "preview" && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Отредактируйте пост перед отправкой
+                    </p>
+                  )}
+                  {step === "channels" && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Выберите каналы для публикации
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {step !== "preview" && step !== "done" && (
+                    <button
+                      onClick={() => setStep("preview")}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mt-0.5"
+                    >
+                      <Icon name="ChevronLeft" size={13} />
+                      Назад
+                    </button>
+                  )}
+                  <button onClick={handleClose} className="text-muted-foreground hover:text-foreground">
+                    <Icon name="X" size={18} />
+                  </button>
+                </div>
               </div>
-              {step !== "preview" && step !== "done" && (
-                <button
-                  onClick={() => setStep("preview")}
-                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mt-0.5 shrink-0"
-                >
-                  <Icon name="ChevronLeft" size={13} />
-                  Назад
-                </button>
-              )}
             </div>
-          </DialogHeader>
 
           {/* STEP: PREVIEW */}
           {step === "preview" && (
-            <div className="px-5 py-4 space-y-4">
+            <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
               {previewLoading ? (
                 <div className="flex justify-center py-8">
                   <Icon name="Loader2" size={22} className="animate-spin text-muted-foreground" />
@@ -225,6 +243,7 @@ export default function TgPublishButton({
                       value={editedText}
                       onChange={(e) => setEditedText(e.target.value)}
                       placeholder="Текст поста..."
+                      onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: "smooth", block: "center" }), 300)}
                     />
                   </div>
 
@@ -253,7 +272,7 @@ export default function TgPublishButton({
 
           {/* STEP: CHANNELS */}
           {step === "channels" && (
-            <div className="px-5 py-4 space-y-4">
+            <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
               {channelsLoading ? (
                 <div className="flex justify-center py-8">
                   <Icon name="Loader2" size={22} className="animate-spin text-muted-foreground" />
@@ -394,8 +413,9 @@ export default function TgPublishButton({
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      )}
     </>
   );
 }
