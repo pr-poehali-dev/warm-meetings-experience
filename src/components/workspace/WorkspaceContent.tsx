@@ -146,6 +146,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                   bath={bath}
                   onEdit={(b) => { setEditingBath(b); switchPartnerView("edit"); }}
                   onChanged={loadBaths}
+                  userId={masterId}
                 />
               ))}
             </div>
@@ -278,7 +279,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         ) : null;
       case "calculator": return <EventCalculator onCreateEvent={(data) => { setFormData(data as OrgEvent); setSelectedEvent(null); setOrgView("create"); }} />;
       case "notify": return <div className="max-w-2xl mx-auto"><NotifyModule role="organizer" eventId={selectedEvent?.id ?? null} /></div>;
-      case "telegram": return <TelegramSettings tgLinked={orgDashboard?.tg_linked ?? false} tgChannelsCount={orgDashboard?.tg_channels_count ?? 0} onRefresh={loadOrgDashboard} />;
+      case "telegram": return <TelegramSettings tgLinked={orgDashboard?.tg_linked ?? false} tgChannelsCount={orgDashboard?.tg_channels_count ?? 0} onRefresh={loadOrgDashboard} userRole="organizer" />;
     }
   }
 

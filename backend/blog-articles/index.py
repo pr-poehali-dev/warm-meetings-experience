@@ -4,8 +4,11 @@ from datetime import datetime
 
 import psycopg2
 import psycopg2.extras
+import requests
 
 from shared import *
+
+TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
 
 
 def get_user_and_roles(cur, schema, token):
@@ -324,6 +327,62 @@ def handler(event, context):
         conn.commit()
         conn.close()
         return respond(200, {'article': dict(result)})
+
+    # --- Публикация статьи в Telegram-каналы ---
+    if method == 'POST' and action == 'publish-tg':
+        if not token:
+            conn.close()
+            return respond(401, {'error': 'Не авторизован'})
+        user, roles = get_user_and_roles(cur, schema, token)
+        if not user:
+            conn.close()
+            return respond(401, {'error': 'Сессия истекла'})
+
+        article_id = int(body.get('article_id') or 0)
+        if not article_id:
+            conn.close()
+            return respond(400, {'error': 'article_id обязателен'})
+
+        cur.execute(f"""
+            SELECT a.*, u.name as author_name
+            FROM {schema}.blog_articles a
+            JOIN {schema}.users u ON u.id = a.author_id
+            WHERE a.id = {article_id}
+        """)
+        article = cur.fetchone()
+        if not article:
+            conn.close()
+            return respond(404, {'error': 'Статья не найдена'})
+
+        is_editor = 'editor' in roles or 'admin' in roles
+        is_author = article['author_id'] == user['id']
+        if not is_editor and not is_author:
+            conn.close()
+            return respond(403, {'error': 'Нет доступа'})
+
+        channel_ids = body.get('channel_ids') or None
+        allow_repeat = bool(body.get('allow_repeat', False))
+        scheduled_at = body.get('scheduled_at') or None
+
+        conn.close()
+
+        try:
+            resp = requests.post(TG_BOT_URL, json={
+                'action': 'publish_content',
+                'content_type': 'article',
+                'content_id': article_id,
+                'user_id': user['id'],
+                'channel_ids': channel_ids,
+                'publication_type': 'manual',
+                'allow_repeat': allow_repeat,
+                'scheduled_at': scheduled_at,
+                'published_by': user['id'],
+            }, timeout=15)
+            result = resp.json()
+        except Exception as e:
+            return respond(500, {'error': str(e)})
+
+        return respond(200, result)
 
     conn.close()
     return respond(400, {'error': 'Неизвестный запрос'})

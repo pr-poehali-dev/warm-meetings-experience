@@ -13,6 +13,7 @@ interface Props {
   tgLinked: boolean;
   tgChannelsCount: number;
   onRefresh: () => void;
+  userRole?: "organizer" | "master" | "partner" | "editor";
 }
 
 function NotifyChannelRow({ icon, label, description, active, disabled, onToggle }: {
@@ -39,7 +40,27 @@ function NotifyChannelRow({ icon, label, description, active, disabled, onToggle
   );
 }
 
-export default function TelegramSettings({ tgLinked, tgChannelsCount, onRefresh }: Props) {
+const ROLE_COPY: Record<string, { title: string; desc: string }> = {
+  organizer: {
+    title: "Telegram для организатора",
+    desc: "Бот автоматически публикует события в ваш канал и присылает уведомления о новых записях",
+  },
+  master: {
+    title: "Telegram для мастера",
+    desc: "Публикуйте услуги и открытые слоты в свой Telegram-канал — клиенты увидят и смогут записаться",
+  },
+  partner: {
+    title: "Telegram для партнёра",
+    desc: "Публикуйте акции и обновления бани в свой канал — подписчики узнают первыми",
+  },
+  editor: {
+    title: "Telegram для редактора",
+    desc: "Публикуйте статьи блога в Telegram-канал сразу после публикации",
+  },
+};
+
+export default function TelegramSettings({ tgLinked, tgChannelsCount, onRefresh, userRole = "organizer" }: Props) {
+  const roleCopy = ROLE_COPY[userRole] || ROLE_COPY.organizer;
   const [code, setCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -104,10 +125,10 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, onRefresh 
       <div>
         <h2 className="text-xl font-bold flex items-center gap-2">
           <Icon name="Send" size={20} className="text-primary" />
-          Telegram-бот для организаторов
+          {roleCopy.title}
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Бот автоматически публикует события в ваш канал и присылает уведомления о новых записях
+          {roleCopy.desc}
         </p>
       </div>
 

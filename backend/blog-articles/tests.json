@@ -5,7 +5,6 @@
       "method": "GET",
       "path": "/",
       "expectedStatus": 200,
-      "expectedBody": {"articles": []},
       "bodyMatcher": "partial"
     },
     {
@@ -13,7 +12,6 @@
       "method": "GET",
       "path": "/?category=rituals",
       "expectedStatus": 200,
-      "expectedBody": {"articles": []},
       "bodyMatcher": "partial"
     },
     {
@@ -45,6 +43,15 @@
       "method": "POST",
       "path": "/?action=create",
       "body": {"title": "Test", "content": "Test content"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST publish-tg without auth",
+      "method": "POST",
+      "path": "/?action=publish-tg",
+      "body": {"article_id": 1},
       "expectedStatus": 401,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"

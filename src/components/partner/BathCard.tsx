@@ -5,14 +5,16 @@ import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import TgPublishButton from "@/components/tg/TgPublishButton";
 
 interface BathCardProps {
   bath: PartnerBath;
   onEdit: (bath: PartnerBath) => void;
   onChanged: () => void;
+  userId?: number;
 }
 
-export default function BathCard({ bath, onEdit, onChanged }: BathCardProps) {
+export default function BathCard({ bath, onEdit, onChanged, userId }: BathCardProps) {
   const [toggling, setToggling] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const { toast } = useToast();
@@ -125,6 +127,17 @@ export default function BathCard({ bath, onEdit, onChanged }: BathCardProps) {
                 {verifying ? <Icon name="Loader2" size={12} className="animate-spin" /> : <Icon name="BadgeCheck" size={12} className="mr-1" />}
                 Верифицировать
               </Button>
+            )}
+            {userId && bath.is_active && (
+              <TgPublishButton
+                contentType="bath"
+                contentId={bath.id}
+                userId={userId}
+                label="В TG"
+                allowRepeat
+                size="sm"
+                variant="ghost"
+              />
             )}
           </div>
         </CardContent>

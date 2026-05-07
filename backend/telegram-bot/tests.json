@@ -32,5 +32,35 @@
     "expectedStatus": 400,
     "expectedBody": {"error": "string"},
     "bodyMatcher": "partial"
+  },
+  {
+    "name": "publish_content — missing params",
+    "method": "POST",
+    "path": "/",
+    "headers": {"Content-Type": "application/json"},
+    "body": {"action": "publish_content"},
+    "expectedStatus": 400,
+    "expectedBody": {"error": "string"},
+    "bodyMatcher": "partial"
+  },
+  {
+    "name": "publish_content — unknown content_type",
+    "method": "POST",
+    "path": "/",
+    "headers": {"Content-Type": "application/json"},
+    "body": {"action": "publish_content", "content_type": "unknown", "content_id": 1, "user_id": 1},
+    "expectedStatus": 400,
+    "expectedBody": {"error": "string"},
+    "bodyMatcher": "partial"
+  },
+  {
+    "name": "get_channels — missing user_id",
+    "method": "POST",
+    "path": "/",
+    "headers": {"Content-Type": "application/json"},
+    "body": {"action": "get_channels"},
+    "expectedStatus": 400,
+    "expectedBody": {"error": "string"},
+    "bodyMatcher": "partial"
   }
 ]}

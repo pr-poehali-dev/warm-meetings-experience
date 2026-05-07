@@ -4,6 +4,8 @@ import Icon from "@/components/ui/icon";
 import { ApiBlogArticle, blogApi, CreateArticleData } from "@/lib/blog-api";
 import { categories } from "@/lib/blog-data";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import TgPublishButton from "@/components/tg/TgPublishButton";
 
 interface ArticleEditorProps {
   article?: ApiBlogArticle;
@@ -13,6 +15,7 @@ interface ArticleEditorProps {
 
 export default function ArticleEditor({ article, onSaved, onCancel }: ArticleEditorProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<CreateArticleData>({
     title: article?.title ?? "",
@@ -142,11 +145,23 @@ export default function ArticleEditor({ article, onSaved, onCancel }: ArticleEdi
         />
       </div>
 
-      <div className="flex items-center gap-3 pt-2">
+      <div className="flex items-center flex-wrap gap-3 pt-2">
         <Button type="submit" disabled={loading}>
           {loading && <Icon name="Loader2" size={14} className="animate-spin mr-2" />}
           {article ? "Сохранить" : "Отправить на публикацию"}
         </Button>
+        {article?.id && article.status === "published" && user?.id && (
+          <TgPublishButton
+            contentType="article"
+            contentId={article.id}
+            userId={user.id}
+            label="В Telegram"
+            allowRepeat
+            onSuccess={(res) =>
+              toast({ title: res.published > 0 ? `Опубликовано в ${res.published} канал${res.published === 1 ? "" : "а"}` : "Уже опубликовано" })
+            }
+          />
+        )}
         <Button type="button" variant="outline" onClick={onCancel}>
           Отмена
         </Button>

@@ -4,6 +4,8 @@ import Icon from "@/components/ui/icon";
 import { ApiBlogArticle, blogApi } from "@/lib/blog-api";
 import { getCategoryBySlug } from "@/lib/blog-data";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import TgPublishButton from "@/components/tg/TgPublishButton";
 
 type FilterStatus = "all" | "pending" | "published" | "rejected" | "draft";
 
@@ -16,6 +18,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 
 export default function AdminBlog() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [articles, setArticles] = useState<ApiBlogArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterStatus>("pending");
@@ -195,19 +198,32 @@ export default function AdminBlog() {
                       </>
                     )}
                     {a.status === "published" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleTogglePopular(a.id, a.popular)}
-                        disabled={isLoading}
-                      >
-                        {isLoading ? (
-                          <Icon name="Loader2" size={14} className="animate-spin" />
-                        ) : (
-                          <Icon name={a.popular ? "StarOff" : "Star"} size={14} />
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleTogglePopular(a.id, a.popular)}
+                          disabled={isLoading}
+                        >
+                          {isLoading ? (
+                            <Icon name="Loader2" size={14} className="animate-spin" />
+                          ) : (
+                            <Icon name={a.popular ? "StarOff" : "Star"} size={14} />
+                          )}
+                          <span className="ml-1.5">{a.popular ? "Убрать из популярных" : "В популярные"}</span>
+                        </Button>
+                        {user?.id && (
+                          <TgPublishButton
+                            contentType="article"
+                            contentId={a.id}
+                            userId={user.id}
+                            label="В TG"
+                            allowRepeat
+                            size="sm"
+                            onSuccess={(res) => toast({ title: res.published > 0 ? `Опубликовано в ${res.published} канал${res.published === 1 ? "" : "а"}` : "Нет каналов" })}
+                          />
                         )}
-                        <span className="ml-1.5">{a.popular ? "Убрать из популярных" : "В популярные"}</span>
-                      </Button>
+                      </>
                     )}
                     {(a.status === "published" || a.status === "rejected") && (
                       <Button

@@ -74,8 +74,12 @@ def handler(event, context):
             return respond(200, {'ok': True})
         if body.get('action') == 'publish_event':
             return handle_publish_event(body)
+        if body.get('action') == 'publish_content':
+            return handle_publish_content(body)
         if body.get('action') == 'notify_signup':
             return handle_notify_signup(body)
+        if body.get('action') == 'get_channels':
+            return handle_get_channels(body)
 
     return respond(200, {'ok': True})
 
@@ -849,4 +853,310 @@ def handle_publish_event(body):
     conn.commit()
     conn.close()
 
+    return respond(200, {'ok': True, 'published': published, 'errors': errors})
+
+
+# ─── Шаблоны по типам контента ────────────────────────────────────────────────
+
+CONTENT_TEMPLATES = {
+    'event': DEFAULT_TEMPLATE,
+    'master_service': """💆 *{title}*
+
+👤 Мастер: {master_name}
+📍 {place}
+💰 {price}
+⏱ Продолжительность: {duration}
+
+{description_short}
+
+👉 [Записаться]({url})""",
+    'bath': """🏛 *{title}*
+
+📍 {address}
+💰 от {price}
+
+{description_short}
+
+👉 [Подробнее]({url})""",
+    'article': """📖 *{title}*
+
+{excerpt}
+
+👉 [Читать статью]({url})""",
+}
+
+
+def _format_content(content_type, data, channel_template=None):
+    """Форматирует текст поста по типу контента и данным."""
+    months = ['января','февраля','марта','апреля','мая','июня',
+              'июля','августа','сентября','октября','ноября','декабря']
+
+    if content_type == 'event':
+        ev = data
+        date_str = ''
+        if ev.get('event_date'):
+            d = ev['event_date']
+            if hasattr(d, 'day'):
+                date_str = f"{d.day} {months[d.month - 1]} {d.year}"
+            else:
+                date_str = str(d)
+        time_str = ''
+        if ev.get('start_time'):
+            st = ev['start_time']
+            start = st.strftime('%H:%M') if hasattr(st, 'strftime') else str(st)[:5]
+            end_t = ev.get('end_time')
+            if end_t:
+                end = end_t.strftime('%H:%M') if hasattr(end_t, 'strftime') else str(end_t)[:5]
+                time_str = f"{start} — {end}"
+            else:
+                time_str = start
+        price_str = ev.get('price_label') or (f"{ev['price_amount']} ₽" if ev.get('price_amount') else '')
+        address = ev.get('bath_address') or ''
+        vars_ = {
+            'title': ev.get('title') or '',
+            'date': date_str,
+            'time': time_str,
+            'place': ev.get('bath_name') or '',
+            'address': address,
+            'address_line': f"📌 {address}" if address else '',
+            'price': price_str or 'Бесплатно',
+            'spots_left': str(ev.get('spots_left') or ev.get('total_spots') or '—'),
+            'description_short': (ev.get('short_description') or ev.get('description') or '')[:300],
+            'url': f"https://sparcom.ru/events/{ev.get('slug') or ev['id']}",
+        }
+        photo_url = ev.get('image_url')
+
+    elif content_type == 'master_service':
+        svc = data
+        duration = ''
+        if svc.get('duration_minutes'):
+            d = int(svc['duration_minutes'])
+            duration = f"{d // 60} ч {d % 60} мин" if d >= 60 else f"{d} мин"
+        vars_ = {
+            'title': svc.get('service_name') or svc.get('name') or '',
+            'master_name': svc.get('master_name') or '',
+            'place': svc.get('city') or '',
+            'price': f"{svc.get('price', 0)} ₽" if svc.get('price') else 'По договорённости',
+            'duration': duration or '—',
+            'description_short': (svc.get('description') or '')[:300],
+            'url': f"https://sparcom.ru/masters/{svc.get('master_slug') or svc.get('master_id', '')}",
+        }
+        photo_url = svc.get('avatar') or svc.get('photo_url')
+
+    elif content_type == 'bath':
+        bath = data
+        price = bath.get('price_from') or bath.get('price_per_hour')
+        vars_ = {
+            'title': bath.get('name') or '',
+            'address': bath.get('address') or '',
+            'price': f"{price} ₽" if price else 'По запросу',
+            'description_short': (bath.get('description') or '')[:300],
+            'url': f"https://sparcom.ru/baths/{bath.get('slug') or bath.get('id', '')}",
+        }
+        photo_url = (bath.get('photos') or [None])[0] if isinstance(bath.get('photos'), list) else None
+
+    elif content_type == 'article':
+        art = data
+        vars_ = {
+            'title': art.get('title') or '',
+            'excerpt': (art.get('excerpt') or art.get('content') or '')[:400],
+            'url': f"https://sparcom.ru/blog/{art.get('slug') or art.get('id', '')}",
+        }
+        photo_url = art.get('image_url')
+
+    else:
+        return None, None
+
+    default_tpl = CONTENT_TEMPLATES.get(content_type, '')
+    template = channel_template or default_tpl
+    try:
+        text = template.format(**vars_)
+    except (KeyError, IndexError):
+        text = default_tpl.format(**vars_)
+    return text, photo_url
+
+
+def handle_get_channels(body):
+    """Возвращает список активных каналов пользователя для фронтенда."""
+    user_id = body.get('user_id')
+    if not user_id:
+        return respond(400, {'error': 'user_id required'})
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    schema = get_schema()
+    cur.execute(f"""
+        SELECT id, chat_id, chat_title, chat_type, include_photo,
+               content_types, auto_publish, channel_type
+        FROM {schema}.tg_channels
+        WHERE user_id = {int(user_id)} AND is_active = TRUE
+        ORDER BY id
+    """)
+    channels = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return respond(200, {'channels': channels})
+
+
+def handle_publish_content(body):
+    """Универсальная публикация контента в Telegram-каналы.
+
+    Поддерживает типы: event, master_service, bath, article.
+    body: {
+        content_type: str,
+        content_id: int,
+        user_id: int,
+        channel_ids: list[int] | None (если None — все активные),
+        publication_type: 'manual' | 'auto' | 'repeat' (default: 'manual'),
+        allow_repeat: bool (default: False — не публиковать если уже было),
+        scheduled_at: str | None (ISO datetime для отложенной публикации),
+        published_by: int | None
+    }
+    """
+    content_type = body.get('content_type')
+    content_id = body.get('content_id')
+    user_id = body.get('user_id')
+    channel_ids = body.get('channel_ids')  # None = все активные
+    pub_type = body.get('publication_type', 'manual')
+    allow_repeat = body.get('allow_repeat', False)
+    scheduled_at = body.get('scheduled_at')
+    published_by = body.get('published_by')
+
+    if not content_type or not content_id or not user_id:
+        return respond(400, {'error': 'content_type, content_id, user_id обязательны'})
+    if content_type not in ('event', 'master_service', 'bath', 'article'):
+        return respond(400, {'error': f'Неизвестный content_type: {content_type}'})
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    schema = get_schema()
+
+    # Получаем каналы
+    if channel_ids:
+        ids_str = ','.join(str(int(i)) for i in channel_ids)
+        cur.execute(f"""
+            SELECT id, chat_id, chat_title, template, include_photo
+            FROM {schema}.tg_channels
+            WHERE user_id = {int(user_id)} AND is_active = TRUE AND id IN ({ids_str})
+        """)
+    else:
+        cur.execute(f"""
+            SELECT id, chat_id, chat_title, template, include_photo
+            FROM {schema}.tg_channels
+            WHERE user_id = {int(user_id)} AND is_active = TRUE
+        """)
+    channels = [dict(r) for r in cur.fetchall()]
+
+    if not channels:
+        conn.close()
+        return respond(200, {'ok': True, 'published': 0, 'reason': 'no_channels'})
+
+    # Загружаем данные контента
+    data = None
+    if content_type == 'event':
+        cur.execute(f"""
+            SELECT e.*, u.name as organizer_name
+            FROM {schema}.events e
+            LEFT JOIN {schema}.users u ON u.id = e.organizer_id
+            WHERE e.id = {int(content_id)}
+        """)
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return respond(404, {'error': 'Событие не найдено'})
+        data = dict(row)
+
+    elif content_type == 'master_service':
+        cur.execute(f"""
+            SELECT ms.*, m.name as master_name, m.slug as master_slug,
+                   m.id as master_id, m.avatar, m.city
+            FROM {schema}.master_services ms
+            JOIN {schema}.masters m ON m.id = ms.master_id
+            WHERE ms.id = {int(content_id)}
+        """)
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return respond(404, {'error': 'Услуга не найдена'})
+        data = dict(row)
+
+    elif content_type == 'bath':
+        cur.execute(f"SELECT * FROM {schema}.baths WHERE id = {int(content_id)}")
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return respond(404, {'error': 'Баня не найдена'})
+        data = dict(row)
+
+    elif content_type == 'article':
+        cur.execute(f"""
+            SELECT a.*, u.name as author_name
+            FROM {schema}.blog_articles a
+            JOIN {schema}.users u ON u.id = a.author_id
+            WHERE a.id = {int(content_id)}
+        """)
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return respond(404, {'error': 'Статья не найдена'})
+        data = dict(row)
+
+    published = 0
+    errors = []
+
+    for ch in channels:
+        # Проверяем дубль (если не allow_repeat)
+        if not allow_repeat:
+            cur.execute(f"""
+                SELECT id FROM {schema}.tg_pub_universal
+                WHERE channel_id = {ch['id']} AND content_type = '{content_type}'
+                  AND content_id = {int(content_id)} AND publication_type != 'repeat'
+            """)
+            if cur.fetchone():
+                continue
+
+        text, photo_url = _format_content(content_type, data, ch.get('template'))
+
+        result = None
+        if photo_url and ch.get('include_photo'):
+            result = tg_api('sendPhoto', {
+                'chat_id': ch['chat_id'],
+                'photo': photo_url,
+                'caption': text,
+                'parse_mode': 'Markdown'
+            })
+            if not result.get('ok'):
+                result = send_message(ch['chat_id'], text)
+        else:
+            result = send_message(ch['chat_id'], text)
+
+        status = 'sent' if result.get('ok') else 'error'
+        msg_id = result.get('result', {}).get('message_id') if result else None
+        err_text = result.get('description') if result and not result.get('ok') else None
+        if err_text:
+            err_text = err_text.replace("'", "''")
+
+        pub_type_safe = pub_type.replace("'", "''")
+        msg_id_sql = str(msg_id) if msg_id else 'NULL'
+        err_sql = f"'{err_text}'" if err_text else 'NULL'
+        published_by_sql = str(int(published_by)) if published_by else 'NULL'
+        sched_sql = f"'{scheduled_at}'" if scheduled_at else 'NULL'
+
+        cur.execute(f"""
+            INSERT INTO {schema}.tg_pub_universal
+                (user_id, channel_id, content_type, content_id, message_id,
+                 status, error_text, scheduled_at, published_by, publication_type)
+            VALUES
+                ({int(user_id)}, {ch['id']}, '{content_type}', {int(content_id)},
+                 {msg_id_sql}, '{status}', {err_sql}, {sched_sql}, {published_by_sql}, '{pub_type_safe}')
+            ON CONFLICT (channel_id, content_type, content_id, publication_type)
+            DO UPDATE SET status=EXCLUDED.status, message_id=EXCLUDED.message_id,
+                          error_text=EXCLUDED.error_text, published_at=CURRENT_TIMESTAMP
+        """)
+
+        if status == 'sent':
+            published += 1
+        else:
+            errors.append({'channel': ch.get('chat_title', ''), 'error': result.get('description', '') if result else ''})
+
+    conn.commit()
+    conn.close()
     return respond(200, {'ok': True, 'published': published, 'errors': errors})

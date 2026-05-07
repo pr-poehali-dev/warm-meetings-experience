@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
+import TgPublishButton from "@/components/tg/TgPublishButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -305,6 +306,17 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
                 >
                   <Icon name="Trash2" size={16} />
                 </button>
+                {service.id && service.is_active && (
+                  <TgPublishButton
+                    contentType="master_service"
+                    contentId={service.id}
+                    userId={masterId}
+                    label=""
+                    allowRepeat
+                    size="sm"
+                    variant="ghost"
+                  />
+                )}
               </div>
             </div>
           ))}
