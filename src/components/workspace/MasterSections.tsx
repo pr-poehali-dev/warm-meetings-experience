@@ -11,6 +11,7 @@ import MasterCalendarSettings from "@/components/admin/MasterCalendarSettings";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import func2url from "../../../backend/func2url.json";
+import ExternalVideoBlock from "@/components/video/ExternalVideoBlock";
 
 const UPLOAD_URL = func2url["upload-media"];
 
@@ -300,6 +301,17 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
           </div>
         )}
       </div>
+
+      {/* Видео */}
+      {master && (
+        <div className="pt-2">
+          <ExternalVideoBlock
+            ownerType="master"
+            ownerId={master.id}
+            userToken={localStorage.getItem("user_token") || ""}
+          />
+        </div>
+      )}
     </div>
   );
 }

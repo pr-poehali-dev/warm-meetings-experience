@@ -103,6 +103,12 @@ const NAV: NavGroup[] = [
         icon: "Home",
         hint: "Карточки заведений",
       },
+      {
+        view: "videos",
+        label: "Видео",
+        icon: "Video",
+        hint: "Модерация внешних видео",
+      },
     ],
   },
   {

@@ -5,6 +5,10 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { bathsApi, Bath } from "@/lib/baths-api";
 import { mastersApi, Master, Specialization } from "@/lib/masters-api";
+import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
+import func2url from "../../backend/func2url.json";
+
+const VIDEOS_API = func2url["videos-api"];
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -42,12 +46,17 @@ export default function BathDetail() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
+  const [extVideos, setExtVideos] = useState<VideoItem[]>([]);
 
   useEffect(() => {
     if (!slug) return;
     bathsApi.getBySlug(slug)
       .then((b) => {
         setBath(b);
+        fetch(`${VIDEOS_API}/?owner_type=bath&owner_id=${b.id}`)
+          .then((r) => r.json())
+          .then((d) => setExtVideos(d.videos || []))
+          .catch(() => {});
         return Promise.all([
           mastersApi.getAll({ bath_id: b.id }),
           mastersApi.getSpecializations(),
@@ -186,6 +195,14 @@ export default function BathDetail() {
                     <video key={v.key} src={v.url} controls className="w-full rounded-xl aspect-[9/16] object-cover bg-black" />
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Внешние видео */}
+            {extVideos.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-lg font-semibold mb-4">Видео</h2>
+                <VideoGallery videos={extVideos} />
               </div>
             )}
 

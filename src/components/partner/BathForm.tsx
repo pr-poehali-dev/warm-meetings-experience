@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
 import BathMediaUpload, { MediaItem } from "@/components/admin/BathMediaUpload";
+import ExternalVideoBlock from "@/components/video/ExternalVideoBlock";
 
 interface BathFormProps {
   bath?: PartnerBath;
@@ -20,7 +21,7 @@ const FEATURES = [
 export default function BathForm({ bath, onSaved, onCancel }: BathFormProps) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"info" | "media">("info");
+  const [tab, setTab] = useState<"info" | "media" | "video">("info");
   const [savedBath, setSavedBath] = useState<PartnerBath | null>(bath || null);
 
   const [form, setForm] = useState<BathFormData>({
@@ -91,11 +92,12 @@ export default function BathForm({ bath, onSaved, onCancel }: BathFormProps) {
           {[
             { id: "info", label: "Информация", icon: "FileText" },
             { id: "media", label: "Фото и видео", icon: "Image", disabled: !currentSlug },
+            { id: "video", label: "Видео", icon: "Play", disabled: !currentSlug },
           ].map((t) => (
             <button
               key={t.id}
               type="button"
-              onClick={() => !t.disabled && setTab(t.id as "info" | "media")}
+              onClick={() => !t.disabled && setTab(t.id as "info" | "media" | "video")}
               disabled={t.disabled}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 tab === t.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
@@ -107,6 +109,15 @@ export default function BathForm({ bath, onSaved, onCancel }: BathFormProps) {
             </button>
           ))}
         </div>
+
+        {/* Блок внешних видео */}
+        {tab === "video" && savedBath && (
+          <ExternalVideoBlock
+            ownerType="bath"
+            ownerId={savedBath.id}
+            userToken={localStorage.getItem("user_token") || ""}
+          />
+        )}
 
         {/* Блок медиа */}
         {tab === "media" && currentSlug && (

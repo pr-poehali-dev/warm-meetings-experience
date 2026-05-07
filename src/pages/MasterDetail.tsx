@@ -7,6 +7,10 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { mastersApi, Master } from "@/lib/masters-api";
 import { masterCalendarApi, masterBookingsApi, MasterService, MasterSlot, MasterReview } from "@/lib/master-calendar-api";
+import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
+import func2url from "../../backend/func2url.json";
+
+const VIDEOS_API = func2url["videos-api"];
 
 // ─── Утилиты ──────────────────────────────────────────────────────────────────
 
@@ -616,6 +620,7 @@ export default function MasterDetail() {
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [bookingSlot, setBookingSlot] = useState<MasterSlot | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [extVideos, setExtVideos] = useState<VideoItem[]>([]);
 
   useEffect(() => {
     if (!slug) return;
@@ -623,6 +628,10 @@ export default function MasterDetail() {
       .getBySlug(slug)
       .then((m) => {
         setMaster(m);
+        fetch(`${VIDEOS_API}/?owner_type=master&owner_id=${m.id}`)
+          .then((r) => r.json())
+          .then((d) => setExtVideos(d.videos || []))
+          .catch(() => {});
         return masterCalendarApi.getServices(m.id);
       })
       .then((svcs) => setServices(svcs.filter((s) => s.is_active)))
@@ -800,6 +809,14 @@ export default function MasterDetail() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Видео */}
+            {extVideos.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-lg font-semibold mb-4">Видео</h2>
+                <VideoGallery videos={extVideos} />
               </div>
             )}
 
