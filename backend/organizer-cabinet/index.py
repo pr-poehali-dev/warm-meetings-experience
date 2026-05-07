@@ -570,23 +570,32 @@ def handle_participants(event, method, params, cur, conn, user_id, schema, heade
     if method == 'PUT':
         body = json.loads(event.get('body', '{}'))
         signup_id = body.get('id')
+        if not signup_id:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id required'})}
         sets = []
         for field in ['name', 'phone', 'telegram', 'email', 'comment']:
             if field in body:
                 val = str(body[field]).replace("'", "''")
                 sets.append(f"{field} = '{val}'")
         if 'status' in body:
-            sets.append(f"status = '{body['status']}'")
+            st = str(body['status']).replace("'", "''")
+            sets.append(f"status = '{st}'")
         if 'attended' in body:
             sets.append(f"attended = {bool(body['attended'])}")
         if 'payment_type' in body:
             pt = body['payment_type']
             if pt:
-                sets.append(f"payment_type = '{pt}'")
+                pt_esc = str(pt).replace("'", "''")
+                sets.append(f"payment_type = '{pt_esc}'")
             else:
                 sets.append("payment_type = NULL")
         if 'payment_amount' in body:
-            sets.append(f"payment_amount = {int(body['payment_amount'])}")
+            try:
+                amt = int(float(str(body['payment_amount'])))
+            except (ValueError, TypeError):
+                amt = 0
+            sets.append(f"payment_amount = {amt}")
         if not sets:
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Nothing to update'})}
