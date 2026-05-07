@@ -50,6 +50,8 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
     city: "", experience_years: 0, price_from: 0,
   });
   const [avatar, setAvatar] = useState("");
+  const [portfolio, setPortfolio] = useState<Array<{ key: string; url: string; caption?: string }>>([]);
+  const [portfolioUploading, setPortfolioUploading] = useState(false);
 
   useEffect(() => {
     mastersApi.getMyProfile().then((m) => {
@@ -60,18 +62,38 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
         city: m.city || "", experience_years: m.experience_years || 0, price_from: m.price_from || 0,
       });
       setAvatar(m.avatar || "");
+      setPortfolio(m.portfolio || []);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   const handleSave = async () => {
     setSaving(true); setError("");
     try {
-      await mastersApi.updateMyProfile({ ...form, avatar });
+      await mastersApi.updateMyProfile({ ...form, avatar, portfolio });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка сохранения");
     } finally { setSaving(false); }
+  };
+
+  const handlePortfolioUpload = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) { setError("Размер фото не более 10 МБ"); return; }
+    setPortfolioUploading(true);
+    try {
+      const { url } = await uploadFile(file);
+      const key = `masters/${Date.now()}_${file.name}`;
+      const updated = [...portfolio, { key, url }];
+      setPortfolio(updated);
+      await mastersApi.updateMyProfile({ ...form, avatar, portfolio: updated });
+    } catch { setError("Не удалось загрузить фото"); }
+    setPortfolioUploading(false);
+  };
+
+  const handlePortfolioDelete = async (key: string) => {
+    const updated = portfolio.filter((p) => p.key !== key);
+    setPortfolio(updated);
+    await mastersApi.updateMyProfile({ ...form, avatar, portfolio: updated }).catch(() => {});
   };
 
   if (loading) return <div className="flex justify-center py-16"><Icon name="Loader2" size={28} className="animate-spin text-muted-foreground" /></div>;
@@ -151,6 +173,58 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
         {saving ? <Icon name="Loader2" size={15} className="animate-spin" /> : null}
         {saved ? "Сохранено!" : "Сохранить профиль"}
       </Button>
+
+      {/* Портфолио */}
+      <div className="pt-2">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-sm font-semibold">Портфолио</h3>
+            <p className="text-xs text-muted-foreground">Фото ваших работ — клиенты увидят их в профиле</p>
+          </div>
+          <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-border bg-muted/40 hover:bg-muted/70 transition-colors cursor-pointer ${portfolioUploading ? "opacity-50 pointer-events-none" : ""}`}>
+            {portfolioUploading
+              ? <Icon name="Loader2" size={13} className="animate-spin" />
+              : <Icon name="Plus" size={13} />}
+            Добавить фото
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="hidden"
+              disabled={portfolioUploading}
+              onChange={async (e) => {
+                const files = Array.from(e.target.files || []);
+                for (const f of files) await handlePortfolioUpload(f);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+
+        {portfolio.length === 0 && !portfolioUploading && (
+          <div className="border-2 border-dashed border-border rounded-2xl p-8 text-center text-muted-foreground text-sm">
+            <Icon name="ImagePlus" size={28} className="mx-auto mb-2 opacity-40" />
+            Загрузите фото своих работ
+          </div>
+        )}
+
+        {portfolio.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {portfolio.map((item) => (
+              <div key={item.key} className="relative group aspect-square rounded-xl overflow-hidden bg-muted/40">
+                <img src={item.url} alt="" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handlePortfolioDelete(item.key)}
+                  className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Icon name="Trash2" size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
