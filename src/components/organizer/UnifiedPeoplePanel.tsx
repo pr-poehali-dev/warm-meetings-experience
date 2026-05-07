@@ -661,7 +661,7 @@ export default function UnifiedPeoplePanel({ event, onBack, onNotify }: Props) {
                         currentType={p.payment_type || null}
                         currentAmount={p.payment_amount || 0}
                         eventPrice={event.price_amount || 0}
-                        onSave={(data) => handlePaymentSave(p.id, data)}
+                        onSave={handlePaymentSave}
                         onCancel={() => setPaymentKey(null)}
                       />
                     </div>
