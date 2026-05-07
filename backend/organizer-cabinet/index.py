@@ -488,7 +488,7 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
             publish_to_telegram = body.get('publish_to_telegram', True)
             if publish_to_telegram:
                 trigger_tg_publish(event_id, ev['organizer_id'])
-            notify_admin_tg(
+            tg_notify_admin(
                 f"✅ <b>Событие одобрено</b>\n\n"
                 f"🎪 <b>{ev['title']}</b>\n"
                 f"📅 {ev['event_date']}  🕐 {str(ev.get('start_time', ''))[:5]}\n"
@@ -498,7 +498,7 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
         else:
             cur.execute(f"UPDATE {schema}.events SET status = 'rejected', is_visible = false WHERE id = {event_id}")
             reason_display = reason.replace("''", "'") or 'не указана'
-            notify_admin_tg(
+            tg_notify_admin(
                 f"❌ <b>Событие отклонено</b>\n\n"
                 f"🎪 <b>{ev['title']}</b>\n"
                 f"📅 {ev['event_date']}  🕐 {str(ev.get('start_time', ''))[:5]}\n"

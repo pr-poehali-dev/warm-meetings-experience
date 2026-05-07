@@ -267,15 +267,18 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
               onFormChange={(data) => setFormData(data as OrgEvent)}
               onSubmit={async (e, _saveAndNew, override) => {
                 e.preventDefault();
+                if (orgFormLoading) return;
                 const merged = { ...formDataRef.current, ...(override || {}) } as OrgEvent & { submit_action?: string };
                 setOrgFormLoading(true);
                 try {
                   const submitAction = merged.submit_action || "draft";
-                  if (selectedEvent?.id) {
-                    await organizerApi.updateEvent({ ...merged, id: selectedEvent.id, submit_action: submitAction } as OrgEvent & { id: number; submit_action: string });
+                  const existingId = selectedEvent?.id || merged.id;
+                  if (existingId) {
+                    await organizerApi.updateEvent({ ...merged, id: existingId, submit_action: submitAction } as OrgEvent & { id: number; submit_action: string });
                     toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
                   } else {
-                    await organizerApi.createEvent({ ...merged, submit_action: submitAction } as Parameters<typeof organizerApi.createEvent>[0]);
+                    const created = await organizerApi.createEvent({ ...merged, submit_action: submitAction } as Parameters<typeof organizerApi.createEvent>[0]);
+                    setSelectedEvent(created);
                     toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
                   }
                   await Promise.all([loadOrgDashboard(), loadOrgEvents()]);
