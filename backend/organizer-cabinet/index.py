@@ -336,7 +336,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         if created.get('is_visible'):
             trigger_tg_publish(created['id'], user_id)
         if created.get('status') == 'pending':
-            notify_admin_tg(
+            tg_notify_admin(
                 f"📋 <b>Новое событие на модерации</b>\n\n"
                 f"🎪 <b>{created.get('title', '—')}</b>\n"
                 f"📅 {created.get('event_date', '—')}  🕐 {str(created.get('start_time', ''))[:5]}\n"
@@ -417,7 +417,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         if was_hidden and updated.get('is_visible'):
             trigger_tg_publish(event_id, updated.get('organizer_id') or user_id)
         if body.get('submit_action') == 'submit' and updated.get('status') == 'pending':
-            notify_admin_tg(
+            tg_notify_admin(
                 f"📋 <b>Новое событие на модерации</b>\n\n"
                 f"🎪 <b>{updated.get('title', '—')}</b>\n"
                 f"📅 {updated.get('event_date', '—')}  🕐 {str(updated.get('start_time', ''))[:5]}\n"

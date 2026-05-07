@@ -1,0 +1,1 @@
+UPDATE t_p99966623_warm_meetings_experi.events SET is_visible = false, status = 'rejected' WHERE id = 25;
