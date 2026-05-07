@@ -145,6 +145,36 @@ export default function EventDetail() {
                 </Card>
               </section>
             )}
+
+            {/* Стоимость (мобильные) */}
+            <section className="lg:hidden">
+              <h2 className="text-xl font-semibold mb-3">Стоимость</h2>
+              {event.pricingType === "dynamic" && event.pricingTiers?.length ? (
+                <Card className="border shadow-sm">
+                  <CardContent className="p-5">
+                    <DynamicPricingBlock tiers={event.pricingTiers} />
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border shadow-sm">
+                  <CardContent className="p-5 space-y-3">
+                    {priceDisplay && (
+                      <div className="text-3xl font-bold text-accent">{priceDisplay}</div>
+                    )}
+                    {event.pricingLines && event.pricingLines.length > 0 && (
+                      <ul className="space-y-1.5">
+                        {event.pricingLines.map((line, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm">
+                            <span className="shrink-0 mt-0.5">🔹</span>
+                            <span>{line}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </section>
           </div>
 
           {/* Десктопная боковая панель */}
@@ -170,7 +200,7 @@ export default function EventDetail() {
               <div className="text-lg font-bold text-accent leading-tight">{priceDisplay}</div>
             )}
             {event.totalSpots > 0 && (
-              <div className={`text-xs font-medium ${event.spotsLeft === 0 ? "text-red-500" : event.spotsLeft <= 2 ? "text-orange-500" : "text-green-600"}`}>
+              <div className={`text-xs font-semibold px-2 py-0.5 rounded-full ${event.spotsLeft === 0 ? "text-red-700 bg-red-100" : event.spotsLeft <= 2 ? "text-orange-800 bg-orange-100" : "text-green-700 bg-green-100"}`}>
                 {spotsLabel}
               </div>
             )}
