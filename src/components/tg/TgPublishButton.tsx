@@ -1,7 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { tgPublishApi, TgChannel, ContentType, PublishResult } from "@/lib/tg-publish-api";
+
+const TG_TEMPLATE_VARS = [
+  { key: "{{event_title}}", label: "Название события" },
+  { key: "{{event_date}}", label: "Дата события" },
+  { key: "{{event_time}}", label: "Время события" },
+  { key: "{{place}}", label: "Место проведения" },
+  { key: "{{price}}", label: "Стоимость" },
+  { key: "{{spots_left}}", label: "Осталось мест" },
+  { key: "{{description_short}}", label: "Описание" },
+  { key: "{{url}}", label: "Ссылка на событие" },
+];
 
 interface TgPublishButtonProps {
   contentType: ContentType;
@@ -30,6 +41,17 @@ export default function TgPublishButton({
 }: TgPublishButtonProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("preview");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertVar = (v: string) => {
+    const el = textareaRef.current;
+    if (!el) { setEditedText((t) => t + v); return; }
+    const start = el.selectionStart ?? editedText.length;
+    const end = el.selectionEnd ?? editedText.length;
+    const next = editedText.slice(0, start) + v + editedText.slice(end);
+    setEditedText(next);
+    setTimeout(() => { el.focus(); el.setSelectionRange(start + v.length, start + v.length); }, 0);
+  };
 
   // Preview state
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -239,12 +261,26 @@ export default function TgPublishButton({
                       Текст поста
                     </label>
                     <textarea
+                      ref={textareaRef}
                       className="w-full text-sm px-3 py-2.5 bg-muted/40 border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 min-h-[120px] font-mono"
                       value={editedText}
                       onChange={(e) => setEditedText(e.target.value)}
                       placeholder="Текст поста..."
                       onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: "smooth", block: "center" }), 300)}
                     />
+                    <div className="flex gap-1 flex-wrap">
+                      {TG_TEMPLATE_VARS.map((v) => (
+                        <button
+                          key={v.key}
+                          type="button"
+                          title={v.label}
+                          onClick={() => insertVar(v.key)}
+                          className="px-2 py-0.5 bg-muted hover:bg-muted/70 rounded text-[11px] font-mono text-primary transition-colors"
+                        >
+                          {v.key}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Hashtags */}
