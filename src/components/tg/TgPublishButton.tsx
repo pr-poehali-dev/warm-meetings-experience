@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { tgPublishApi, TgChannel, ContentType, PublishResult } from "@/lib/tg-publish-api";
 
 interface TgPublishButtonProps {
@@ -14,6 +15,8 @@ interface TgPublishButtonProps {
   onSuccess?: (result: PublishResult) => void;
 }
 
+type Step = "preview" | "channels" | "done";
+
 export default function TgPublishButton({
   contentType,
   contentId,
@@ -25,32 +28,79 @@ export default function TgPublishButton({
   onSuccess,
 }: TgPublishButtonProps) {
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<Step>("preview");
+
+  // Preview state
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewText, setPreviewText] = useState("");
+  const [previewPhoto, setPreviewPhoto] = useState("");
+  const [editedText, setEditedText] = useState("");
+  const [hashtags, setHashtags] = useState("");
+  const [previewError, setPreviewError] = useState("");
+
+  // Channels state
   const [channels, setChannels] = useState<TgChannel[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [publishing, setPublishing] = useState(false);
+  const [channelsLoading, setChannelsLoading] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
   const [scheduleMode, setScheduleMode] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState("");
   const [result, setResult] = useState<PublishResult | null>(null);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
+    setStep("preview");
+    setPreviewText("");
+    setEditedText("");
+    setHashtags("");
+    setPreviewError("");
     setResult(null);
-    setError("");
-    tgPublishApi.getChannels(userId).then((chs) => {
-      setChannels(chs);
-      setSelected(chs.map((c) => c.id));
-    }).catch(() => setError("Не удалось загрузить каналы")).finally(() => setLoading(false));
-  }, [open, userId]);
+    setPublishError("");
+    setScheduleMode(false);
+    setScheduledAt("");
+
+    setPreviewLoading(true);
+    tgPublishApi
+      .getPreview({ contentType, contentId, userId })
+      .then((res) => {
+        const text = res.text || "";
+        setPreviewText(text);
+        setEditedText(text);
+        setPreviewPhoto(res.photo_url || "");
+      })
+      .catch(() => setPreviewError("Не удалось загрузить предпросмотр"))
+      .finally(() => setPreviewLoading(false));
+  }, [open]);
+
+  const goToChannels = () => {
+    setStep("channels");
+    setChannelsLoading(true);
+    setPublishError("");
+    tgPublishApi
+      .getChannels(userId)
+      .then((chs) => {
+        setChannels(chs);
+        setSelected(chs.map((c) => c.id));
+      })
+      .catch(() => setPublishError("Не удалось загрузить каналы"))
+      .finally(() => setChannelsLoading(false));
+  };
 
   const toggle = (id: number) =>
-    setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+
+  const finalText = [editedText.trim(), hashtags.trim()].filter(Boolean).join("\n\n");
 
   const handlePublish = async () => {
-    if (selected.length === 0) { setError("Выберите хотя бы один канал"); return; }
-    setPublishing(true); setError("");
+    if (selected.length === 0) {
+      setPublishError("Выберите хотя бы один канал");
+      return;
+    }
+    setPublishing(true);
+    setPublishError("");
     try {
       let res: PublishResult;
       if (contentType === "article") {
@@ -59,6 +109,7 @@ export default function TgPublishButton({
           channelIds: selected,
           allowRepeat,
           scheduledAt: scheduleMode && scheduledAt ? scheduledAt : undefined,
+          customText: finalText || undefined,
         });
       } else {
         res = await tgPublishApi.publishContent({
@@ -70,117 +121,273 @@ export default function TgPublishButton({
           allowRepeat,
           scheduledAt: scheduleMode && scheduledAt ? scheduledAt : undefined,
           publishedBy: userId,
+          customText: finalText || undefined,
         });
       }
       setResult(res);
+      setStep("done");
       if (res.ok && onSuccess) onSuccess(res);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Ошибка публикации");
+      setPublishError(e instanceof Error ? e.message : "Ошибка публикации");
     } finally {
       setPublishing(false);
     }
   };
 
+  const handleClose = () => setOpen(false);
+
   return (
-    <div className="relative inline-block">
-      <Button
-        size={size}
-        variant={variant}
-        onClick={() => setOpen((v) => !v)}
-        className="gap-1.5"
-      >
+    <>
+      <Button size={size} variant={variant} onClick={() => setOpen(true)} className="gap-1.5">
         <Icon name="Send" size={14} />
         {label}
       </Button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 z-50 w-80 bg-card border border-border rounded-2xl shadow-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-semibold text-sm">Публикация в Telegram</h4>
-              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
-                <Icon name="X" size={15} />
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="flex justify-center py-4">
-                <Icon name="Loader2" size={20} className="animate-spin text-muted-foreground" />
-              </div>
-            ) : result ? (
-              <div className={`rounded-xl p-3 text-sm ${result.published > 0 ? "bg-green-50 text-green-700" : "bg-muted text-muted-foreground"}`}>
-                {result.published > 0
-                  ? `Опубликовано в ${result.published} канал${result.published === 1 ? "" : result.published < 5 ? "а" : "ов"}`
-                  : result.reason === "no_channels"
-                  ? "Нет подключённых каналов"
-                  : "Уже опубликовано ранее"}
-                {result.errors.length > 0 && (
-                  <div className="mt-1 text-xs text-destructive">
-                    Ошибки: {result.errors.map((e) => e.channel).join(", ")}
-                  </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg w-full p-0 overflow-hidden rounded-2xl">
+          <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <DialogTitle className="text-base font-semibold flex items-center gap-2">
+                  <Icon name="Send" size={16} className="text-primary" />
+                  Публикация в каналы
+                </DialogTitle>
+                {step === "preview" && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Отредактируйте пост перед отправкой
+                  </p>
                 )}
-                <button onClick={() => setResult(null)} className="mt-2 text-xs underline block">
-                  Опубликовать ещё раз
+                {step === "channels" && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Выберите каналы для публикации
+                  </p>
+                )}
+              </div>
+              {step !== "preview" && step !== "done" && (
+                <button
+                  onClick={() => setStep("preview")}
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mt-0.5 shrink-0"
+                >
+                  <Icon name="ChevronLeft" size={13} />
+                  Назад
                 </button>
-              </div>
-            ) : channels.length === 0 ? (
-              <div className="text-sm text-muted-foreground text-center py-3">
-                <Icon name="Send" size={24} className="mx-auto mb-1 opacity-30" />
-                Нет подключённых каналов.
-                <br />Добавьте канал через Telegram-бот.
-              </div>
-            ) : (
-              <>
-                <div className="space-y-1.5">
-                  {channels.map((ch) => (
-                    <label key={ch.id} className="flex items-center gap-2.5 cursor-pointer group">
-                      <div
-                        onClick={() => toggle(ch.id)}
-                        className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${selected.includes(ch.id) ? "bg-primary border-primary" : "border-border"}`}
-                      >
-                        {selected.includes(ch.id) && <Icon name="Check" size={11} className="text-primary-foreground" />}
-                      </div>
-                      <span className="text-sm truncate flex-1">{ch.chat_title || `Канал #${ch.id}`}</span>
-                      <Icon name="ExternalLink" size={12} className="text-muted-foreground/40" />
-                    </label>
-                  ))}
-                </div>
+              )}
+            </div>
+          </DialogHeader>
 
-                <div>
-                  <button
-                    onClick={() => setScheduleMode((v) => !v)}
-                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-                  >
-                    <Icon name="Clock" size={12} />
-                    {scheduleMode ? "Отменить отложенную" : "Запланировать публикацию"}
-                  </button>
+          {/* STEP: PREVIEW */}
+          {step === "preview" && (
+            <div className="px-5 py-4 space-y-4">
+              {previewLoading ? (
+                <div className="flex justify-center py-8">
+                  <Icon name="Loader2" size={22} className="animate-spin text-muted-foreground" />
+                </div>
+              ) : previewError ? (
+                <div className="text-sm text-destructive text-center py-4">{previewError}</div>
+              ) : (
+                <>
+                  {/* Telegram-like preview */}
+                  <div className="bg-[#efede8] rounded-xl p-3 space-y-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center">
+                        <Icon name="Send" size={13} className="text-primary-foreground" />
+                      </div>
+                      <span className="text-xs font-semibold text-foreground">Предпросмотр поста</span>
+                    </div>
+                    {previewPhoto && (
+                      <img
+                        src={previewPhoto}
+                        alt=""
+                        className="w-full rounded-lg object-cover max-h-40"
+                        onError={(e) => (e.currentTarget.style.display = "none")}
+                      />
+                    )}
+                    <pre className="text-xs whitespace-pre-wrap font-sans text-foreground leading-relaxed">
+                      {finalText || previewText}
+                    </pre>
+                  </div>
+
+                  {/* Text editor */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Текст поста
+                    </label>
+                    <textarea
+                      className="w-full text-sm px-3 py-2.5 bg-muted/40 border border-border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 min-h-[120px] font-mono"
+                      value={editedText}
+                      onChange={(e) => setEditedText(e.target.value)}
+                      placeholder="Текст поста..."
+                    />
+                  </div>
+
+                  {/* Hashtags */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Хештеги
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full text-sm px-3 py-2 bg-muted/40 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      value={hashtags}
+                      onChange={(e) => setHashtags(e.target.value)}
+                      placeholder="#баня #спа #оздоровление"
+                    />
+                  </div>
+
+                  <Button className="w-full gap-2" onClick={goToChannels}>
+                    Выбрать каналы
+                    <Icon name="ChevronRight" size={15} />
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* STEP: CHANNELS */}
+          {step === "channels" && (
+            <div className="px-5 py-4 space-y-4">
+              {channelsLoading ? (
+                <div className="flex justify-center py-8">
+                  <Icon name="Loader2" size={22} className="animate-spin text-muted-foreground" />
+                </div>
+              ) : channels.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-6 space-y-1">
+                  <Icon name="Send" size={28} className="mx-auto opacity-25 block" />
+                  <p>Нет подключённых каналов.</p>
+                  <p className="text-xs">Добавьте канал через Telegram-бот.</p>
+                </div>
+              ) : (
+                <>
+                  {/* TIP TYPE */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setScheduleMode(false)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2 rounded-xl border transition-colors ${
+                        !scheduleMode
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border text-muted-foreground hover:border-primary/40"
+                      }`}
+                    >
+                      <Icon name="Zap" size={14} />
+                      Сейчас
+                    </button>
+                    <button
+                      onClick={() => setScheduleMode(true)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 text-sm py-2 rounded-xl border transition-colors ${
+                        scheduleMode
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border text-muted-foreground hover:border-primary/40"
+                      }`}
+                    >
+                      <Icon name="Clock" size={14} />
+                      Отложить
+                    </button>
+                  </div>
+
                   {scheduleMode && (
                     <input
                       type="datetime-local"
-                      className="mt-2 w-full text-xs px-2 py-1.5 bg-muted/40 border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/40"
+                      className="w-full text-sm px-3 py-2 bg-muted/40 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
                       value={scheduledAt}
                       onChange={(e) => setScheduledAt(e.target.value)}
                     />
                   )}
-                </div>
 
-                {error && <p className="text-xs text-destructive">{error}</p>}
+                  {/* Channels list */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Каналы
+                    </label>
+                    {channels.map((ch) => (
+                      <label
+                        key={ch.id}
+                        className="flex items-center gap-2.5 cursor-pointer group p-2 rounded-xl hover:bg-muted/40 transition-colors"
+                      >
+                        <div
+                          onClick={() => toggle(ch.id)}
+                          className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 ${
+                            selected.includes(ch.id)
+                              ? "bg-primary border-primary"
+                              : "border-border"
+                          }`}
+                        >
+                          {selected.includes(ch.id) && (
+                            <Icon name="Check" size={11} className="text-primary-foreground" />
+                          )}
+                        </div>
+                        <span className="text-sm truncate flex-1">
+                          {ch.chat_title || `Канал #${ch.id}`}
+                        </span>
+                        <span className="text-xs text-muted-foreground/60 shrink-0">
+                          {ch.channel_type || "channel"}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
 
-                <Button
-                  size="sm"
-                  className="w-full gap-1.5"
-                  disabled={publishing || selected.length === 0}
-                  onClick={handlePublish}
-                >
-                  {publishing ? <Icon name="Loader2" size={13} className="animate-spin" /> : <Icon name="Send" size={13} />}
-                  {scheduleMode && scheduledAt ? "Запланировать" : "Опубликовать"}
+                  {publishError && (
+                    <p className="text-xs text-destructive">{publishError}</p>
+                  )}
+
+                  <Button
+                    className="w-full gap-2"
+                    disabled={publishing || selected.length === 0 || (scheduleMode && !scheduledAt)}
+                    onClick={handlePublish}
+                  >
+                    {publishing ? (
+                      <Icon name="Loader2" size={14} className="animate-spin" />
+                    ) : (
+                      <Icon name="Send" size={14} />
+                    )}
+                    {scheduleMode && scheduledAt ? "Запланировать" : "Опубликовать"}
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* STEP: DONE */}
+          {step === "done" && result && (
+            <div className="px-5 py-8 flex flex-col items-center gap-3 text-center">
+              {result.published > 0 ? (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <Icon name="Check" size={24} className="text-green-600" />
+                  </div>
+                  <p className="font-semibold text-sm">
+                    Опубликовано в {result.published}{" "}
+                    {result.published === 1 ? "канал" : result.published < 5 ? "канала" : "каналов"}
+                  </p>
+                  {result.errors.length > 0 && (
+                    <p className="text-xs text-destructive">
+                      Ошибки: {result.errors.map((e) => e.channel).join(", ")}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                    <Icon name="Info" size={22} className="text-muted-foreground" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {result.reason === "no_channels"
+                      ? "Нет подключённых каналов"
+                      : "Уже опубликовано ранее"}
+                  </p>
+                </>
+              )}
+              <div className="flex gap-2 mt-2">
+                <Button variant="outline" size="sm" onClick={() => setStep("preview")}>
+                  Опубликовать ещё раз
                 </Button>
-              </>
-            )}
-          </div>
-        </>
-      )}
-    </div>
+                <Button size="sm" onClick={handleClose}>
+                  Закрыть
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

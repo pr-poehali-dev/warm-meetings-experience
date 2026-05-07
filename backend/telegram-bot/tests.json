@@ -70,5 +70,25 @@
     "expectedStatus": 400,
     "expectedBody": {"error": "string"},
     "bodyMatcher": "partial"
+  },
+  {
+    "name": "preview_content — missing params",
+    "method": "POST",
+    "path": "/",
+    "headers": {"Content-Type": "application/json"},
+    "body": {"action": "preview_content"},
+    "expectedStatus": 400,
+    "expectedBody": {"error": "string"},
+    "bodyMatcher": "partial"
+  },
+  {
+    "name": "preview_content — unknown content_type",
+    "method": "POST",
+    "path": "/",
+    "headers": {"Content-Type": "application/json"},
+    "body": {"action": "preview_content", "content_type": "unknown", "content_id": 1, "user_id": 1},
+    "expectedStatus": 400,
+    "expectedBody": {"error": "string"},
+    "bodyMatcher": "partial"
   }
 ]}

@@ -83,6 +83,8 @@ def handler(event, context):
             return handle_notify_signup(body)
         if body.get('action') == 'get_channels':
             return handle_get_channels(body)
+        if body.get('action') == 'preview_content':
+            return handle_preview_content(body)
 
     return respond(200, {'ok': True})
 
@@ -1026,6 +1028,89 @@ def handle_get_channels(body):
     return respond(200, {'channels': channels})
 
 
+def handle_preview_content(body):
+    """Возвращает сформированный текст поста для предпросмотра перед публикацией."""
+    content_type = body.get('content_type')
+    content_id = body.get('content_id')
+    user_id = body.get('user_id')
+
+    if not content_type or not content_id or not user_id:
+        return respond(400, {'error': 'content_type, content_id, user_id обязательны'})
+    if content_type not in ('event', 'master_service', 'bath', 'article'):
+        return respond(400, {'error': f'Неизвестный content_type: {content_type}'})
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    schema = get_schema()
+
+    data = None
+    if content_type == 'event':
+        cur.execute(f"""
+            SELECT e.*, u.name as organizer_name
+            FROM {schema}.events e
+            LEFT JOIN {schema}.users u ON u.id = e.organizer_id
+            WHERE e.id = {int(content_id)}
+        """)
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return respond(404, {'error': 'Событие не найдено'})
+        data = dict(row)
+    elif content_type == 'master_service':
+        cur.execute(f"""
+            SELECT ms.*, m.name as master_name, m.slug as master_slug,
+                   m.id as master_id, m.avatar, m.city
+            FROM {schema}.master_services ms
+            JOIN {schema}.masters m ON m.id = ms.master_id
+            WHERE ms.id = {int(content_id)}
+        """)
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return respond(404, {'error': 'Услуга не найдена'})
+        data = dict(row)
+    elif content_type == 'bath':
+        cur.execute(f"SELECT * FROM {schema}.baths WHERE id = {int(content_id)}")
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return respond(404, {'error': 'Баня не найдена'})
+        data = dict(row)
+    elif content_type == 'article':
+        cur.execute(f"""
+            SELECT a.*, u.name as author_name
+            FROM {schema}.blog_articles a
+            JOIN {schema}.users u ON u.id = a.author_id
+            WHERE a.id = {int(content_id)}
+        """)
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return respond(404, {'error': 'Статья не найдена'})
+        data = dict(row)
+
+    conn.close()
+
+    text, photo_url = _format_content(content_type, data)
+
+    # Сериализуем datetime/date объекты
+    def safe_str(v):
+        if hasattr(v, 'isoformat'):
+            return v.isoformat()
+        return v
+
+    safe_data = {k: safe_str(v) for k, v in data.items() if isinstance(v, (str, int, float, bool, type(None))) or hasattr(v, 'isoformat')}
+
+    return respond(200, {
+        'ok': True,
+        'text': text or '',
+        'photo_url': photo_url or '',
+        'content_type': content_type,
+        'content_id': content_id,
+        'meta': safe_data,
+    })
+
+
 def handle_publish_content(body):
     """Универсальная публикация контента в Telegram-каналы.
 
@@ -1049,6 +1134,7 @@ def handle_publish_content(body):
     allow_repeat = body.get('allow_repeat', False)
     scheduled_at = body.get('scheduled_at')
     published_by = body.get('published_by')
+    custom_text = body.get('custom_text') or None
 
     if not content_type or not content_id or not user_id:
         return respond(400, {'error': 'content_type, content_id, user_id обязательны'})
@@ -1143,7 +1229,11 @@ def handle_publish_content(body):
             if cur.fetchone():
                 continue
 
-        text, photo_url = _format_content(content_type, data, ch.get('template'))
+        if custom_text:
+            _, photo_url = _format_content(content_type, data, ch.get('template'))
+            text = custom_text
+        else:
+            text, photo_url = _format_content(content_type, data, ch.get('template'))
 
         result = None
         if photo_url and ch.get('include_photo'):
