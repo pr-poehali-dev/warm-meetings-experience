@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
+import BathMediaUpload, { MediaItem } from "@/components/admin/BathMediaUpload";
 
 interface BathFormProps {
   bath?: PartnerBath;
@@ -19,6 +20,8 @@ const FEATURES = [
 export default function BathForm({ bath, onSaved, onCancel }: BathFormProps) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<"info" | "media">("info");
+  const [savedBath, setSavedBath] = useState<PartnerBath | null>(bath || null);
 
   const [form, setForm] = useState<BathFormData>({
     name: bath?.name || "",
@@ -51,19 +54,25 @@ export default function BathForm({ bath, onSaved, onCancel }: BathFormProps) {
     }
     setSaving(true);
     try {
-      if (bath) {
-        await partnerApi.updateBath(bath.id, form);
+      if (bath || savedBath) {
+        const target = bath || savedBath!;
+        const { bath: updated } = await partnerApi.updateBath(target.id, form);
+        setSavedBath(updated);
         toast({ title: "Баня обновлена" });
+        onSaved();
       } else {
-        await partnerApi.createBath(form);
-        toast({ title: "Баня добавлена" });
+        const { bath: created } = await partnerApi.createBath(form);
+        setSavedBath(created);
+        toast({ title: "Баня добавлена — теперь добавьте фотографии!" });
+        setTab("media");
       }
-      onSaved();
     } catch (e: unknown) {
       toast({ title: "Ошибка", description: e instanceof Error ? e.message : "Не удалось сохранить", variant: "destructive" });
     }
     setSaving(false);
   };
+
+  const currentSlug = savedBath?.slug || bath?.slug;
 
   return (
     <Card className="border-0 shadow-sm">
@@ -77,7 +86,47 @@ export default function BathForm({ bath, onSaved, onCancel }: BathFormProps) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Вкладки */}
+        <div className="flex gap-1 mb-4 bg-muted/60 p-1 rounded-xl w-fit">
+          {[
+            { id: "info", label: "Информация", icon: "FileText" },
+            { id: "media", label: "Фото и видео", icon: "Image", disabled: !currentSlug },
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => !t.disabled && setTab(t.id as "info" | "media")}
+              disabled={t.disabled}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                tab === t.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+              } disabled:opacity-40 disabled:cursor-not-allowed`}
+            >
+              <Icon name={t.icon} size={13} />
+              {t.label}
+              {t.disabled && <span className="opacity-60">(сначала сохраните)</span>}
+            </button>
+          ))}
+        </div>
+
+        {/* Блок медиа */}
+        {tab === "media" && currentSlug && (
+          <BathMediaUpload
+            slug={currentSlug}
+            photos={((savedBath as unknown as { photos?: MediaItem[] })?.photos || []) as MediaItem[]}
+            videos={((savedBath as unknown as { videos?: MediaItem[] })?.videos || []) as MediaItem[]}
+            onUpdate={async () => {
+              if (savedBath) {
+                try {
+                  const { bath: refreshed } = await partnerApi.getBath(savedBath.id);
+                  setSavedBath(refreshed);
+                } catch { /* ignore */ }
+              }
+              onSaved();
+            }}
+          />
+        )}
+
+        {tab === "info" && <form onSubmit={handleSubmit} className="space-y-4">
           {/* Название */}
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Название *</label>
@@ -227,7 +276,7 @@ export default function BathForm({ bath, onSaved, onCancel }: BathFormProps) {
               Отмена
             </Button>
           </div>
-        </form>
+        </form>}
       </CardContent>
     </Card>
   );

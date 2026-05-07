@@ -95,11 +95,35 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
       <h2 className="text-xl font-bold">Мой профиль мастера</h2>
       {/* Аватар */}
       <div className="flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center flex-shrink-0">
-          {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : <Icon name="User" size={28} className="text-primary" />}
+        <div className="relative group">
+          <div className="w-20 h-20 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center flex-shrink-0 border-2 border-border">
+            {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : <Icon name="User" size={32} className="text-primary" />}
+          </div>
+          <label
+            className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            title="Загрузить фото"
+          >
+            <Icon name="Camera" size={18} className="text-white" />
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 5 * 1024 * 1024) { setError("Размер фото не более 5 МБ"); return; }
+                try {
+                  const { url } = await uploadFile(file);
+                  setAvatar(url);
+                } catch { setError("Не удалось загрузить фото"); }
+                e.target.value = "";
+              }}
+            />
+          </label>
         </div>
         <div>
-          <p className="text-sm font-medium">{form.name}</p>
+          <p className="text-sm font-medium">{form.name || "Ваш профиль"}</p>
+          <p className="text-xs text-muted-foreground">Нажмите на фото для загрузки</p>
           <p className="text-xs text-muted-foreground">ID мастера: #{master.id}</p>
         </div>
       </div>

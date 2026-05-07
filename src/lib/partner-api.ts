@@ -26,7 +26,8 @@ export interface PartnerBath {
   social_links?: Record<string, string>;
   lat?: number;
   lng?: number;
-  photos?: string[];
+  photos?: string[] | Array<{ key: string; url: string; type: string; mime: string }>;
+  videos?: Array<{ key: string; url: string; type: string; mime: string }>;
   views_30d?: number;
   cover_photo?: string;
   created_at: string;
