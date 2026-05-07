@@ -4,7 +4,7 @@ import Icon from "@/components/ui/icon";
 import { VideoPlayer, VideoItem } from "@/components/video/VideoPlayer";
 import func2url from "../../../backend/func2url.json";
 
-const VIDEOS_API = func2url["videos-api"];
+const VIDEOS_API = func2url["media-api"];
 
 function getAdminToken() {
   return localStorage.getItem("admin_token") || "";
@@ -45,7 +45,7 @@ export default function AdminVideos() {
   const load = async (s: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`${VIDEOS_API}/?admin=1&status=${s}`, {
+      const res = await fetch(`${VIDEOS_API}/?videos=1&admin=1&status=${s}`, {
         headers: { "X-Admin-Token": getAdminToken() },
       });
       const data = await res.json();

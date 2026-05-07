@@ -1,0 +1,27 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET external videos (empty)",
+      "method": "GET",
+      "path": "/?videos=1&owner_type=master&owner_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": {"videos": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "POST без файла — ошибка",
+      "method": "POST",
+      "path": "/",
+      "body": {"folder": "events"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "Файл не передан"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

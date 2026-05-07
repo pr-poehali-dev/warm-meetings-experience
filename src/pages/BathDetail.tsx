@@ -8,7 +8,7 @@ import { mastersApi, Master, Specialization } from "@/lib/masters-api";
 import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
 import func2url from "../../backend/func2url.json";
 
-const VIDEOS_API = func2url["videos-api"];
+const VIDEOS_API = func2url["media-api"];
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -53,7 +53,7 @@ export default function BathDetail() {
     bathsApi.getBySlug(slug)
       .then((b) => {
         setBath(b);
-        fetch(`${VIDEOS_API}/?owner_type=bath&owner_id=${b.id}`)
+        fetch(`${VIDEOS_API}/?videos=1&owner_type=bath&owner_id=${b.id}`)
           .then((r) => r.json())
           .then((d) => setExtVideos(d.videos || []))
           .catch(() => {});

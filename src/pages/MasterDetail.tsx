@@ -10,7 +10,7 @@ import { masterCalendarApi, masterBookingsApi, MasterService, MasterSlot, Master
 import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
 import func2url from "../../backend/func2url.json";
 
-const VIDEOS_API = func2url["videos-api"];
+const VIDEOS_API = func2url["media-api"];
 
 // ─── Утилиты ──────────────────────────────────────────────────────────────────
 
@@ -628,7 +628,7 @@ export default function MasterDetail() {
       .getBySlug(slug)
       .then((m) => {
         setMaster(m);
-        fetch(`${VIDEOS_API}/?owner_type=master&owner_id=${m.id}`)
+        fetch(`${VIDEOS_API}/?videos=1&owner_type=master&owner_id=${m.id}`)
           .then((r) => r.json())
           .then((d) => setExtVideos(d.videos || []))
           .catch(() => {});

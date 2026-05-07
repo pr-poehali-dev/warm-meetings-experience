@@ -5,7 +5,7 @@ import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
 import PhotoBank, { useRecentPhotos } from "./PhotoBank";
 import func2url from "../../../backend/func2url.json";
-const UPLOAD_URL = func2url["upload-media"];
+const UPLOAD_URL = func2url["media-api"];
 
 const ASPECT_W = 16;
 const ASPECT_H = 9;

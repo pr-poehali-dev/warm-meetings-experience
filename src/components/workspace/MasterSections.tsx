@@ -13,7 +13,7 @@ import { ru } from "date-fns/locale";
 import func2url from "../../../backend/func2url.json";
 import ExternalVideoBlock from "@/components/video/ExternalVideoBlock";
 
-const UPLOAD_URL = func2url["upload-media"];
+const UPLOAD_URL = func2url["media-api"];
 
 // ─── Загрузка файлов ──────────────────────────────────────────────────────────
 

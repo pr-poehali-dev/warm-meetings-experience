@@ -4,7 +4,7 @@ import Icon from "@/components/ui/icon";
 import { VideoItem } from "./VideoPlayer";
 import func2url from "../../../backend/func2url.json";
 
-const VIDEOS_API = func2url["videos-api"];
+const VIDEOS_API = func2url["media-api"];
 
 interface ExternalVideoBlockProps {
   ownerType: "master" | "bath" | "event";
@@ -49,7 +49,7 @@ export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: Ex
 
   const fetchVideos = async () => {
     try {
-      const res = await fetch(`${VIDEOS_API}/?owner_type=${ownerType}&owner_id=${ownerId}`);
+      const res = await fetch(`${VIDEOS_API}/?videos=1&owner_type=${ownerType}&owner_id=${ownerId}`);
       const data = await res.json();
       setVideos(data.videos || []);
     } catch {
@@ -65,7 +65,7 @@ export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: Ex
     if (!url.trim()) { setError("Введите ссылку на видео"); return; }
     setAdding(true); setError("");
     try {
-      const res = await fetch(`${VIDEOS_API}/?me=1`, {
+      const res = await fetch(`${VIDEOS_API}/?videos=1&me=1`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -87,7 +87,7 @@ export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: Ex
 
   const handleDelete = async (id: number) => {
     try {
-      await fetch(`${VIDEOS_API}/?me=1&video_id=${id}`, {
+      await fetch(`${VIDEOS_API}/?videos=1&me=1&video_id=${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${userToken}` },
       });
@@ -101,12 +101,12 @@ export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: Ex
     [updated[index - 1], updated[index]] = [updated[index], updated[index - 1]];
     setVideos(updated);
     await Promise.all([
-      fetch(`${VIDEOS_API}/?me=1&video_id=${updated[index - 1].id}`, {
+      fetch(`${VIDEOS_API}/?videos=1&me=1&video_id=${updated[index - 1].id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
         body: JSON.stringify({ sort_order: index - 1 }),
       }),
-      fetch(`${VIDEOS_API}/?me=1&video_id=${updated[index].id}`, {
+      fetch(`${VIDEOS_API}/?videos=1&me=1&video_id=${updated[index].id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
         body: JSON.stringify({ sort_order: index }),
@@ -115,7 +115,7 @@ export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: Ex
   };
 
   const handleSaveTitle = async (id: number) => {
-    await fetch(`${VIDEOS_API}/?me=1&video_id=${id}`, {
+    await fetch(`${VIDEOS_API}/?videos=1&me=1&video_id=${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${userToken}` },
       body: JSON.stringify({ title: editTitle }),

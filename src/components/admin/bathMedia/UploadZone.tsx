@@ -5,7 +5,7 @@ import { MediaType, MEDIA_CONFIG } from "./bathMediaTypes";
 import PhotoCropEditor from "./PhotoCropEditor";
 import func2url from "../../../../backend/func2url.json";
 
-const MEDIA_API = func2url["upload-media"];
+const MEDIA_API = func2url["media-api"];
 
 interface UploadZoneProps {
   type: MediaType;
