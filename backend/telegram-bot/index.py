@@ -733,7 +733,10 @@ def handle_notify_signup(body):
             tg_text += f"✈️ {signup_telegram}\n"
         tg_text += f"\n🪑 Осталось мест: {spots_left}"
         result = send_message(tg_link['telegram_user_id'], tg_text)
+        print(f"[notify_signup] tg_user_id={tg_link['telegram_user_id']} result={result}")
         results['telegram'] = result.get('ok', False)
+        if not result.get('ok'):
+            results['telegram_error'] = result.get('description', 'unknown')
 
     # ── Email ─────────────────────────────────────────────────────────────────
     if organizer['notify_email'] and organizer.get('email'):
