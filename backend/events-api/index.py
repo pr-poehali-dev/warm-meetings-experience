@@ -276,6 +276,18 @@ def handle_signups(event, method, params, schema, headers):
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'No spots left'})}
 
+        # Проверка на дублирующую запись по телефону или email
+        cur.execute(f"""
+            SELECT id FROM {schema}.event_signups
+            WHERE event_id = {event_id}
+              AND status NOT IN ('cancelled', 'отменено')
+              AND (phone = '{phone}' OR email = '{email}')
+            LIMIT 1
+        """)
+        if cur.fetchone():
+            conn.close()
+            return {'statusCode': 409, 'headers': headers, 'body': json.dumps({'error': 'already_registered'})}
+
         user_id = find_or_create_user(cur, schema, email, name, phone, telegram)
 
         cur.execute(f"""

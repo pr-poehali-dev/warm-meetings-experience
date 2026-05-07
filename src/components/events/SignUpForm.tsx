@@ -12,6 +12,7 @@ import {
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { signupsApi } from "@/lib/api";
+import { HttpError } from "@/lib/http";
 import ConsentModal from "@/components/ConsentModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
@@ -35,7 +36,7 @@ interface SignUpFormProps {
   totalSpots?: number;
 }
 
-type Screen = "form" | "success";
+type Screen = "form" | "success" | "already_registered";
 
 const TG_BOT = "https://t.me/sparcom_ru";
 
@@ -211,9 +212,10 @@ export default function SignUpForm({
       });
       setScreen("success");
     } catch (err: unknown) {
-      const e = err as { status?: number; response?: { status?: number }; message?: string };
-      const status = e?.status || e?.response?.status || (e?.message?.includes("429") ? 429 : undefined);
-      if (status === 429) {
+      const status = err instanceof HttpError ? err.status : 0;
+      if (status === 409) {
+        setScreen("already_registered");
+      } else if (status === 429) {
         toast.error("Слишком много заявок. Попробуйте через минуту.");
       } else {
         toast.error("Не удалось отправить заявку. Попробуйте позже.");
@@ -268,6 +270,32 @@ export default function SignUpForm({
               <Button className="rounded-xl gap-2 w-full" onClick={() => handleClose(false)}>
                 <Icon name="Check" size={16} />
                 Готово
+              </Button>
+            </div>
+          )}
+
+          {/* ── УЖЕ ЗАПИСАН ──────────────────────────────────────── */}
+          {screen === "already_registered" && (
+            <div className="px-6 py-10 text-center space-y-4">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
+                <Icon name="CalendarCheck" size={32} className="text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-1">Вы уже записаны!</h3>
+                <p className="text-sm text-muted-foreground">
+                  Вы уже подали заявку на «{eventTitle}». Организатор свяжется с вами для подтверждения.
+                </p>
+              </div>
+              {(dateLabel || timeLabel) && (
+                <p className="text-xs text-muted-foreground">
+                  {dateLabel && <span>{dateLabel}</span>}
+                  {timeLabel && <span className="ml-1">в {timeLabel}</span>}
+                  {bathName && <span className="block mt-0.5">{bathName}</span>}
+                </p>
+              )}
+              <Button className="rounded-xl gap-2 w-full" onClick={() => handleClose(false)}>
+                <Icon name="Check" size={16} />
+                Понятно
               </Button>
             </div>
           )}
