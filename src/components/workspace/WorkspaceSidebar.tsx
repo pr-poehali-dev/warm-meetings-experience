@@ -12,6 +12,7 @@ interface WorkspaceSidebarProps {
   partnerView: PartnerView;
   bathsCount: number;
   eventsCount: number;
+  tgChannelsCount?: number;
   openSections: Record<string, boolean>;
   toggleSection: (key: string) => void;
   switchRoleTab: (tab: RoleTab) => void;
@@ -32,6 +33,7 @@ export default function WorkspaceSidebar({
   partnerView,
   bathsCount,
   eventsCount,
+  tgChannelsCount,
   openSections,
   toggleSection,
   switchRoleTab,
@@ -164,14 +166,20 @@ export default function WorkspaceSidebar({
             icon="Bell"
             label="Рассылки"
           />
-          <NavItem
-            active={roleTab === "organizer" && orgView === "telegram"}
-            onClick={() => switchOrgView("telegram")}
-            icon="Send"
-            label="Telegram"
-          />
         </CollapsibleSection>
       )}
+
+      {/* Общий блок: Telegram — для всех коммерческих ролей */}
+      <div className="border-t border-border/60 pt-2 mt-3">
+        <NavItem
+          active={roleTab === "telegram"}
+          onClick={() => switchRoleTab("telegram")}
+          icon="Send"
+          label="Telegram-каналы"
+          badge={tgChannelsCount || undefined}
+          accent="text-sky-500"
+        />
+      </div>
 
       {/* Низ: личный кабинет + выход */}
       <div className="border-t border-border/60 pt-2 mt-3">

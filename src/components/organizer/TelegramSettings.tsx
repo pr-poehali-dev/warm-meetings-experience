@@ -43,7 +43,7 @@ function NotifyChannelRow({ icon, label, description, active, disabled, onToggle
 const ROLE_COPY: Record<string, { title: string; desc: string }> = {
   organizer: {
     title: "Telegram для организатора",
-    desc: "Бот автоматически публикует события в ваш канал и присылает уведомления о новых записях",
+    desc: "Публикуйте события в ваш канал и получайте уведомления о новых записях прямо в Telegram",
   },
   master: {
     title: "Telegram для мастера",

@@ -52,6 +52,9 @@ def handler(event, context):
     method = event.get('httpMethod', 'GET')
     params = event.get('queryStringParameters') or {}
 
+    if method == 'GET' and params.get('action') == 'tg_info':
+        return handle_tg_info(params)
+
     if method == 'GET' and params.get('action') == 'generate_code':
         return handle_generate_code(params)
 
@@ -93,6 +96,33 @@ def handle_set_webhook(event):
         'drop_pending_updates': True
     })
     return respond(200, {'webhook_url': webhook_url, 'result': result})
+
+
+def handle_tg_info(params):
+    """Возвращает статус привязки TG и количество каналов для любого коммерческого пользователя."""
+    token = params.get('token', '')
+    if not token:
+        return respond(401, {'error': 'Не авторизован'})
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    schema = get_schema()
+    cur.execute(f"""
+        SELECT u.id FROM {schema}.user_sessions s
+        JOIN {schema}.users u ON u.id = s.user_id
+        WHERE s.token = '{token.replace("'", "''")}' AND s.expires_at > NOW()
+    """)
+    user = cur.fetchone()
+    if not user:
+        conn.close()
+        return respond(401, {'error': 'Сессия истекла'})
+    user_id = user['id']
+    cur.execute(f"SELECT id FROM {schema}.tg_linked_accounts WHERE user_id = {user_id} LIMIT 1")
+    tg_linked = cur.fetchone() is not None
+    cur.execute(f"SELECT COUNT(*) as cnt FROM {schema}.tg_channels WHERE user_id = {user_id} AND is_active = TRUE")
+    row = cur.fetchone()
+    tg_channels_count = int(row['cnt']) if row else 0
+    conn.close()
+    return respond(200, {'tg_linked': tg_linked, 'tg_channels_count': tg_channels_count})
 
 
 def handle_generate_code(params):

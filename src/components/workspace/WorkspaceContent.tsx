@@ -60,7 +60,10 @@ interface WorkspaceContentProps {
   // Role tab switcher (used by dashboard cards)
   switchRoleTab: (t: RoleTab) => void;
 
-  // Organizer api passed in to avoid re-importing here? import directly
+  // Telegram info (общий для всех ролей)
+  tgLinked: boolean;
+  tgChannelsCount: number;
+  refreshTgInfo: () => void;
 }
 
 import { organizerApi } from "@/lib/organizer-api";
@@ -95,7 +98,25 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     loadOrgEvents,
     toast,
     switchRoleTab,
+    tgLinked,
+    tgChannelsCount,
+    refreshTgInfo,
   } = props;
+
+  // ─── Универсальный раздел Telegram для всех коммерческих ролей ──────────────
+  if (roleTab === "telegram") {
+    const userRole = isOrganizer ? "organizer" : isMaster ? "master" : isPartner ? "partner" : "organizer";
+    return (
+      <div className="max-w-2xl mx-auto">
+        <TelegramSettings
+          tgLinked={tgLinked}
+          tgChannelsCount={tgChannelsCount}
+          onRefresh={refreshTgInfo}
+          userRole={userRole}
+        />
+      </div>
+    );
+  }
 
   if (roleTab === "dashboard") {
     return (
@@ -279,7 +300,6 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         ) : null;
       case "calculator": return <EventCalculator onCreateEvent={(data) => { setFormData(data as OrgEvent); setSelectedEvent(null); setOrgView("create"); }} />;
       case "notify": return <div className="max-w-2xl mx-auto"><NotifyModule role="organizer" eventId={selectedEvent?.id ?? null} /></div>;
-      case "telegram": return <TelegramSettings tgLinked={orgDashboard?.tg_linked ?? false} tgChannelsCount={orgDashboard?.tg_channels_count ?? 0} onRefresh={loadOrgDashboard} userRole="organizer" />;
     }
   }
 

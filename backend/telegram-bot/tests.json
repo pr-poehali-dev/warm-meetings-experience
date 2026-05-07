@@ -6,6 +6,14 @@
     "expectedStatus": 200
   },
   {
+    "name": "tg_info unauthorized",
+    "method": "GET",
+    "path": "/?action=tg_info",
+    "expectedStatus": 401,
+    "expectedBody": {"error": "string"},
+    "bodyMatcher": "partial"
+  },
+  {
     "name": "Generate code unauthorized",
     "method": "GET",
     "path": "/?action=generate_code",

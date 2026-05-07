@@ -38,6 +38,7 @@ export default function Workspace() {
     if (p === "master" && isMaster) return "master";
     if (p === "organizer" && isOrganizer) return "organizer";
     if (p === "partner" && isPartner) return "partner";
+    if (p === "telegram") return "telegram";
     return "dashboard";
   };
 
@@ -67,6 +68,23 @@ export default function Workspace() {
       .finally(() => setBathsLoading(false));
   }, []);
 
+  // Telegram info — общий для всех коммерческих ролей
+  const [tgLinked, setTgLinked] = useState(false);
+  const [tgChannelsCount, setTgChannelsCount] = useState(0);
+
+  const loadTgInfo = useCallback(async () => {
+    const token = localStorage.getItem("user_token") || "";
+    if (!token) return;
+    try {
+      const r = await fetch(
+        `https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1/?action=tg_info&token=${encodeURIComponent(token)}`
+      );
+      const data = await r.json();
+      if (data.tg_linked !== undefined) setTgLinked(data.tg_linked);
+      if (data.tg_channels_count !== undefined) setTgChannelsCount(data.tg_channels_count);
+    } catch { /* ignore */ }
+  }, []);
+
   // Organizer state
   const [orgDashboard, setOrgDashboard] = useState<DashboardData | null>(null);
   const [events, setEvents] = useState<OrgEvent[]>([]);
@@ -77,7 +95,13 @@ export default function Workspace() {
   const [orgFormLoading, setOrgFormLoading] = useState(false);
 
   const loadOrgDashboard = useCallback(async () => {
-    try { const data = await organizerApi.getDashboard(); setOrgDashboard(data); } catch { /* ignore */ }
+    try {
+      const data = await organizerApi.getDashboard();
+      setOrgDashboard(data);
+      // Синхронизируем tg-данные из дашборда организатора
+      if (data.tg_linked !== undefined) setTgLinked(data.tg_linked);
+      if (data.tg_channels_count !== undefined) setTgChannelsCount(data.tg_channels_count);
+    } catch { /* ignore */ }
   }, []);
 
   const loadOrgEvents = useCallback(async () => {
@@ -90,7 +114,8 @@ export default function Workspace() {
     if (!isMaster && !isOrganizer && !isPartner) { navigate("/account"); return; }
     if (isOrganizer) { loadOrgDashboard(); loadOrgEvents(); }
     if (isPartner) { loadBaths(); }
-  }, [authLoading, user, isMaster, isOrganizer, isPartner, navigate, loadOrgDashboard, loadOrgEvents, loadBaths]);
+    loadTgInfo();
+  }, [authLoading, user, isMaster, isOrganizer, isPartner, navigate, loadOrgDashboard, loadOrgEvents, loadBaths, loadTgInfo]);
 
   const switchRoleTab = (tab: RoleTab) => {
     setRoleTab(tab);
@@ -126,6 +151,7 @@ export default function Workspace() {
 
   // Текущее название раздела в шапке
   const currentLabel = () => {
+    if (roleTab === "telegram") return "Telegram-каналы";
     if (roleTab === "dashboard") return "Обзор";
     if (roleTab === "master") {
       const label = MASTER_NAV.find((n) => n.id === masterSection)?.label ?? "Мастер";
@@ -156,6 +182,7 @@ export default function Workspace() {
       partnerView={partnerView}
       bathsCount={baths.length}
       eventsCount={events.length}
+      tgChannelsCount={tgChannelsCount}
       openSections={openSections}
       toggleSection={toggleSection}
       switchRoleTab={switchRoleTab}
@@ -238,6 +265,9 @@ export default function Workspace() {
               loadOrgEvents={loadOrgEvents}
               toast={toast}
               switchRoleTab={switchRoleTab}
+              tgLinked={tgLinked}
+              tgChannelsCount={tgChannelsCount}
+              refreshTgInfo={loadTgInfo}
             />
           </div>
         </main>
