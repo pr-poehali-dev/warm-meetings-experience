@@ -325,7 +325,7 @@ export default function SignUpForm({
                 )}
               </DialogHeader>
 
-              <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5 max-h-[75vh] overflow-y-auto">
+              <form onSubmit={handleSubmit} className="px-6 py-5 pb-8 space-y-5 max-h-[65vh] overflow-y-auto">
                 {/* honeypot — скрытое поле для ботов */}
                 <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", top: "auto", width: 1, height: 1, overflow: "hidden" }}>
                   <label htmlFor="su-website">Website</label>
