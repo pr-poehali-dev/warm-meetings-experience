@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import Icon from "@/components/ui/icon";
 import RepeatEventDialog from "@/components/admin/RepeatEventDialog";
+import TgPublishModal from "@/components/organizer/TgPublishModal";
 
 type StatusFilter = "all" | "active" | "past" | "drafts";
 
@@ -41,6 +42,7 @@ export default function OrgDashboard({
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
   const [repeatEvent, setRepeatEvent] = useState<OrgEvent | null>(null);
+  const [tgEvent, setTgEvent] = useState<OrgEvent | null>(null);
   const { toast } = useToast();
 
   const now = new Date().toISOString().split("T")[0];
@@ -204,6 +206,14 @@ export default function OrgDashboard({
                   </Button>
                   <Button
                     size="sm" variant="secondary"
+                    onClick={() => setTgEvent(ev)}
+                    className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-blue-500"
+                    title="Опубликовать в Telegram"
+                  >
+                    <Icon name="Send" size={16} />
+                  </Button>
+                  <Button
+                    size="sm" variant="secondary"
                     onClick={() => onToggleVisibility(ev)}
                     className="h-8 w-8 p-0 bg-white/90 hover:bg-white text-gray-700"
                     title={ev.is_visible ? "Скрыть" : "Опубликовать"}
@@ -284,6 +294,13 @@ export default function OrgDashboard({
             setRepeatEvent(null);
           }}
           onCancel={() => setRepeatEvent(null)}
+        />
+      )}
+      {tgEvent && (
+        <TgPublishModal
+          event={tgEvent}
+          onClose={() => setTgEvent(null)}
+          onDone={() => setTgEvent(null)}
         />
       )}
     </div>
