@@ -830,7 +830,7 @@ def handle_publish_event(body):
         'price': price_str or 'Бесплатно',
         'spots_left': str(ev.get('spots_left') or ev.get('total_spots') or '—'),
         'description_short': (ev.get('short_description') or ev.get('description') or '')[:300],
-        'url': f"https://sparcom.ru/events/{ev.get('slug') or ev['id']}",
+        'url': f"https://sparcom.ru/e/{ev['short_code']}" if ev.get('short_code') else f"https://sparcom.ru/events/{ev.get('slug') or ev['id']}",
     }
 
     published = 0
@@ -954,7 +954,7 @@ def _format_content(content_type, data, channel_template=None):
             'price': price_str or 'Бесплатно',
             'spots_left': str(ev.get('spots_left') or ev.get('total_spots') or '—'),
             'description_short': (ev.get('short_description') or ev.get('description') or '')[:300],
-            'url': f"https://sparcom.ru/events/{ev.get('slug') or ev['id']}",
+            'url': f"https://sparcom.ru/e/{ev['short_code']}" if ev.get('short_code') else f"https://sparcom.ru/events/{ev.get('slug') or ev['id']}",
         }
         photo_url = ev.get('image_url')
 

@@ -8,6 +8,7 @@ export interface EventFromAPI {
   id: number;
   title: string;
   slug: string;
+  short_code?: string;
   short_description: string;
   full_description: string;
   description: string;

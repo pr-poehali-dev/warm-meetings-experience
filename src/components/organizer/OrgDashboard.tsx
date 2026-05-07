@@ -48,7 +48,9 @@ export default function OrgDashboard({
   const now = new Date().toISOString().split("T")[0];
 
   const handleShare = (ev: OrgEvent) => {
-    const url = `${window.location.origin}/events/${ev.slug}`;
+    const url = ev.short_code
+      ? `${window.location.origin}/e/${ev.short_code}`
+      : `${window.location.origin}/events/${ev.slug}`;
     navigator.clipboard.writeText(url).then(() => {
       toast({ title: "Ссылка скопирована", description: url });
     });

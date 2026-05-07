@@ -42,7 +42,9 @@ export default function OrgEventsList({
   const { toast } = useToast();
 
   const handleShare = (ev: OrgEvent) => {
-    const url = `${window.location.origin}/events/${ev.slug}`;
+    const url = ev.short_code
+      ? `${window.location.origin}/e/${ev.short_code}`
+      : `${window.location.origin}/events/${ev.slug}`;
     navigator.clipboard.writeText(url).then(() => {
       toast({ title: "Ссылка скопирована", description: url });
     });

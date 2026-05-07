@@ -15,6 +15,7 @@ export interface OrgEvent {
   id: number;
   title: string;
   slug: string;
+  short_code?: string;
   event_date: string;
   start_time: string;
   end_time: string;
