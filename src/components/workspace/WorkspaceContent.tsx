@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { OrgEvent, DashboardData } from "@/lib/organizer-api";
 import { PartnerBath } from "@/lib/partner-api";
 import OrgDashboard from "@/components/organizer/OrgDashboard";
+import MyArticles from "@/components/account/MyArticles";
 import LiveEventEditor from "@/components/organizer/LiveEventEditor";
 import UnifiedPeoplePanel from "@/components/organizer/UnifiedPeoplePanel";
 import TelegramSettings from "@/components/organizer/TelegramSettings";
@@ -303,6 +304,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         ) : null;
       case "calculator": return <EventCalculator onCreateEvent={(data) => { setFormData(data as OrgEvent); setSelectedEvent(null); setOrgView("create"); }} />;
       case "notify": return <div className="max-w-2xl mx-auto"><NotifyModule role="organizer" eventId={selectedEvent?.id ?? null} /></div>;
+      case "blog": return <div className="max-w-3xl mx-auto"><MyArticles /></div>;
     }
   }
 

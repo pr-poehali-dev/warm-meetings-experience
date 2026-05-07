@@ -166,6 +166,12 @@ export default function WorkspaceSidebar({
             icon="Bell"
             label="Рассылки"
           />
+          <NavItem
+            active={roleTab === "organizer" && orgView === "blog"}
+            onClick={() => switchOrgView("blog")}
+            icon="BookOpen"
+            label="Блог"
+          />
         </CollapsibleSection>
       )}
 

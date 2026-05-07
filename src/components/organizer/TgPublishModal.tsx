@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
-import { tgPublishApi, TgChannel, TgPublication, OrgEvent } from "@/lib/organizer-api";
+import { tgPublishApi, TgChannel } from "@/lib/tg-publish-api";
+import { OrgEvent } from "@/lib/organizer-api";
 import { useAuth } from "@/contexts/AuthContext";
 
-type PublishMode = "now" | "schedule" | "reminder";
+type PublishMode = "now" | "schedule";
 
 interface Props {
   event: OrgEvent;
@@ -12,99 +13,53 @@ interface Props {
   onDone?: () => void;
 }
 
-const DEFAULT_TEMPLATE = (ev: OrgEvent, mode: PublishMode) => {
-  const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-  const d = new Date(ev.event_date);
-  const dateStr = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
-  const timeStr = ev.start_time ? (ev.end_time ? `${ev.start_time.slice(0,5)} — ${ev.end_time.slice(0,5)}` : ev.start_time.slice(0,5)) : '';
-  const price = ev.price_label || (ev.price_amount ? `${ev.price_amount} ₽` : 'Бесплатно');
-  const url = `https://sparcom.ru/events/${ev.slug || ev.id}`;
-  const reminder = mode === "reminder" ? "🔔 *Напоминание! Завтра событие:*\n\n" : "";
-  return `${reminder}📅 *${ev.title}*
-
-🗓 ${dateStr}${timeStr ? ', ' + timeStr : ''}
-📍 ${ev.bath_name || ''}
-💰 ${price}
-👥 Осталось мест: ${ev.spots_left ?? ev.total_spots ?? '—'}
-
-${(ev.short_description || ev.description || '').slice(0, 300)}
-
-👉 [Подробнее и запись](${url})`.trim();
-};
-
 export default function TgPublishModal({ event, onClose, onDone }: Props) {
   const { user } = useAuth();
   const [channels, setChannels] = useState<TgChannel[]>([]);
-  const [publications, setPublications] = useState<TgPublication[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [mode, setMode] = useState<PublishMode>("now");
-  const [customText, setCustomText] = useState("");
   const [scheduleAt, setScheduleAt] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [result, setResult] = useState<{ published: number; errors: { channel: string; error: string }[] } | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      tgPublishApi.getChannels(),
-      tgPublishApi.getPublications(event.id),
-    ]).then(([ch, pub]) => {
-      setChannels(ch.channels);
-      setPublications(pub.publications);
-      // Выбрать все каналы по умолчанию
-      setSelectedIds(new Set(ch.channels.map(c => c.id)));
-      setCustomText(DEFAULT_TEMPLATE(event, "now"));
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, [event]);
+    if (!user?.id) return;
+    tgPublishApi.getChannels(user.id)
+      .then((ch) => {
+        setChannels(ch);
+        setSelectedIds(new Set(ch.map((c) => c.id)));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [user?.id]);
 
-  useEffect(() => {
-    setCustomText(DEFAULT_TEMPLATE(event, mode));
-  }, [mode, event]);
-
-  const toggle = (id: number) => setSelectedIds(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) { next.delete(id); } else { next.add(id); }
-    return next;
-  });
+  const toggle = (id: number) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
 
   const handlePublish = async () => {
-    if (selectedIds.size === 0) return;
+    if (selectedIds.size === 0 || !user?.id) return;
+    if (mode === "schedule" && !scheduleAt) {
+      alert("Укажите дату и время публикации");
+      return;
+    }
     setPublishing(true);
     try {
-      const channel_ids = Array.from(selectedIds);
-      const organizer_id = event.organizer_id || user?.id || 0;
-      const published_by = user?.id;
-
-      if (mode === "schedule") {
-        if (!scheduleAt) { alert("Укажите дату и время публикации"); setPublishing(false); return; }
-        await tgPublishApi.schedulePublish({
-          event_id: event.id,
-          organizer_id,
-          channel_ids,
-          scheduled_at: scheduleAt,
-          custom_text: customText || undefined,
-          published_by,
-        });
-        setResult({ published: channel_ids.length, errors: [] });
-      } else if (mode === "reminder") {
-        const res = await tgPublishApi.sendReminder({
-          event_id: event.id,
-          organizer_id,
-          channel_ids,
-          custom_text: customText || undefined,
-          published_by,
-        });
-        setResult(res);
-      } else {
-        const res = await tgPublishApi.publishManual({
-          event_id: event.id,
-          organizer_id,
-          channel_ids,
-          custom_text: customText || undefined,
-          published_by,
-        });
-        setResult(res);
-      }
+      const res = await tgPublishApi.publishContent({
+        contentType: "event",
+        contentId: event.id,
+        userId: user.id,
+        channelIds: Array.from(selectedIds),
+        publicationType: "manual",
+        allowRepeat: true,
+        scheduledAt: mode === "schedule" ? scheduleAt : undefined,
+        publishedBy: user.id,
+      });
+      setResult({ published: res.published, errors: res.errors });
       onDone?.();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Ошибка публикации");
@@ -112,8 +67,6 @@ export default function TgPublishModal({ event, onClose, onDone }: Props) {
       setPublishing(false);
     }
   };
-
-  const sentToIds = new Set(publications.filter(p => p.status === 'sent').map(p => p.channel_id));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -138,9 +91,8 @@ export default function TgPublishModal({ event, onClose, onDone }: Props) {
               <Icon name="Loader2" size={24} className="animate-spin text-muted-foreground" />
             </div>
           ) : result ? (
-            /* Результат */
             <div className="space-y-4 text-center py-4">
-              <div className={`w-14 h-14 rounded-full mx-auto flex items-center justify-center ${result.published > 0 ? 'bg-green-100' : 'bg-amber-100'}`}>
+              <div className={`w-14 h-14 rounded-full mx-auto flex items-center justify-center ${result.published > 0 ? "bg-green-100" : "bg-amber-100"}`}>
                 <Icon name={result.published > 0 ? "CheckCircle2" : "AlertCircle"} size={28} className={result.published > 0 ? "text-green-600" : "text-amber-600"} />
               </div>
               {mode === "schedule" ? (
@@ -166,7 +118,7 @@ export default function TgPublishModal({ event, onClose, onDone }: Props) {
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Тип публикации</p>
                 <div className="flex gap-1 bg-muted/60 rounded-xl p-1">
-                  {([["now", "Сейчас", "Zap"], ["schedule", "Отложить", "Clock"], ["reminder", "Напоминание", "Bell"]] as const).map(([id, label, icon]) => (
+                  {([["now", "Сейчас", "Zap"], ["schedule", "Отложить", "Clock"]] as const).map(([id, label, icon]) => (
                     <button
                       key={id}
                       onClick={() => setMode(id)}
@@ -177,11 +129,6 @@ export default function TgPublishModal({ event, onClose, onDone }: Props) {
                     </button>
                   ))}
                 </div>
-                {mode === "reminder" && (
-                  <p className="text-xs text-muted-foreground mt-2 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
-                    Напоминание — отдельный пост со специальным заголовком. Отправляется вручную (например, за день до события).
-                  </p>
-                )}
               </div>
 
               {/* Дата/время для отложенной */}
@@ -191,7 +138,7 @@ export default function TgPublishModal({ event, onClose, onDone }: Props) {
                   <input
                     type="datetime-local"
                     value={scheduleAt}
-                    onChange={e => setScheduleAt(e.target.value)}
+                    onChange={(e) => setScheduleAt(e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                 </div>
@@ -207,8 +154,7 @@ export default function TgPublishModal({ event, onClose, onDone }: Props) {
                   </div>
                 ) : (
                   <div className="space-y-1.5">
-                    {channels.map(ch => {
-                      const alreadySent = sentToIds.has(ch.id);
+                    {channels.map((ch) => {
                       const checked = selectedIds.has(ch.id);
                       return (
                         <button
@@ -219,87 +165,32 @@ export default function TgPublishModal({ event, onClose, onDone }: Props) {
                           <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${checked ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
                             {checked && <Icon name="Check" size={10} className="text-white" />}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="font-medium truncate block">{ch.chat_title || ch.chat_id}</span>
-                            {alreadySent && <span className="text-[10px] text-green-600">уже публиковалось</span>}
-                          </div>
-                          <span className="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5">{ch.channel_type}</span>
+                          <span className="flex-1 font-medium">{ch.chat_title}</span>
+                          <span className="text-xs text-muted-foreground">{ch.chat_type}</span>
                         </button>
                       );
                     })}
                   </div>
                 )}
               </div>
-
-              {/* Редактор текста */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Текст публикации</p>
-                  <button
-                    onClick={() => setCustomText(DEFAULT_TEMPLATE(event, mode))}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Сбросить
-                  </button>
-                </div>
-                <textarea
-                  rows={10}
-                  value={customText}
-                  onChange={e => setCustomText(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none font-mono text-xs leading-relaxed"
-                  placeholder="Текст поста в Telegram..."
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Поддерживается Markdown: *жирный*, _курсив_, [ссылка](url)
-                </p>
-              </div>
-
-              {/* История */}
-              {publications.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">История публикаций</p>
-                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                    {publications.map(p => (
-                      <div key={p.id} className="flex items-center gap-2 text-xs py-1.5 px-3 bg-muted/40 rounded-lg">
-                        <Icon
-                          name={p.status === 'sent' ? "CheckCircle2" : p.status === 'scheduled' ? "Clock" : "XCircle"}
-                          size={12}
-                          className={p.status === 'sent' ? "text-green-600" : p.status === 'scheduled' ? "text-blue-600" : "text-red-500"}
-                        />
-                        <span className="flex-1 truncate">{p.chat_title}</span>
-                        <span className="text-muted-foreground whitespace-nowrap">
-                          {p.status === 'scheduled' ? `запл. ${new Date(p.scheduled_at!).toLocaleString('ru')}` : new Date(p.published_at).toLocaleString('ru')}
-                        </span>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${p.publication_type === 'reminder' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {p.publication_type === 'reminder' ? 'напомн.' : p.publication_type === 'manual' ? 'ручная' : 'первая'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>
 
-        {/* Footer */}
         {!result && !loading && (
-          <div className="border-t p-4 flex items-center justify-between gap-3">
-            <span className="text-xs text-muted-foreground">
-              Выбрано каналов: {selectedIds.size}
-            </span>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={onClose}>Отмена</Button>
-              <Button
-                size="sm"
-                onClick={handlePublish}
-                disabled={publishing || selectedIds.size === 0 || channels.length === 0}
-                className="gap-1.5"
-              >
-                {publishing ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Send" size={14} />}
-                {mode === "schedule" ? "Запланировать" : mode === "reminder" ? "Отправить напоминание" : "Опубликовать"}
-              </Button>
-            </div>
+          <div className="p-5 border-t">
+            <Button
+              onClick={handlePublish}
+              disabled={publishing || selectedIds.size === 0}
+              className="w-full gap-2"
+            >
+              {publishing ? (
+                <Icon name="Loader2" size={16} className="animate-spin" />
+              ) : (
+                <Icon name="Send" size={16} />
+              )}
+              {mode === "schedule" ? "Запланировать" : "Опубликовать"}
+            </Button>
           </div>
         )}
       </div>
