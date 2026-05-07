@@ -358,9 +358,9 @@ export default function UnifiedPeoplePanel({ event, onBack, onNotify }: Props) {
           { label: "Собрано", value: totalPaid > 0 ? `${totalPaid.toLocaleString("ru")} ₽` : "—", sub: "оплата" },
           { label: "Пришли", value: totalAttended, sub: "на встречу" },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border bg-card p-3 text-center">
+          <div key={s.label} className="rounded-xl border bg-card p-2 text-center min-w-0">
             <div className="text-xl font-bold leading-tight">{s.value}</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">{s.label}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight break-words hyphens-auto" lang="ru">{s.label}</div>
           </div>
         ))}
       </div>
