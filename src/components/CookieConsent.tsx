@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
+import { initYandexMetrika } from "@/lib/metrika";
 
 const STORAGE_KEY = "cookie-consent-v1";
 
@@ -11,7 +12,9 @@ export default function CookieConsent() {
   useEffect(() => {
     try {
       const accepted = localStorage.getItem(STORAGE_KEY);
-      if (!accepted) {
+      if (accepted) {
+        initYandexMetrika();
+      } else {
         const t = setTimeout(() => setVisible(true), 600);
         return () => clearTimeout(t);
       }
@@ -26,6 +29,7 @@ export default function CookieConsent() {
     } catch {
       // ignore
     }
+    initYandexMetrika();
     setVisible(false);
   };
 

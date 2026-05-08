@@ -47,6 +47,7 @@ import IndexGlass from "./pages/IndexGlass";
 import IndexNew from "./pages/IndexNew";
 import LandingPage from "./pages/LandingPage";
 import CookieConsent from "./components/CookieConsent";
+import MetrikaTracker from "./components/MetrikaTracker";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ const AppContent = () => {
   return (
     <>
       <ScrollToTop />
+      <MetrikaTracker />
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/events" element={<Events />} />
