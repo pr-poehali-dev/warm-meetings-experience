@@ -287,7 +287,7 @@ def admin_post_message(cur, conn, schema, ticket_id, body):
     if not text:
         return err('Сообщение пустое')
     cur.execute(f"""
-        SELECT id, status FROM {schema}.support_tickets WHERE id = {ticket_id}
+        SELECT id, status, subject, user_id FROM {schema}.support_tickets WHERE id = {ticket_id}
     """)
     t = cur.fetchone()
     if not t:
@@ -304,6 +304,22 @@ def admin_post_message(cur, conn, schema, ticket_id, body):
         WHERE id = {ticket_id}
     """)
     conn.commit()
+    # Уведомление пользователю в Telegram, если привязан
+    if t['user_id']:
+        cur.execute(f"""
+            SELECT tg_chat_id, notify_telegram FROM {schema}.users WHERE id = {t['user_id']}
+        """)
+        u = cur.fetchone()
+        if u and u.get('tg_chat_id') and u.get('notify_telegram'):
+            try:
+                from shared import tg_send
+                tg_send(
+                    u['tg_chat_id'],
+                    f"💬 Поддержка ответила в обращении #{ticket_id}\n"
+                    f"<b>{t['subject']}</b>\n\nОткройте личный кабинет, чтобы прочитать."
+                )
+            except Exception:
+                pass
     return ok({'message': row_message(msg)})
 
 
@@ -354,8 +370,8 @@ def admin_change_priority(cur, conn, schema, ticket_id, body):
 
 def admin_list_templates(cur, schema):
     cur.execute(f"""
-        SELECT id, title, body, category, sort_order, is_active
-        FROM {schema}.support_templates
+        SELECT id, title, body, COALESCE(category, 'other') AS category, sort_order, is_active
+        FROM {schema}.support_reply_templates
         WHERE is_active = TRUE
         ORDER BY sort_order, id
     """)
@@ -372,7 +388,7 @@ def admin_save_template(cur, conn, schema, body):
         return err('Заполните заголовок и текст шаблона')
     if tid:
         cur.execute(f"""
-            UPDATE {schema}.support_templates
+            UPDATE {schema}.support_reply_templates
             SET title = {esc(title)}, body = {esc(text)}, category = {esc(category)},
                 sort_order = {sort_order}, updated_at = CURRENT_TIMESTAMP
             WHERE id = {int(tid)}
@@ -380,7 +396,7 @@ def admin_save_template(cur, conn, schema, body):
         """)
     else:
         cur.execute(f"""
-            INSERT INTO {schema}.support_templates (title, body, category, sort_order)
+            INSERT INTO {schema}.support_reply_templates (title, body, category, sort_order)
             VALUES ({esc(title)}, {esc(text)}, {esc(category)}, {sort_order})
             RETURNING id
         """)
@@ -391,7 +407,7 @@ def admin_save_template(cur, conn, schema, body):
 
 def admin_archive_template(cur, conn, schema, tid):
     cur.execute(f"""
-        UPDATE {schema}.support_templates
+        UPDATE {schema}.support_reply_templates
         SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP
         WHERE id = {int(tid)}
     """)
