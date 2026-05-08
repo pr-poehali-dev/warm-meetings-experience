@@ -19,6 +19,7 @@ const MasterCalendar = ({ masterId = MASTER_ID }: MasterCalendarProps) => {
     loading,
     weekDays,
     hours,
+    hoursRange,
     stats,
     services,
     templates,
@@ -56,6 +57,8 @@ const MasterCalendar = ({ masterId = MASTER_ID }: MasterCalendarProps) => {
     handleSlotClick,
     handleCreateSlot,
     handleDeleteSlot,
+    handleBlockSlot,
+    handleUnblockSlot,
     handleCreateBlock,
     handleApplyTemplate,
     handleBookingAction,
@@ -82,6 +85,7 @@ const MasterCalendar = ({ masterId = MASTER_ID }: MasterCalendarProps) => {
         <CalendarWeekGrid
           weekDays={weekDays}
           hours={hours}
+          hoursRange={hoursRange}
           loading={loading}
           getSlotsForDay={getSlotsForDay}
           getBookingsForSlot={getBookingsForSlot}
@@ -135,6 +139,8 @@ const MasterCalendar = ({ masterId = MASTER_ID }: MasterCalendarProps) => {
         saving={saving}
         onBookingAction={handleBookingAction}
         onDeleteSlot={handleDeleteSlot}
+        onBlockSlot={handleBlockSlot}
+        onUnblockSlot={handleUnblockSlot}
       />
     </div>
   );

@@ -46,6 +46,8 @@ interface TemplateEditDialogProps {
   onTemplateNameChange: (name: string) => void;
   rules: RuleForm[];
   onUpdateRule: (index: number, patch: Partial<RuleForm>) => void;
+  onAddRuleForDay: (dayOfWeek: number) => void;
+  onRemoveRule: (index: number) => void;
   services: MasterService[];
   saving: boolean;
   onSave: () => void;
@@ -59,13 +61,23 @@ const TemplateEditDialog = ({
   onTemplateNameChange,
   rules,
   onUpdateRule,
+  onAddRuleForDay,
+  onRemoveRule,
   services,
   saving,
   onSave,
 }: TemplateEditDialogProps) => {
+  // Группируем правила по дням недели — для каждого дня может быть несколько правил
+  const indicesByDay: number[][] = Array.from({ length: 7 }, () => []);
+  rules.forEach((rule, idx) => {
+    if (rule.day_of_week >= 0 && rule.day_of_week < 7) {
+      indicesByDay[rule.day_of_week].push(idx);
+    }
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[760px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon
@@ -89,76 +101,156 @@ const TemplateEditDialog = ({
 
           <div>
             <Label className="mb-2 block">Расписание по дням</Label>
+            <p className="text-xs text-gray-500 mb-3">
+              Можно добавить несколько интервалов на один день — например, утренние парения и вечерний массаж.
+            </p>
             <div className="space-y-3">
-              {rules.map((rule, idx) => (
-                <div
-                  key={idx}
-                  className={`rounded-lg border p-3 ${
-                    rule.is_day_off
-                      ? "border-red-200 bg-red-50/50"
-                      : "border-gray-200 bg-white"
-                  }`}
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <div className="flex items-center gap-3 sm:w-[140px] shrink-0">
-                      <span className="text-sm font-medium text-gray-900 w-[100px]">
-                        {DAY_NAMES[idx]}
+              {DAY_NAMES.map((dayName, dayIdx) => {
+                const ruleIndices = indicesByDay[dayIdx];
+                const hasOnlyDayOff =
+                  ruleIndices.length === 1 && rules[ruleIndices[0]]?.is_day_off;
+                const isCompletelyEmpty = ruleIndices.length === 0;
+
+                return (
+                  <div
+                    key={dayIdx}
+                    className={`rounded-lg border p-3 ${
+                      hasOnlyDayOff || isCompletelyEmpty
+                        ? "border-red-200 bg-red-50/50"
+                        : "border-gray-200 bg-white"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-sm font-semibold text-gray-900">
+                        {dayName}
                       </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Switch
-                        checked={rule.is_day_off}
-                        onCheckedChange={(v) => onUpdateRule(idx, { is_day_off: v })}
-                      />
-                      <span className="text-xs text-gray-500 whitespace-nowrap">Выходной</span>
-                    </div>
-
-                    {!rule.is_day_off && (
-                      <div className="flex flex-wrap items-center gap-2 flex-1">
-                        <Input
-                          type="time"
-                          value={rule.time_start}
-                          onChange={(e) => onUpdateRule(idx, { time_start: e.target.value })}
-                          className="w-[110px] h-8 text-sm"
-                        />
-                        <span className="text-gray-400 text-sm">-</span>
-                        <Input
-                          type="time"
-                          value={rule.time_end}
-                          onChange={(e) => onUpdateRule(idx, { time_end: e.target.value })}
-                          className="w-[110px] h-8 text-sm"
-                        />
-                        <Select
-                          value={rule.service_id}
-                          onValueChange={(v) => onUpdateRule(idx, { service_id: v })}
+                      <div className="flex items-center gap-2">
+                        {hasOnlyDayOff && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-nature-forest hover:bg-nature-forest/10"
+                            onClick={() => {
+                              const ruleIdx = ruleIndices[0];
+                              onUpdateRule(ruleIdx, { is_day_off: false });
+                            }}
+                          >
+                            <Icon name="Sunrise" size={14} />
+                            Сделать рабочим
+                          </Button>
+                        )}
+                        {!hasOnlyDayOff && !isCompletelyEmpty && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-gray-500 hover:bg-gray-100"
+                            onClick={() => {
+                              ruleIndices.forEach((i) =>
+                                onUpdateRule(i, { is_day_off: true })
+                              );
+                            }}
+                          >
+                            <Icon name="Moon" size={14} />
+                            Сделать выходным
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-nature-forest hover:bg-nature-forest/10"
+                          onClick={() => onAddRuleForDay(dayIdx)}
                         >
-                          <SelectTrigger className="w-[130px] h-8 text-xs">
-                            <SelectValue placeholder="Услуга" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Без услуги</SelectItem>
-                            {services.map((s) => (
-                              <SelectItem key={s.id} value={String(s.id)}>
-                                {s.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={50}
-                          value={rule.max_clients}
-                          onChange={(e) => onUpdateRule(idx, { max_clients: Number(e.target.value) || 1 })}
-                          className="w-[60px] h-8 text-sm"
-                          title="Макс. клиентов"
-                        />
+                          <Icon name="Plus" size={14} />
+                          Интервал
+                        </Button>
+                      </div>
+                    </div>
+
+                    {(hasOnlyDayOff || isCompletelyEmpty) && (
+                      <div className="text-xs text-gray-500 italic">
+                        Выходной — слоты не создаются
+                      </div>
+                    )}
+
+                    {!hasOnlyDayOff && !isCompletelyEmpty && (
+                      <div className="space-y-2">
+                        {ruleIndices.map((ruleIdx) => {
+                          const rule = rules[ruleIdx];
+                          if (rule.is_day_off) return null;
+                          return (
+                            <div
+                              key={ruleIdx}
+                              className="flex flex-wrap items-center gap-2 bg-gray-50 rounded-md p-2"
+                            >
+                              <Input
+                                type="time"
+                                value={rule.time_start}
+                                onChange={(e) =>
+                                  onUpdateRule(ruleIdx, { time_start: e.target.value })
+                                }
+                                className="w-[110px] h-8 text-sm"
+                              />
+                              <span className="text-gray-400 text-sm">—</span>
+                              <Input
+                                type="time"
+                                value={rule.time_end}
+                                onChange={(e) =>
+                                  onUpdateRule(ruleIdx, { time_end: e.target.value })
+                                }
+                                className="w-[110px] h-8 text-sm"
+                              />
+                              <Select
+                                value={rule.service_id || "none"}
+                                onValueChange={(v) =>
+                                  onUpdateRule(ruleIdx, { service_id: v === "none" ? "" : v })
+                                }
+                              >
+                                <SelectTrigger className="w-[170px] h-8 text-xs">
+                                  <SelectValue placeholder="Услуга" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Без услуги</SelectItem>
+                                  {services.map((s) => (
+                                    <SelectItem key={s.id} value={String(s.id)}>
+                                      {s.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                type="number"
+                                min={1}
+                                max={50}
+                                value={rule.max_clients}
+                                onChange={(e) =>
+                                  onUpdateRule(ruleIdx, {
+                                    max_clients: Number(e.target.value) || 1,
+                                  })
+                                }
+                                className="w-[60px] h-8 text-sm"
+                                title="Макс. клиентов"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 ml-auto"
+                                onClick={() => onRemoveRule(ruleIdx)}
+                                title="Удалить интервал"
+                              >
+                                <Icon name="Trash2" size={14} />
+                              </Button>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

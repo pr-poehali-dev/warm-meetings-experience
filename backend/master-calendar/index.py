@@ -337,7 +337,10 @@ def handle_templates(event, method, params, schema, headers):
             cur.execute(f"UPDATE {schema}.master_schedule_templates SET name = '{name}', updated_at = CURRENT_TIMESTAMP WHERE id = {int(tmpl_id)}")
 
         if 'rules' in body:
-            cur.execute(f"UPDATE {schema}.master_template_rules SET is_day_off = true WHERE template_id = {int(tmpl_id)}")
+            # Полная замена правил: удаляем старые и вставляем новые.
+            # Это позволяет хранить несколько правил на один день недели
+            # и корректно обрабатывать удаление правил из шаблона.
+            cur.execute(f"DELETE FROM {schema}.master_template_rules WHERE template_id = {int(tmpl_id)}")
             for rule in body['rules']:
                 svc = rule.get('service_id')
                 svc_val = f"{int(svc)}" if svc else "NULL"
@@ -347,19 +350,11 @@ def handle_templates(event, method, params, schema, headers):
                 max_cl = int(rule.get('max_clients', 1))
                 dow = int(rule['day_of_week'])
 
-                if rule.get('id'):
-                    cur.execute(f"""
-                        UPDATE {schema}.master_template_rules SET
-                        day_of_week = {dow}, time_start = '{t_start}', time_end = '{t_end}',
-                        service_id = {svc_val}, max_clients = {max_cl}, is_day_off = {is_off}
-                        WHERE id = {int(rule['id'])}
-                    """)
-                else:
-                    cur.execute(f"""
-                        INSERT INTO {schema}.master_template_rules
-                        (template_id, day_of_week, time_start, time_end, service_id, max_clients, is_day_off)
-                        VALUES ({int(tmpl_id)}, {dow}, '{t_start}', '{t_end}', {svc_val}, {max_cl}, {is_off})
-                    """)
+                cur.execute(f"""
+                    INSERT INTO {schema}.master_template_rules
+                    (template_id, day_of_week, time_start, time_end, service_id, max_clients, is_day_off)
+                    VALUES ({int(tmpl_id)}, {dow}, '{t_start}', '{t_end}', {svc_val}, {max_cl}, {is_off})
+                """)
 
         conn.commit()
         conn.close()
@@ -449,7 +444,6 @@ def handle_apply_template(event, method, params, schema, headers):
             """)
             if cur.fetchone():
                 skipped_count += 1
-                current_d += timedelta(days=1) if not day_rules else timedelta(days=0)
                 continue
 
             svc_val = f"{int(rule['service_id'])}" if rule['service_id'] else "NULL"
@@ -601,13 +595,9 @@ def handle_blocks(event, method, params, schema, headers):
             """)
             created += 1
 
-        cur.execute(f"""
-            UPDATE {schema}.master_slots SET status = 'blocked'
-            WHERE master_id = {int(master_id)}
-              AND status = 'available'
-              AND datetime_start::date >= '{start}'
-              AND datetime_start::date <= '{end}'
-        """)
+        # Блокировка дня НЕ меняет статус существующих слотов.
+        # Слоты остаются как есть — день перекрывается на фронте оверлеем.
+        # Это позволяет отдельно блокировать конкретные слоты (через updateSlot status='blocked').
 
         conn.commit()
         conn.close()
@@ -616,24 +606,14 @@ def handle_blocks(event, method, params, schema, headers):
     if method == 'DELETE':
         body = json.loads(event.get('body', '{}'))
         block_id = body.get('id') or params.get('id')
-        master_id = body.get('master_id', params.get('master_id', '1'))
-
-        cur.execute(f"SELECT block_date FROM {schema}.master_day_blocks WHERE id = {int(block_id)}")
-        block_row = cur.fetchone()
 
         cur.execute(f"""
             UPDATE {schema}.master_day_blocks SET reason = 'removed'
             WHERE id = {int(block_id)}
         """)
 
-        if block_row:
-            cur.execute(f"""
-                UPDATE {schema}.master_slots SET status = 'available'
-                WHERE master_id = {int(master_id)}
-                  AND status = 'blocked'
-                  AND source = 'template'
-                  AND datetime_start::date = '{block_row['block_date']}'
-            """)
+        # Снятие блокировки дня не трогает статусы слотов —
+        # они отдельно управляются мастером.
 
         conn.commit()
         conn.close()
@@ -668,7 +648,6 @@ def handle_week_view(event, method, params, schema, headers):
         WHERE s.master_id = {int(master_id)}
           AND s.datetime_start::date >= '{start_d}'
           AND s.datetime_start::date <= '{end_d}'
-          AND s.status != 'blocked'
         ORDER BY s.datetime_start
     """)
     slots = cur.fetchall()

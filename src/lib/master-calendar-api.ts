@@ -169,6 +169,18 @@ export const masterCalendarApi = {
       body: JSON.stringify({ id }),
     }),
 
+  blockSlot: (id: number) =>
+    fetchApi<MasterSlot>(`${CALENDAR_URL}?resource=slots`, {
+      method: "PUT",
+      body: JSON.stringify({ id, status: "blocked" }),
+    }),
+
+  unblockSlot: (id: number) =>
+    fetchApi<MasterSlot>(`${CALENDAR_URL}?resource=slots`, {
+      method: "PUT",
+      body: JSON.stringify({ id, status: "available" }),
+    }),
+
   getServices: (masterId: number) =>
     fetchApi<MasterService[]>(`${CALENDAR_URL}?resource=services&master_id=${masterId}`),
 

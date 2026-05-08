@@ -1,12 +1,9 @@
 import Icon from "@/components/ui/icon";
 import type { MasterSlot, MasterBooking, DayBlock } from "@/lib/master-calendar-api";
 import {
-  HOURS_START,
-  HOURS_END,
   PX_PER_HOUR,
   DAY_NAMES,
   formatDateShort,
-  formatDateISO,
   getSlotPosition,
   getSlotColors,
   formatTime,
@@ -16,6 +13,7 @@ import {
 interface CalendarWeekGridProps {
   weekDays: Date[];
   hours: number[];
+  hoursRange: { start: number; end: number };
   loading: boolean;
   getSlotsForDay: (day: Date) => MasterSlot[];
   getBookingsForSlot: (slotId: number) => MasterBooking[];
@@ -27,6 +25,7 @@ interface CalendarWeekGridProps {
 const CalendarWeekGrid = ({
   weekDays,
   hours,
+  hoursRange,
   loading,
   getSlotsForDay,
   getBookingsForSlot,
@@ -100,7 +99,7 @@ const CalendarWeekGrid = ({
             {weekDays.map((day, dayIdx) => {
               const daySlots = getSlotsForDay(day);
               const blocked = isDayBlocked(day);
-              const totalHeight = (HOURS_END - HOURS_START + 1) * PX_PER_HOUR;
+              const totalHeight = (hoursRange.end - hoursRange.start + 1) * PX_PER_HOUR;
 
               return (
                 <div
@@ -112,7 +111,7 @@ const CalendarWeekGrid = ({
                     <div
                       key={hour}
                       className="absolute left-0 right-0 border-b border-gray-100"
-                      style={{ top: `${(hour - HOURS_START) * PX_PER_HOUR}px`, height: `${PX_PER_HOUR}px` }}
+                      style={{ top: `${(hour - hoursRange.start) * PX_PER_HOUR}px`, height: `${PX_PER_HOUR}px` }}
                     />
                   ))}
 
@@ -134,7 +133,7 @@ const CalendarWeekGrid = ({
                   )}
 
                   {daySlots.map((slot) => {
-                    const pos = getSlotPosition(slot);
+                    const pos = getSlotPosition(slot, hoursRange.start);
                     const colors = getSlotColors(slot.status);
                     const bookings = slot.id ? getBookingsForSlot(slot.id) : [];
                     const clientName = bookings.length > 0 ? bookings[0].client_name : null;

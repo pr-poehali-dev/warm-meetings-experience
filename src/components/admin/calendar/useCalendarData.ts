@@ -11,10 +11,9 @@ import type {
   ScheduleTemplate,
 } from "@/lib/master-calendar-api";
 import {
-  HOURS_START,
-  HOURS_END,
   formatDateISO,
   getMonday,
+  computeHoursRange,
 } from "./calendarUtils";
 import type { ViewMode, SlotFormData, BlockFormData, TemplateFormData } from "./calendarUtils";
 
@@ -72,13 +71,17 @@ export const useCalendarData = (masterId: number) => {
     return days;
   }, [weekStart]);
 
+  const hoursRange = useMemo(() => {
+    return computeHoursRange(weekData?.slots || []);
+  }, [weekData]);
+
   const hours = useMemo(() => {
     const h: number[] = [];
-    for (let i = HOURS_START; i <= HOURS_END; i++) {
+    for (let i = hoursRange.start; i <= hoursRange.end; i++) {
       h.push(i);
     }
     return h;
-  }, []);
+  }, [hoursRange]);
 
   const fetchWeekData = useCallback(async () => {
     setLoading(true);
@@ -230,6 +233,36 @@ export const useCalendarData = (masterId: number) => {
     }
   };
 
+  const handleBlockSlot = async (slotId: number) => {
+    setSaving(true);
+    try {
+      await masterCalendarApi.blockSlot(slotId);
+      toast({ title: "Готово", description: "Слот заблокирован" });
+      setIsSlotDetailOpen(false);
+      setSelectedSlot(null);
+      fetchWeekData();
+    } catch (error) {
+      toast({ title: "Ошибка", description: "Не удалось заблокировать слот", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUnblockSlot = async (slotId: number) => {
+    setSaving(true);
+    try {
+      await masterCalendarApi.unblockSlot(slotId);
+      toast({ title: "Готово", description: "Слот доступен для записи" });
+      setIsSlotDetailOpen(false);
+      setSelectedSlot(null);
+      fetchWeekData();
+    } catch (error) {
+      toast({ title: "Ошибка", description: "Не удалось разблокировать слот", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleCreateBlock = async () => {
     if (!blockForm.date_from) {
       toast({ title: "Ошибка", description: "Укажите дату", variant: "destructive" });
@@ -330,6 +363,7 @@ export const useCalendarData = (masterId: number) => {
     loading,
     weekDays,
     hours,
+    hoursRange,
     stats,
     services,
     templates,
@@ -367,6 +401,8 @@ export const useCalendarData = (masterId: number) => {
     handleSlotClick,
     handleCreateSlot,
     handleDeleteSlot,
+    handleBlockSlot,
+    handleUnblockSlot,
     handleCreateBlock,
     handleApplyTemplate,
     handleBookingAction,

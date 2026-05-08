@@ -1,8 +1,11 @@
 import type { MasterSlot } from "@/lib/master-calendar-api";
 
 export const MASTER_ID = 1;
-export const HOURS_START = 8;
-export const HOURS_END = 23;
+export const HOURS_START_DEFAULT = 8;
+export const HOURS_END_DEFAULT = 23;
+// Оставлены для совместимости с другими импортами
+export const HOURS_START = HOURS_START_DEFAULT;
+export const HOURS_END = HOURS_END_DEFAULT;
 export const PX_PER_HOUR = 60;
 
 export const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
@@ -75,14 +78,39 @@ const parseLocalTime = (dateStr: string): { hours: number; minutes: number } => 
   return { hours: d.getHours(), minutes: d.getMinutes() };
 };
 
-export const getSlotPosition = (slot: MasterSlot) => {
+export const getSlotPosition = (slot: MasterSlot, hoursStart: number = HOURS_START_DEFAULT) => {
   const start = parseLocalTime(slot.datetime_start);
   const end = parseLocalTime(slot.datetime_end);
   const startHour = start.hours + start.minutes / 60;
   const endHour = end.hours + end.minutes / 60;
-  const top = (startHour - HOURS_START) * PX_PER_HOUR;
+  const top = (startHour - hoursStart) * PX_PER_HOUR;
   const height = (endHour - startHour) * PX_PER_HOUR;
   return { top: `${top}px`, height: `${Math.max(height, 30)}px` };
+};
+
+/**
+ * Возвращает реальный диапазон часов для отображения сетки —
+ * от минимального start до максимального end среди всех слотов недели.
+ * Если слотов нет, используются дефолтные значения.
+ */
+export const computeHoursRange = (allSlots: MasterSlot[]): { start: number; end: number } => {
+  if (!allSlots || allSlots.length === 0) {
+    return { start: HOURS_START_DEFAULT, end: HOURS_END_DEFAULT };
+  }
+  let minHour = HOURS_END_DEFAULT;
+  let maxHour = HOURS_START_DEFAULT;
+  for (const slot of allSlots) {
+    const start = parseLocalTime(slot.datetime_start);
+    const end = parseLocalTime(slot.datetime_end);
+    const startH = start.hours + (start.minutes > 0 ? 0 : 0);
+    const endH = end.hours + (end.minutes > 0 ? 1 : 0);
+    if (startH < minHour) minHour = startH;
+    if (endH > maxHour) maxHour = endH;
+  }
+  // Расширяем диапазон на 1 час с обеих сторон для удобства, но не выходим за 0..24
+  const start = Math.max(0, Math.min(HOURS_START_DEFAULT, minHour));
+  const end = Math.min(24, Math.max(HOURS_END_DEFAULT, maxHour));
+  return { start, end };
 };
 
 export const getSlotColors = (status: MasterSlot["status"]): string => {

@@ -9,6 +9,9 @@ import TemplateEditDialog from "./templates/TemplateEditDialog";
 import type { RuleForm } from "./templates/TemplateEditDialog";
 import TemplateApplyDialog, { TemplateDeleteDialog } from "./templates/TemplateApplyDialog";
 
+// По умолчанию: для каждого дня недели — одно правило.
+// Воскресенье отмечено как выходной. При желании можно добавить
+// несколько правил на один день (разные услуги/интервалы).
 const createEmptyRules = (): RuleForm[] =>
   Array.from({ length: 7 }, (_, i) => ({
     day_of_week: i,
@@ -97,20 +100,34 @@ const MasterTemplates = ({ masterId }: { masterId: number }) => {
     setEditingTemplate(template);
     setTemplateName(template.name);
     if (template.rules && template.rules.length > 0) {
-      const mapped = createEmptyRules();
-      template.rules.forEach((rule) => {
-        if (rule.day_of_week >= 0 && rule.day_of_week < 7) {
-          mapped[rule.day_of_week] = {
-            day_of_week: rule.day_of_week,
-            time_start: rule.time_start || "10:00",
-            time_end: rule.time_end || "18:00",
-            service_id: rule.service_id ? String(rule.service_id) : "",
-            max_clients: rule.max_clients || 1,
-            is_day_off: rule.is_day_off,
-          };
+      // Сохраняем все правила (даже несколько на один день)
+      const loaded: RuleForm[] = template.rules
+        .filter((r) => r.day_of_week >= 0 && r.day_of_week < 7)
+        .map((rule) => ({
+          day_of_week: rule.day_of_week,
+          time_start: rule.time_start || "10:00",
+          time_end: rule.time_end || "18:00",
+          service_id: rule.service_id ? String(rule.service_id) : "",
+          max_clients: rule.max_clients || 1,
+          is_day_off: rule.is_day_off,
+        }));
+      // Дополняем дни, для которых нет правил, пустой "выходной" записью —
+      // чтобы редактор мог показать все 7 дней
+      const presentDays = new Set(loaded.map((r) => r.day_of_week));
+      for (let i = 0; i < 7; i++) {
+        if (!presentDays.has(i)) {
+          loaded.push({
+            day_of_week: i,
+            time_start: "10:00",
+            time_end: "18:00",
+            service_id: "",
+            max_clients: 1,
+            is_day_off: true,
+          });
         }
-      });
-      setRules(mapped);
+      }
+      loaded.sort((a, b) => a.day_of_week - b.day_of_week);
+      setRules(loaded);
     } else {
       setRules(createEmptyRules());
     }
@@ -133,6 +150,38 @@ const MasterTemplates = ({ masterId }: { masterId: number }) => {
     setRules((prev) =>
       prev.map((r, i) => (i === index ? { ...r, ...patch } : r))
     );
+  };
+
+  const addRuleForDay = (dayOfWeek: number) => {
+    setRules((prev) => {
+      const newRule: RuleForm = {
+        day_of_week: dayOfWeek,
+        time_start: "10:00",
+        time_end: "18:00",
+        service_id: "",
+        max_clients: 1,
+        is_day_off: false,
+      };
+      const next = [...prev, newRule];
+      next.sort((a, b) => a.day_of_week - b.day_of_week);
+      return next;
+    });
+  };
+
+  const removeRule = (index: number) => {
+    setRules((prev) => {
+      // Если у дня осталось одно правило — превращаем его в "выходной",
+      // чтобы день не пропал из редактора
+      const removed = prev[index];
+      if (!removed) return prev;
+      const sameDayCount = prev.filter((r) => r.day_of_week === removed.day_of_week).length;
+      if (sameDayCount <= 1) {
+        return prev.map((r, i) =>
+          i === index ? { ...r, is_day_off: true } : r
+        );
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleSave = async () => {
@@ -285,6 +334,8 @@ const MasterTemplates = ({ masterId }: { masterId: number }) => {
         onTemplateNameChange={setTemplateName}
         rules={rules}
         onUpdateRule={updateRule}
+        onAddRuleForDay={addRuleForDay}
+        onRemoveRule={removeRule}
         services={services}
         saving={saving}
         onSave={handleSave}

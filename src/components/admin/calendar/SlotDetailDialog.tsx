@@ -24,6 +24,8 @@ interface SlotDetailDialogProps {
   saving: boolean;
   onBookingAction: (bookingId: number, action: "confirm" | "cancel" | "complete") => void;
   onDeleteSlot: (slotId: number) => void;
+  onBlockSlot?: (slotId: number) => void;
+  onUnblockSlot?: (slotId: number) => void;
 }
 
 const SlotDetailDialog = ({
@@ -34,6 +36,8 @@ const SlotDetailDialog = ({
   saving,
   onBookingAction,
   onDeleteSlot,
+  onBlockSlot,
+  onUnblockSlot,
 }: SlotDetailDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -172,20 +176,45 @@ const SlotDetailDialog = ({
             )}
           </div>
         )}
-        <DialogFooter>
-          {slot?.id && slot.status !== "booked" && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => onDeleteSlot(slot.id!)}
-              disabled={saving}
-              className="mr-auto"
-            >
-              {saving && <Icon name="Loader2" size={14} className="animate-spin" />}
-              <Icon name="Trash2" size={14} />
-              Удалить слот
-            </Button>
-          )}
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <div className="flex flex-wrap gap-2 mr-auto">
+            {slot?.id && slot.status !== "booked" && slot.status !== "blocked" && onBlockSlot && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onBlockSlot(slot.id!)}
+                disabled={saving}
+                className="text-gray-700"
+              >
+                <Icon name="Lock" size={14} />
+                Заблокировать слот
+              </Button>
+            )}
+            {slot?.id && slot.status === "blocked" && onUnblockSlot && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onUnblockSlot(slot.id!)}
+                disabled={saving}
+                className="text-green-700 border-green-200 hover:bg-green-50"
+              >
+                <Icon name="Unlock" size={14} />
+                Разблокировать
+              </Button>
+            )}
+            {slot?.id && slot.status !== "booked" && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => onDeleteSlot(slot.id!)}
+                disabled={saving}
+              >
+                {saving && <Icon name="Loader2" size={14} className="animate-spin" />}
+                <Icon name="Trash2" size={14} />
+                Удалить слот
+              </Button>
+            )}
+          </div>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Закрыть
           </Button>

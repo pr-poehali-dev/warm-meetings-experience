@@ -46,8 +46,10 @@ const TemplateCard = ({ template, onApply, onEdit, onDelete }: TemplateCardProps
         <div className="mb-4 bg-gray-50 rounded-lg p-3 border border-gray-100">
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
             {DAY_NAMES_SHORT.map((dayName, dayIdx) => {
-              const rule = template.rules?.find((r) => r.day_of_week === dayIdx);
-              if (!rule) {
+              const dayRules = (template.rules || []).filter((r) => r.day_of_week === dayIdx);
+              const activeRules = dayRules.filter((r) => !r.is_day_off);
+              const isDayOff = dayRules.length > 0 && activeRules.length === 0;
+              if (dayRules.length === 0) {
                 return (
                   <div key={dayIdx} className="text-center">
                     <div className="text-xs font-medium text-gray-400">{dayName}</div>
@@ -57,17 +59,21 @@ const TemplateCard = ({ template, onApply, onEdit, onDelete }: TemplateCardProps
               }
               return (
                 <div key={dayIdx} className="text-center">
-                  <div className={`text-xs font-medium ${rule.is_day_off ? "text-red-400" : "text-gray-700"}`}>
+                  <div className={`text-xs font-medium ${isDayOff ? "text-red-400" : "text-gray-700"}`}>
                     {dayName}
                   </div>
-                  {rule.is_day_off ? (
+                  {isDayOff ? (
                     <div className="text-[10px] text-red-400 mt-0.5">Выходной</div>
                   ) : (
-                    <div className="text-[10px] text-gray-500 mt-0.5">
-                      {rule.time_start}-{rule.time_end}
-                      {rule.max_clients > 1 && (
-                        <span className="block text-gray-400">до {rule.max_clients}</span>
-                      )}
+                    <div className="text-[10px] text-gray-500 mt-0.5 space-y-0.5">
+                      {activeRules
+                        .slice()
+                        .sort((a, b) => a.time_start.localeCompare(b.time_start))
+                        .map((r, i) => (
+                          <div key={i}>
+                            {r.time_start.slice(0, 5)}–{r.time_end.slice(0, 5)}
+                          </div>
+                        ))}
                     </div>
                   )}
                 </div>

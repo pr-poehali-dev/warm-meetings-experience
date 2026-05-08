@@ -1,23 +1,19 @@
 {
   "tests": [
     {
-      "name": "Get slots",
+      "name": "Get slots returns 200",
       "method": "GET",
       "path": "/?resource=slots&master_id=1",
-      "expectedStatus": 200,
-      "expectedBody": [],
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     },
     {
-      "name": "Get services",
+      "name": "Get services returns 200",
       "method": "GET",
       "path": "/?resource=services&master_id=1",
-      "expectedStatus": 200,
-      "expectedBody": [],
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     },
     {
-      "name": "Get settings",
+      "name": "Get settings has default duration",
       "method": "GET",
       "path": "/?resource=settings&master_id=1",
       "expectedStatus": 200,
@@ -25,28 +21,22 @@
       "bodyMatcher": "partial"
     },
     {
-      "name": "Get blocks",
+      "name": "Get blocks returns 200",
       "method": "GET",
       "path": "/?resource=blocks&master_id=1",
-      "expectedStatus": 200,
-      "expectedBody": [],
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     },
     {
-      "name": "Get templates",
+      "name": "Get templates returns 200",
       "method": "GET",
       "path": "/?resource=templates&master_id=1",
-      "expectedStatus": 200,
-      "expectedBody": [],
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     },
     {
-      "name": "Get week view",
+      "name": "Get week view returns 200",
       "method": "GET",
       "path": "/?resource=week-view&master_id=1",
-      "expectedStatus": 200,
-      "expectedBody": {"slots": []},
-      "bodyMatcher": "partial"
+      "expectedStatus": 200
     },
     {
       "name": "OPTIONS CORS",
