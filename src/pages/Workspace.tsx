@@ -166,7 +166,7 @@ export default function Workspace() {
         add: "Добавить баню",
         edit: "Редактирование бани",
       };
-      return `Партнёр · ${map[partnerView]}`;
+      return `Управляющий · ${map[partnerView]}`;
     }
     const label = ORG_NAV.find((n) => n.id === orgView)?.label
       ?? (orgView === "create" ? "Создание события" : orgView === "edit" ? "Редактирование" : orgView === "participants" ? "Участники" : "Организатор");

@@ -143,7 +143,7 @@ def handle_save_settings(event, schema):
 
     if not has_commercial_role(cur, schema, user['id']):
         conn.close()
-        return err('Визитка доступна только верифицированным партнёрам', 403)
+        return err('Визитка доступна только верифицированным управляющим', 403)
 
     existing = get_landing_by_user(cur, schema, user['id'])
 

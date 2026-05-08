@@ -7,7 +7,7 @@ import ProfileDropdown from "@/components/ProfileDropdown";
 const MOBILE_CABINETS = [
   { label: "Личный кабинет", to: "/account", icon: "User" },
   { label: "Рабочий кабинет", to: "/workspace", icon: "Briefcase", roleSlugAny: ["parmaster", "organizer"] },
-  { label: "Партнёрский кабинет", to: "/partner", icon: "Building2", roleSlug: "partner" },
+  { label: "Кабинет управляющего", to: "/partner", icon: "Building2", roleSlug: "partner" },
   { label: "Администратор", to: "/admin", icon: "ShieldCheck", roleSlug: "admin" },
 ];
 

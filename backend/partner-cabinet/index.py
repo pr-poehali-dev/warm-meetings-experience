@@ -23,7 +23,7 @@ def check_bath_owner(cur, schema, bath_id, user_id):
 
 
 def handler(event, context):
-    """Партнёрский кабинет: управление банями, статистика, верификация"""
+    """Кабинет управляющего: управление банями, статистика, верификация"""
     if event.get('httpMethod') == 'OPTIONS':
         return options_response()
 
@@ -46,7 +46,7 @@ def handler(event, context):
     is_partner = check_partner_role(cur, schema, user['id'])
     if not is_partner:
         conn.close()
-        return respond(403, {'error': 'Недостаточно прав. Требуется роль партнёра.'})
+        return respond(403, {'error': 'Недостаточно прав. Требуется роль управляющего.'})
 
     if resource == 'baths':
         if method == 'GET':

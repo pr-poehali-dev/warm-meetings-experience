@@ -50,7 +50,7 @@ const ROLE_COPY: Record<string, { title: string; desc: string }> = {
     desc: "Публикуйте услуги и открытые слоты в свой Telegram-канал — клиенты увидят и смогут записаться",
   },
   partner: {
-    title: "Telegram для партнёра",
+    title: "Telegram для управляющего",
     desc: "Публикуйте акции и обновления бани в свой канал — подписчики узнают первыми",
   },
   editor: {

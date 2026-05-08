@@ -8,7 +8,7 @@ export const FUNCTIONAL_SECTIONS = [
   { id: "s2", title: "Описание функционала" },
   { id: "s21", title: "2.1. Общий функционал" },
   { id: "s22", title: "2.2. Участник" },
-  { id: "s23", title: "2.3. Партнёр (Баня)" },
+  { id: "s23", title: "2.3. Управляющий (Баня)" },
   { id: "s24", title: "2.4. Мастер" },
   { id: "s25", title: "2.5. Организатор" },
   { id: "s26", title: "2.6. Администратор" },
@@ -252,7 +252,7 @@ export function FunctionalContent() {
 
       <section id="s23" className="scroll-mt-28 mb-8">
         <h3 className="text-lg font-semibold text-foreground mb-3">
-          4.3. Роль «Партнёр (Баня)» — Владелец или менеджер банного комплекса
+          4.3. Роль «Управляющий (Баня)» — Владелец или менеджер банного комплекса
         </h3>
         <ul className="space-y-1.5 text-foreground/80">
           <li>

@@ -121,7 +121,7 @@ export default function WorkspaceSidebar({
 
       {/* Партнёр-разделы */}
       {isPartner && (
-        <CollapsibleSection sectionKey="partner" icon="Building2" accent="text-violet-500" label="Партнёр">
+        <CollapsibleSection sectionKey="partner" icon="Building2" accent="text-violet-500" label="Управляющий">
           <NavItem
             active={roleTab === "partner" && partnerView === "baths"}
             onClick={() => switchPartnerView("baths")}

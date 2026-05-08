@@ -109,8 +109,8 @@ export default function Baths() {
   return (
     <div className="min-h-screen bg-background">
       <PageHero
-        label="Партнёры"
-        title="Бани-партнёры"
+        label="Бани"
+        title="Наши бани"
         subtitle="Проверенные бани и сауны, где проходят события СПАРКОМ. Выберите подходящую по типу, расположению и особенностям."
         minHeight="min-h-[280px] md:min-h-[320px]"
       />

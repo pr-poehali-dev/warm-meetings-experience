@@ -31,9 +31,9 @@ export default function LandingSection() {
           <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center mx-auto">
             <Icon name="Globe" size={28} className="text-orange-500" />
           </div>
-          <h3 className="font-semibold text-lg">Визитка для партнёров</h3>
+          <h3 className="font-semibold text-lg">Визитка для управляющих</h3>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-            Персональный мини-сайт доступен после верификации в одной из ролей: мастер, организатор или партнёр.
+            Персональный мини-сайт доступен после верификации в одной из ролей: мастер, организатор или управляющий.
           </p>
         </CardContent>
       </Card>
