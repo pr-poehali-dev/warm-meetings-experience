@@ -103,15 +103,15 @@ export default function RoleApplicationDialog({ role, onClose, onSuccess, initia
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-lg flex flex-col max-h-[90dvh]">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <span className="text-2xl">{role.icon}</span>
             Статус «{role.name}»
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5">
+        <div className="space-y-5 overflow-y-auto flex-1 pr-1">
           <div className="text-sm text-muted-foreground">
             {role.description}
           </div>
@@ -184,7 +184,7 @@ export default function RoleApplicationDialog({ role, onClose, onSuccess, initia
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 pt-2">
           <Button variant="outline" onClick={onClose} disabled={submitting}>
             Отмена
           </Button>
