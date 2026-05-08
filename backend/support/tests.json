@@ -1,0 +1,43 @@
+{
+  "tests": [
+    {
+      "name": "FAQ list",
+      "method": "GET",
+      "path": "/?resource=faq",
+      "expectedStatus": 200
+    },
+    {
+      "name": "FAQ filtered by role",
+      "method": "GET",
+      "path": "/?resource=faq&role=guest",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Guest ticket without captcha rejected",
+      "method": "POST",
+      "path": "/?resource=ticket",
+      "body": {"name": "Тест", "email": "test@example.com", "subject": "Проверка", "message": "Привет", "category": "other"},
+      "expectedStatus": 400
+    },
+    {
+      "name": "Guest ticket with captcha_ok creates",
+      "method": "POST",
+      "path": "/?resource=ticket",
+      "body": {"name": "Тест", "email": "test@example.com", "subject": "Проверка", "message": "Привет банный клуб", "category": "other", "captcha_ok": true},
+      "expectedStatus": 200
+    },
+    {
+      "name": "Tickets list requires auth",
+      "method": "GET",
+      "path": "/?resource=tickets",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Invalid email rejected",
+      "method": "POST",
+      "path": "/?resource=ticket",
+      "body": {"name": "X", "email": "broken", "subject": "S", "message": "M", "captcha_ok": true},
+      "expectedStatus": 400
+    }
+  ]
+}

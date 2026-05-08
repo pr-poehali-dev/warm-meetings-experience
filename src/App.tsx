@@ -48,6 +48,7 @@ import IndexNew from "./pages/IndexNew";
 import LandingPage from "./pages/LandingPage";
 import CookieConsent from "./components/CookieConsent";
 import MetrikaTracker from "./components/MetrikaTracker";
+import SupportWidget from "./components/support/SupportWidget";
 
 const queryClient = new QueryClient();
 
@@ -113,6 +114,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <AppContent />
+          <SupportWidget />
           <CookieConsent />
         </AuthProvider>
       </BrowserRouter>
