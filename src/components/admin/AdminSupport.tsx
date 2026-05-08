@@ -11,6 +11,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import Icon from "@/components/ui/icon";
+import { useStickyFilters } from "@/hooks/useStickyFilters";
+import AuditLogPanel from "@/components/admin/AuditLogPanel";
 import {
   supportAdminApi,
   AdminTicket,
@@ -104,11 +106,18 @@ export default function AdminSupport() {
 function TicketsView() {
   const [tickets, setTickets] = useState<AdminTicket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [needsAttention, setNeedsAttention] = useState<boolean>(true);
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [filterPriority, setFilterPriority] = useState<string>("all");
-  const [search, setSearch] = useState("");
+  const { filters, setFilter } = useStickyFilters("support", {
+    needsAttention: true,
+    status: "all",
+    category: "all",
+    priority: "all",
+    q: "",
+  });
+  const needsAttention = filters.needsAttention;
+  const filterStatus = filters.status;
+  const filterCategory = filters.category;
+  const filterPriority = filters.priority;
+  const [search, setSearch] = useState<string>(filters.q);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [stats, setStats] = useState<{ open_count: number; last7: number } | null>(null);
 
@@ -174,11 +183,21 @@ function TicketsView() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") load();
+                if (e.key === "Enter") {
+                  setFilter("q", search);
+                  load();
+                }
               }}
               className="border-0 shadow-none focus-visible:ring-0 h-8 px-0"
             />
-            <Button size="sm" variant="outline" onClick={load}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setFilter("q", search);
+                load();
+              }}
+            >
               Найти
             </Button>
           </CardContent>
@@ -188,7 +207,7 @@ function TicketsView() {
       <div className="flex flex-wrap gap-2 items-center">
         <div className="inline-flex rounded-lg border border-border bg-background p-0.5">
           <button
-            onClick={() => setNeedsAttention(true)}
+            onClick={() => setFilter("needsAttention", true)}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               needsAttention
                 ? "bg-primary text-primary-foreground"
@@ -198,7 +217,7 @@ function TicketsView() {
             Требуют внимания
           </button>
           <button
-            onClick={() => setNeedsAttention(false)}
+            onClick={() => setFilter("needsAttention", false)}
             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               !needsAttention
                 ? "bg-primary text-primary-foreground"
@@ -210,7 +229,7 @@ function TicketsView() {
         </div>
         <select
           value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
+          onChange={(e) => setFilter("status", e.target.value)}
           className="h-9 px-3 rounded-md border border-input bg-background text-sm"
         >
           {STATUS_LIST.map((s) => (
@@ -221,7 +240,7 @@ function TicketsView() {
         </select>
         <select
           value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
+          onChange={(e) => setFilter("category", e.target.value)}
           className="h-9 px-3 rounded-md border border-input bg-background text-sm"
         >
           <option value="all">Категория: все</option>
@@ -233,7 +252,7 @@ function TicketsView() {
         </select>
         <select
           value={filterPriority}
-          onChange={(e) => setFilterPriority(e.target.value)}
+          onChange={(e) => setFilter("priority", e.target.value)}
           className="h-9 px-3 rounded-md border border-input bg-background text-sm"
         >
           <option value="all">Приоритет: все</option>
@@ -263,10 +282,15 @@ function TicketsView() {
           const meta = STATUS_META[t.status];
           const prio = PRIORITY_META[t.priority];
           return (
-            <button
+            <div
               key={t.id}
+              role="button"
+              tabIndex={0}
               onClick={() => setSelectedId(t.id)}
-              className="w-full text-left rounded-xl border border-border bg-card p-3 sm:p-4 hover:border-foreground/20 transition-colors"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") setSelectedId(t.id);
+              }}
+              className="cursor-pointer w-full text-left rounded-xl border border-border bg-card p-3 sm:p-4 hover:border-foreground/20 transition-colors"
             >
               <div className="flex items-start justify-between gap-3 mb-1">
                 <div className="flex-1 min-w-0">
@@ -284,18 +308,70 @@ function TicketsView() {
                   <span className={`text-[11px] ${prio.cls}`}>{prio.label}</span>
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                <span>{CATEGORY_LABELS[t.category] || t.category}</span>
-                <span className="flex items-center gap-1">
-                  <Icon name="MessageSquare" size={11} />
-                  {t.msg_count}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Icon name="Clock" size={11} />
-                  {formatDateTime(t.updated_at)}
-                </span>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                  <span>{CATEGORY_LABELS[t.category] || t.category}</span>
+                  <span className="flex items-center gap-1">
+                    <Icon name="MessageSquare" size={11} />
+                    {t.msg_count}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Icon name="Clock" size={11} />
+                    {formatDateTime(t.updated_at)}
+                  </span>
+                </div>
+                <div
+                  className="flex items-center gap-1.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {t.status === "open" && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await supportAdminApi.setStatus(t.id, "in_progress");
+                          toast.success("Взял в работу");
+                          load();
+                        } catch (e) {
+                          toast.error(e instanceof Error ? e.message : "Ошибка");
+                        }
+                      }}
+                      className="inline-flex items-center justify-center h-7 px-2 rounded-md border border-blue-300 text-blue-700 hover:bg-blue-50 text-[11px]"
+                      title="Взять в работу"
+                    >
+                      <Icon name="Play" size={12} className="mr-1" />
+                      В работу
+                    </button>
+                  )}
+                  {t.status !== "closed" && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await supportAdminApi.setStatus(t.id, "closed");
+                          toast.success("Закрыт");
+                          load();
+                        } catch (e) {
+                          toast.error(e instanceof Error ? e.message : "Ошибка");
+                        }
+                      }}
+                      className="inline-flex items-center justify-center h-7 px-2 rounded-md border border-input text-muted-foreground hover:bg-muted text-[11px]"
+                      title="Закрыть"
+                    >
+                      <Icon name="Check" size={12} />
+                    </button>
+                  )}
+                  {t.email && (
+                    <a
+                      href={`mailto:${t.email}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center justify-center h-7 px-2 rounded-md border border-input text-muted-foreground hover:bg-muted"
+                      title="Написать на email"
+                    >
+                      <Icon name="Mail" size={12} />
+                    </a>
+                  )}
+                </div>
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
@@ -472,6 +548,12 @@ function TicketDetailAdmin({
               <option value="high">Приоритет: Высокий</option>
             </select>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-3">
+          <AuditLogPanel entityType="ticket" entityId={ticket.id} />
         </CardContent>
       </Card>
 

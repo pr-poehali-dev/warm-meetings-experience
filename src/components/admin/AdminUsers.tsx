@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import Icon from "@/components/ui/icon";
 import ConsentPhotoBadge from "@/components/ui/ConsentPhotoBadge";
+import { useStickyFilters } from "@/hooks/useStickyFilters";
+import AuditLogPanel from "@/components/admin/AuditLogPanel";
 import { toast } from "sonner";
 
 const ADMIN_USERS_API = "https://functions.poehali.dev/3048e78f-8bfe-4300-b910-2752590fa3ab";
@@ -57,9 +59,14 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [allRoles, setAllRoles] = useState<AllRole[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [searchInput, setSearchInput] = useState("");
+  const { filters, setFilter } = useStickyFilters("users", { page: 1, q: "" });
+  const page = filters.page;
+  const setPage = (v: number | ((p: number) => number)) => {
+    setFilter("page", typeof v === "function" ? v(page) : v);
+  };
+  const search = filters.q;
+  const setSearch = (v: string) => setFilter("q", v);
+  const [searchInput, setSearchInput] = useState<string>(filters.q);
   const [loading, setLoading] = useState(true);
 
   // Диалог
@@ -367,6 +374,10 @@ export default function AdminUsers() {
                     );
                   })}
                 </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <AuditLogPanel entityType="user" entityId={selected.id} />
               </div>
             </div>
           )}

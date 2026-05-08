@@ -101,6 +101,8 @@ def handler(event, context):
             return respond(400, {'error': 'Укажите user_id'})
 
         if action == 'toggle_active':
+            cur.execute(f"SELECT is_active FROM {schema}.users WHERE id = {user_id}")
+            prev = cur.fetchone()
             cur.execute(f"""
                 UPDATE {schema}.users
                 SET is_active = NOT is_active, updated_at = CURRENT_TIMESTAMP
@@ -108,6 +110,11 @@ def handler(event, context):
                 RETURNING id, is_active
             """)
             row = cur.fetchone()
+            audit_log(cur, schema, 'user', user_id,
+                      'block' if not row['is_active'] else 'unblock',
+                      field='is_active',
+                      old_value=str(prev['is_active']) if prev else None,
+                      new_value=str(row['is_active']))
             conn.commit()
             conn.close()
             return respond(200, {'id': row['id'], 'is_active': row['is_active']})
@@ -145,6 +152,8 @@ def handler(event, context):
                 ON CONFLICT (user_id, role_id) DO UPDATE SET status = 'active', updated_at = CURRENT_TIMESTAMP, verified_at = CURRENT_TIMESTAMP
                 RETURNING id
             """)
+            audit_log(cur, schema, 'user', user_id, 'role_added',
+                      field='role', new_value=role_slug)
             conn.commit()
             user = get_user_full(cur, schema, user_id)
             conn.close()
@@ -158,6 +167,8 @@ def handler(event, context):
                 conn.close()
                 return respond(404, {'error': 'Роль не найдена'})
             cur.execute(f"DELETE FROM {schema}.user_roles WHERE user_id = {user_id} AND role_id = {role['id']}")
+            audit_log(cur, schema, 'user', user_id, 'role_removed',
+                      field='role', old_value=role_slug)
             conn.commit()
             user = get_user_full(cur, schema, user_id)
             conn.close()

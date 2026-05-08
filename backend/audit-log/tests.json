@@ -1,0 +1,28 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET без админ-токена → 403",
+      "method": "GET",
+      "path": "/?entity_type=ticket&entity_id=1",
+      "expectedStatus": 403
+    },
+    {
+      "name": "POST без админ-токена → 403",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "entity_type": "ticket",
+        "entity_id": "1",
+        "action": "comment",
+        "comment": "test"
+      },
+      "expectedStatus": 403
+    }
+  ]
+}

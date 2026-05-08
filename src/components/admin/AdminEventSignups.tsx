@@ -21,6 +21,9 @@ import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
 import { signupsApi, SignupFromAPI } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useStickyFilters } from "@/hooks/useStickyFilters";
+import { auditLog } from "@/lib/audit-log";
+import AuditLogPanel from "@/components/admin/AuditLogPanel";
 
 const STATUS_LABELS: Record<string, string> = {
   new: "Новая",
@@ -41,7 +44,9 @@ const AdminEventSignups = () => {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<Partial<SignupFromAPI>>({});
-  const [filterStatus, setFilterStatus] = useState<string>("new");
+  const { filters, setFilter } = useStickyFilters("signups", { status: "new" });
+  const filterStatus = filters.status;
+  const setFilterStatus = (v: string) => setFilter("status", v);
   const { toast } = useToast();
 
   const filteredSignups =
@@ -73,7 +78,16 @@ const AdminEventSignups = () => {
 
   const handleStatusChange = async (id: number, status: string) => {
     try {
+      const prev = signups.find((s) => s.id === id);
       await signupsApi.updateStatus(id, status);
+      auditLog.record({
+        entity_type: "signup",
+        entity_id: id,
+        action: "status_change",
+        field: "status",
+        old_value: prev?.status ?? null,
+        new_value: status,
+      });
       toast({ title: "Статус обновлён" });
       fetchSignups();
       if (selected?.id === id) setSelected((s) => (s ? { ...s, status } : s));
@@ -110,6 +124,12 @@ const AdminEventSignups = () => {
     setSaving(true);
     try {
       const updated = await signupsApi.update(selected.id, draft);
+      auditLog.record({
+        entity_type: "signup",
+        entity_id: selected.id,
+        action: "edit",
+        comment: "Изменены данные записи",
+      });
       toast({ title: "Запись обновлена" });
       setSelected(updated);
       setEditing(false);
@@ -198,7 +218,7 @@ const AdminEventSignups = () => {
                   )}
                 </div>
                 <div
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 flex-wrap"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <span
@@ -206,6 +226,51 @@ const AdminEventSignups = () => {
                   >
                     {STATUS_LABELS[signup.status] || signup.status}
                   </span>
+                  {signup.status === "new" && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-green-700 border-green-300 hover:bg-green-50"
+                        onClick={() => handleStatusChange(signup.id, "confirmed")}
+                        title="Подтвердить"
+                      >
+                        <Icon name="Check" size={14} className="mr-1" />
+                        Подтвердить
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-red-700 border-red-300 hover:bg-red-50"
+                        onClick={() => handleStatusChange(signup.id, "cancelled")}
+                        title="Отменить"
+                      >
+                        <Icon name="X" size={14} />
+                      </Button>
+                    </>
+                  )}
+                  {signup.phone && (
+                    <a
+                      href={`tel:${signup.phone}`}
+                      className="inline-flex items-center justify-center h-8 px-2 rounded-md border border-input bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      title="Позвонить"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Icon name="Phone" size={14} />
+                    </a>
+                  )}
+                  {signup.telegram && (
+                    <a
+                      href={`https://t.me/${signup.telegram.replace("@", "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center h-8 px-2 rounded-md border border-input bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      title="Telegram"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Icon name="Send" size={14} />
+                    </a>
+                  )}
                   <Select
                     value={signup.status}
                     onValueChange={(v) => handleStatusChange(signup.id, v)}
@@ -387,6 +452,10 @@ const AdminEventSignups = () => {
                         </span>
                       </>
                     )}
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <AuditLogPanel entityType="signup" entityId={selected.id} />
                   </div>
                 </>
               )}

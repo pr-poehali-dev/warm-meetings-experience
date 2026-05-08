@@ -74,6 +74,35 @@ def verify_admin_token(token):
     expected = hashlib.sha256(f"{admin_pwd}:{int(time.time() // 86400)}".encode()).hexdigest()
     return token == expected
 
+# --- Audit log ---
+
+def _audit_esc(v):
+    if v is None:
+        return 'NULL'
+    return "'" + str(v).replace("'", "''") + "'"
+
+def audit_log(cur, schema, entity_type, entity_id, action,
+              field=None, old_value=None, new_value=None,
+              actor_type='admin', actor_id=None, actor_name=None, comment=None):
+    """Записывает событие в admin_audit_log. Никогда не падает."""
+    try:
+        def _trunc(v, n=2000):
+            if v is None:
+                return None
+            return str(v)[:n]
+        cur.execute(f"""
+            INSERT INTO {schema}.admin_audit_log
+                (entity_type, entity_id, action, field, old_value, new_value,
+                 actor_type, actor_id, actor_name, comment)
+            VALUES ({_audit_esc(entity_type)}, {_audit_esc(str(entity_id))}, {_audit_esc(action)},
+                    {_audit_esc(field)}, {_audit_esc(_trunc(old_value))}, {_audit_esc(_trunc(new_value))},
+                    {_audit_esc(actor_type)},
+                    {'NULL' if actor_id is None else int(actor_id)},
+                    {_audit_esc(actor_name)}, {_audit_esc(_trunc(comment))})
+        """)
+    except Exception:
+        pass
+
 # --- Slugify ---
 
 _TRANSLIT = {

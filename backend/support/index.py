@@ -13,6 +13,7 @@ from shared import (
     options_response, respond, ok, err,
     get_user_from_token, tg_notify_admin,
     verify_admin_token, send_email, admin_email,
+    audit_log,
 )
 
 
@@ -567,6 +568,8 @@ def admin_change_status(cur, conn, schema, ticket_id, body):
         INSERT INTO {schema}.support_messages (ticket_id, author_type, message, is_system)
         VALUES ({ticket_id}, 'system', {esc('Статус изменён: ' + label_map.get(new_status, new_status))}, TRUE)
     """)
+    audit_log(cur, schema, 'ticket', ticket_id, 'status_change',
+              field='status', old_value=t['status'], new_value=new_status)
     conn.commit()
     return ok({'ok': True, 'status': new_status})
 
@@ -576,10 +579,18 @@ def admin_change_priority(cur, conn, schema, ticket_id, body):
     if new_priority not in ALLOWED_PRIORITIES:
         return err('Недопустимый приоритет')
     cur.execute(f"""
+        SELECT priority FROM {schema}.support_tickets WHERE id = {ticket_id}
+    """)
+    prev = cur.fetchone()
+    cur.execute(f"""
         UPDATE {schema}.support_tickets
         SET priority = {esc(new_priority)}, updated_at = CURRENT_TIMESTAMP
         WHERE id = {ticket_id}
     """)
+    audit_log(cur, schema, 'ticket', ticket_id, 'priority_change',
+              field='priority',
+              old_value=(prev['priority'] if prev else None),
+              new_value=new_priority)
     conn.commit()
     return ok({'ok': True, 'priority': new_priority})
 

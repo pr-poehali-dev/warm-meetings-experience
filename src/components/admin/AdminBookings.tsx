@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useStickyFilters } from "@/hooks/useStickyFilters";
+import { auditLog } from "@/lib/audit-log";
+import AuditLogPanel from "@/components/admin/AuditLogPanel";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,7 +44,9 @@ interface Booking {
 const AdminBookings = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<string>("new");
+  const { filters, setFilter } = useStickyFilters("bookings", { status: "new" });
+  const filterStatus = filters.status;
+  const setFilterStatus = (v: string) => setFilter("status", v);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const { toast } = useToast();
@@ -83,6 +88,15 @@ const AdminBookings = () => {
       });
 
       if (!response.ok) throw new Error("Failed to update status");
+
+      auditLog.record({
+        entity_type: "booking",
+        entity_id: id,
+        action: "status_change",
+        field: "status",
+        old_value: booking.status,
+        new_value: status,
+      });
 
       toast({
         title: "Успешно!",
@@ -221,30 +235,44 @@ const AdminBookings = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex gap-2">
+                        <div className="flex gap-1.5 items-center">
+                          {booking.status === "new" && booking.id && (
+                            <>
+                              <button
+                                onClick={() => updateStatus(booking.id!, "confirmed")}
+                                className="inline-flex items-center justify-center h-8 px-2 rounded-md border border-green-300 text-green-700 hover:bg-green-50"
+                                title="Подтвердить"
+                              >
+                                <Icon name="Check" size={14} />
+                              </button>
+                              <button
+                                onClick={() => updateStatus(booking.id!, "cancelled")}
+                                className="inline-flex items-center justify-center h-8 px-2 rounded-md border border-red-300 text-red-700 hover:bg-red-50"
+                                title="Отменить"
+                              >
+                                <Icon name="X" size={14} />
+                              </button>
+                            </>
+                          )}
+                          {booking.client_phone && (
+                            <a
+                              href={`tel:${booking.client_phone}`}
+                              className="inline-flex items-center justify-center h-8 px-2 rounded-md border border-input text-muted-foreground hover:bg-muted"
+                              title="Позвонить"
+                            >
+                              <Icon name="Phone" size={14} />
+                            </a>
+                          )}
                           <button
                             onClick={() => {
                               setSelectedBooking(booking);
                               setIsDetailOpen(true);
                             }}
-                            className="text-blue-600 hover:text-blue-800"
+                            className="inline-flex items-center justify-center h-8 px-2 rounded-md text-blue-600 hover:bg-blue-50"
+                            title="Открыть"
                           >
-                            <Icon name="Eye" size={18} />
+                            <Icon name="Eye" size={16} />
                           </button>
-                          <Select
-                            value={booking.status}
-                            onValueChange={(status) => booking.id && updateStatus(booking.id, status)}
-                          >
-                            <SelectTrigger className="w-[140px] h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="new">Новая</SelectItem>
-                              <SelectItem value="confirmed">Подтверждена</SelectItem>
-                              <SelectItem value="cancelled">Отменена</SelectItem>
-                              <SelectItem value="completed">Завершена</SelectItem>
-                            </SelectContent>
-                          </Select>
                         </div>
                       </td>
                     </tr>
@@ -383,6 +411,13 @@ const AdminBookings = () => {
                 {selectedBooking.base_price && (
                   <p className="text-sm text-gray-500">Базовая цена: {Number(selectedBooking.base_price).toLocaleString()} ₽</p>
                 )}
+              </div>
+
+              <div className="border-t pt-4">
+                <AuditLogPanel
+                  entityType="booking"
+                  entityId={selectedBooking.id || ""}
+                />
               </div>
 
               <div className="border-t pt-4">
