@@ -5,15 +5,19 @@ import Icon from "@/components/ui/icon";
 import { initYandexMetrika } from "@/lib/metrika";
 
 const STORAGE_KEY = "cookie-consent-v1";
+// Значения: "all" — согласие на все cookies (включая аналитику)
+//           "necessary" — только необходимые, без аналитики
 
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     try {
-      const accepted = localStorage.getItem(STORAGE_KEY);
-      if (accepted) {
+      const choice = localStorage.getItem(STORAGE_KEY);
+      if (choice === "all") {
         initYandexMetrika();
+      } else if (choice === "necessary") {
+        // Пользователь отказался от аналитики — ничего не запускаем
       } else {
         const t = setTimeout(() => setVisible(true), 600);
         return () => clearTimeout(t);
@@ -23,13 +27,22 @@ export default function CookieConsent() {
     }
   }, []);
 
-  const accept = () => {
+  const acceptAll = () => {
     try {
-      localStorage.setItem(STORAGE_KEY, "1");
+      localStorage.setItem(STORAGE_KEY, "all");
     } catch {
       // ignore
     }
     initYandexMetrika();
+    setVisible(false);
+  };
+
+  const acceptNecessary = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, "necessary");
+    } catch {
+      // ignore
+    }
     setVisible(false);
   };
 
@@ -78,11 +91,21 @@ export default function CookieConsent() {
               </Link>
             </div>
             <div className="mt-4 flex flex-col sm:flex-row gap-2">
-              <Button onClick={accept} className="sm:flex-1">
+              <Button onClick={acceptAll} className="sm:flex-1">
                 <Icon name="Check" size={16} className="mr-1.5" />
                 Согласен, поехали
               </Button>
+              <Button
+                onClick={acceptNecessary}
+                variant="outline"
+                className="sm:flex-1"
+              >
+                Только необходимые
+              </Button>
             </div>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              «Только необходимые» — сайт работает, но мы не считаем статистику посещений.
+            </p>
           </div>
         </div>
       </div>
