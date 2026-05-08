@@ -103,7 +103,7 @@ export default function RoleApplicationDialog({ role, onClose, onSuccess, initia
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg flex flex-col max-h-[90dvh]">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <span className="text-2xl">{role.icon}</span>
