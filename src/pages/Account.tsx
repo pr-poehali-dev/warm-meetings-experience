@@ -12,6 +12,8 @@ import PasswordChangeForm from "@/components/account/PasswordChangeForm";
 import TwoFactorSection from "@/components/account/TwoFactorSection";
 import LoginSecuritySection from "@/components/account/LoginSecuritySection";
 import CookiePreferences from "@/components/account/CookiePreferences";
+import SupportTickets from "@/components/account/SupportTickets";
+import SupportTicketDetail from "@/components/account/SupportTicketDetail";
 import MyDataExport from "@/components/account/MyDataExport";
 import MyArticles from "@/components/account/MyArticles";
 import MyCalendar from "@/components/account/MyCalendar";
@@ -22,7 +24,7 @@ import ReferralsSection from "@/components/account/ReferralsSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-type Tab = "main" | "articles" | "calendar" | "my-data" | "favorites" | "wallet" | "referrals";
+type Tab = "main" | "articles" | "calendar" | "my-data" | "favorites" | "wallet" | "referrals" | "support";
 type MainTab = "profile" | "signups" | "notify" | "security";
 
 const MAIN_TABS: { key: MainTab; label: string; icon: string }[] = [
@@ -209,13 +211,13 @@ export default function Account() {
                 <Card className="border-0 shadow-sm">
                   <CardContent className="p-4 flex flex-col gap-2 h-full">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                        <Icon name="FileText" size={15} className="text-emerald-600" />
+                      <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center">
+                        <Icon name="LifeBuoy" size={15} className="text-amber-600" />
                       </div>
-                      <span className="text-sm font-medium">Мои статьи</span>
+                      <span className="text-sm font-medium">Поддержка</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Публикации в блоге</p>
-                    <Link to="/account?tab=articles" className="mt-auto">
+                    <p className="text-xs text-muted-foreground">Мои обращения</p>
+                    <Link to="/account?tab=support" className="mt-auto">
                       <Button size="sm" variant="outline" className="w-full">Открыть</Button>
                     </Link>
                   </CardContent>
@@ -230,6 +232,10 @@ export default function Account() {
                 <Link to="/account?tab=calendar" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
                   <Icon name="Calendar" size={11} />
                   Мой календарь
+                </Link>
+                <Link to="/account?tab=articles" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                  <Icon name="FileText" size={11} />
+                  Мои статьи
                 </Link>
               </div>
             </div>
@@ -355,6 +361,40 @@ export default function Account() {
           </div>
           <ReferralsSection />
         </div>
+      )}
+
+      {tab === "support" && <SupportTab />}
+    </div>
+  );
+}
+
+function SupportTab() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ticketIdParam = searchParams.get("ticket");
+  const selectedId = ticketIdParam ? Number(ticketIdParam) : null;
+
+  const setSelected = (id: number | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set("ticket", String(id));
+    else next.delete("ticket");
+    setSearchParams(next, { replace: true });
+  };
+
+  return (
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl pt-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Link to="/account" className="text-muted-foreground hover:text-foreground transition-colors">
+          <Icon name="ArrowLeft" size={18} />
+        </Link>
+        <h2 className="text-lg font-semibold text-foreground">Поддержка</h2>
+      </div>
+      {selectedId ? (
+        <SupportTicketDetail
+          ticketId={selectedId}
+          onBack={() => setSelected(null)}
+        />
+      ) : (
+        <SupportTickets selectedId={null} onSelect={setSelected} />
       )}
     </div>
   );
