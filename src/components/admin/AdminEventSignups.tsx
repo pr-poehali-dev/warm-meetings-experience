@@ -9,12 +9,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,7 +41,20 @@ const AdminEventSignups = () => {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState<Partial<SignupFromAPI>>({});
+  const [filterStatus, setFilterStatus] = useState<string>("new");
   const { toast } = useToast();
+
+  const filteredSignups =
+    filterStatus === "all"
+      ? signups
+      : signups.filter((s) => s.status === filterStatus);
+
+  const counts = {
+    new: signups.filter((s) => s.status === "new").length,
+    confirmed: signups.filter((s) => s.status === "confirmed").length,
+    cancelled: signups.filter((s) => s.status === "cancelled").length,
+    all: signups.length,
+  };
 
   const fetchSignups = async () => {
     try {
@@ -117,13 +130,36 @@ const AdminEventSignups = () => {
     );
   }
 
+  const FILTER_TABS: { value: string; label: string; count: number }[] = [
+    { value: "new", label: "Новые", count: counts.new },
+    { value: "confirmed", label: "Подтверждены", count: counts.confirmed },
+    { value: "cancelled", label: "Отменены", count: counts.cancelled },
+    { value: "all", label: "Все", count: counts.all },
+  ];
+
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">
-        Записи на событие
-      </h1>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <h1 className="text-3xl font-bold text-gray-800">Записи на событие</h1>
+        <div className="inline-flex rounded-lg border border-border bg-background p-0.5">
+          {FILTER_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setFilterStatus(tab.value)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                filterStatus === tab.value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+              <span className="ml-1.5 opacity-70">{tab.count}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
-      {signups.length === 0 ? (
+      {filteredSignups.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Icon
@@ -136,7 +172,7 @@ const AdminEventSignups = () => {
         </Card>
       ) : (
         <div className="space-y-3">
-          {signups.map((signup) => (
+          {filteredSignups.map((signup) => (
             <Card
               key={signup.id}
               className="cursor-pointer hover:shadow-md transition-shadow"
@@ -190,7 +226,7 @@ const AdminEventSignups = () => {
         </div>
       )}
 
-      <Dialog
+      <Sheet
         open={!!selected}
         onOpenChange={(open) => {
           if (!open) {
@@ -200,13 +236,16 @@ const AdminEventSignups = () => {
           }
         }}
       >
-        <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-lg overflow-y-auto"
+        >
+          <SheetHeader className="text-left">
+            <SheetTitle className="flex items-center gap-2">
               <Icon name="User" size={18} />
               Запись #{selected?.id}
-            </DialogTitle>
-          </DialogHeader>
+            </SheetTitle>
+          </SheetHeader>
 
           {selected && (
             <div className="space-y-4">
@@ -354,7 +393,7 @@ const AdminEventSignups = () => {
             </div>
           )}
 
-          <DialogFooter className="gap-2">
+          <SheetFooter className="gap-2 pt-4">
             {editing ? (
               <>
                 <Button
@@ -385,9 +424,9 @@ const AdminEventSignups = () => {
                 Редактировать
               </Button>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

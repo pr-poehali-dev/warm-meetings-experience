@@ -4,6 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import Icon from "@/components/ui/icon";
 import {
   supportAdminApi,
@@ -98,6 +104,7 @@ export default function AdminSupport() {
 function TicketsView() {
   const [tickets, setTickets] = useState<AdminTicket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [needsAttention, setNeedsAttention] = useState<boolean>(true);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterPriority, setFilterPriority] = useState<string>("all");
@@ -114,7 +121,15 @@ function TicketsView() {
         priority: filterPriority !== "all" ? filterPriority : undefined,
         q: search.trim() || undefined,
       });
-      setTickets(list);
+      const filtered = needsAttention
+        ? list.filter(
+            (t) =>
+              t.status === "open" ||
+              t.status === "in_progress" ||
+              t.priority === "high",
+          )
+        : list;
+      setTickets(filtered);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Не удалось загрузить");
     } finally {
@@ -134,19 +149,7 @@ function TicketsView() {
   useEffect(() => {
     load();
     loadStats();
-  }, [filterStatus, filterCategory, filterPriority]);
-
-  if (selectedId) {
-    return (
-      <TicketDetailAdmin
-        ticketId={selectedId}
-        onBack={() => {
-          setSelectedId(null);
-          load();
-        }}
-      />
-    );
-  }
+  }, [filterStatus, filterCategory, filterPriority, needsAttention]);
 
   return (
     <div className="space-y-3">
@@ -182,7 +185,29 @@ function TicketsView() {
         </Card>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="inline-flex rounded-lg border border-border bg-background p-0.5">
+          <button
+            onClick={() => setNeedsAttention(true)}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              needsAttention
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Требуют внимания
+          </button>
+          <button
+            onClick={() => setNeedsAttention(false)}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              !needsAttention
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Все
+          </button>
+        </div>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
@@ -274,6 +299,31 @@ function TicketsView() {
           );
         })}
       </div>
+
+      <Sheet
+        open={selectedId !== null}
+        onOpenChange={(o) => {
+          if (!o) {
+            setSelectedId(null);
+            load();
+          }
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-2xl p-0 overflow-y-auto"
+        >
+          {selectedId !== null && (
+            <TicketDetailAdmin
+              ticketId={selectedId}
+              onBack={() => {
+                setSelectedId(null);
+                load();
+              }}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -374,13 +424,13 @@ function TicketDetailAdmin({
   const meta = STATUS_META[ticket.status];
 
   return (
-    <div className="space-y-3">
-      <button
-        onClick={onBack}
-        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <Icon name="ArrowLeft" size={16} />К списку
-      </button>
+    <div className="space-y-3 p-4 sm:p-6">
+      <SheetHeader className="text-left">
+        <SheetTitle className="text-base flex items-center gap-2">
+          <Icon name="LifeBuoy" size={16} className="text-muted-foreground" />
+          Тикет #{ticket.id}
+        </SheetTitle>
+      </SheetHeader>
 
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4 space-y-2">

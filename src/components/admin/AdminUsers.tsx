@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import Icon from "@/components/ui/icon";
 import ConsentPhotoBadge from "@/components/ui/ConsentPhotoBadge";
 import { toast } from "sonner";
@@ -285,18 +285,18 @@ export default function AdminUsers() {
         </CardContent>
       </Card>
 
-      {/* Диалог пользователя */}
-      <Dialog open={!!selected} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+      {/* Панель пользователя */}
+      <Sheet open={!!selected} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader className="text-left">
+            <SheetTitle className="flex items-center gap-2">
               <Icon name="User" size={18} />
               {selected?.name}
               <Badge variant={selected?.is_active ? "default" : "destructive"} className="text-xs ml-1">
                 {selected?.is_active ? "Активен" : "Заблокирован"}
               </Badge>
-            </DialogTitle>
-          </DialogHeader>
+            </SheetTitle>
+          </SheetHeader>
 
           {selected && (
             <div className="space-y-5">
@@ -371,7 +371,7 @@ export default function AdminUsers() {
             </div>
           )}
 
-          <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
+          <SheetFooter className="flex-col sm:flex-row gap-2 pt-4 mt-4 border-t">
             {editing ? (
               <>
                 <Button variant="outline" onClick={() => setEditing(false)} disabled={saving} className="sm:mr-auto">
@@ -401,9 +401,9 @@ export default function AdminUsers() {
                 </Button>
               </>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
