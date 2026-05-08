@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
 import AdminLogin from "@/components/admin/AdminLogin";
 import AdminTabs from "@/components/admin/AdminTabs";
+import AdminCommandPalette from "@/components/admin/AdminCommandPalette";
 import AdminOverview from "@/components/admin/AdminOverview";
 import AdminEventsList from "@/components/admin/AdminEventsList";
 import AdminEventForm from "@/components/admin/AdminEventForm";
@@ -43,6 +45,8 @@ export default function Admin() {
     handleLogout,
     resetFormData,
   } = useAdmin();
+
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   if (!token) {
     return <AdminLogin onLoginSuccess={setToken} />;
@@ -136,6 +140,11 @@ export default function Admin() {
       <main className="flex-1 p-4 lg:p-8 overflow-x-hidden w-full min-w-0">
         {renderContent()}
       </main>
+      <AdminCommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        onNavigate={setCurrentView}
+      />
     </div>
   );
 }

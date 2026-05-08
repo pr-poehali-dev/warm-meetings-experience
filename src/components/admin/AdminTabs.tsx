@@ -83,12 +83,14 @@ const NAV: NavGroup[] = [
         label: "Мастера",
         icon: "Sparkles",
         hint: "Верификация профилей",
+        badgeKey: "masters",
       },
       {
         view: "support",
         label: "Поддержка",
         icon: "LifeBuoy",
         hint: "Тикеты и шаблоны",
+        badgeKey: "support",
       },
     ],
   },
@@ -102,6 +104,7 @@ const NAV: NavGroup[] = [
         label: "Статьи блога",
         icon: "BookOpen",
         hint: "Публикация, модерация",
+        badgeKey: "blog",
       },
       {
         view: "baths",
@@ -114,6 +117,7 @@ const NAV: NavGroup[] = [
         label: "Видео",
         icon: "Video",
         hint: "Модерация внешних видео",
+        badgeKey: "videos",
       },
     ],
   },
@@ -313,6 +317,27 @@ export default function AdminTabs({
           </Link>
         </div>
 
+        <div className="px-3 pt-3">
+          <button
+            onClick={() => {
+              const ev = new KeyboardEvent("keydown", {
+                key: "k",
+                metaKey: true,
+                ctrlKey: true,
+                bubbles: true,
+              });
+              document.dispatchEvent(ev);
+            }}
+            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg border border-border bg-background hover:bg-muted text-xs text-muted-foreground transition-colors"
+          >
+            <Icon name="Search" size={13} />
+            <span className="flex-1 text-left">Поиск…</span>
+            <kbd className="px-1.5 py-0.5 rounded border border-border bg-muted text-[10px]">
+              ⌘K
+            </kbd>
+          </button>
+        </div>
+
         <div className="flex-1 overflow-y-auto">
           <SidebarContent />
         </div>
@@ -350,6 +375,21 @@ export default function AdminTabs({
             </div>
           </Link>
           <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => {
+                const ev = new KeyboardEvent("keydown", {
+                  key: "k",
+                  metaKey: true,
+                  ctrlKey: true,
+                  bubbles: true,
+                });
+                document.dispatchEvent(ev);
+              }}
+              className="p-2 rounded-lg hover:bg-muted transition text-muted-foreground hover:text-foreground"
+              aria-label="Поиск"
+            >
+              <Icon name="Search" size={16} />
+            </button>
             <Link to="/events" className="p-2 rounded-lg hover:bg-muted transition text-muted-foreground hover:text-foreground">
               <Icon name="ArrowUpRight" size={16} />
             </Link>
