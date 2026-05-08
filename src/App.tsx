@@ -46,6 +46,7 @@ import EventsGlassDemo from "./pages/EventsGlassDemo";
 import IndexGlass from "./pages/IndexGlass";
 import IndexNew from "./pages/IndexNew";
 import LandingPage from "./pages/LandingPage";
+import CookieConsent from "./components/CookieConsent";
 
 const queryClient = new QueryClient();
 
@@ -110,6 +111,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <AppContent />
+          <CookieConsent />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
