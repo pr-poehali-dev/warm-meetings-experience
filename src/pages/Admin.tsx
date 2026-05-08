@@ -21,6 +21,7 @@ import AdminBaths from "@/components/admin/AdminBaths";
 import AdminMasters from "@/components/admin/AdminMasters";
 import AdminEventModeration from "@/components/admin/AdminEventModeration";
 import AdminVideos from "@/components/admin/AdminVideos";
+import AdminSupport from "@/components/admin/AdminSupport";
 
 
 export default function Admin() {
@@ -117,6 +118,8 @@ export default function Admin() {
         return <AdminEventModeration />;
       case "videos":
         return <AdminVideos />;
+      case "support":
+        return <AdminSupport />;
       default:
         return null;
     }

@@ -18,7 +18,8 @@ export type ViewType =
   | "baths"
   | "masters"
   | "moderation"
-  | "videos";
+  | "videos"
+  | "support";
 
 export interface AdminEvent {
   id?: number;

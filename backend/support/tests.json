@@ -38,6 +38,24 @@
       "path": "/?resource=ticket",
       "body": {"name": "X", "email": "broken", "subject": "S", "message": "M", "captcha_ok": true},
       "expectedStatus": 400
+    },
+    {
+      "name": "Admin list without admin token forbidden",
+      "method": "GET",
+      "path": "/?resource=admin-tickets",
+      "expectedStatus": 403
+    },
+    {
+      "name": "Admin stats without admin token forbidden",
+      "method": "GET",
+      "path": "/?resource=admin-stats",
+      "expectedStatus": 403
+    },
+    {
+      "name": "Admin templates list without admin token forbidden",
+      "method": "GET",
+      "path": "/?resource=admin-templates",
+      "expectedStatus": 403
     }
   ]
 }

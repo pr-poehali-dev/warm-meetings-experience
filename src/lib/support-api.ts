@@ -89,3 +89,99 @@ export const supportApi = {
     await authenticatedRequest(`${BASE}?resource=close&id=${ticketId}`, { method: "POST" });
   },
 };
+
+// --- Админ-API ---
+
+export type AdminTicket = Ticket & {
+  user_id: number | null;
+  assigned_to: number | null;
+  msg_count: number;
+};
+
+export type SupportTemplate = {
+  id: number;
+  title: string;
+  body: string;
+  category: string;
+  sort_order: number;
+  is_active: boolean;
+};
+
+async function adminFetch(path: string, init?: RequestInit) {
+  const adminToken = localStorage.getItem("admin_token") || "";
+  const res = await fetch(`${BASE}${path}`, {
+    ...init,
+    headers: {
+      ...(init?.headers || {}),
+      "X-Admin-Token": adminToken,
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Ошибка запроса");
+  return data;
+}
+
+export const supportAdminApi = {
+  async listTickets(filters: {
+    status?: string;
+    category?: string;
+    priority?: string;
+    q?: string;
+  } = {}): Promise<AdminTicket[]> {
+    const qs = new URLSearchParams({ resource: "admin-tickets" });
+    if (filters.status) qs.set("status", filters.status);
+    if (filters.category) qs.set("category", filters.category);
+    if (filters.priority) qs.set("priority", filters.priority);
+    if (filters.q) qs.set("q", filters.q);
+    const data = await adminFetch(`?${qs.toString()}`);
+    return data.tickets || [];
+  },
+
+  async stats(): Promise<{ by_status: Record<string, number>; open_count: number; last7: number }> {
+    return adminFetch(`?resource=admin-stats`);
+  },
+
+  async getTicket(id: number): Promise<{ ticket: AdminTicket; messages: SupportMessage[] }> {
+    return adminFetch(`?resource=admin-ticket&id=${id}`);
+  },
+
+  async postMessage(ticketId: number, message: string): Promise<SupportMessage> {
+    const data = await adminFetch(`?resource=admin-message&id=${ticketId}`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    });
+    return data.message;
+  },
+
+  async setStatus(ticketId: number, status: TicketStatus): Promise<void> {
+    await adminFetch(`?resource=admin-status&id=${ticketId}`, {
+      method: "POST",
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  async setPriority(ticketId: number, priority: TicketPriority): Promise<void> {
+    await adminFetch(`?resource=admin-priority&id=${ticketId}`, {
+      method: "POST",
+      body: JSON.stringify({ priority }),
+    });
+  },
+
+  async listTemplates(): Promise<SupportTemplate[]> {
+    const data = await adminFetch(`?resource=admin-templates`);
+    return data.templates || [];
+  },
+
+  async saveTemplate(t: Partial<SupportTemplate>): Promise<number> {
+    const data = await adminFetch(`?resource=admin-templates`, {
+      method: "POST",
+      body: JSON.stringify(t),
+    });
+    return data.id;
+  },
+
+  async archiveTemplate(id: number): Promise<void> {
+    await adminFetch(`?resource=admin-templates&id=${id}`, { method: "DELETE" });
+  },
+};

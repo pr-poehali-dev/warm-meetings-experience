@@ -84,6 +84,12 @@ const NAV: NavGroup[] = [
         icon: "Sparkles",
         hint: "Верификация профилей",
       },
+      {
+        view: "support",
+        label: "Поддержка",
+        icon: "LifeBuoy",
+        hint: "Тикеты и шаблоны",
+      },
     ],
   },
   {
