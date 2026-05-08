@@ -328,7 +328,18 @@ export function MasterScheduleSection({ masterId }: { masterId: number }) {
   ] as const;
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold">Расписание</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-xl font-bold">Расписание</h2>
+        <a
+          href="/master-schedule-guide"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Icon name="BookOpen" size={13} />
+          Инструкция
+        </a>
+      </div>
       <div className="flex gap-1 bg-muted/60 rounded-xl p-1 w-fit">
         {tabs.map((t) => (
           <button

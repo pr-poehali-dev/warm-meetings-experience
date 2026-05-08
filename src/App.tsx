@@ -25,6 +25,7 @@ import Blog from "./pages/Blog";
 import BlogCategory from "./pages/BlogCategory";
 import BlogArticle from "./pages/BlogArticle";
 import SteamMasterGuide from "./pages/SteamMasterGuide";
+import MasterScheduleGuide from "./pages/MasterScheduleGuide";
 import Baths from "./pages/Baths";
 import BathDetail from "./pages/BathDetail";
 import Masters from "./pages/Masters";
@@ -82,6 +83,7 @@ const AppContent = () => {
         <Route path="/about" element={<About />} />
         <Route path="/organizer" element={<Organizer />} />
         <Route path="/steam-master-guide" element={<SteamMasterGuide />} />
+        <Route path="/master-schedule-guide" element={<MasterScheduleGuide />} />
         <Route path="/baths" element={<Baths />} />
         <Route path="/baths/:slug" element={<BathDetail />} />
         <Route path="/masters" element={<Masters />} />
