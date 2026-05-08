@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAccount } from "@/hooks/useAccount";
@@ -21,10 +22,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 type Tab = "main" | "articles" | "calendar" | "my-data" | "favorites" | "wallet" | "referrals";
+type MainTab = "profile" | "signups" | "notify" | "security";
+
+const MAIN_TABS: { key: MainTab; label: string; icon: string }[] = [
+  { key: "profile", label: "Профиль", icon: "User" },
+  { key: "signups", label: "Мои события", icon: "Calendar" },
+  { key: "notify", label: "Уведомления", icon: "Bell" },
+  { key: "security", label: "Безопасность", icon: "Shield" },
+];
 
 export default function Account() {
   const [searchParams] = useSearchParams();
   const tab = (searchParams.get("tab") as Tab) || "main";
+  const initialMain = (searchParams.get("section") as MainTab) || "profile";
+  const [mainTab, setMainTab] = useState<MainTab>(initialMain);
   const { user: authUser, updateUser } = useAuth();
 
   const {
@@ -98,168 +109,195 @@ export default function Account() {
             </div>
           )}
 
-          {/* 1. Профиль — визитка с инлайн-редактированием */}
-          <ProfileCard
-            user={user}
-            editing={editing}
-            editName={editName}
-            editEmail={editEmail}
-            editPhone={editPhone}
-            editTelegram={editTelegram}
-            savingProfile={savingProfile}
-            setEditing={setEditing}
-            setEditName={setEditName}
-            setEditEmail={setEditEmail}
-            setEditPhone={setEditPhone}
-            setEditTelegram={setEditTelegram}
-            handleSaveProfile={handleSaveProfile}
-            handleCancelEdit={handleCancelEdit}
-            deletePassword={deletePassword}
-            setDeletePassword={setDeletePassword}
-            deletingAccount={deletingAccount}
-            showDeleteConfirm={showDeleteConfirm}
-            setShowDeleteConfirm={setShowDeleteConfirm}
-            handleDeleteAccount={handleDeleteAccount}
-            onVkLinked={(vkId) => authUser && updateUser({ ...authUser, vk_id: vkId })}
-            onVkUnlinked={() => authUser && updateUser({ ...authUser, vk_id: null })}
-            onYandexLinked={(yandexId) => authUser && updateUser({ ...authUser, yandex_id: yandexId })}
-            onYandexUnlinked={() => authUser && updateUser({ ...authUser, yandex_id: null })}
-          />
-
-          {/* 2. Ближайшие события — на видном месте */}
-          <SignupsList
-            signups={upcomingSignups}
-            signupsLoading={signupsLoading}
-            title="Ближайшие встречи"
-            emptyIcon="CalendarCheck"
-            emptyText="Пока нет запланированных встреч — будем рады видеть вас"
-            showEventsLink
-          />
-
-          {/* 3. Уведомления */}
-          <NotificationsSection />
-
-          {/* 4. Быстрые действия */}
-          <div className="grid grid-cols-2 gap-3">
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 flex flex-col gap-2 h-full">
-                <div className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${securityOk ? "bg-green-50 dark:bg-green-950/40" : "bg-amber-50 dark:bg-amber-950/30"}`}>
-                    <Icon name="Shield" size={15} className={securityOk ? "text-green-600" : "text-amber-600"} />
-                  </div>
-                  <span className="text-sm font-medium">Безопасность</span>
-                </div>
-                <p className={`text-xs ${securityOk ? "text-green-600 dark:text-green-400 flex items-center gap-1" : "text-muted-foreground"}`}>
-                  {securityOk
-                    ? <><Icon name="CheckCircle" size={11} />Всё настроено</>
-                    : "Настройте защиту"}
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="mt-auto w-full"
-                  onClick={() => {
-                    document.getElementById("security-section")?.scrollIntoView({ behavior: "smooth" });
-                  }}
-                >
-                  Настроить
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 flex flex-col gap-2 h-full">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
-                    <Icon name="Wallet" size={15} className="text-violet-600" />
-                  </div>
-                  <span className="text-sm font-medium">Кошелёк</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Баланс и бонусы</p>
-                <Link to="/account?tab=wallet" className="mt-auto">
-                  <Button size="sm" variant="outline" className="w-full">Открыть</Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 flex flex-col gap-2 h-full">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center">
-                    <Icon name="Heart" size={15} className="text-rose-500" />
-                  </div>
-                  <span className="text-sm font-medium">Избранное</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Бани и мастера</p>
-                <Link to="/account?tab=favorites" className="mt-auto">
-                  <Button size="sm" variant="outline" className="w-full">Смотреть</Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 flex flex-col gap-2 h-full">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <Icon name="Users" size={15} className="text-blue-600" />
-                  </div>
-                  <span className="text-sm font-medium">Приглашения</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Реферальная ссылка</p>
-                <Link to="/account?tab=referrals" className="mt-auto">
-                  <Button size="sm" variant="outline" className="w-full">Пригласить</Button>
-                </Link>
-              </CardContent>
-            </Card>
+          {/* Вкладки в стиле мобильных приложений */}
+          <div className="flex gap-1 bg-muted rounded-xl p-1 sticky top-2 z-10">
+            {MAIN_TABS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setMainTab(t.key)}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg text-xs font-medium transition-all ${
+                  mainTab === t.key ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon name={t.icon} size={15} />
+                <span className="hidden sm:block">{t.label}</span>
+              </button>
+            ))}
           </div>
 
-          {/* 5. Роли и достижения */}
-          <GrowthSection />
-          <BadgesSection />
+          {/* Профиль */}
+          {mainTab === "profile" && (
+            <div className="space-y-4">
+              <ProfileCard
+                user={user}
+                editing={editing}
+                editName={editName}
+                editEmail={editEmail}
+                editPhone={editPhone}
+                editTelegram={editTelegram}
+                savingProfile={savingProfile}
+                setEditing={setEditing}
+                setEditName={setEditName}
+                setEditEmail={setEditEmail}
+                setEditPhone={setEditPhone}
+                setEditTelegram={setEditTelegram}
+                handleSaveProfile={handleSaveProfile}
+                handleCancelEdit={handleCancelEdit}
+                deletePassword={deletePassword}
+                setDeletePassword={setDeletePassword}
+                deletingAccount={deletingAccount}
+                showDeleteConfirm={showDeleteConfirm}
+                setShowDeleteConfirm={setShowDeleteConfirm}
+                handleDeleteAccount={handleDeleteAccount}
+                onVkLinked={(vkId) => authUser && updateUser({ ...authUser, vk_id: vkId })}
+                onVkUnlinked={() => authUser && updateUser({ ...authUser, vk_id: null })}
+                onYandexLinked={(yandexId) => authUser && updateUser({ ...authUser, yandex_id: yandexId })}
+                onYandexUnlinked={() => authUser && updateUser({ ...authUser, yandex_id: null })}
+              />
 
-          {/* 6. Прошедшие события */}
-          {pastSignups.length > 0 && (
-            <SignupsList
-              signups={pastSignups}
-              signupsLoading={false}
-              title="Были вместе"
-              emptyIcon="Calendar"
-              emptyText=""
-            />
+              <GrowthSection />
+              <BadgesSection />
+
+              {/* Быстрые ссылки на остальные разделы */}
+              <div className="grid grid-cols-2 gap-3">
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-4 flex flex-col gap-2 h-full">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
+                        <Icon name="Wallet" size={15} className="text-violet-600" />
+                      </div>
+                      <span className="text-sm font-medium">Кошелёк</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Баланс и бонусы</p>
+                    <Link to="/account?tab=wallet" className="mt-auto">
+                      <Button size="sm" variant="outline" className="w-full">Открыть</Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-4 flex flex-col gap-2 h-full">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center">
+                        <Icon name="Heart" size={15} className="text-rose-500" />
+                      </div>
+                      <span className="text-sm font-medium">Избранное</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Бани и мастера</p>
+                    <Link to="/account?tab=favorites" className="mt-auto">
+                      <Button size="sm" variant="outline" className="w-full">Смотреть</Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-4 flex flex-col gap-2 h-full">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                        <Icon name="Users" size={15} className="text-blue-600" />
+                      </div>
+                      <span className="text-sm font-medium">Приглашения</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Реферальная ссылка</p>
+                    <Link to="/account?tab=referrals" className="mt-auto">
+                      <Button size="sm" variant="outline" className="w-full">Пригласить</Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-4 flex flex-col gap-2 h-full">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                        <Icon name="FileText" size={15} className="text-emerald-600" />
+                      </div>
+                      <span className="text-sm font-medium">Мои статьи</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Публикации в блоге</p>
+                    <Link to="/account?tab=articles" className="mt-auto">
+                      <Button size="sm" variant="outline" className="w-full">Открыть</Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
+                <Link to="/account?tab=my-data" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                  <Icon name="Download" size={11} />
+                  Скачать мои данные
+                </Link>
+                <Link to="/account?tab=calendar" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                  <Icon name="Calendar" size={11} />
+                  Мой календарь
+                </Link>
+              </div>
+            </div>
           )}
 
-          {/* 7. Безопасность — детали (якорь) */}
-          <div id="security-section" className="space-y-4 scroll-mt-20">
-            <PasswordChangeForm
-              hasPassword={user.has_password !== false}
-              currentPassword={currentPassword}
-              newPassword={newPassword}
-              confirmNewPassword={confirmNewPassword}
-              changingPassword={changingPassword}
-              setCurrentPassword={setCurrentPassword}
-              setNewPassword={setNewPassword}
-              setConfirmNewPassword={setConfirmNewPassword}
-              handleChangePassword={handleChangePassword}
-            />
-            <LoginSecuritySection />
-            <TwoFactorSection
-              totpEnabled={user.totp_enabled === true}
-              hasPassword={user.has_password !== false}
-              onToggled={(enabled) => authUser && updateUser({ ...authUser, totp_enabled: enabled })}
-            />
-          </div>
+          {/* Мои события */}
+          {mainTab === "signups" && (
+            <div className="space-y-4">
+              <SignupsList
+                signups={upcomingSignups}
+                signupsLoading={signupsLoading}
+                title="Ближайшие встречи"
+                emptyIcon="CalendarCheck"
+                emptyText="Пока нет запланированных встреч — будем рады видеть вас"
+                showEventsLink
+              />
+              {pastSignups.length > 0 && (
+                <SignupsList
+                  signups={pastSignups}
+                  signupsLoading={false}
+                  title="Были вместе"
+                  emptyIcon="Calendar"
+                  emptyText=""
+                />
+              )}
+            </div>
+          )}
 
-          {/* Дополнительные ссылки */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2">
-            <Link to="/account?tab=my-data" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-              <Icon name="Download" size={11} />
-              Скачать мои данные
-            </Link>
-            <Link to="/account?tab=articles" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-              <Icon name="FileText" size={11} />
-              Мои статьи
-            </Link>
-          </div>
+          {/* Уведомления */}
+          {mainTab === "notify" && (
+            <div className="space-y-4">
+              <NotificationsSection />
+            </div>
+          )}
+
+          {/* Безопасность */}
+          {mainTab === "security" && (
+            <div className="space-y-4">
+              {!securityOk && (
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-3 flex items-center gap-2">
+                  <Icon name="AlertTriangle" size={16} className="text-amber-500" />
+                  <span className="text-sm">Защита настроена не полностью</span>
+                </div>
+              )}
+              {securityOk && (
+                <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-3 flex items-center gap-2">
+                  <Icon name="CheckCircle" size={16} className="text-green-600" />
+                  <span className="text-sm">Защита аккаунта настроена</span>
+                </div>
+              )}
+              <PasswordChangeForm
+                hasPassword={user.has_password !== false}
+                currentPassword={currentPassword}
+                newPassword={newPassword}
+                confirmNewPassword={confirmNewPassword}
+                changingPassword={changingPassword}
+                setCurrentPassword={setCurrentPassword}
+                setNewPassword={setNewPassword}
+                setConfirmNewPassword={setConfirmNewPassword}
+                handleChangePassword={handleChangePassword}
+              />
+              <LoginSecuritySection />
+              <TwoFactorSection
+                totpEnabled={user.totp_enabled === true}
+                hasPassword={user.has_password !== false}
+                onToggled={(enabled) => authUser && updateUser({ ...authUser, totp_enabled: enabled })}
+              />
+            </div>
+          )}
         </div>
       )}
 
