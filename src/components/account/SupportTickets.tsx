@@ -6,7 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
-import { supportApi, Ticket, TicketStatus, TicketPriority } from "@/lib/support-api";
+import {
+  supportApi,
+  Ticket,
+  TicketStatus,
+  TicketPriority,
+  AttachmentInfo,
+} from "@/lib/support-api";
+import AttachmentPicker from "@/components/support/AttachmentPicker";
 import { toast } from "sonner";
 
 const STATUS_META: Record<TicketStatus, { label: string; cls: string }> = {
@@ -172,6 +179,7 @@ function NewTicketForm({
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [priority, setPriority] = useState<TicketPriority>("medium");
+  const [attachment, setAttachment] = useState<AttachmentInfo | null>(null);
   const [sending, setSending] = useState(false);
 
   const submit = async () => {
@@ -189,6 +197,8 @@ function NewTicketForm({
         message: message.trim(),
         priority,
         captcha_ok: true,
+        attachment_url: attachment?.url || null,
+        attachment_name: attachment?.filename || null,
       });
       toast.success("Обращение создано");
       onCreated(t);
@@ -266,6 +276,11 @@ function NewTicketForm({
               rows={5}
               placeholder="Опишите ситуацию подробно — что происходит и какой ожидаете результат"
             />
+          </div>
+
+          <div>
+            <Label className="text-xs">Файл (по желанию)</Label>
+            <AttachmentPicker attachment={attachment} onChange={setAttachment} />
           </div>
 
           <div className="flex gap-2 pt-1">

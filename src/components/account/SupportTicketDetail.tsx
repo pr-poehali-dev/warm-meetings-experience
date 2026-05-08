@@ -3,7 +3,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
-import { supportApi, Ticket, SupportMessage, TicketStatus } from "@/lib/support-api";
+import {
+  supportApi,
+  Ticket,
+  SupportMessage,
+  TicketStatus,
+  AttachmentInfo,
+} from "@/lib/support-api";
+import AttachmentPicker from "@/components/support/AttachmentPicker";
+import AttachmentBubble from "@/components/support/AttachmentBubble";
 import { toast } from "sonner";
 
 const STATUS_META: Record<TicketStatus, { label: string; cls: string }> = {
@@ -38,6 +46,7 @@ export default function SupportTicketDetail({
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [reply, setReply] = useState("");
+  const [attachment, setAttachment] = useState<AttachmentInfo | null>(null);
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
@@ -68,12 +77,17 @@ export default function SupportTicketDetail({
   }, [messages.length]);
 
   const send = async () => {
-    if (!reply.trim() || sending) return;
+    if ((!reply.trim() && !attachment) || sending) return;
     setSending(true);
     try {
-      const m = await supportApi.postMessage(ticketId, reply.trim());
+      const m = await supportApi.postMessage(
+        ticketId,
+        reply.trim(),
+        attachment ? { url: attachment.url, name: attachment.filename } : null
+      );
       setMessages((prev) => [...prev, m]);
       setReply("");
+      setAttachment(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Не удалось отправить");
     } finally {
@@ -162,7 +176,14 @@ export default function SupportTicketDetail({
                     <div className="text-[10px] opacity-75 mb-0.5">
                       {isMine ? "Вы" : "Поддержка"} · {formatDateTime(m.created_at)}
                     </div>
-                    <div className="whitespace-pre-line">{m.message}</div>
+                    {m.message && <div className="whitespace-pre-line">{m.message}</div>}
+                    {m.attachment_url && (
+                      <AttachmentBubble
+                        url={m.attachment_url}
+                        name={m.attachment_name}
+                        onLight={isMine}
+                      />
+                    )}
                   </div>
                 </div>
               );
@@ -183,10 +204,8 @@ export default function SupportTicketDetail({
                   }
                 }}
               />
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] text-muted-foreground hidden sm:inline">
-                  Cmd/Ctrl + Enter — отправить
-                </span>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <AttachmentPicker attachment={attachment} onChange={setAttachment} />
                 <div className="flex gap-2 ml-auto">
                   <Button
                     size="sm"
@@ -203,7 +222,11 @@ export default function SupportTicketDetail({
                       </>
                     )}
                   </Button>
-                  <Button size="sm" onClick={send} disabled={sending || !reply.trim()}>
+                  <Button
+                    size="sm"
+                    onClick={send}
+                    disabled={sending || (!reply.trim() && !attachment)}
+                  >
                     {sending ? (
                       <Icon name="Loader2" size={14} className="animate-spin" />
                     ) : (

@@ -12,7 +12,10 @@ import {
   SupportTemplate,
   TicketStatus,
   TicketPriority,
+  AttachmentInfo,
 } from "@/lib/support-api";
+import AttachmentPicker from "@/components/support/AttachmentPicker";
+import AttachmentBubble from "@/components/support/AttachmentBubble";
 import { toast } from "sonner";
 
 const STATUS_LIST: { value: TicketStatus | "all"; label: string }[] = [
@@ -287,6 +290,7 @@ function TicketDetailAdmin({
   const [templates, setTemplates] = useState<SupportTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [reply, setReply] = useState("");
+  const [attachment, setAttachment] = useState<AttachmentInfo | null>(null);
   const [sending, setSending] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
@@ -318,12 +322,17 @@ function TicketDetailAdmin({
   }, [messages.length]);
 
   const sendReply = async () => {
-    if (!reply.trim() || sending) return;
+    if ((!reply.trim() && !attachment) || sending) return;
     setSending(true);
     try {
-      const m = await supportAdminApi.postMessage(ticketId, reply.trim());
+      const m = await supportAdminApi.postMessage(
+        ticketId,
+        reply.trim(),
+        attachment ? { url: attachment.url, name: attachment.filename } : null
+      );
       setMessages((prev) => [...prev, m]);
       setReply("");
+      setAttachment(null);
       if (ticket) setTicket({ ...ticket, status: "awaiting_reply" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Не удалось отправить");
@@ -446,7 +455,14 @@ function TicketDetailAdmin({
                       {isAdmin ? "Поддержка" : "Пользователь"} ·{" "}
                       {formatDateTime(m.created_at)}
                     </div>
-                    <div className="whitespace-pre-line">{m.message}</div>
+                    {m.message && <div className="whitespace-pre-line">{m.message}</div>}
+                    {m.attachment_url && (
+                      <AttachmentBubble
+                        url={m.attachment_url}
+                        name={m.attachment_name}
+                        onLight={isAdmin}
+                      />
+                    )}
                   </div>
                 </div>
               );
@@ -486,15 +502,26 @@ function TicketDetailAdmin({
               }}
             />
             <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowTemplates((v) => !v)}
+                >
+                  <Icon name="FileText" size={14} className="mr-1" />
+                  Шаблоны ({templates.length})
+                </Button>
+                <AttachmentPicker
+                  attachment={attachment}
+                  onChange={setAttachment}
+                  compact
+                />
+              </div>
               <Button
                 size="sm"
-                variant="outline"
-                onClick={() => setShowTemplates((v) => !v)}
+                onClick={sendReply}
+                disabled={sending || (!reply.trim() && !attachment)}
               >
-                <Icon name="FileText" size={14} className="mr-1" />
-                Шаблоны ({templates.length})
-              </Button>
-              <Button size="sm" onClick={sendReply} disabled={sending || !reply.trim()}>
                 {sending ? (
                   <Icon name="Loader2" size={14} className="animate-spin" />
                 ) : (

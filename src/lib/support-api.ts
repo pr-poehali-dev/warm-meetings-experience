@@ -33,15 +33,58 @@ export type SupportMessage = {
   author_type: "user" | "admin" | "system";
   message: string;
   attachment_url?: string | null;
+  attachment_name?: string | null;
   is_system: boolean;
   created_at: string;
 };
+
+export type AttachmentInfo = {
+  url: string;
+  filename: string;
+  mime: string;
+  size: number;
+};
+
+export const SUPPORT_MAX_FILE_BYTES = 10 * 1024 * 1024;
+export const SUPPORT_ALLOWED_MIME = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "application/pdf",
+  "text/plain",
+];
 
 export const supportApi = {
   async fetchFaq(role?: string): Promise<FaqItem[]> {
     const url = `${BASE}?resource=faq${role ? `&role=${encodeURIComponent(role)}` : ""}`;
     const data = await request(url);
     return data.faq || [];
+  },
+
+  async uploadAttachment(file: File): Promise<AttachmentInfo> {
+    const b64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Не удалось прочитать файл"));
+      reader.readAsDataURL(file);
+    });
+    const token = localStorage.getItem("user_token") || "";
+    const adminToken = localStorage.getItem("admin_token") || "";
+    const res = await fetch(`${BASE}?resource=upload`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(adminToken ? { "X-Admin-Token": adminToken } : {}),
+        ...(token ? { "X-Session-Token": token } : {}),
+      },
+      body: JSON.stringify({ file: b64, filename: file.name }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Не удалось загрузить файл");
+    return data as AttachmentInfo;
   },
 
   async createTicket(payload: {
@@ -52,6 +95,8 @@ export const supportApi = {
     message: string;
     captcha_ok?: boolean;
     priority?: TicketPriority;
+    attachment_url?: string | null;
+    attachment_name?: string | null;
   }): Promise<Ticket> {
     const token = localStorage.getItem("user_token") || "";
     const res = await fetch(`${BASE}?resource=ticket`, {
@@ -76,11 +121,20 @@ export const supportApi = {
     return authenticatedRequest(`${BASE}?resource=ticket&id=${id}`);
   },
 
-  async postMessage(ticketId: number, message: string): Promise<SupportMessage> {
+  async postMessage(
+    ticketId: number,
+    message: string,
+    attachment?: { url: string; name: string } | null
+  ): Promise<SupportMessage> {
+    const payload: Record<string, unknown> = { message };
+    if (attachment?.url) {
+      payload.attachment_url = attachment.url;
+      payload.attachment_name = attachment.name;
+    }
     const data = await authenticatedRequest(`${BASE}?resource=message&id=${ticketId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify(payload),
     });
     return data.message;
   },
@@ -146,10 +200,19 @@ export const supportAdminApi = {
     return adminFetch(`?resource=admin-ticket&id=${id}`);
   },
 
-  async postMessage(ticketId: number, message: string): Promise<SupportMessage> {
+  async postMessage(
+    ticketId: number,
+    message: string,
+    attachment?: { url: string; name: string } | null
+  ): Promise<SupportMessage> {
+    const payload: Record<string, unknown> = { message };
+    if (attachment?.url) {
+      payload.attachment_url = attachment.url;
+      payload.attachment_name = attachment.name;
+    }
     const data = await adminFetch(`?resource=admin-message&id=${ticketId}`, {
       method: "POST",
-      body: JSON.stringify({ message }),
+      body: JSON.stringify(payload),
     });
     return data.message;
   },

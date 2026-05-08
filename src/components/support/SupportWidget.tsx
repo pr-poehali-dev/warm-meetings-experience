@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { supportApi, FaqItem } from "@/lib/support-api";
+import AttachmentPicker from "@/components/support/AttachmentPicker";
 import { toast } from "sonner";
 
 type Tab = "faq" | "search" | "form";
@@ -352,6 +353,7 @@ function ContactForm({ onDone }: { onDone: () => void }) {
   const [message, setMessage] = useState("");
   const [captcha, setCaptcha] = useState<CaptchaTask>(() => makeCaptcha());
   const [captchaInput, setCaptchaInput] = useState("");
+  const [attachment, setAttachment] = useState<import("@/lib/support-api").AttachmentInfo | null>(null);
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -385,6 +387,8 @@ function ContactForm({ onDone }: { onDone: () => void }) {
         category,
         message: message.trim(),
         captcha_ok: captchaOk,
+        attachment_url: attachment?.url || null,
+        attachment_name: attachment?.filename || null,
       });
       setDone(true);
       toast.success("Сообщение принято — ответим в течение 24 часов");
@@ -410,6 +414,7 @@ function ContactForm({ onDone }: { onDone: () => void }) {
             setDone(false);
             setSubject("");
             setMessage("");
+            setAttachment(null);
             setCaptcha(makeCaptcha());
             setCaptchaInput("");
             onDone();
@@ -478,6 +483,11 @@ function ContactForm({ onDone }: { onDone: () => void }) {
           placeholder="Опишите ситуацию — чем подробнее, тем быстрее поможем"
           rows={4}
         />
+      </div>
+
+      <div>
+        <Label className="text-xs">Файл (по желанию)</Label>
+        <AttachmentPicker attachment={attachment} onChange={setAttachment} />
       </div>
 
       {!user && (

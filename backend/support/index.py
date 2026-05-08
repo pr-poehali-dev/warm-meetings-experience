@@ -1,8 +1,12 @@
+import base64
 import json
 import os
 import re
+import uuid
 import psycopg2
 import psycopg2.extras
+
+import boto3
 
 from shared import (
     get_conn, get_schema, get_cursor,
@@ -10,6 +14,79 @@ from shared import (
     get_user_from_token, tg_notify_admin,
     verify_admin_token, send_email, admin_email,
 )
+
+
+# --- S3 ---
+
+ALLOWED_MIME = {
+    'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic',
+    'application/pdf', 'text/plain',
+}
+EXT_BY_MIME = {
+    'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png',
+    'image/webp': 'webp', 'image/gif': 'gif', 'image/heic': 'heic',
+    'application/pdf': 'pdf', 'text/plain': 'txt',
+}
+MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+def _s3_client():
+    return boto3.client(
+        's3',
+        endpoint_url='https://bucket.poehali.dev',
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+    )
+
+
+def _cdn_url(key):
+    return f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+
+
+def upload_attachment(body):
+    """Загружает файл в S3 и возвращает ссылку. Принимает base64 в поле 'file'."""
+    raw_data = body.get('file') or ''
+    filename = (body.get('filename') or 'file').strip()[:255]
+    if not raw_data:
+        return err('Файл не передан')
+
+    mime = None
+    b64 = raw_data
+    if 'base64,' in raw_data:
+        header, b64 = raw_data.split('base64,', 1)
+        if ':' in header:
+            mime = header.split(':', 1)[1].split(';', 1)[0].strip()
+    if not mime:
+        # пробуем определить по расширению имени
+        ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+        for m, e in EXT_BY_MIME.items():
+            if e == ext:
+                mime = m
+                break
+    if mime not in ALLOWED_MIME:
+        return err('Поддерживаются изображения, PDF и текстовые файлы')
+
+    try:
+        raw = base64.b64decode(b64)
+    except Exception:
+        return err('Не удалось прочитать файл')
+
+    if len(raw) > MAX_FILE_BYTES:
+        return err('Файл больше 10 МБ')
+    if len(raw) == 0:
+        return err('Файл пустой')
+
+    ext = EXT_BY_MIME.get(mime, 'bin')
+    key = f"support/{uuid.uuid4().hex}.{ext}"
+    try:
+        _s3_client().put_object(
+            Bucket='files', Key=key, Body=raw,
+            ContentType=mime, ContentDisposition='inline',
+        )
+    except Exception as e:
+        return err(f'Не удалось загрузить файл: {e}', 500)
+
+    return ok({'url': _cdn_url(key), 'filename': filename, 'mime': mime, 'size': len(raw)})
 
 
 SITE_URL = os.environ.get('SITE_URL', 'https://sparcom.ru')
@@ -152,6 +229,7 @@ def row_message(r):
         'author_type': r['author_type'],
         'message': r['message'],
         'attachment_url': r.get('attachment_url'),
+        'attachment_name': r.get('attachment_name'),
         'is_system': r.get('is_system', False),
         'created_at': r['created_at'],
     }
@@ -168,6 +246,17 @@ def get_faq(cur, schema, role=None):
         ORDER BY role, sort_order, id
     """)
     return [dict(r) for r in cur.fetchall()]
+
+
+def _attachment_pair(body):
+    """Возвращает (sql_url, sql_name) — экранированные значения или 'NULL'."""
+    url = (body.get('attachment_url') or '').strip()[:1000]
+    name = (body.get('attachment_name') or '').strip()[:255]
+    if not url:
+        return 'NULL', 'NULL'
+    if not url.startswith('https://cdn.poehali.dev/'):
+        return 'NULL', 'NULL'
+    return esc(url), (esc(name) if name else 'NULL')
 
 
 def create_ticket(cur, conn, schema, body, user):
@@ -209,9 +298,10 @@ def create_ticket(cur, conn, schema, body, user):
     ticket = cur.fetchone()
     ticket_id = ticket['id']
 
+    att_url_sql, att_name_sql = _attachment_pair(body)
     cur.execute(f"""
-        INSERT INTO {schema}.support_messages (ticket_id, author_type, author_user_id, message, is_system)
-        VALUES ({ticket_id}, 'user', {user_id_sql}, {esc(message)}, FALSE)
+        INSERT INTO {schema}.support_messages (ticket_id, author_type, author_user_id, message, attachment_url, attachment_name, is_system)
+        VALUES ({ticket_id}, 'user', {user_id_sql}, {esc(message)}, {att_url_sql}, {att_name_sql}, FALSE)
     """)
     cur.execute(f"""
         INSERT INTO {schema}.support_messages (ticket_id, author_type, message, is_system)
@@ -259,7 +349,7 @@ def get_ticket(cur, schema, user, ticket_id):
         return err('Нет доступа', 403)
 
     cur.execute(f"""
-        SELECT id, ticket_id, author_type, message, attachment_url, is_system, created_at
+        SELECT id, ticket_id, author_type, message, attachment_url, attachment_name, is_system, created_at
         FROM {schema}.support_messages
         WHERE ticket_id = {ticket_id}
         ORDER BY created_at, id
@@ -270,8 +360,12 @@ def get_ticket(cur, schema, user, ticket_id):
 
 def post_message(cur, conn, schema, user, ticket_id, body):
     text = (body.get('message') or '').strip()
-    if not text:
+    att_url_sql, att_name_sql = _attachment_pair(body)
+    has_attachment = att_url_sql != 'NULL'
+    if not text and not has_attachment:
         return err('Сообщение пустое')
+    if not text and has_attachment:
+        text = ''  # допустимо — только файл
     cur.execute(f"""
         SELECT id, user_id, status, subject FROM {schema}.support_tickets WHERE id = {ticket_id}
     """)
@@ -284,9 +378,9 @@ def post_message(cur, conn, schema, user, ticket_id, body):
         return err('Обращение закрыто. Создайте новое, чтобы продолжить разговор')
 
     cur.execute(f"""
-        INSERT INTO {schema}.support_messages (ticket_id, author_type, author_user_id, message, is_system)
-        VALUES ({ticket_id}, 'user', {user['id']}, {esc(text)}, FALSE)
-        RETURNING id, ticket_id, author_type, message, attachment_url, is_system, created_at
+        INSERT INTO {schema}.support_messages (ticket_id, author_type, author_user_id, message, attachment_url, attachment_name, is_system)
+        VALUES ({ticket_id}, 'user', {user['id']}, {esc(text)}, {att_url_sql}, {att_name_sql}, FALSE)
+        RETURNING id, ticket_id, author_type, message, attachment_url, attachment_name, is_system, created_at
     """)
     msg = cur.fetchone()
     cur.execute(f"""
@@ -380,7 +474,7 @@ def admin_get_ticket(cur, schema, ticket_id):
     if not t:
         return err('Обращение не найдено', 404)
     cur.execute(f"""
-        SELECT id, ticket_id, author_type, message, attachment_url, is_system, created_at
+        SELECT id, ticket_id, author_type, message, attachment_url, attachment_name, is_system, created_at
         FROM {schema}.support_messages
         WHERE ticket_id = {ticket_id}
         ORDER BY created_at, id
@@ -392,7 +486,9 @@ def admin_get_ticket(cur, schema, ticket_id):
 
 def admin_post_message(cur, conn, schema, ticket_id, body):
     text = (body.get('message') or '').strip()
-    if not text:
+    att_url_sql, att_name_sql = _attachment_pair(body)
+    has_attachment = att_url_sql != 'NULL'
+    if not text and not has_attachment:
         return err('Сообщение пустое')
     cur.execute(f"""
         SELECT id, status, subject, user_id, email, name
@@ -402,9 +498,9 @@ def admin_post_message(cur, conn, schema, ticket_id, body):
     if not t:
         return err('Обращение не найдено', 404)
     cur.execute(f"""
-        INSERT INTO {schema}.support_messages (ticket_id, author_type, message, is_system)
-        VALUES ({ticket_id}, 'admin', {esc(text)}, FALSE)
-        RETURNING id, ticket_id, author_type, message, attachment_url, is_system, created_at
+        INSERT INTO {schema}.support_messages (ticket_id, author_type, message, attachment_url, attachment_name, is_system)
+        VALUES ({ticket_id}, 'admin', {esc(text)}, {att_url_sql}, {att_name_sql}, FALSE)
+        RETURNING id, ticket_id, author_type, message, attachment_url, attachment_name, is_system, created_at
     """)
     msg = cur.fetchone()
     cur.execute(f"""
@@ -581,6 +677,10 @@ def handler(event, context):
         if resource == 'faq' and method == 'GET':
             role = params.get('role')
             return ok({'faq': get_faq(cur, schema, role)})
+
+        if resource == 'upload' and method == 'POST':
+            body = json.loads(event.get('body') or '{}')
+            return upload_attachment(body)
 
         if resource == 'ticket' and method == 'POST' and not is_admin:
             body = json.loads(event.get('body') or '{}')
