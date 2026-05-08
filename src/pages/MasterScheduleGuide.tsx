@@ -39,6 +39,28 @@ const SCENARIOS = [
   },
   {
     num: "2",
+    title: "Несколько услуг в один день",
+    steps: [
+      "Откройте «Шаблоны» → отредактируйте нужный шаблон",
+      "В строке нужного дня нажмите «+ Интервал»",
+      "Заполните: например, 10:00–14:00 «Парение», затем 16:00–20:00 «Массаж»",
+      "Сохраните шаблон и снова примените",
+      "В календаре в этот день появятся два разных слота",
+    ],
+  },
+  {
+    num: "3",
+    title: "Заблокировать один конкретный слот",
+    steps: [
+      "Откройте календарь → нажмите на нужный слот",
+      "В окне деталей нажмите «Заблокировать слот»",
+      "Слот станет серым, клиенты не смогут на него записаться",
+      "Остальные слоты в этот день останутся доступными",
+      "Чтобы вернуть — нажмите слот и кнопку «Разблокировать»",
+    ],
+  },
+  {
+    num: "4",
     title: "Добавить один слот вне расписания",
     steps: [
       "Перейдите во вкладку «Календарь»",
@@ -49,7 +71,7 @@ const SCENARIOS = [
     ],
   },
   {
-    num: "3",
+    num: "5",
     title: "Уйти в отпуск / заблокировать дни",
     steps: [
       "Перейдите во вкладку «Календарь»",
@@ -60,7 +82,7 @@ const SCENARIOS = [
     ],
   },
   {
-    num: "4",
+    num: "6",
     title: "Изменить рабочие часы на следующий месяц",
     steps: [
       "Перейдите во вкладку «Шаблоны»",
@@ -72,6 +94,14 @@ const SCENARIOS = [
 ];
 
 const FAQ = [
+  {
+    q: "Можно ли работать с разными услугами в один день?",
+    a: "Да. В редакторе шаблона у каждого дня есть кнопка «+ Интервал» — можно добавить, например, утром «Парение» с 10:00 до 14:00 и вечером «Массаж» с 16:00 до 20:00. Каждый интервал — со своей услугой, временем и количеством мест.",
+  },
+  {
+    q: "Чем отличается «Заблокировать слот» от «Заблокировать день»?",
+    a: "Блокировка слота закрывает только конкретное время на запись (например, один сеанс массажа в 15:00) — остальные слоты в день работают как обычно. Блокировка дня закрывает целый день целиком (отпуск, болезнь). Слоты в заблокированном дне остаются видимыми, но запись на них невозможна.",
+  },
   {
     q: "Можно ли принимать несколько клиентов в один слот?",
     a: "Да. При создании услуги или слота укажите «Максимум клиентов» больше 1. Все записавшиеся увидят друг друга только по имени.",
@@ -323,10 +353,12 @@ export default function MasterScheduleGuide() {
                 <TableHeader cols={["Настройка дня", "Как задать"]} />
                 <tbody className="divide-y divide-border">
                   {[
-                    ["Выходной день", "Включите переключатель «Выходной» — слоты не создадутся"],
-                    ["Рабочие часы", "Укажите время начала и конца (например, 12:00 – 22:00)"],
-                    ["Услуга по умолчанию", "Выберите услугу из списка — она подставится в каждый слот этого дня"],
-                    ["Макс. клиентов", "Сколько человек принимаете одновременно в этот день"],
+                    ["Выходной день", "Кнопка «Сделать выходным» — слоты в этот день не создадутся"],
+                    ["Рабочие часы", "Укажите время начала и конца интервала (например, 12:00 – 22:00)"],
+                    ["Услуга", "Выберите услугу для интервала из списка — она подставится в слоты"],
+                    ["Макс. клиентов", "Сколько человек принимаете одновременно в этом интервале"],
+                    ["+ Интервал", "Кнопка добавляет ещё один временной промежуток в тот же день (с другой услугой)"],
+                    ["Корзина", "Удаляет конкретный интервал из дня"],
                   ].map(([field, desc]) => (
                     <tr key={field} className="hover:bg-muted/30">
                       <td className="py-2.5 pr-4 font-medium">{field}</td>
@@ -337,34 +369,66 @@ export default function MasterScheduleGuide() {
               </table>
             </div>
 
-            <p className="text-sm font-medium mb-3">Пример настройки недели:</p>
+            <p className="text-sm font-medium mb-3">Пример настройки недели (с несколькими услугами в день):</p>
             <div className="overflow-x-auto rounded-xl border border-border mb-4">
               <table className="w-full text-sm">
-                <TableHeader cols={["День", "Выходной", "Часы работы", "Услуга"]} />
+                <TableHeader cols={["День", "Статус", "Часы работы", "Услуга"]} />
                 <tbody className="divide-y divide-border">
                   {[
-                    ["Пн", true, "—", "—"],
-                    ["Вт", false, "12:00 – 22:00", "Парение веником"],
-                    ["Ср", false, "12:00 – 22:00", "Парение веником"],
-                    ["Чт", false, "14:00 – 22:00", "Массаж"],
-                    ["Пт", false, "14:00 – 23:00", "Парение веником"],
-                    ["Сб", false, "10:00 – 23:00", "Парение веником"],
-                    ["Вс", false, "10:00 – 20:00", "Консультация"],
-                  ].map(([day, isDayOff, hours, service]) => (
-                    <tr key={day} className={`hover:bg-muted/30 ${isDayOff ? "opacity-50" : ""}`}>
-                      <td className="py-2.5 pr-4 font-medium">{day}</td>
-                      <td className="py-2.5 pr-4">
-                        {isDayOff
-                          ? <Badge variant="secondary" className="text-xs">Выходной</Badge>
-                          : <span className="text-green-600 text-xs font-medium">Рабочий</span>}
+                    { day: "Пн", off: true, intervals: [] as { hours: string; service: string }[] },
+                    { day: "Вт", off: false, intervals: [{ hours: "12:00 – 22:00", service: "Парение веником" }] },
+                    { day: "Ср", off: false, intervals: [{ hours: "12:00 – 22:00", service: "Парение веником" }] },
+                    {
+                      day: "Чт",
+                      off: false,
+                      intervals: [
+                        { hours: "10:00 – 14:00", service: "Парение веником" },
+                        { hours: "16:00 – 20:00", service: "Массаж" },
+                      ],
+                    },
+                    { day: "Пт", off: false, intervals: [{ hours: "14:00 – 23:00", service: "Парение веником" }] },
+                    {
+                      day: "Сб",
+                      off: false,
+                      intervals: [
+                        { hours: "10:00 – 14:00", service: "Парение веником" },
+                        { hours: "15:00 – 23:00", service: "Парение с компанией" },
+                      ],
+                    },
+                    { day: "Вс", off: false, intervals: [{ hours: "10:00 – 20:00", service: "Консультация" }] },
+                  ].map((row) => (
+                    <tr key={row.day} className={`hover:bg-muted/30 ${row.off ? "opacity-50" : ""}`}>
+                      <td className="py-2.5 pr-4 font-medium align-top">{row.day}</td>
+                      <td className="py-2.5 pr-4 align-top">
+                        {row.off ? (
+                          <Badge variant="secondary" className="text-xs">Выходной</Badge>
+                        ) : (
+                          <span className="text-green-600 text-xs font-medium">
+                            Рабочий{row.intervals.length > 1 ? ` · ${row.intervals.length} инт.` : ""}
+                          </span>
+                        )}
                       </td>
-                      <td className="py-2.5 pr-4 text-muted-foreground">{hours}</td>
-                      <td className="py-2.5 text-muted-foreground">{service}</td>
+                      <td className="py-2.5 pr-4 text-muted-foreground align-top">
+                        {row.off ? "—" : row.intervals.map((i, k) => <div key={k}>{i.hours}</div>)}
+                      </td>
+                      <td className="py-2.5 text-muted-foreground align-top">
+                        {row.off ? "—" : row.intervals.map((i, k) => <div key={k}>{i.service}</div>)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            <Card className="border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900 mb-3">
+              <CardContent className="p-4 flex gap-3">
+                <Icon name="Layers" size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-emerald-800 dark:text-emerald-300 space-y-1">
+                  <p><strong>Несколько услуг в один день.</strong> У каждого дня есть кнопка <strong>«+ Интервал»</strong> — можно добавить столько временных промежутков, сколько нужно.</p>
+                  <p className="text-xs">Например: утром 10:00–14:00 «Парение веником», вечером 16:00–20:00 «Массаж». Каждый интервал — со своей услугой, временем и количеством мест.</p>
+                </div>
+              </CardContent>
+            </Card>
 
             <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
               <CardContent className="p-4 flex gap-3">
@@ -386,6 +450,15 @@ export default function MasterScheduleGuide() {
               Вкладка «Календарь» показывает слоты текущей недели. Здесь можно добавлять, редактировать,
               удалять слоты вручную, а также блокировать периоды.
             </p>
+
+            <Card className="mb-5 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900">
+              <CardContent className="p-4 flex gap-3">
+                <Icon name="Clock" size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-emerald-800 dark:text-emerald-300">
+                  <strong>Сетка часов настраивается сама.</strong> Если в одном дне у вас слоты с 7 утра, а в другом с 10 — все дни покажут общий диапазон, чтобы слоты были выровнены и сравнимы.
+                </p>
+              </CardContent>
+            </Card>
 
             {/* Статусы слотов */}
             <p className="text-sm font-medium mb-3">Цвета слотов:</p>
@@ -436,7 +509,32 @@ export default function MasterScheduleGuide() {
                 <p>· <strong className="text-foreground">Нельзя удалить</strong> слот, если на него есть заявки — сначала обработайте записи.</p>
               </div>
 
-              <h3 className="text-base font-semibold pt-2">Блокировка дней (отпуск, болезнь)</h3>
+              <h3 className="text-base font-semibold pt-2">Блокировка отдельного слота</h3>
+              <p className="text-sm text-muted-foreground">
+                Если нужно закрыть один конкретный слот (например, разовая накладка), а остальное время в этот день оставить рабочим.
+              </p>
+              <Card>
+                <CardContent className="p-5">
+                  <ol className="space-y-2">
+                    {[
+                      "Нажмите на нужный слот в календаре — откроется окно деталей",
+                      "Нажмите кнопку «Заблокировать слот»",
+                      "Слот станет серым, клиенты не смогут на него записаться",
+                      "Чтобы вернуть — снова нажмите слот и выберите «Разблокировать»",
+                    ].map((step, i) => (
+                      <li key={i} className="flex items-start gap-3 text-sm">
+                        <StepBadge n={i + 1} />
+                        <span className="text-muted-foreground">{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Соседние слоты в этот же день (с другими услугами или временем) останутся доступными для записи.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <h3 className="text-base font-semibold pt-2">Блокировка целого дня (отпуск, болезнь)</h3>
               <Card>
                 <CardContent className="p-5">
                   <ol className="space-y-2">
@@ -444,17 +542,28 @@ export default function MasterScheduleGuide() {
                       "Нажмите кнопку «Заблокировать день» в правом верхнем углу календаря",
                       "Выберите одну дату или диапазон (например, с 5 по 12 июня)",
                       "Укажите причину (опционально — клиенты её не увидят)",
-                      "Нажмите «Сохранить» — все слоты в этот период станут недоступны для записи",
+                      "Нажмите «Сохранить» — день закрывается для записи целиком",
                     ].map((step, i) => (
                       <li key={i} className="flex items-start gap-3 text-sm">
                         <StepBadge n={i + 1} />
-                        <span>{step}</span>
+                        <span className="text-muted-foreground">{step}</span>
                       </li>
                     ))}
                   </ol>
                   <p className="text-xs text-muted-foreground mt-3">
                     Если на эти дни уже были записи — вам нужно будет их отменить вручную в разделе «Записи».
                   </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900">
+                <CardContent className="p-4 flex gap-3">
+                  <Icon name="Info" size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
+                    <p><strong>Чем отличается?</strong></p>
+                    <p>· <strong>Слот</strong> — точечная блокировка одного интервала (одна услуга/время).</p>
+                    <p>· <strong>День</strong> — выходной целиком (все интервалы недоступны).</p>
+                  </div>
                 </CardContent>
               </Card>
             </div>
