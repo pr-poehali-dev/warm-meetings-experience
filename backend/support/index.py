@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import psycopg2
 import psycopg2.extras
@@ -7,8 +8,112 @@ from shared import (
     get_conn, get_schema, get_cursor,
     options_response, respond, ok, err,
     get_user_from_token, tg_notify_admin,
-    verify_admin_token,
+    verify_admin_token, send_email, admin_email,
 )
+
+
+SITE_URL = os.environ.get('SITE_URL', 'https://sparcom.ru')
+
+
+def _email_layout(title, content_html):
+    return f"""
+    <div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+        <div style="font-size:28px;">🪵</div>
+        <div style="font-weight:600;color:#7c2d12;">Банный клуб СПАРКОМ</div>
+      </div>
+      <h2 style="margin:0 0 12px;font-size:20px;color:#111827;">{title}</h2>
+      <div style="font-size:15px;line-height:1.55;color:#374151;">{content_html}</div>
+      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
+      <div style="font-size:12px;color:#9ca3af;">
+        Это автоматическое письмо от службы поддержки. Чтобы ответить — откройте обращение в личном кабинете.
+      </div>
+    </div>
+    """
+
+
+def _esc_html(text):
+    return (text or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
+
+
+def email_admin_new_ticket(ticket_id, subject, name, email, category, priority, message):
+    to = admin_email()
+    if not to:
+        return
+    body = _email_layout(
+        f'Новое обращение #{ticket_id}',
+        f'''
+        <p><b>Тема:</b> {_esc_html(subject)}</p>
+        <p><b>От:</b> {_esc_html(name)} &lt;{_esc_html(email)}&gt;</p>
+        <p><b>Категория:</b> {_esc_html(category)} · <b>Приоритет:</b> {_esc_html(priority)}</p>
+        <div style="margin-top:12px;padding:12px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+          {_esc_html(message)}
+        </div>
+        <p style="margin-top:16px;">
+          <a href="{SITE_URL}/admin" style="display:inline-block;padding:10px 16px;background:#7c2d12;color:#fff;text-decoration:none;border-radius:8px;">
+            Открыть в админ-панели
+          </a>
+        </p>
+        '''
+    )
+    send_email(to, f'Новое обращение #{ticket_id}: {subject}', body)
+
+
+def email_admin_user_reply(ticket_id, subject, name, email):
+    to = admin_email()
+    if not to:
+        return
+    body = _email_layout(
+        f'Новый ответ пользователя в #{ticket_id}',
+        f'''
+        <p><b>Тема:</b> {_esc_html(subject)}</p>
+        <p><b>От:</b> {_esc_html(name)} &lt;{_esc_html(email)}&gt;</p>
+        <p style="margin-top:16px;">
+          <a href="{SITE_URL}/admin" style="display:inline-block;padding:10px 16px;background:#7c2d12;color:#fff;text-decoration:none;border-radius:8px;">
+            Открыть переписку
+          </a>
+        </p>
+        '''
+    )
+    send_email(to, f'Ответ в обращении #{ticket_id}', body)
+
+
+def email_user_ticket_created(to_email, to_name, ticket_id, subject):
+    body = _email_layout(
+        'Мы получили ваше обращение',
+        f'''
+        <p>Здравствуйте, {_esc_html(to_name) or 'гость'}!</p>
+        <p>Мы зарегистрировали обращение <b>#{ticket_id}</b> по теме:<br>
+        <i>{_esc_html(subject)}</i></p>
+        <p>Ответим в течение 24 часов. Когда придёт ответ — пришлём письмо.</p>
+        <p style="margin-top:16px;">
+          <a href="{SITE_URL}/account?tab=support&ticket={ticket_id}" style="display:inline-block;padding:10px 16px;background:#7c2d12;color:#fff;text-decoration:none;border-radius:8px;">
+            Открыть обращение
+          </a>
+        </p>
+        '''
+    )
+    send_email(to_email, f'Обращение #{ticket_id} принято', body, to_name=to_name)
+
+
+def email_user_admin_reply(to_email, to_name, ticket_id, subject, message_text):
+    snippet = (message_text[:400] + '…') if len(message_text) > 400 else message_text
+    body = _email_layout(
+        'Поддержка ответила вам',
+        f'''
+        <p>Здравствуйте, {_esc_html(to_name) or 'гость'}!</p>
+        <p>В обращении <b>#{ticket_id}</b> «{_esc_html(subject)}» появился ответ:</p>
+        <div style="margin-top:8px;padding:12px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+          {_esc_html(snippet)}
+        </div>
+        <p style="margin-top:16px;">
+          <a href="{SITE_URL}/account?tab=support&ticket={ticket_id}" style="display:inline-block;padding:10px 16px;background:#7c2d12;color:#fff;text-decoration:none;border-radius:8px;">
+            Открыть переписку
+          </a>
+        </p>
+        '''
+    )
+    send_email(to_email, f'Ответ в обращении #{ticket_id}', body, to_name=to_name)
 
 
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
@@ -123,6 +228,8 @@ def create_ticket(cur, conn, schema, body, user):
         f"<b>Категория:</b> {category} · <b>Приоритет:</b> {priority}\n\n"
         f"{short}"
     )
+    email_admin_new_ticket(ticket_id, subject, name, email, category, priority, message)
+    email_user_ticket_created(email, name, ticket_id, subject)
 
     return ok({'ticket': row_ticket(ticket)})
 
@@ -195,6 +302,7 @@ def post_message(cur, conn, schema, user, ticket_id, body):
         f"<b>Тема:</b> {t['subject']}\n"
         f"<b>От:</b> {user['name']} ({user['email']})"
     )
+    email_admin_user_reply(ticket_id, t['subject'], user['name'], user['email'])
 
     return ok({'message': row_message(msg)})
 
@@ -287,7 +395,8 @@ def admin_post_message(cur, conn, schema, ticket_id, body):
     if not text:
         return err('Сообщение пустое')
     cur.execute(f"""
-        SELECT id, status, subject, user_id FROM {schema}.support_tickets WHERE id = {ticket_id}
+        SELECT id, status, subject, user_id, email, name
+        FROM {schema}.support_tickets WHERE id = {ticket_id}
     """)
     t = cur.fetchone()
     if not t:
@@ -304,22 +413,33 @@ def admin_post_message(cur, conn, schema, ticket_id, body):
         WHERE id = {ticket_id}
     """)
     conn.commit()
+
     # Уведомление пользователю в Telegram, если привязан
+    notify_email_allowed = True
     if t['user_id']:
         cur.execute(f"""
-            SELECT tg_chat_id, notify_telegram FROM {schema}.users WHERE id = {t['user_id']}
+            SELECT tg_chat_id, notify_telegram, notify_email
+            FROM {schema}.users WHERE id = {t['user_id']}
         """)
         u = cur.fetchone()
-        if u and u.get('tg_chat_id') and u.get('notify_telegram'):
-            try:
-                from shared import tg_send
-                tg_send(
-                    u['tg_chat_id'],
-                    f"💬 Поддержка ответила в обращении #{ticket_id}\n"
-                    f"<b>{t['subject']}</b>\n\nОткройте личный кабинет, чтобы прочитать."
-                )
-            except Exception:
-                pass
+        if u:
+            if u.get('tg_chat_id') and u.get('notify_telegram'):
+                try:
+                    from shared import tg_send
+                    tg_send(
+                        u['tg_chat_id'],
+                        f"💬 Поддержка ответила в обращении #{ticket_id}\n"
+                        f"<b>{t['subject']}</b>\n\nОткройте личный кабинет, чтобы прочитать."
+                    )
+                except Exception:
+                    pass
+            # Уважаем настройку notify_email
+            notify_email_allowed = u.get('notify_email') is not False
+
+    # Email пользователю
+    if notify_email_allowed and t['email']:
+        email_user_admin_reply(t['email'], t.get('name'), ticket_id, t['subject'], text)
+
     return ok({'message': row_message(msg)})
 
 

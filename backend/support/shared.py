@@ -93,3 +93,44 @@ def tg_send(chat_id, text, token=None, parse_mode='HTML'):
 
 def tg_notify_admin(text, token=None):
     tg_send(os.environ.get('TELEGRAM_CHAT_ID', ''), text, token=token)
+
+
+# --- Email (Unisender Go) ---
+
+def send_email(to_email, subject, body_html, to_name=None):
+    """Отправляет письмо через Unisender Go. Возвращает True/False, не падает при ошибках."""
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
+    if not api_key or not sender_email or not to_email:
+        return False
+    recipient = {'email': to_email}
+    if to_name:
+        recipient['name'] = to_name
+    payload = {
+        'message': {
+            'recipients': [recipient],
+            'sender_email': sender_email,
+            'sender_name': sender_name,
+            'subject': subject,
+            'body': {'html': body_html},
+            'track_links': 1,
+            'track_read': 1,
+        }
+    }
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(
+        'https://go2.unisender.ru/ru/transactional/api/v1/email/send.json',
+        data=data,
+        headers={'X-API-KEY': api_key, 'Content-Type': 'application/json'},
+    )
+    try:
+        urllib.request.urlopen(req, timeout=10)
+        return True
+    except Exception:
+        return False
+
+
+def admin_email():
+    """Email администратора для уведомлений (env SUPPORT_ADMIN_EMAIL или UNISENDER_SENDER_EMAIL)."""
+    return os.environ.get('SUPPORT_ADMIN_EMAIL') or os.environ.get('UNISENDER_SENDER_EMAIL', '')
