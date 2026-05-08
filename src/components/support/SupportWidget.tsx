@@ -17,7 +17,7 @@ const ROLE_TABS: { key: string; label: string }[] = [
   { key: "participant", label: "Участник" },
   { key: "master", label: "Мастер" },
   { key: "organizer", label: "Организатор" },
-  { key: "partner", label: "Партнёр" },
+  { key: "partner", label: "Управляющий" },
 ];
 
 const CATEGORIES = [
