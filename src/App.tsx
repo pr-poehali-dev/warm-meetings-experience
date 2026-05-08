@@ -45,6 +45,7 @@ import EventsDemo from "./pages/EventsDemo";
 import EventsGlassDemo from "./pages/EventsGlassDemo";
 import IndexGlass from "./pages/IndexGlass";
 import IndexNew from "./pages/IndexNew";
+import LandingPage from "./pages/LandingPage";
 
 const queryClient = new QueryClient();
 
@@ -93,6 +94,8 @@ const AppContent = () => {
         <Route path="/home-new" element={<IndexNew />} />
         <Route path="/privacy" element={<Navigate to="/documents?tab=privacy" replace />} />
         <Route path="/terms" element={<Navigate to="/documents?tab=terms" replace />} />
+        {/* Персональные мини-сайты пользователей. ВАЖНО: должно быть последним перед NotFound */}
+        <Route path="/:slug" element={<LandingPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

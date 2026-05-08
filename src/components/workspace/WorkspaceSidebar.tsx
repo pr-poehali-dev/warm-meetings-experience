@@ -175,8 +175,15 @@ export default function WorkspaceSidebar({
         </CollapsibleSection>
       )}
 
-      {/* Общий блок: Telegram — для всех коммерческих ролей */}
+      {/* Общий блок: Визитка + Telegram — для всех коммерческих ролей */}
       <div className="border-t border-border/60 pt-2 mt-3">
+        <NavItem
+          active={roleTab === "landing"}
+          onClick={() => switchRoleTab("landing")}
+          icon="Globe"
+          label="Моя визитка"
+          accent="text-orange-500"
+        />
         <NavItem
           active={roleTab === "telegram"}
           onClick={() => switchRoleTab("telegram")}

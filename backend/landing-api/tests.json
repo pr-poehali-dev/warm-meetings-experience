@@ -1,0 +1,56 @@
+{
+  "tests": [
+    {
+      "name": "Slug check rejects reserved",
+      "method": "POST",
+      "path": "/?resource=slug-check",
+      "body": {"slug": "admin"},
+      "expectedStatus": 200,
+      "expectedBody": {"available": false},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Slug check rejects too short",
+      "method": "POST",
+      "path": "/?resource=slug-check",
+      "body": {"slug": "ab"},
+      "expectedStatus": 200,
+      "expectedBody": {"available": false},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Slug check accepts valid slug",
+      "method": "POST",
+      "path": "/?resource=slug-check",
+      "body": {"slug": "ivan_petrov_test_slug_123"},
+      "expectedStatus": 200,
+      "expectedBody": {"available": true},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Public get not found",
+      "method": "GET",
+      "path": "/?resource=public&slug=nonexistent_landing_xyz_1234",
+      "expectedStatus": 404
+    },
+    {
+      "name": "Settings GET requires auth",
+      "method": "GET",
+      "path": "/?resource=settings",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Lead requires fields",
+      "method": "POST",
+      "path": "/?resource=lead&slug=anything",
+      "body": {},
+      "expectedStatus": 400
+    },
+    {
+      "name": "Unknown resource",
+      "method": "GET",
+      "path": "/?resource=foo",
+      "expectedStatus": 400
+    }
+  ]
+}

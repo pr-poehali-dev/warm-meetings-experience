@@ -14,6 +14,7 @@ import BathCard from "@/components/partner/BathCard";
 import BathForm from "@/components/partner/BathForm";
 import PartnerStats from "@/components/partner/PartnerStats";
 import WorkspaceDashboard from "@/components/workspace/WorkspaceDashboard";
+import LandingSection from "@/components/workspace/landing/LandingSection";
 import {
   MasterDashboardSection,
   MasterProfileSection,
@@ -103,6 +104,11 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     tgChannelsCount,
     refreshTgInfo,
   } = props;
+
+  // ─── Универсальный раздел «Моя визитка» для всех коммерческих ролей ────────
+  if (roleTab === "landing") {
+    return <LandingSection />;
+  }
 
   // ─── Универсальный раздел Telegram для всех коммерческих ролей ──────────────
   if (roleTab === "telegram") {

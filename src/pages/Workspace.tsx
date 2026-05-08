@@ -39,6 +39,7 @@ export default function Workspace() {
     if (p === "organizer" && isOrganizer) return "organizer";
     if (p === "partner" && isPartner) return "partner";
     if (p === "telegram") return "telegram";
+    if (p === "landing") return "landing";
     return "dashboard";
   };
 
@@ -152,6 +153,7 @@ export default function Workspace() {
   // Текущее название раздела в шапке
   const currentLabel = () => {
     if (roleTab === "telegram") return "Telegram-каналы";
+    if (roleTab === "landing") return "Моя визитка";
     if (roleTab === "dashboard") return "Обзор";
     if (roleTab === "master") {
       const label = MASTER_NAV.find((n) => n.id === masterSection)?.label ?? "Мастер";
