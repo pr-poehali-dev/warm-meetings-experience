@@ -48,9 +48,21 @@ export default function GrowthSection({ rolesOnly = false }: GrowthSectionProps)
     if (role) setTfaContinueRole(role);
   };
 
-  const availableRoles = allRoles.filter(
-    (r) => !activeRoleSlugs.includes(r.slug) && r.slug !== "member"
-  );
+  const ROLE_NAME_OVERRIDES: Record<string, string> = {
+    partner: "Управляющий",
+  };
+  const ROLE_DESCRIPTION_OVERRIDES: Record<string, string> = {
+    partner: "Управляет карточкой бани, обновляет условия и расписание",
+  };
+  const HIDDEN_ROLE_SLUGS = ["owner"];
+
+  const availableRoles = allRoles
+    .filter((r) => !activeRoleSlugs.includes(r.slug) && r.slug !== "member" && !HIDDEN_ROLE_SLUGS.includes(r.slug))
+    .map((r) => ({
+      ...r,
+      name: ROLE_NAME_OVERRIDES[r.slug] ?? r.name,
+      description: ROLE_DESCRIPTION_OVERRIDES[r.slug] ?? r.description,
+    }));
 
   if (loading) {
     return (
@@ -65,6 +77,9 @@ export default function GrowthSection({ rolesOnly = false }: GrowthSectionProps)
   if (rolesOnly) {
     return (
       <>
+        <p className="text-sm text-muted-foreground mb-4">
+          Выберите специализацию, чтобы продолжить — нажмите на карточку и подайте заявку
+        </p>
         <div className="space-y-3">
           {availableRoles.length === 0 && !loading && (
             <div className="text-center py-10 text-muted-foreground text-sm">
@@ -76,24 +91,27 @@ export default function GrowthSection({ rolesOnly = false }: GrowthSectionProps)
             return (
               <div
                 key={role.slug}
-                className="flex items-start justify-between border rounded-2xl px-4 py-4 bg-card hover:border-primary/30 transition-colors gap-3"
+                onClick={() => !hasPendingApp && setApplyRole(role)}
+                className={`flex items-center justify-between border rounded-2xl px-4 py-4 bg-card transition-all gap-3 ${
+                  hasPendingApp
+                    ? "opacity-70 cursor-default border-amber-200"
+                    : "cursor-pointer hover:border-primary hover:shadow-sm active:scale-[0.99]"
+                }`}
               >
-                <div className="flex items-start gap-3 flex-1 min-w-0">
-                  <span className="text-3xl flex-shrink-0 mt-0.5">{role.icon}</span>
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <span className="text-3xl flex-shrink-0">{role.icon}</span>
                   <div className="min-w-0">
                     <div className="font-bold text-base">{role.name}</div>
                     <div className="text-sm text-muted-foreground mt-0.5 leading-snug">{role.description}</div>
                   </div>
                 </div>
-                <div className="flex-shrink-0 pt-1">
+                <div className="flex-shrink-0">
                   {hasPendingApp ? (
                     <span className="text-xs px-2.5 py-1.5 bg-amber-50 text-amber-700 rounded-full font-medium whitespace-nowrap block">
                       На рассмотрении
                     </span>
                   ) : (
-                    <Button size="sm" variant="outline" className="rounded-xl whitespace-nowrap" onClick={() => setApplyRole(role)}>
-                      Подать заявку
-                    </Button>
+                    <Icon name="ChevronRight" size={18} className="text-muted-foreground" />
                   )}
                 </div>
               </div>
