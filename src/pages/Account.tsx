@@ -24,7 +24,7 @@ import ReferralsSection from "@/components/account/ReferralsSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-type Tab = "main" | "articles" | "calendar" | "my-data" | "favorites" | "wallet" | "referrals" | "support";
+type Tab = "main" | "articles" | "calendar" | "my-data" | "favorites" | "wallet" | "referrals" | "support" | "roles";
 type MainTab = "profile" | "signups" | "notify" | "security";
 
 const MAIN_TABS: { key: MainTab; label: string; icon: string }[] = [
@@ -222,6 +222,21 @@ export default function Account() {
                     </Link>
                   </CardContent>
                 </Card>
+
+                <Card className="border-0 shadow-sm col-span-2">
+                  <CardContent className="p-4 flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center">
+                        <Icon name="BadgePlus" size={15} className="text-emerald-600" />
+                      </div>
+                      <span className="text-sm font-medium">Добавить специализацию</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Пармастер, партнёр, организатор и другие роли</p>
+                    <Link to="/account?tab=roles" className="mt-auto">
+                      <Button size="sm" variant="outline" className="w-full">Выбрать</Button>
+                    </Link>
+                  </CardContent>
+                </Card>
               </div>
 
               <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1">
@@ -364,6 +379,18 @@ export default function Account() {
       )}
 
       {tab === "support" && <SupportTab />}
+
+      {tab === "roles" && (
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-8 max-w-2xl pt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Link to="/account" className="text-muted-foreground hover:text-foreground transition-colors">
+              <Icon name="ArrowLeft" size={18} />
+            </Link>
+            <h2 className="text-lg font-semibold text-foreground">Добавить специализацию</h2>
+          </div>
+          <GrowthSection rolesOnly />
+        </div>
+      )}
     </div>
   );
 }

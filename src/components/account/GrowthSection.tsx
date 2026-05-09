@@ -6,7 +6,11 @@ import { rolesApi, UserRole, RoleApplication, Role } from "@/lib/roles-api";
 import { toast } from "sonner";
 import RoleApplicationDialog from "./RoleApplicationDialog";
 
-export default function GrowthSection() {
+interface GrowthSectionProps {
+  rolesOnly?: boolean;
+}
+
+export default function GrowthSection({ rolesOnly = false }: GrowthSectionProps) {
   const [myRoles, setMyRoles] = useState<UserRole[]>([]);
   const [applications, setApplications] = useState<RoleApplication[]>([]);
   const [allRoles, setAllRoles] = useState<Role[]>([]);
@@ -58,6 +62,97 @@ export default function GrowthSection() {
     );
   }
 
+  if (rolesOnly) {
+    return (
+      <>
+        <div className="space-y-3">
+          {availableRoles.length === 0 && !loading && (
+            <div className="text-center py-10 text-muted-foreground text-sm">
+              Все доступные специализации уже получены
+            </div>
+          )}
+          {availableRoles.map((role) => {
+            const hasPendingApp = pendingAppSlugs.includes(role.slug);
+            return (
+              <div
+                key={role.slug}
+                className="flex items-start justify-between border rounded-2xl px-4 py-4 bg-card hover:border-primary/30 transition-colors gap-3"
+              >
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <span className="text-3xl flex-shrink-0 mt-0.5">{role.icon}</span>
+                  <div className="min-w-0">
+                    <div className="font-bold text-base">{role.name}</div>
+                    <div className="text-sm text-muted-foreground mt-0.5 leading-snug">{role.description}</div>
+                  </div>
+                </div>
+                <div className="flex-shrink-0 pt-1">
+                  {hasPendingApp ? (
+                    <span className="text-xs px-2.5 py-1.5 bg-amber-50 text-amber-700 rounded-full font-medium whitespace-nowrap block">
+                      На рассмотрении
+                    </span>
+                  ) : (
+                    <Button size="sm" variant="outline" className="rounded-xl whitespace-nowrap" onClick={() => setApplyRole(role)}>
+                      Подать заявку
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {applications.length > 0 && (
+          <div className="space-y-3 mt-6">
+            <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Мои заявки
+            </div>
+            {applications.map((app) => (
+              <div key={app.id} className="flex items-center justify-between border rounded-lg px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <span>{app.role_icon}</span>
+                  <div>
+                    <div className="text-sm font-medium">{app.role_name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(app.created_at).toLocaleDateString("ru-RU")}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {app.status === "pending_2fa" && (
+                    <Button size="sm" variant="outline" onClick={() => handleContinueTfa(app.role_slug)}>
+                      Подтвердить
+                    </Button>
+                  )}
+                  <ApplicationStatus status={app.status} comment={app.admin_comment} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {applyRole && (
+          <RoleApplicationDialog
+            role={applyRole}
+            onClose={() => setApplyRole(null)}
+            onSuccess={() => { setApplyRole(null); loadData(); }}
+          />
+        )}
+        {tfaContinueRole && (
+          <RoleApplicationDialog
+            role={tfaContinueRole}
+            onClose={() => setTfaContinueRole(null)}
+            onSuccess={() => { setTfaContinueRole(null); loadData(); }}
+            initialTfaState={{
+              applicationId: applications.find(
+                (a) => a.role_slug === tfaContinueRole.slug && a.status === "pending_2fa"
+              )!.id,
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <>
       <Card className="border-0 shadow-sm">
@@ -81,46 +176,6 @@ export default function GrowthSection() {
                 </div>
               ))}
           </div>
-
-          {availableRoles.length > 0 && (
-            <>
-              <div className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Доступные роли
-              </div>
-
-              <div className="space-y-3">
-                {availableRoles.map((role) => {
-                  const hasPendingApp = pendingAppSlugs.includes(role.slug);
-
-                  return (
-                    <div
-                      key={role.slug}
-                      className="flex items-start justify-between border rounded-2xl px-4 py-4 bg-card hover:border-primary/30 transition-colors gap-3"
-                    >
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <span className="text-3xl flex-shrink-0 mt-0.5">{role.icon}</span>
-                        <div className="min-w-0">
-                          <div className="font-bold text-base">{role.name}</div>
-                          <div className="text-sm text-muted-foreground mt-0.5 leading-snug">{role.description}</div>
-                        </div>
-                      </div>
-                      <div className="flex-shrink-0 pt-1">
-                        {hasPendingApp ? (
-                          <span className="text-xs px-2.5 py-1.5 bg-amber-50 text-amber-700 rounded-full font-medium whitespace-nowrap block">
-                            На рассмотрении
-                          </span>
-                        ) : (
-                          <Button size="sm" variant="outline" className="rounded-xl whitespace-nowrap" onClick={() => setApplyRole(role)}>
-                            Подать заявку
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
 
           {applications.length > 0 && (
             <div className="space-y-3">
