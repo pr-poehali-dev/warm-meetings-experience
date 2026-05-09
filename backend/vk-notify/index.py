@@ -26,11 +26,15 @@ def vk_api(method, params):
 def send_vk_message(vk_user_id: int, message: str) -> dict:
     community_id = int(os.environ.get("VK_COMMUNITY_ID", "0"))
     result = vk_api("messages.send", {
-        "user_id": vk_user_id,
+        "peer_id": vk_user_id,
         "message": message,
         "random_id": random.randint(1, 2**31),
         "group_id": community_id,
     })
+    if "error" in result:
+        print(f"[VK ERROR] user_id={vk_user_id} code={result['error'].get('error_code')} msg={result['error'].get('error_msg')}")
+    else:
+        print(f"[VK OK] user_id={vk_user_id} message_id={result.get('response')}")
     return result
 
 
