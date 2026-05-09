@@ -7,7 +7,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ConsentModalProps {
   trigger: React.ReactNode;
@@ -37,8 +36,8 @@ export default function ConsentModal({ trigger }: ConsentModalProps) {
         {trigger}
       </span>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] p-0">
-          <DialogHeader className="px-6 pt-6 pb-0">
+        <DialogContent className="max-w-2xl flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-2 flex-shrink-0">
             <DialogTitle className="text-lg">
               Согласие на обработку персональных данных
             </DialogTitle>
@@ -52,8 +51,8 @@ export default function ConsentModal({ trigger }: ConsentModalProps) {
               </Link>
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="px-6 pb-6 max-h-[65vh]">
-            <div className="space-y-6 text-sm pr-4">
+          <div className="overflow-y-auto flex-1 px-6 pb-6">
+            <div className="space-y-6 text-sm">
               <p className="leading-relaxed">
                 Я, нижеподписавшийся(ая), свободно, своей волей и в своём
                 интересе даю согласие{" "}
@@ -151,7 +150,7 @@ export default function ConsentModal({ trigger }: ConsentModalProps) {
                 </p>
               </div>
             </div>
-          </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
     </>
