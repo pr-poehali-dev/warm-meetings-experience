@@ -95,24 +95,26 @@ export default function GrowthSection() {
                   return (
                     <div
                       key={role.slug}
-                      className="flex items-center justify-between border rounded-xl px-4 py-3 hover:border-primary/30 transition-colors"
+                      className="flex items-start justify-between border rounded-2xl px-4 py-4 bg-card hover:border-primary/30 transition-colors gap-3"
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{role.icon}</span>
-                        <div>
-                          <div className="font-semibold">{role.name}</div>
-                          <div className="text-sm text-muted-foreground">{role.description}</div>
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <span className="text-3xl flex-shrink-0 mt-0.5">{role.icon}</span>
+                        <div className="min-w-0">
+                          <div className="font-bold text-base">{role.name}</div>
+                          <div className="text-sm text-muted-foreground mt-0.5 leading-snug">{role.description}</div>
                         </div>
                       </div>
-                      {hasPendingApp ? (
-                        <span className="text-xs px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full font-medium whitespace-nowrap">
-                          На рассмотрении
-                        </span>
-                      ) : (
-                        <Button size="sm" variant="outline" onClick={() => setApplyRole(role)}>
-                          Подать заявку
-                        </Button>
-                      )}
+                      <div className="flex-shrink-0 pt-1">
+                        {hasPendingApp ? (
+                          <span className="text-xs px-2.5 py-1.5 bg-amber-50 text-amber-700 rounded-full font-medium whitespace-nowrap block">
+                            На рассмотрении
+                          </span>
+                        ) : (
+                          <Button size="sm" variant="outline" className="rounded-xl whitespace-nowrap" onClick={() => setApplyRole(role)}>
+                            Подать заявку
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
