@@ -153,7 +153,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
       return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">{partnerView === "baths" ? "Мои бани" : "Партнёр"}</h2>
+            <h2 className="text-xl font-bold">{partnerView === "baths" ? "Мои бани" : "Управляющий"}</h2>
             <Button size="sm" onClick={() => switchPartnerView("add")} className="gap-1.5">
               <Icon name="Plus" size={14} />
               Добавить баню
