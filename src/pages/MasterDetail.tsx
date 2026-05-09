@@ -8,7 +8,7 @@ import Footer from "@/components/Footer";
 import { mastersApi, Master } from "@/lib/masters-api";
 import { masterCalendarApi, masterBookingsApi, MasterService, MasterSlot, MasterReview } from "@/lib/master-calendar-api";
 import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
-import { formatPhone } from "@/hooks/usePhoneMask";
+import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import func2url from "../../backend/func2url.json";
 
 const VIDEOS_API = func2url["media-api"];
@@ -176,7 +176,7 @@ function BookingModal({ slot, service, masterName, onClose, onSuccess }: Booking
           )}
           <button
             type="submit"
-            disabled={loading || !name.trim() || !phone.trim()}
+            disabled={loading || !name.trim() || !isPhoneComplete(phone)}
             className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold text-sm hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (

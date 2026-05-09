@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatPhone } from "@/hooks/usePhoneMask";
+import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
 import AppendixLinkModal from "@/components/AppendixLinkModal";
@@ -28,7 +28,7 @@ export default function Register() {
   const [consentPhoto, setConsentPhoto] = useState<"yes" | "no" | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const allRequired = consentTerms && consentPd && consentRules;
+  const allRequired = consentTerms && consentPd && consentRules && isPhoneComplete(phone);
 
   useEffect(() => {
     if (!authLoading && user) {

@@ -9,7 +9,7 @@ import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
-import { formatPhone } from "@/hooks/usePhoneMask";
+import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import { format, parseISO, isValid } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -306,7 +306,7 @@ export default function InviteRegister() {
                 </Label>
               </div>
 
-              <Button type="submit" className="w-full" disabled={submitting || !consent}>
+              <Button type="submit" className="w-full" disabled={submitting || !consent || !isPhoneComplete(phone)}>
                 {submitting ? (
                   <>
                     <Icon name="Loader2" size={16} className="animate-spin mr-2" />

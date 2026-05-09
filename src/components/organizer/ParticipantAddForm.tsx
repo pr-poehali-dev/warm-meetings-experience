@@ -1,5 +1,5 @@
 import { OrgEvent } from "@/lib/organizer-api";
-import { formatPhone } from "@/hooks/usePhoneMask";
+import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,7 +102,7 @@ export default function ParticipantAddForm({ event, addForm, saving, onFormChang
           )}
         </div>
         <div className="flex gap-2">
-          <Button size="sm" onClick={onSubmit} disabled={saving}>
+          <Button size="sm" onClick={onSubmit} disabled={saving || !addForm.name.trim() || !isPhoneComplete(addForm.phone)}>
             {saving && <Icon name="Loader2" size={14} className="animate-spin mr-1" />}
             Добавить
           </Button>

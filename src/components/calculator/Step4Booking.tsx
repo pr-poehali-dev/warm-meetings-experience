@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import ConsentModal from "@/components/ConsentModal";
-import { formatPhone } from "@/hooks/usePhoneMask";
+import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 
 interface Step4BookingProps {
   name: string;
@@ -109,7 +109,7 @@ const Step4Booking: React.FC<Step4BookingProps> = ({
         </Button>
         <Button
           onClick={onSubmit}
-          disabled={!name || !phone || !consentChecked}
+          disabled={!name || !isPhoneComplete(phone) || !consentChecked}
           className="flex-1 bg-nature-brown hover:bg-nature-forest disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Забронировать

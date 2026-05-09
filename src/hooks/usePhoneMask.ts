@@ -12,6 +12,10 @@ export function formatPhone(raw: string): string {
   return result;
 }
 
+export function isPhoneComplete(phone: string): boolean {
+  return phone.replace(/\D/g, "").length === 11;
+}
+
 export function usePhoneMask(onChange: (value: string) => void) {
   return useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
-import { formatPhone } from '@/hooks/usePhoneMask';
+import { formatPhone, isPhoneComplete } from '@/hooks/usePhoneMask';
 import FUNC_URLS from '../../backend/func2url.json';
 
 interface BookingWidgetProps {
@@ -301,7 +301,7 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({ packageId, serviceAreaId,
               type="submit"
               size="lg"
               className="w-full bg-nature-brown hover:bg-nature-forest text-white"
-              disabled={loading}
+              disabled={loading || !isPhoneComplete(bookingData.customer_phone) || !bookingData.customer_name.trim()}
             >
               {loading ? 'Создание...' : 'Забронировать слот (20 минут)'}
             </Button>

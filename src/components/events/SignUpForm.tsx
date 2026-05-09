@@ -12,7 +12,7 @@ import {
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { signupsApi } from "@/lib/api";
-import { formatPhone } from "@/hooks/usePhoneMask";
+import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import { HttpError } from "@/lib/http";
 import ConsentModal from "@/components/ConsentModal";
 import { useAuth } from "@/contexts/AuthContext";
@@ -137,7 +137,7 @@ export default function SignUpForm({
 
   const errors = {
     name: !name.trim(),
-    phone: !phone.trim() || phone.trim().length < 6,
+    phone: !isPhoneComplete(phone),
     email: !email.trim() || !/^\S+@\S+\.\S+$/.test(email.trim()),
     telegramChannel: preferredChannel === "telegram" && !telegram.trim(),
     vkChannel: preferredChannel === "vk" && !vkContact.trim(),

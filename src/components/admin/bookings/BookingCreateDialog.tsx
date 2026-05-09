@@ -1,5 +1,5 @@
 import Icon from "@/components/ui/icon";
-import { formatPhone } from "@/hooks/usePhoneMask";
+import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -155,7 +155,7 @@ const BookingCreateDialog = ({
           </Button>
           <Button
             onClick={onCreate}
-            disabled={saving}
+            disabled={saving || !isPhoneComplete(form.client_phone) || !form.client_name.trim()}
             className="bg-nature-forest hover:bg-nature-forest/90 text-white"
           >
             {saving && <Icon name="Loader2" size={16} className="animate-spin" />}
