@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import { mastersApi, Master } from "@/lib/masters-api";
 import { masterCalendarApi, masterBookingsApi, MasterService, MasterSlot, MasterReview } from "@/lib/master-calendar-api";
 import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
+import { formatPhone } from "@/hooks/usePhoneMask";
 import func2url from "../../backend/func2url.json";
 
 const VIDEOS_API = func2url["media-api"];
@@ -144,8 +145,8 @@ function BookingModal({ slot, service, masterName, onClose, onSuccess }: Booking
             <input
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+7 (999) 000-00-00"
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
+              placeholder="+7(___) ___-__-__"
               required
               className="w-full px-3 py-2.5 rounded-xl border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/30 transition"
             />

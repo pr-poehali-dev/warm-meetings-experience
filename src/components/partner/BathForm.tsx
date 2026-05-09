@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
+import { formatPhone } from "@/hooks/usePhoneMask";
 import BathMediaUpload, { MediaItem } from "@/components/admin/BathMediaUpload";
 import ExternalVideoBlock from "@/components/video/ExternalVideoBlock";
 
@@ -164,9 +165,9 @@ export default function BathForm({ bath, onSaved, onCancel }: BathFormProps) {
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Телефон</label>
               <input
                 className="w-full px-3 py-2 text-sm bg-muted/40 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="+7 999 123-45-67"
+                placeholder="+7(___) ___-__-__"
                 value={form.phone || ""}
-                onChange={(e) => set("phone", e.target.value)}
+                onChange={(e) => set("phone", formatPhone(e.target.value))}
               />
             </div>
           </div>

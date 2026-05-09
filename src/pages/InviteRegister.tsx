@@ -9,6 +9,7 @@ import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
+import { formatPhone } from "@/hooks/usePhoneMask";
 import { format, parseISO, isValid } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -258,9 +259,9 @@ export default function InviteRegister() {
                 <Input
                   id="phone"
                   type="tel"
-                  placeholder="+7 (999) 123-45-67"
+                  placeholder="+7(___) ___-__-__"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(formatPhone(e.target.value))}
                   required
                 />
               </div>

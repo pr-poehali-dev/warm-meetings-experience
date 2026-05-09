@@ -1,4 +1,5 @@
 import { OrgEvent } from "@/lib/organizer-api";
+import { formatPhone } from "@/hooks/usePhoneMask";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +40,7 @@ export default function ParticipantAddForm({ event, addForm, saving, onFormChang
           </div>
           <div>
             <Label className="text-xs">Телефон *</Label>
-            <Input value={addForm.phone} onChange={(e) => onFormChange({ ...addForm, phone: e.target.value })} placeholder="+7 999 000 00 00" />
+            <Input type="tel" value={addForm.phone} onChange={(e) => onFormChange({ ...addForm, phone: formatPhone(e.target.value) })} placeholder="+7(___) ___-__-__" />
           </div>
           <div>
             <Label className="text-xs">Email</Label>

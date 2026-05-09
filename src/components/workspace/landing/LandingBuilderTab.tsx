@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatPhone } from "@/hooks/usePhoneMask";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   DragEndEvent,
@@ -294,7 +295,7 @@ function BlockEditor({ id, data, updateField, onAvatarUpload, onPhotoUpload, onA
   if (id === "contacts") {
     return (
       <div className="grid sm:grid-cols-2 gap-2">
-        <div><Label className="text-xs">Телефон</Label><Input value={c.phone || ""} onChange={(e) => updateField("contacts", { ...c, phone: e.target.value })} placeholder="+7..." /></div>
+        <div><Label className="text-xs">Телефон</Label><Input type="tel" value={c.phone || ""} onChange={(e) => updateField("contacts", { ...c, phone: formatPhone(e.target.value) })} placeholder="+7(___) ___-__-__" /></div>
         <div><Label className="text-xs">Email</Label><Input value={c.email || ""} onChange={(e) => updateField("contacts", { ...c, email: e.target.value })} /></div>
         <div><Label className="text-xs">Telegram</Label><Input value={c.telegram || ""} onChange={(e) => updateField("contacts", { ...c, telegram: e.target.value })} placeholder="@username" /></div>
         <div><Label className="text-xs">WhatsApp</Label><Input value={c.whatsapp || ""} onChange={(e) => updateField("contacts", { ...c, whatsapp: e.target.value })} /></div>

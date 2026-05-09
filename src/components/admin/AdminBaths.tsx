@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { bathsApi, Bath } from "@/lib/baths-api";
+import { formatPhone } from "@/hooks/usePhoneMask";
 import BathMediaUpload, { MediaItem } from "@/components/admin/BathMediaUpload";
 import func2url from "../../../backend/func2url.json";
 
@@ -237,8 +238,8 @@ export default function AdminBaths() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
               <input
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="+7 (999) 123-45-67"
+                onChange={(e) => setForm({ ...form, phone: formatPhone(e.target.value) })}
+                placeholder="+7(___) ___-__-__"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

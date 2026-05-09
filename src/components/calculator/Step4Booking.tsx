@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import ConsentModal from "@/components/ConsentModal";
+import { formatPhone } from "@/hooks/usePhoneMask";
 
 interface Step4BookingProps {
   name: string;
@@ -52,8 +53,8 @@ const Step4Booking: React.FC<Step4BookingProps> = ({
         <Label className="text-nature-forest mb-2 block">Телефон *</Label>
         <Input
           value={phone}
-          onChange={(e) => onPhoneChange(e.target.value)}
-          placeholder="+7 (___) ___-__-__"
+          onChange={(e) => onPhoneChange(formatPhone(e.target.value))}
+          placeholder="+7(___) ___-__-__"
           type="tel"
         />
       </div>

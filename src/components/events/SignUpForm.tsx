@@ -12,6 +12,7 @@ import {
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { signupsApi } from "@/lib/api";
+import { formatPhone } from "@/hooks/usePhoneMask";
 import { HttpError } from "@/lib/http";
 import ConsentModal from "@/components/ConsentModal";
 import { useAuth } from "@/contexts/AuthContext";
@@ -441,9 +442,9 @@ export default function SignUpForm({
                     <Input
                       id="su-phone"
                       type="tel"
-                      placeholder="+7 (___) ___-__-__"
+                      placeholder="+7(___) ___-__-__"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(formatPhone(e.target.value))}
                       className={`mt-1.5 rounded-lg ${errBorder("phone")}`}
                     />
                     {showError("phone") && <p className="text-xs text-red-500 mt-1">Укажите корректный номер</p>}

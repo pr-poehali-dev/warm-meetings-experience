@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatPhone } from "@/hooks/usePhoneMask";
 import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
 import AppendixLinkModal from "@/components/AppendixLinkModal";
@@ -115,9 +116,9 @@ export default function Register() {
                 <Input
                   id="phone"
                   type="tel"
-                  placeholder="+7 (999) 123-45-67"
+                  placeholder="+7(___) ___-__-__"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(formatPhone(e.target.value))}
                   required
                 />
               </div>

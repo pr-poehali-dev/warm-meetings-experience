@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
+import { formatPhone } from '@/hooks/usePhoneMask';
 import FUNC_URLS from '../../backend/func2url.json';
 
 interface BookingWidgetProps {
@@ -272,8 +273,8 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({ packageId, serviceAreaId,
                 required
                 type="tel"
                 value={bookingData.customer_phone}
-                onChange={e => setBookingData({ ...bookingData, customer_phone: e.target.value })}
-                placeholder="+7 999 123 45 67"
+                onChange={e => setBookingData({ ...bookingData, customer_phone: formatPhone(e.target.value) })}
+                placeholder="+7(___) ___-__-__"
               />
             </div>
             

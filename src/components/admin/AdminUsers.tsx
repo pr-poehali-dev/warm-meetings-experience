@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/com
 import Icon from "@/components/ui/icon";
 import ConsentPhotoBadge from "@/components/ui/ConsentPhotoBadge";
 import { useStickyFilters } from "@/hooks/useStickyFilters";
+import { formatPhone } from "@/hooks/usePhoneMask";
 import AuditLogPanel from "@/components/admin/AuditLogPanel";
 import { toast } from "sonner";
 
@@ -316,7 +317,7 @@ export default function AdminUsers() {
                   </div>
                   <div>
                     <Label>Телефон</Label>
-                    <Input value={draft.phone} placeholder="+7..." onChange={(e) => setDraft((d) => ({ ...d, phone: e.target.value }))} />
+                    <Input type="tel" value={draft.phone} placeholder="+7(___) ___-__-__" onChange={(e) => setDraft((d) => ({ ...d, phone: formatPhone(e.target.value) }))} />
                   </div>
                   <div>
                     <Label>Telegram</Label>

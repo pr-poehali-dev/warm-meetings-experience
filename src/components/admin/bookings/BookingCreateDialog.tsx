@@ -1,4 +1,5 @@
 import Icon from "@/components/ui/icon";
+import { formatPhone } from "@/hooks/usePhoneMask";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,8 +67,8 @@ const BookingCreateDialog = ({
               <Label>Телефон <span className="text-red-500">*</span></Label>
               <Input
                 value={form.client_phone}
-                onChange={(e) => onFormChange({ ...form, client_phone: e.target.value })}
-                placeholder="+7 (999) 123-45-67"
+                onChange={(e) => onFormChange({ ...form, client_phone: formatPhone(e.target.value) })}
+                placeholder="+7(___) ___-__-__"
                 className="mt-1"
               />
             </div>
