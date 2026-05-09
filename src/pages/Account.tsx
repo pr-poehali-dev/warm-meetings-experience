@@ -231,7 +231,7 @@ export default function Account() {
                       </div>
                       <span className="text-sm font-medium">Добавить специализацию</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Пармастер, партнёр, организатор и другие роли</p>
+                    <p className="text-xs text-muted-foreground">Пармастер, управляющий, организатор и другие роли</p>
                     <Link to="/account?tab=roles" className="mt-auto">
                       <Button size="sm" variant="outline" className="w-full">Выбрать</Button>
                     </Link>
