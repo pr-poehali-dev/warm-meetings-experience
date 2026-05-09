@@ -45,14 +45,14 @@ const BookingCreateDialog = ({
 }: BookingCreateDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Icon name="Plus" size={20} className="text-nature-forest" />
             Новая запись
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 overflow-y-auto flex-1">
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 sm:col-span-1">
               <Label>Имя клиента <span className="text-red-500">*</span></Label>
@@ -149,7 +149,7 @@ const BookingCreateDialog = ({
             />
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 pt-2 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>

@@ -184,7 +184,7 @@ export default function RoleApplicationDialog({ role, onClose, onSuccess, initia
           </div>
         </div>
 
-        <DialogFooter className="flex-shrink-0 pt-2">
+        <DialogFooter className="flex-shrink-0 pt-2 border-t">
           <Button variant="outline" onClick={onClose} disabled={submitting}>
             Отмена
           </Button>

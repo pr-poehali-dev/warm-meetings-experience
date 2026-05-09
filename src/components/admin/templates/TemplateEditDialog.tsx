@@ -77,8 +77,8 @@ const TemplateEditDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[760px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[760px] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Icon
               name={editingTemplate ? "Pencil" : "Plus"}
@@ -88,7 +88,7 @@ const TemplateEditDialog = ({
             {editingTemplate ? "Редактировать шаблон" : "Новый шаблон"}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 overflow-y-auto flex-1">
           <div>
             <Label>Название шаблона <span className="text-red-500">*</span></Label>
             <Input
@@ -254,7 +254,7 @@ const TemplateEditDialog = ({
             </div>
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 pt-2 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>

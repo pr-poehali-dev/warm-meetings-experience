@@ -21,15 +21,15 @@ interface BookingDetailDialogProps {
 const BookingDetailDialog = ({ open, onOpenChange, booking, saving, onAction }: BookingDetailDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[520px] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Icon name="FileText" size={20} className="text-nature-forest" />
             Запись #{booking?.id}
           </DialogTitle>
         </DialogHeader>
         {booking && (
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 overflow-y-auto flex-1">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <span className="text-xs text-gray-500">Клиент</span>
@@ -122,7 +122,7 @@ const BookingDetailDialog = ({ open, onOpenChange, booking, saving, onAction }: 
             </div>
           </div>
         )}
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 pt-2 border-t">
           <div className="flex w-full gap-2 flex-wrap">
             {booking?.status === "pending" && booking.id && (
               <>

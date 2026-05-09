@@ -42,14 +42,14 @@ export const SlotCreateDialog = ({
 }: SlotDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[480px] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Icon name="Plus" size={20} className="text-nature-forest" />
             Добавить слот
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 overflow-y-auto flex-1">
           <div>
             <Label>Дата</Label>
             <Input
@@ -119,7 +119,7 @@ export const SlotCreateDialog = ({
             />
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 pt-2 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>
@@ -156,14 +156,14 @@ export const BlockCreateDialog = ({
 }: BlockDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[420px] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Icon name="Ban" size={20} className="text-red-500" />
             Заблокировать дни
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 overflow-y-auto flex-1">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>С</Label>
@@ -204,7 +204,7 @@ export const BlockCreateDialog = ({
             />
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 pt-2 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>
@@ -245,14 +245,14 @@ export const TemplateApplyDialog = ({
 }: TemplateDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Icon name="Copy" size={20} className="text-nature-olive" />
             Применить шаблон
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 overflow-y-auto flex-1">
           <div>
             <Label>Шаблон</Label>
             <Select
@@ -317,7 +317,7 @@ export const TemplateApplyDialog = ({
             </div>
           )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 pt-2 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>

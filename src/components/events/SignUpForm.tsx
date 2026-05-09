@@ -249,7 +249,7 @@ export default function SignUpForm({
       </Button>
 
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden">
+        <DialogContent className="sm:max-w-lg p-0 gap-0 flex flex-col">
 
           {/* ── УСПЕХ ─────────────────────────────────────────────── */}
           {screen === "success" && (
@@ -354,7 +354,7 @@ export default function SignUpForm({
                 )}
               </DialogHeader>
 
-              <form onSubmit={handleSubmit} className="px-6 py-5 pb-8 space-y-5 max-h-[65vh] overflow-y-auto">
+              <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
                 {/* honeypot — скрытое поле для ботов */}
                 <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", top: "auto", width: 1, height: 1, overflow: "hidden" }}>
                   <label htmlFor="su-website">Website</label>
@@ -573,18 +573,22 @@ export default function SignUpForm({
                   </label>
                 </div>
 
+              </form>
+              <div className="px-6 pb-6 pt-3 flex-shrink-0 border-t">
                 <Button
                   type="submit"
+                  form="signup-form"
                   disabled={loading}
                   className="w-full rounded-xl gap-2"
                   size="lg"
+                  onClick={handleSubmit}
                 >
                   {loading
                     ? <><Icon name="Loader2" size={16} className="animate-spin" /> Отправляю...</>
                     : <><Icon name="CalendarCheck" size={16} /> Участвую</>
                   }
                 </Button>
-              </form>
+              </div>
             </>
           )}
 

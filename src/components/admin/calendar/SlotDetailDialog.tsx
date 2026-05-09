@@ -41,15 +41,15 @@ const SlotDetailDialog = ({
 }: SlotDetailDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[520px] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Icon name="CalendarClock" size={20} className="text-nature-forest" />
             Детали слота
           </DialogTitle>
         </DialogHeader>
         {slot && (
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 overflow-y-auto flex-1">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <span className="text-xs text-gray-500">Время</span>
@@ -176,7 +176,7 @@ const SlotDetailDialog = ({
             )}
           </div>
         )}
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="flex-col sm:flex-row gap-2 flex-shrink-0 pt-2 border-t">
           <div className="flex flex-wrap gap-2 mr-auto">
             {slot?.id && slot.status !== "booked" && slot.status !== "blocked" && onBlockSlot && (
               <Button
