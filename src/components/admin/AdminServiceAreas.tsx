@@ -240,14 +240,14 @@ const AdminServiceAreas = () => {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>
               {editingServiceArea ? "Редактировать зону" : "Новая зона"}
             </DialogTitle>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form id="area-form" onSubmit={handleSubmit} className="space-y-4 overflow-y-auto flex-1 py-1">
             <div>
               <Label htmlFor="name">Название зоны</Label>
               <Input
@@ -274,19 +274,19 @@ const AdminServiceAreas = () => {
               </p>
             </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsDialogOpen(false)}
-              >
-                Отмена
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Сохранение..." : "Сохранить"}
-              </Button>
-            </DialogFooter>
           </form>
+          <DialogFooter className="flex-shrink-0 pt-2 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDialogOpen(false)}
+            >
+              Отмена
+            </Button>
+            <Button type="submit" form="area-form" disabled={loading}>
+              {loading ? "Сохранение..." : "Сохранить"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

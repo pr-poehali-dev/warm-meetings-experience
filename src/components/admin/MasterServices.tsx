@@ -324,8 +324,8 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[480px] max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[480px] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Icon
                 name={editingService ? "Pencil" : "Plus"}
@@ -335,7 +335,7 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
               {editingService ? "Редактировать услугу" : "Новая услуга"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 overflow-y-auto flex-1">
             <div>
               <Label>Название <span className="text-red-500">*</span></Label>
               <Input
@@ -402,7 +402,7 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 pt-2 border-t">
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Отмена
             </Button>

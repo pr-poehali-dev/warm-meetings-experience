@@ -255,14 +255,14 @@ const AdminPackages = () => {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>
               {editingPackage ? "Редактировать пакет" : "Новый пакет"}
             </DialogTitle>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form id="pkg-form" onSubmit={handleSubmit} className="space-y-4 overflow-y-auto flex-1 py-1">
             <div>
               <Label htmlFor="name">Название</Label>
               <Input
@@ -308,19 +308,19 @@ const AdminPackages = () => {
               </div>
             </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsDialogOpen(false)}
-              >
-                Отмена
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Сохранение..." : "Сохранить"}
-              </Button>
-            </DialogFooter>
           </form>
+          <DialogFooter className="flex-shrink-0 pt-2 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDialogOpen(false)}
+            >
+              Отмена
+            </Button>
+            <Button type="submit" form="pkg-form" disabled={loading}>
+              {loading ? "Сохранение..." : "Сохранить"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

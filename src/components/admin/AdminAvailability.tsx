@@ -256,14 +256,14 @@ const AdminAvailability = () => {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>
               {editingBlock ? "Редактировать блокировку" : "Новая блокировка"}
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form id="avail-form" onSubmit={handleSubmit} className="space-y-4 overflow-y-auto flex-1 py-1">
             <div>
               <Label htmlFor="title">Название *</Label>
               <Input
@@ -318,20 +318,20 @@ const AdminAvailability = () => {
               />
             </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsDialogOpen(false)}
-                disabled={loading}
-              >
-                Отмена
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Сохранение..." : "Сохранить"}
-              </Button>
-            </DialogFooter>
           </form>
+          <DialogFooter className="flex-shrink-0 pt-2 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDialogOpen(false)}
+              disabled={loading}
+            >
+              Отмена
+            </Button>
+            <Button type="submit" form="avail-form" disabled={loading}>
+              {loading ? "Сохранение..." : "Сохранить"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -46,14 +46,14 @@ const TemplateApplyDialog = ({
 }: TemplateApplyDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[440px] max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[440px] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Icon name="Play" size={20} className="text-nature-forest" />
             Применить шаблон
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 overflow-y-auto flex-1">
           {template && (
             <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
               <span className="text-xs text-gray-500">Шаблон</span>
@@ -98,7 +98,7 @@ const TemplateApplyDialog = ({
             />
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 pt-2 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>

@@ -208,14 +208,14 @@ const AdminSettings = () => {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>
               {editingSetting ? "Редактировать настройку" : "Новая настройка"}
             </DialogTitle>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form id="settings-form" onSubmit={handleSubmit} className="space-y-4 overflow-y-auto flex-1 py-1">
             <div>
               <Label htmlFor="setting_key">Ключ настройки</Label>
               <Input
@@ -252,19 +252,19 @@ const AdminSettings = () => {
               />
             </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsDialogOpen(false)}
-              >
-                Отмена
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Сохранение..." : "Сохранить"}
-              </Button>
-            </DialogFooter>
           </form>
+          <DialogFooter className="flex-shrink-0 pt-2 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDialogOpen(false)}
+            >
+              Отмена
+            </Button>
+            <Button type="submit" form="settings-form" disabled={loading}>
+              {loading ? "Сохранение..." : "Сохранить"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
