@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAccount } from "@/hooks/useAccount";
 import { useAuth } from "@/contexts/AuthContext";
+import { userProfileApi } from "@/lib/user-api";
 import AccountHeader from "@/components/account/AccountHeader";
 import ProfileCard from "@/components/account/ProfileCard";
 import GrowthSection from "@/components/account/GrowthSection";
@@ -18,6 +19,7 @@ import MyDataExport from "@/components/account/MyDataExport";
 import MyArticles from "@/components/account/MyArticles";
 import MyCalendar from "@/components/account/MyCalendar";
 import NotificationsSection from "@/components/account/NotificationsSection";
+import InboxSection from "@/components/account/InboxSection";
 import FavoritesSection from "@/components/account/FavoritesSection";
 import WalletSection from "@/components/account/WalletSection";
 import ReferralsSection from "@/components/account/ReferralsSection";
@@ -39,7 +41,20 @@ export default function Account() {
   const tab = (searchParams.get("tab") as Tab) || "main";
   const initialMain = (searchParams.get("section") as MainTab) || "profile";
   const [mainTab, setMainTab] = useState<MainTab>(initialMain);
+  const [unreadInbox, setUnreadInbox] = useState(0);
   const { user: authUser, updateUser } = useAuth();
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = () => {
+      userProfileApi.getInboxUnreadCount()
+        .then((r) => { if (!cancelled) setUnreadInbox(r.unread || 0); })
+        .catch(() => {});
+    };
+    tick();
+    const id = setInterval(tick, 60000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [mainTab]);
 
   const {
     user,
@@ -118,12 +133,17 @@ export default function Account() {
               <button
                 key={t.key}
                 onClick={() => setMainTab(t.key)}
-                className={`flex-1 flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg text-xs font-medium transition-all ${
+                className={`relative flex-1 flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg text-xs font-medium transition-all ${
                   mainTab === t.key ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Icon name={t.icon} size={15} />
                 <span className="hidden sm:block">{t.label}</span>
+                {t.key === "notify" && unreadInbox > 0 && (
+                  <span className="absolute top-1 right-2 sm:right-3 bg-primary text-primary-foreground text-[10px] min-w-[16px] h-4 px-1 rounded-full font-semibold flex items-center justify-center">
+                    {unreadInbox > 9 ? "9+" : unreadInbox}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -282,6 +302,7 @@ export default function Account() {
           {/* Уведомления */}
           {mainTab === "notify" && (
             <div className="space-y-4">
+              <InboxSection />
               <NotificationsSection />
             </div>
           )}

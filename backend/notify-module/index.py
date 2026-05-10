@@ -252,9 +252,11 @@ def handle_recipients_get(cur, user_id, params, s):
         has_vk = bool(d.get("vk_id") and d.get("vk_notify_allowed"))
         has_tg = bool(d.get("tg_chat_id") and d.get("tg_notify_allowed"))
         has_email = bool(d.get("email") and "@vk.local" not in (d.get("email") or ""))
+        has_site = bool(d.get("user_id"))
         d["has_vk"] = has_vk
         d["has_tg"] = has_tg
         d["has_email"] = has_email
+        d["has_site"] = has_site
         # Авто-канал: предпочтение пользователя → лучший доступный
         pref = d.get("preferred_channel") or "site"
         auto = None
@@ -264,10 +266,13 @@ def handle_recipients_get(cur, user_id, params, s):
             auto = "telegram"
         elif pref == "email" and has_email:
             auto = "email"
+        elif pref == "site" and has_site:
+            auto = "site"
         else:
             if has_vk: auto = "vk"
             elif has_tg: auto = "telegram"
             elif has_email: auto = "email"
+            elif has_site: auto = "site"
         d["auto_channel"] = auto
         recipients.append(d)
     return ok({"recipients": recipients, "total": len(recipients)})
@@ -302,7 +307,7 @@ def handle_send(cur, conn, user_id, body, s):
     # Получаем получателей с полной информацией о каналах
     base_select = f"""
         SELECT es.id, es.name, es.email, es.status, es.preferred_channel,
-               u.vk_id, u.vk_notify_allowed,
+               u.id as user_id_v, u.vk_id, u.vk_notify_allowed,
                u.tg_chat_id, u.tg_notify_allowed,
                e.id as eid, e.title, e.event_date, e.start_time, e.price_amount,
                b.name as bath_name
@@ -323,36 +328,40 @@ def handle_send(cur, conn, user_id, body, s):
     if not signups:
         return err("Нет получателей")
 
-    def pick_channel(pref, has_vk, has_tg, has_email, requested):
+    def pick_channel(pref, has_vk, has_tg, has_email, has_site, requested):
         """Выбор фактического канала. requested='auto' — умный выбор."""
         if requested == "auto":
             if pref == "vk" and has_vk: return "vk"
             if pref == "telegram" and has_tg: return "telegram"
             if pref == "email" and has_email: return "email"
+            if pref == "site" and has_site: return "site"
             if has_vk: return "vk"
             if has_tg: return "telegram"
             if has_email: return "email"
+            if has_site: return "site"
             return None
         if requested == "vk" and has_vk: return "vk"
         if requested == "telegram" and has_tg: return "telegram"
         if requested == "email" and has_email: return "email"
+        if requested == "site" and has_site: return "site"
         return None
 
     sent, failed, skipped = 0, 0, 0
-    by_channel = {"vk": 0, "telegram": 0, "email": 0}
+    by_channel = {"vk": 0, "telegram": 0, "email": 0, "site": 0}
     log_rows = []
     failures_detail = []
 
     for row in signups:
-        (sid, name, email, status, pref,
+        (sid, name, email, status, pref, user_id_v,
          vk_id, vk_allowed, tg_chat_id, tg_allowed,
          eid, title, edate, etime, price, bath_name) = row
 
         has_vk = bool(vk_id and vk_allowed)
         has_tg = bool(tg_chat_id and tg_allowed)
         has_email = bool(email and "@vk.local" not in (email or ""))
+        has_site = bool(user_id_v)
 
-        actual = pick_channel(pref or "site", has_vk, has_tg, has_email, channel)
+        actual = pick_channel(pref or "site", has_vk, has_tg, has_email, has_site, channel)
 
         event_data = {"title": title, "event_date": edate, "start_time": etime,
                       "price_amount": price, "bath_name": bath_name}
@@ -379,6 +388,9 @@ def handle_send(cur, conn, user_id, body, s):
                 ok_send = True
             except Exception as e:
                 err_msg = str(e)
+        elif actual == "site":
+            # Канал «Сайт» — доставка происходит через INSERT в guest_messages ниже
+            ok_send = True
 
         if ok_send:
             sent += 1

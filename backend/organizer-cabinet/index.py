@@ -1389,6 +1389,14 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, headers):
                     delivered = False
                     error_msg = str(e)
                     errors.append({'signup_id': sid, 'channel': 'telegram', 'error': str(e)})
+            elif channel == 'site':
+                # Канал «Сайт» — гость увидит сообщение в своём кабинете
+                if signup.get('user_id'):
+                    delivered = True
+                else:
+                    delivered = False
+                    error_msg = 'Гость не зарегистрирован — нет доступа в кабинет'
+                    errors.append({'signup_id': sid, 'channel': 'site', 'error': error_msg})
 
             delivered_sql = 'NULL' if delivered is None else ('TRUE' if delivered else 'FALSE')
             cur.execute(f"""

@@ -82,6 +82,7 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
     if (channel === "vk") return r.has_vk ? "vk" : null;
     if (channel === "telegram") return r.has_tg ? "telegram" : null;
     if (channel === "email") return r.has_email ? "email" : null;
+    if (channel === "site") return r.has_site ? "site" : null;
     return null;
   };
 
@@ -146,10 +147,23 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
               {CHANNEL_LABELS[ch]}
             </button>
           ))}
+          <button
+            onClick={() => setChannel("site")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${channel === "site" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+            title="Гость увидит сообщение в своём личном кабинете"
+          >
+            <Icon name="Globe" size={12} />
+            На сайте
+          </button>
         </div>
         {channel === "auto" && (
           <p className="text-[11px] text-muted-foreground">
-            Сообщение уйдёт каждому на доступный канал — VK, Telegram или Email
+            Каждому — лучший доступный канал: VK → Telegram → Email → На сайте
+          </p>
+        )}
+        {channel === "site" && (
+          <p className="text-[11px] text-muted-foreground">
+            Сообщение появится в кабинете гостя во вкладке «Уведомления»
           </p>
         )}
       </div>
@@ -230,8 +244,8 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
               {filtered.map((r) => {
                 const ch = recipientChannel(r);
                 const hasContact = !!ch;
-                const chLabel = ch === "vk" ? "ВКонтакте" : ch === "telegram" ? "Telegram" : ch === "email" ? "Email" : "нет канала";
-                const chIcon = ch === "vk" ? "MessageCircle" : ch === "telegram" ? "Send" : ch === "email" ? "Mail" : "AlertCircle";
+                const chLabel = ch === "vk" ? "ВКонтакте" : ch === "telegram" ? "Telegram" : ch === "email" ? "Email" : ch === "site" ? "На сайте" : "нет канала";
+                const chIcon = ch === "vk" ? "MessageCircle" : ch === "telegram" ? "Send" : ch === "email" ? "Mail" : ch === "site" ? "Globe" : "AlertCircle";
                 return (
                   <div key={r.id}
                     onClick={() => toggleOne(r.id)}

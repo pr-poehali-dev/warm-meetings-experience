@@ -171,6 +171,20 @@ def handler(event, context):
         if method == 'GET':
             return handle_get_referrals(cur, conn, schema, user)
 
+    if resource == 'inbox':
+        if method == 'GET':
+            return handle_inbox_list(cur, conn, schema, user, params)
+
+    if resource == 'inbox_read':
+        if method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            return handle_inbox_read(cur, conn, schema, user, body)
+
+    if resource == 'inbox_reply':
+        if method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            return handle_inbox_reply(cur, conn, schema, user, body)
+
     conn.close()
     return respond(400, {'error': 'Unknown resource'})
 
@@ -909,3 +923,127 @@ def handle_get_referrals(cur, conn, schema, user):
         'total_invited': len(invited),
         'total_bonuses_earned': sum(1 for r in invited if r['bonus_paid'])
     })
+
+
+# =============================================================================
+# INBOX (входящие сообщения от организаторов на канал «Сайт»)
+# =============================================================================
+
+def handle_inbox_list(cur, conn, schema, user, params):
+    """Список сообщений пользователя из всех событий, на которые он записан.
+    По умолчанию возвращает все исходящие от организаторов (что мы получили).
+    Параметр unread=1 — только непрочитанные. Параметр count=1 — только число.
+    """
+    uid = user['id']
+    only_unread = params.get('unread') == '1'
+    count_only = params.get('count') == '1'
+
+    if count_only:
+        cur.execute(f"""
+            SELECT COUNT(*) AS n
+            FROM {schema}.guest_messages gm
+            JOIN {schema}.event_signups s ON s.id = gm.signup_id
+            WHERE s.user_id = {uid}
+              AND gm.direction = 'out'
+              AND gm.read_at IS NULL
+        """)
+        row = cur.fetchone()
+        conn.close()
+        return respond(200, {'unread': int(row['n']) if row else 0})
+
+    where_unread = "AND gm.read_at IS NULL" if only_unread else ""
+    cur.execute(f"""
+        SELECT gm.id, gm.signup_id, gm.event_id, gm.direction, gm.channel,
+               gm.body, gm.delivered, gm.created_at, gm.read_at,
+               e.title AS event_title,
+               e.event_date,
+               e.start_time,
+               u.id AS organizer_id,
+               u.name AS organizer_name,
+               u.avatar_url AS organizer_avatar
+        FROM {schema}.guest_messages gm
+        JOIN {schema}.event_signups s ON s.id = gm.signup_id
+        JOIN {schema}.events e ON e.id = gm.event_id
+        JOIN {schema}.users u ON u.id = e.organizer_id
+        WHERE s.user_id = {uid}
+          {where_unread}
+        ORDER BY gm.created_at DESC
+        LIMIT 200
+    """)
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return respond(200, {'messages': rows, 'total': len(rows)})
+
+
+def handle_inbox_read(cur, conn, schema, user, body):
+    """Пометить сообщения прочитанными. body: {ids: [..]} либо {signup_id: N} (все из диалога)."""
+    uid = user['id']
+    ids = body.get('ids') or []
+    signup_id = body.get('signup_id')
+
+    if ids:
+        id_list = ",".join(str(int(i)) for i in ids)
+        cur.execute(f"""
+            UPDATE {schema}.guest_messages gm
+            SET read_at = NOW()
+            FROM {schema}.event_signups s
+            WHERE gm.signup_id = s.id
+              AND s.user_id = {uid}
+              AND gm.direction = 'out'
+              AND gm.read_at IS NULL
+              AND gm.id IN ({id_list})
+        """)
+    elif signup_id:
+        cur.execute(f"""
+            UPDATE {schema}.guest_messages gm
+            SET read_at = NOW()
+            FROM {schema}.event_signups s
+            WHERE gm.signup_id = s.id
+              AND s.user_id = {uid}
+              AND s.id = {int(signup_id)}
+              AND gm.direction = 'out'
+              AND gm.read_at IS NULL
+        """)
+    else:
+        cur.execute(f"""
+            UPDATE {schema}.guest_messages gm
+            SET read_at = NOW()
+            FROM {schema}.event_signups s
+            WHERE gm.signup_id = s.id
+              AND s.user_id = {uid}
+              AND gm.direction = 'out'
+              AND gm.read_at IS NULL
+        """)
+    conn.commit()
+    conn.close()
+    return respond(200, {'ok': True})
+
+
+def handle_inbox_reply(cur, conn, schema, user, body):
+    """Ответ организатору. Создаёт запись direction='in' channel='site'."""
+    uid = user['id']
+    signup_id = body.get('signup_id')
+    text = (body.get('message') or '').strip()
+    if not signup_id or not text:
+        conn.close()
+        return respond(400, {'error': 'signup_id и message обязательны'})
+
+    cur.execute(f"""
+        SELECT s.id, s.event_id FROM {schema}.event_signups s
+        WHERE s.id = {int(signup_id)} AND s.user_id = {uid}
+    """)
+    sig = cur.fetchone()
+    if not sig:
+        conn.close()
+        return respond(404, {'error': 'Запись не найдена'})
+
+    safe_text = text.replace("$msg$", "")
+    cur.execute(f"""
+        INSERT INTO {schema}.guest_messages (event_id, signup_id, direction, channel, body, delivered)
+        VALUES ({sig['event_id']}, {sig['id']}, 'in', 'site', $msg${safe_text}$msg$, TRUE)
+        RETURNING id, created_at
+    """)
+    new_msg = cur.fetchone()
+    conn.commit()
+    conn.close()
+    return respond(200, {'ok': True, 'id': new_msg['id'], 'created_at': str(new_msg['created_at'])})

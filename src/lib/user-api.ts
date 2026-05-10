@@ -129,7 +129,45 @@ export const userProfileApi = {
 
   getReferrals: (): Promise<{ referral_code: string; invited: ReferralInvite[]; total_invited: number; total_bonuses_earned: number }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=referrals`),
+
+  getInbox: (unread = false): Promise<{ messages: InboxMessage[]; total: number }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=inbox${unread ? "&unread=1" : ""}`),
+
+  getInboxUnreadCount: (): Promise<{ unread: number }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=inbox&count=1`),
+
+  inboxRead: (data: { ids?: number[]; signup_id?: number }): Promise<{ ok: boolean }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=inbox_read`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+
+  inboxReply: (signup_id: number, message: string): Promise<{ ok: boolean; id: number; created_at: string }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=inbox_reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ signup_id, message }),
+    }),
 };
+
+export interface InboxMessage {
+  id: number;
+  signup_id: number;
+  event_id: number;
+  direction: "in" | "out";
+  channel: string;
+  body: string;
+  delivered: boolean | null;
+  created_at: string;
+  read_at: string | null;
+  event_title: string;
+  event_date: string | null;
+  start_time: string | null;
+  organizer_id: number;
+  organizer_name: string;
+  organizer_avatar: string | null;
+}
 
 export interface FavoriteItem {
   id: number;
