@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import secrets
 from datetime import datetime, timedelta
 
@@ -11,6 +12,9 @@ from shared import *
 
 TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
 
+VK_API_URL = "https://api.vk.com/method"
+VK_API_VERSION = "5.131"
+
 
 def trigger_tg_publish(event_id, organizer_id):
     try:
@@ -21,6 +25,34 @@ def trigger_tg_publish(event_id, organizer_id):
         )
     except Exception:
         pass
+
+
+def send_vk_message(vk_user_id, message):
+    """Отправка ЛС от имени сообщества VK. Возвращает (ok, error_msg)."""
+    token = os.environ.get("VK_COMMUNITY_TOKEN", "")
+    community_id = os.environ.get("VK_COMMUNITY_ID", "0")
+    if not token:
+        return False, "VK_COMMUNITY_TOKEN not set"
+    try:
+        r = http_requests.post(
+            f"{VK_API_URL}/messages.send",
+            data={
+                "peer_id": int(vk_user_id),
+                "message": message,
+                "random_id": random.randint(1, 2**31),
+                "group_id": int(community_id) if community_id else 0,
+                "access_token": token,
+                "v": VK_API_VERSION,
+            },
+            timeout=10,
+        )
+        result = r.json()
+        if "error" in result:
+            err = result["error"]
+            return False, f"code={err.get('error_code')} {err.get('error_msg')}"
+        return True, None
+    except Exception as e:
+        return False, str(e)
 
 
 def handler(event, context):
@@ -1313,10 +1345,12 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, headers):
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'signup_ids and message required'})}
 
         sent = []
+        errors = []
         for sid in signup_ids:
             cur.execute(f"""
                 SELECT s.id, s.name, s.phone, s.email, s.telegram, s.preferred_channel, s.user_id,
-                       u.tg_chat_id, u.vk_id, u.tg_notify_allowed, u.notify_email
+                       u.tg_chat_id, u.vk_id, u.tg_notify_allowed, u.vk_notify_allowed,
+                       u.notify_email, u.notify_vk, u.notify_telegram
                 FROM {schema}.event_signups s
                 LEFT JOIN {schema}.users u ON u.id = s.user_id
                 WHERE s.id = {sid}
@@ -1327,14 +1361,39 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, headers):
 
             channel = signup['preferred_channel'] or 'site'
             if channel == 'site':
-                if signup.get('tg_chat_id') and signup.get('tg_notify_allowed'):
+                if signup.get('vk_id') and signup.get('vk_notify_allowed'):
+                    channel = 'vk'
+                elif signup.get('tg_chat_id') and signup.get('tg_notify_allowed'):
                     channel = 'telegram'
                 elif signup.get('notify_email') and signup.get('email'):
                     channel = 'email'
 
+            delivered = None
+            error_msg = None
+
+            if channel == 'vk' and signup.get('vk_id'):
+                ok, err = send_vk_message(signup['vk_id'], text)
+                delivered = ok
+                if not ok:
+                    error_msg = err
+                    errors.append({'signup_id': sid, 'channel': 'vk', 'error': err})
+            elif channel == 'telegram' and signup.get('tg_chat_id'):
+                try:
+                    http_requests.post(
+                        TG_BOT_URL,
+                        json={'action': 'send_message', 'chat_id': signup['tg_chat_id'], 'text': text},
+                        timeout=8
+                    )
+                    delivered = True
+                except Exception as e:
+                    delivered = False
+                    error_msg = str(e)
+                    errors.append({'signup_id': sid, 'channel': 'telegram', 'error': str(e)})
+
+            delivered_sql = 'NULL' if delivered is None else ('TRUE' if delivered else 'FALSE')
             cur.execute(f"""
-                INSERT INTO {schema}.guest_messages (event_id, signup_id, direction, channel, body)
-                SELECT s.event_id, {sid}, 'out', '{channel}', $msg${text}$msg$
+                INSERT INTO {schema}.guest_messages (event_id, signup_id, direction, channel, body, delivered)
+                SELECT s.event_id, {sid}, 'out', '{channel}', $msg${text}$msg$, {delivered_sql}
                 FROM {schema}.event_signups s WHERE s.id = {sid}
             """)
 
@@ -1345,22 +1404,11 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, headers):
                 WHERE id = {sid}
             """)
 
-            if channel == 'telegram' and signup.get('tg_chat_id'):
-                try:
-                    tg_chat_id = signup['tg_chat_id']
-                    http_requests.post(
-                        TG_BOT_URL,
-                        json={'action': 'send_message', 'chat_id': tg_chat_id, 'text': text},
-                        timeout=8
-                    )
-                except Exception:
-                    pass
-
-            sent.append(sid)
+            sent.append({'signup_id': sid, 'channel': channel, 'delivered': delivered, 'error': error_msg})
 
         conn.commit()
         conn.close()
-        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'sent': sent})}
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'sent': sent, 'errors': errors})}
 
 
 def handle_notify_settings(event, method, cur, conn, user_id, schema, headers):

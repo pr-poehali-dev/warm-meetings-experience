@@ -229,7 +229,11 @@ export const organizerApi = {
   getMessages: (signupId: number): Promise<{ messages: GuestMessage[] }> =>
     authenticatedRequest(`${BASE}/?resource=messages&signup_id=${signupId}`),
 
-  sendMessages: (signupIds: number[], message: string): Promise<{ ok: boolean; sent: number[] }> =>
+  sendMessages: (signupIds: number[], message: string): Promise<{
+    ok: boolean;
+    sent: Array<{ signup_id: number; channel: string; delivered: boolean | null; error: string | null }>;
+    errors: Array<{ signup_id: number; channel: string; error: string }>;
+  }> =>
     authenticatedRequest(`${BASE}/?resource=messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

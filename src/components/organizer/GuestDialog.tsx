@@ -62,17 +62,35 @@ export default function GuestDialog({ guest, onClose }: Props) {
     if (!guest || !text.trim()) return;
     setSending(true);
     try {
-      await organizerApi.sendMessages([guest.id], text.trim());
+      const res = await organizerApi.sendMessages([guest.id], text.trim());
+      const result = res.sent?.[0];
+      const actualChannel = result?.channel || channel;
+      const delivered = result?.delivered ?? null;
       const newMsg: GuestMessage = {
         id: Date.now(),
         direction: "out",
-        channel,
+        channel: actualChannel,
         body: text.trim(),
-        delivered: null,
+        delivered,
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, newMsg]);
       setText("");
+
+      if (delivered === false) {
+        toast({
+          title: "Сообщение сохранено, но не доставлено",
+          description: result?.error || "Попробуй позже или проверь канал связи",
+          variant: "destructive",
+        });
+      } else if (delivered === true) {
+        toast({ title: "Сообщение отправлено", description: `Канал: ${CHANNEL_LABEL[actualChannel] || actualChannel}` });
+      } else {
+        toast({
+          title: "Сообщение сохранено",
+          description: "Прямая доставка по этому каналу пока не настроена",
+        });
+      }
     } catch {
       toast({ title: "Ошибка отправки", variant: "destructive" });
     } finally {
