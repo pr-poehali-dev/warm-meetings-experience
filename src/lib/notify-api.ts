@@ -19,6 +19,7 @@ async function req<T>(url: string, options?: RequestInit): Promise<T> {
 
 export type TriggerType = "manual" | "before_event" | "after_event" | "on_signup" | "on_status_change";
 export type NotifyChannel = "email" | "telegram" | "vk";
+export type SendChannel = NotifyChannel | "auto";
 
 export interface NotifyScenario {
   id: number;
@@ -41,8 +42,17 @@ export interface NotifyRecipient {
   email: string | null;
   telegram: string | null;
   status: string;
+  preferred_channel: string | null;
   user_id: number | null;
   tg_username: string | null;
+  vk_id: string | null;
+  vk_notify_allowed: boolean | null;
+  tg_chat_id: number | null;
+  tg_notify_allowed: boolean | null;
+  has_vk: boolean;
+  has_tg: boolean;
+  has_email: boolean;
+  auto_channel: NotifyChannel | null;
 }
 
 export interface NotifyLogEntry {
@@ -62,7 +72,10 @@ export interface NotifyLogEntry {
 export interface SendResult {
   sent: number;
   failed: number;
+  skipped?: number;
   total: number;
+  by_channel?: Record<string, number>;
+  failures?: Array<{ signup_id: number; name: string; channel?: string; reason: string }>;
 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -92,7 +105,7 @@ export const notifyApi = {
     event_id?: number;
     signup_ids?: number[];
     scenario_id?: number;
-    channel?: NotifyChannel;
+    channel?: SendChannel;
     subject?: string;
     body_html?: string;
   }): Promise<SendResult> {

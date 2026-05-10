@@ -12,6 +12,8 @@
 
 import json
 import os
+import random
+import re
 from datetime import datetime
 
 import psycopg2
@@ -19,6 +21,69 @@ import psycopg2.extras
 import requests
 
 from shared import *
+
+VK_API_URL = "https://api.vk.com/method"
+VK_API_VERSION = "5.131"
+TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
+
+
+def html_to_text(html):
+    """Грубая конвертация HTML в plain text для VK/Telegram."""
+    if not html:
+        return ""
+    text = re.sub(r"<br\s*/?>", "\n", html, flags=re.IGNORECASE)
+    text = re.sub(r"</p>", "\n\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"&nbsp;", " ", text)
+    text = re.sub(r"&amp;", "&", text)
+    text = re.sub(r"&lt;", "<", text)
+    text = re.sub(r"&gt;", ">", text)
+    text = re.sub(r"&quot;", '"', text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def send_vk_message(vk_user_id, message):
+    """Отправка ЛС в VK от имени сообщества. Возвращает (ok, error)."""
+    token = os.environ.get("VK_COMMUNITY_TOKEN", "")
+    community_id = os.environ.get("VK_COMMUNITY_ID", "0")
+    if not token:
+        return False, "VK_COMMUNITY_TOKEN not set"
+    try:
+        r = requests.post(
+            f"{VK_API_URL}/messages.send",
+            data={
+                "peer_id": int(vk_user_id),
+                "message": message,
+                "random_id": random.randint(1, 2**31),
+                "group_id": int(community_id) if community_id else 0,
+                "access_token": token,
+                "v": VK_API_VERSION,
+            },
+            timeout=10,
+        )
+        result = r.json()
+        if "error" in result:
+            err = result["error"]
+            return False, f"code={err.get('error_code')} {err.get('error_msg')}"
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
+def send_telegram_message(chat_id, message):
+    """Отправка сообщения в Telegram через бот-функцию. Возвращает (ok, error)."""
+    try:
+        r = requests.post(
+            TG_BOT_URL,
+            json={"action": "send_message", "chat_id": chat_id, "text": message},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            return False, f"TG status {r.status_code}"
+        return True, None
+    except Exception as e:
+        return False, str(e)
 
 
 def send_email_via_unisender(to_email, to_name, subject, body_html):
@@ -164,8 +229,11 @@ def handle_recipients_get(cur, user_id, params, s):
     if not event_id:
         return err("Укажите event_id")
     cur.execute(f"""
-        SELECT es.id, es.name, es.email, es.telegram, es.status,
-               u.id as user_id, u.telegram as tg_username
+        SELECT es.id, es.name, es.email, es.telegram, es.status, es.preferred_channel,
+               u.id as user_id, u.telegram as tg_username,
+               u.vk_id, u.vk_notify_allowed,
+               u.tg_chat_id, u.tg_notify_allowed,
+               u.notify_email, u.notify_vk, u.notify_telegram
         FROM {s}.event_signups es
         LEFT JOIN {s}.users u ON u.id = es.user_id
         JOIN {s}.events e ON e.id = es.event_id
@@ -174,18 +242,44 @@ def handle_recipients_get(cur, user_id, params, s):
         ORDER BY es.created_at
     """, (event_id, user_id))
     rows = cur.fetchall()
-    cols = ["id","name","email","telegram","status","user_id","tg_username"]
-    return ok({"recipients": [dict(zip(cols, r)) for r in rows], "total": len(rows)})
+    cols = ["id","name","email","telegram","status","preferred_channel","user_id","tg_username",
+            "vk_id","vk_notify_allowed","tg_chat_id","tg_notify_allowed",
+            "notify_email","notify_vk","notify_telegram"]
+    recipients = []
+    for r in rows:
+        d = dict(zip(cols, r))
+        # Определяем доступные каналы
+        has_vk = bool(d.get("vk_id") and d.get("vk_notify_allowed"))
+        has_tg = bool(d.get("tg_chat_id") and d.get("tg_notify_allowed"))
+        has_email = bool(d.get("email") and "@vk.local" not in (d.get("email") or ""))
+        d["has_vk"] = has_vk
+        d["has_tg"] = has_tg
+        d["has_email"] = has_email
+        # Авто-канал: предпочтение пользователя → лучший доступный
+        pref = d.get("preferred_channel") or "site"
+        auto = None
+        if pref == "vk" and has_vk:
+            auto = "vk"
+        elif pref == "telegram" and has_tg:
+            auto = "telegram"
+        elif pref == "email" and has_email:
+            auto = "email"
+        else:
+            if has_vk: auto = "vk"
+            elif has_tg: auto = "telegram"
+            elif has_email: auto = "email"
+        d["auto_channel"] = auto
+        recipients.append(d)
+    return ok({"recipients": recipients, "total": len(recipients)})
 
 
 def handle_send(cur, conn, user_id, body, s):
-    """Ручная отправка: по сценарию или прямая (subject + body_html)."""
+    """Ручная отправка: по сценарию или прямая. channel='auto' — умная отправка по доступному каналу."""
     event_id = body.get("event_id")
-    signup_ids = body.get("signup_ids", [])  # пустой = все участники события
+    signup_ids = body.get("signup_ids", [])
     scenario_id = body.get("scenario_id")
-    channel = body.get("channel", "email")
+    channel = body.get("channel", "auto")
 
-    # Получаем шаблон
     subject_tpl = body.get("subject", "")
     body_html_tpl = body.get("body_html", "")
 
@@ -200,68 +294,117 @@ def handle_send(cur, conn, user_id, body, s):
         subject_tpl = subject_tpl or sc[0]
         body_html_tpl = body_html_tpl or sc[1]
 
-    if not subject_tpl or not body_html_tpl:
-        return err("Укажите тему и текст письма")
+    if not body_html_tpl:
+        return err("Укажите текст сообщения")
+    if channel == "email" and not subject_tpl:
+        return err("Для email укажите тему письма")
 
-    # Получаем получателей
+    # Получаем получателей с полной информацией о каналах
+    base_select = f"""
+        SELECT es.id, es.name, es.email, es.status, es.preferred_channel,
+               u.vk_id, u.vk_notify_allowed,
+               u.tg_chat_id, u.tg_notify_allowed,
+               e.id as eid, e.title, e.event_date, e.start_time, e.price_amount,
+               b.name as bath_name
+        FROM {s}.event_signups es
+        LEFT JOIN {s}.users u ON u.id = es.user_id
+        JOIN {s}.events e ON e.id = es.event_id
+        LEFT JOIN {s}.baths b ON b.id = e.bath_id
+    """
     if signup_ids:
         id_list = ",".join(str(int(i)) for i in signup_ids)
-        cur.execute(f"""
-            SELECT es.id, es.name, es.email, es.status,
-                   e.id as eid, e.title, e.event_date, e.start_time, e.price_amount,
-                   b.name as bath_name
-            FROM {s}.event_signups es
-            JOIN {s}.events e ON e.id = es.event_id
-            LEFT JOIN {s}.baths b ON b.id = e.bath_id
-            WHERE es.id IN ({id_list}) AND e.organizer_id = %s
-        """, (user_id,))
+        cur.execute(base_select + f" WHERE es.id IN ({id_list}) AND e.organizer_id = %s", (user_id,))
     elif event_id:
-        cur.execute(f"""
-            SELECT es.id, es.name, es.email, es.status,
-                   e.id as eid, e.title, e.event_date, e.start_time, e.price_amount,
-                   b.name as bath_name
-            FROM {s}.event_signups es
-            JOIN {s}.events e ON e.id = es.event_id
-            LEFT JOIN {s}.baths b ON b.id = e.bath_id
-            WHERE es.event_id = %s AND e.organizer_id = %s
-              AND es.status NOT IN ('cancelled') AND es.email IS NOT NULL
-        """, (event_id, user_id))
+        cur.execute(base_select + " WHERE es.event_id = %s AND e.organizer_id = %s AND es.status NOT IN ('cancelled')", (event_id, user_id))
     else:
         return err("Укажите event_id или signup_ids")
 
     signups = cur.fetchall()
     if not signups:
-        return err("Нет получателей с email")
+        return err("Нет получателей")
 
-    sent, failed = 0, 0
+    def pick_channel(pref, has_vk, has_tg, has_email, requested):
+        """Выбор фактического канала. requested='auto' — умный выбор."""
+        if requested == "auto":
+            if pref == "vk" and has_vk: return "vk"
+            if pref == "telegram" and has_tg: return "telegram"
+            if pref == "email" and has_email: return "email"
+            if has_vk: return "vk"
+            if has_tg: return "telegram"
+            if has_email: return "email"
+            return None
+        if requested == "vk" and has_vk: return "vk"
+        if requested == "telegram" and has_tg: return "telegram"
+        if requested == "email" and has_email: return "email"
+        return None
+
+    sent, failed, skipped = 0, 0, 0
+    by_channel = {"vk": 0, "telegram": 0, "email": 0}
     log_rows = []
+    failures_detail = []
 
     for row in signups:
-        (sid, name, email, status,
+        (sid, name, email, status, pref,
+         vk_id, vk_allowed, tg_chat_id, tg_allowed,
          eid, title, edate, etime, price, bath_name) = row
 
-        if channel == "email":
-            if not email:
-                failed += 1
-                log_rows.append((scenario_id, user_id, eid, "email", None, email, name,
-                                  subject_tpl, "failed", "Нет email", None))
-                continue
-            event_data = {"title": title, "event_date": edate, "start_time": etime,
-                          "price_amount": price, "bath_name": bath_name}
-            vars_ = build_vars({"name": name}, event_data)
-            subj = render_template(subject_tpl, vars_)
-            html = render_template(body_html_tpl, vars_)
-            try:
-                send_email_via_unisender(email, name, subj, html)
-                sent += 1
-                log_rows.append((scenario_id, user_id, eid, "email", None, email, name,
-                                  subj, "sent", None, datetime.now()))
-            except Exception as e:
-                failed += 1
-                log_rows.append((scenario_id, user_id, eid, "email", None, email, name,
-                                  subj, "failed", str(e), None))
+        has_vk = bool(vk_id and vk_allowed)
+        has_tg = bool(tg_chat_id and tg_allowed)
+        has_email = bool(email and "@vk.local" not in (email or ""))
 
-    # Сохраняем лог
+        actual = pick_channel(pref or "site", has_vk, has_tg, has_email, channel)
+
+        event_data = {"title": title, "event_date": edate, "start_time": etime,
+                      "price_amount": price, "bath_name": bath_name}
+        vars_ = build_vars({"name": name}, event_data)
+        subj = render_template(subject_tpl, vars_) if subject_tpl else ""
+        html = render_template(body_html_tpl, vars_)
+        plain = html_to_text(html)
+
+        if not actual:
+            skipped += 1
+            failures_detail.append({"signup_id": sid, "name": name, "reason": "Нет доступного канала связи"})
+            log_rows.append((scenario_id, user_id, eid, "skip", None, email, name,
+                             subj, "failed", "Нет доступного канала", None))
+            continue
+
+        ok_send, err_msg = False, None
+        if actual == "vk":
+            ok_send, err_msg = send_vk_message(vk_id, plain)
+        elif actual == "telegram":
+            ok_send, err_msg = send_telegram_message(tg_chat_id, plain)
+        elif actual == "email":
+            try:
+                send_email_via_unisender(email, name, subj or title or "Уведомление", html)
+                ok_send = True
+            except Exception as e:
+                err_msg = str(e)
+
+        if ok_send:
+            sent += 1
+            by_channel[actual] = by_channel.get(actual, 0) + 1
+            log_rows.append((scenario_id, user_id, eid, actual, None, email, name,
+                             subj, "sent", None, datetime.now()))
+            # синхронизируем с диалогом гостя
+            try:
+                cur.execute(f"""
+                    INSERT INTO {s}.guest_messages (event_id, signup_id, direction, channel, body, delivered)
+                    VALUES (%s, %s, 'out', %s, %s, TRUE)
+                """, (eid, sid, actual, plain))
+                cur.execute(f"""
+                    UPDATE {s}.event_signups
+                    SET status = CASE WHEN status IN ('new', 'новая') THEN 'wrote' ELSE status END,
+                        wrote_at = NOW()
+                    WHERE id = %s
+                """, (sid,))
+            except Exception:
+                pass
+        else:
+            failed += 1
+            failures_detail.append({"signup_id": sid, "name": name, "channel": actual, "reason": err_msg or "Ошибка отправки"})
+            log_rows.append((scenario_id, user_id, eid, actual, None, email, name,
+                             subj, "failed", err_msg, None))
+
     for lr in log_rows:
         cur.execute(f"""
             INSERT INTO {s}.notify_log
@@ -271,7 +414,14 @@ def handle_send(cur, conn, user_id, body, s):
         """, lr)
     conn.commit()
 
-    return ok({"sent": sent, "failed": failed, "total": sent + failed})
+    return ok({
+        "sent": sent,
+        "failed": failed,
+        "skipped": skipped,
+        "total": sent + failed + skipped,
+        "by_channel": by_channel,
+        "failures": failures_detail,
+    })
 
 
 def handle_log_get(cur, user_id, params, s):

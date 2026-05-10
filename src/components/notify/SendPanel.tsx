@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
 import {
-  NotifyScenario, NotifyRecipient, NotifyChannel,
+  NotifyScenario, NotifyRecipient, SendChannel,
   CHANNEL_LABELS, CHANNEL_ICONS, TEMPLATE_VARS,
   notifyApi, SendResult,
 } from "@/lib/notify-api";
@@ -24,7 +24,7 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
   const [recipients, setRecipients] = useState<NotifyRecipient[]>([]);
   const [loadingRec, setLoadingRec] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [channel, setChannel] = useState<NotifyChannel>("email");
+  const [channel, setChannel] = useState<SendChannel>("auto");
   const [subject, setSubject] = useState("");
   const [bodyHtml, setBodyHtml] = useState("");
   const [sending, setSending] = useState(false);
@@ -77,14 +77,19 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
 
   const insertVar = (v: string) => setBodyHtml((b) => b + v);
 
-  const validRecipients = filtered.filter((r) => selected.has(r.id) && (
-    channel === "email" ? !!r.email :
-    channel === "telegram" ? !!r.tg_username :
-    !!r.user_id
-  ));
+  const recipientChannel = (r: NotifyRecipient): string | null => {
+    if (channel === "auto") return r.auto_channel;
+    if (channel === "vk") return r.has_vk ? "vk" : null;
+    if (channel === "telegram") return r.has_tg ? "telegram" : null;
+    if (channel === "email") return r.has_email ? "email" : null;
+    return null;
+  };
+
+  const validRecipients = filtered.filter((r) => selected.has(r.id) && !!recipientChannel(r));
 
   const handleSend = async () => {
-    if (!subject.trim() || !bodyHtml.trim()) return;
+    if (!bodyHtml.trim()) return;
+    if (channel === "email" && !subject.trim()) return;
     setSending(true);
     try {
       const result = await notifyApi.send({
@@ -122,8 +127,16 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
       {/* Канал */}
       <div className="space-y-1.5">
         <Label className="text-xs">Канал отправки</Label>
-        <div className="flex gap-2">
-          {(["email", "telegram", "vk"] as NotifyChannel[]).map((ch) => (
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setChannel("auto")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${channel === "auto" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+            title="Каждому гостю — на доступный канал (VK → Telegram → Email)"
+          >
+            <Icon name="Sparkles" size={12} />
+            Авто
+          </button>
+          {(["vk", "telegram", "email"] as const).map((ch) => (
             <button
               key={ch}
               onClick={() => setChannel(ch)}
@@ -134,6 +147,11 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
             </button>
           ))}
         </div>
+        {channel === "auto" && (
+          <p className="text-[11px] text-muted-foreground">
+            Сообщение уйдёт каждому на доступный канал — VK, Telegram или Email
+          </p>
+        )}
       </div>
 
       {/* Выбор события */}
@@ -162,7 +180,9 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
           <Label className="text-xs">
             Получатели
             {eventId && !loadingRec && (
-              <span className="ml-2 text-muted-foreground">({recipients.length} участников)</span>
+              <span className="ml-2 text-muted-foreground">
+                ({recipients.length} участников, доступно: {recipients.filter((r) => !!recipientChannel(r)).length})
+              </span>
             )}
           </Label>
           {statuses.length > 1 && (
@@ -208,8 +228,10 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
             </div>
             <div className="max-h-44 overflow-y-auto divide-y">
               {filtered.map((r) => {
-                const hasContact = channel === "email" ? !!r.email :
-                  channel === "telegram" ? !!r.tg_username : !!r.user_id;
+                const ch = recipientChannel(r);
+                const hasContact = !!ch;
+                const chLabel = ch === "vk" ? "ВКонтакте" : ch === "telegram" ? "Telegram" : ch === "email" ? "Email" : "нет канала";
+                const chIcon = ch === "vk" ? "MessageCircle" : ch === "telegram" ? "Send" : ch === "email" ? "Mail" : "AlertCircle";
                 return (
                   <div key={r.id}
                     onClick={() => toggleOne(r.id)}
@@ -220,10 +242,9 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate">{r.name}</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {channel === "email" ? (r.email || "нет email") :
-                         channel === "telegram" ? (r.tg_username ? `@${r.tg_username}` : "не привязан") :
-                         r.user_id ? "привязан" : "не привязан"}
+                      <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                        <Icon name={chIcon as "Mail"} size={10} />
+                        {hasContact ? `Доставка: ${chLabel}` : "Нет доступного канала"}
                       </div>
                     </div>
                     <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">{r.status}</Badge>
@@ -235,16 +256,20 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
         )}
       </div>
 
-      {/* Тема */}
-      <div className="space-y-1.5">
-        <Label className="text-xs">Тема письма</Label>
-        <Input
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          placeholder="Тема письма"
-          className="h-9 text-sm"
-        />
-      </div>
+      {/* Тема — нужна только для email */}
+      {(channel === "email" || channel === "auto") && (
+        <div className="space-y-1.5">
+          <Label className="text-xs">
+            Тема письма {channel === "auto" && <span className="text-muted-foreground">(только для Email)</span>}
+          </Label>
+          <Input
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="Тема письма"
+            className="h-9 text-sm"
+          />
+        </div>
+      )}
 
       {/* Переменные */}
       <div className="flex gap-1 flex-wrap">
@@ -271,7 +296,7 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
       <div className="flex gap-2 pt-2 border-t">
         <Button
           onClick={handleSend}
-          disabled={sending || validRecipients.length === 0 || !subject.trim() || !bodyHtml.trim()}
+          disabled={sending || validRecipients.length === 0 || !bodyHtml.trim() || (channel === "email" && !subject.trim())}
           className="flex-1 gap-2"
         >
           {sending

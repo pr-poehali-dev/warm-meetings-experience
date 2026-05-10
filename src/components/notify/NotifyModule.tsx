@@ -79,7 +79,24 @@ export default function NotifyModule({ role = "organizer", eventId = null }: Pro
   };
 
   const handleSent = (result: SendResult) => {
-    toast.success(`Отправлено: ${result.sent}${result.failed > 0 ? `, не доставлено: ${result.failed}` : ""}`);
+    const parts: string[] = [];
+    if (result.by_channel) {
+      const byCh = result.by_channel;
+      const labels: Record<string, string> = { vk: "ВКонтакте", telegram: "Telegram", email: "Email" };
+      Object.entries(byCh).forEach(([k, v]) => {
+        if (v > 0) parts.push(`${labels[k] || k}: ${v}`);
+      });
+    }
+    const detail = parts.length ? ` (${parts.join(", ")})` : "";
+    if (result.sent > 0) {
+      toast.success(`Отправлено: ${result.sent}${detail}`);
+    }
+    if (result.failed > 0) {
+      toast.error(`Не доставлено: ${result.failed}`);
+    }
+    if (result.skipped && result.skipped > 0) {
+      toast.warning(`Пропущено (нет канала связи): ${result.skipped}`);
+    }
     setSubView("list");
     setSendScenario(null);
     if (tab === "history") loadLog();
