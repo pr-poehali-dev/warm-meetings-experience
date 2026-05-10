@@ -27,6 +27,7 @@ interface Props {
 }
 
 export default function NotifyModule({ role = "organizer", eventId = null }: Props) {
+  const sendMode: "organizer" | "master" = role === "master" ? "master" : "organizer";
   const [tab, setTab] = useState<Tab>("scenarios");
   const [subView, setSubView] = useState<SubView>("list");
 
@@ -180,6 +181,7 @@ export default function NotifyModule({ role = "organizer", eventId = null }: Pro
           eventId={eventId}
           onClose={goBack}
           onSent={handleSent}
+          mode={sendMode}
         />
       ) : (
         <>
@@ -199,6 +201,7 @@ export default function NotifyModule({ role = "organizer", eventId = null }: Pro
               eventId={eventId}
               onClose={() => setTab("scenarios")}
               onSent={handleSent}
+              mode={sendMode}
             />
           )}
           {tab === "history" && (

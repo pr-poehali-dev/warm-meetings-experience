@@ -16,9 +16,11 @@ interface Props {
   eventId: number | null;
   onClose: () => void;
   onSent: (result: SendResult) => void;
+  mode?: "organizer" | "master";
 }
 
-export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onSent }: Props) {
+export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onSent, mode = "organizer" }: Props) {
+  const isMaster = mode === "master";
   const [events, setEvents] = useState<OrgEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<number | null>(eventIdProp);
   const [recipients, setRecipients] = useState<NotifyRecipient[]>([]);
@@ -33,8 +35,9 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
   const eventId = selectedEventId;
 
   useEffect(() => {
+    if (isMaster) return;
     organizerApi.getEvents("active").then(setEvents).catch(() => {});
-  }, []);
+  }, [isMaster]);
 
   useEffect(() => {
     setSelectedEventId(eventIdProp);
@@ -49,6 +52,18 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
   }, [scenario]);
 
   useEffect(() => {
+    if (isMaster) {
+      // Загружаем всех клиентов мастера (всех записей разом)
+      setLoadingRec(true);
+      notifyApi.getMasterRecipients()
+        .then(({ recipients: r }) => {
+          setRecipients(r);
+          setSelected(new Set(r.map((rc) => rc.id)));
+        })
+        .catch(() => {})
+        .finally(() => setLoadingRec(false));
+      return;
+    }
     if (!eventId) { setRecipients([]); setSelected(new Set()); return; }
     setLoadingRec(true);
     notifyApi.getRecipients(eventId)
@@ -58,7 +73,7 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
       })
       .catch(() => {})
       .finally(() => setLoadingRec(false));
-  }, [eventId]);
+  }, [eventId, isMaster]);
 
   const filtered = filterStatus === "all"
     ? recipients
@@ -93,14 +108,25 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
     if (channel === "email" && !subject.trim()) return;
     setSending(true);
     try {
-      const result = await notifyApi.send({
-        event_id: eventId ?? undefined,
-        signup_ids: Array.from(selected),
-        scenario_id: scenario?.id,
-        channel,
-        subject,
-        body_html: bodyHtml,
-      });
+      const result = await notifyApi.send(
+        isMaster
+          ? {
+              source: "master_booking",
+              booking_ids: Array.from(selected),
+              scenario_id: scenario?.id,
+              channel,
+              subject,
+              body_html: bodyHtml,
+            }
+          : {
+              event_id: eventId ?? undefined,
+              signup_ids: Array.from(selected),
+              scenario_id: scenario?.id,
+              channel,
+              subject,
+              body_html: bodyHtml,
+            }
+      );
       onSent(result);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Ошибка отправки");
@@ -168,34 +194,36 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
         )}
       </div>
 
-      {/* Выбор события */}
-      <div className="space-y-1.5">
-        <Label className="text-xs">Событие</Label>
-        <div className="relative">
-          <select
-            value={selectedEventId ?? ""}
-            onChange={(e) => setSelectedEventId(e.target.value ? Number(e.target.value) : null)}
-            className="w-full h-9 rounded-xl border bg-background px-3 pr-8 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">— выберите событие —</option>
-            {events.map((ev) => (
-              <option key={ev.id} value={ev.id}>
-                {ev.title}{ev.event_date ? ` · ${new Date(ev.event_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}` : ""}
-              </option>
-            ))}
-          </select>
-          <Icon name="ChevronDown" size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+      {/* Выбор события (только для организатора) */}
+      {!isMaster && (
+        <div className="space-y-1.5">
+          <Label className="text-xs">Событие</Label>
+          <div className="relative">
+            <select
+              value={selectedEventId ?? ""}
+              onChange={(e) => setSelectedEventId(e.target.value ? Number(e.target.value) : null)}
+              className="w-full h-9 rounded-xl border bg-background px-3 pr-8 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">— выберите событие —</option>
+              {events.map((ev) => (
+                <option key={ev.id} value={ev.id}>
+                  {ev.title}{ev.event_date ? ` · ${new Date(ev.event_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}` : ""}
+                </option>
+              ))}
+            </select>
+            <Icon name="ChevronDown" size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Получатели */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-xs">
-            Получатели
-            {eventId && !loadingRec && (
+            {isMaster ? "Клиенты" : "Получатели"}
+            {(eventId || isMaster) && !loadingRec && (
               <span className="ml-2 text-muted-foreground">
-                ({recipients.length} участников, доступно: {recipients.filter((r) => !!recipientChannel(r)).length})
+                ({recipients.length} {isMaster ? "клиентов" : "участников"}, доступно: {recipients.filter((r) => !!recipientChannel(r)).length})
               </span>
             )}
           </Label>
@@ -214,7 +242,7 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
           )}
         </div>
 
-        {!eventId ? (
+        {!eventId && !isMaster ? (
           <div className="text-center py-6 border-2 border-dashed rounded-xl text-muted-foreground">
             <Icon name="CalendarSearch" size={20} className="mx-auto mb-1.5 opacity-40" />
             <p className="text-sm">Выберите событие выше</p>
@@ -225,7 +253,7 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-6 border-2 border-dashed rounded-xl">
-            <p className="text-sm text-muted-foreground">Нет участников</p>
+            <p className="text-sm text-muted-foreground">{isMaster ? "Нет клиентов" : "Нет участников"}</p>
           </div>
         ) : (
           <div className="border rounded-xl overflow-hidden">

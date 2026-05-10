@@ -37,6 +37,18 @@
       "method": "GET",
       "path": "/?resource=unknown",
       "expectedStatus": 401
+    },
+    {
+      "name": "Master bookings list without token returns 401",
+      "method": "GET",
+      "path": "/?resource=master_bookings",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Master booking recipients without token returns 401",
+      "method": "GET",
+      "path": "/?resource=recipients&source=master_booking",
+      "expectedStatus": 401
     }
   ]
 }

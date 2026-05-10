@@ -225,6 +225,61 @@ def handle_scenarios_delete(cur, conn, user_id, params, s):
 
 
 def handle_recipients_get(cur, user_id, params, s):
+    source = params.get("source", "event_signup")
+
+    # ─── Источник: записи мастера ──────────────────────────────────────────────
+    if source == "master_booking":
+        booking_id = params.get("booking_id")
+        # Получаем master_id текущего пользователя
+        cur.execute(f"SELECT id FROM {s}.masters WHERE user_id = %s LIMIT 1", (user_id,))
+        m = cur.fetchone()
+        if not m:
+            return err("У вас нет профиля мастера", 403)
+        master_id = m[0]
+
+        where = "mb.master_id = %s AND mb.status NOT IN ('canceled','no_show')"
+        vals = [master_id]
+        if booking_id:
+            where += " AND mb.id = %s"
+            vals.append(int(booking_id))
+
+        cur.execute(f"""
+            SELECT mb.id, mb.client_name as name, mb.client_email as email,
+                   NULL as telegram, mb.status, NULL as preferred_channel,
+                   u.id as user_id, u.telegram as tg_username,
+                   u.vk_id, u.vk_notify_allowed,
+                   u.tg_chat_id, u.tg_notify_allowed,
+                   u.notify_email, u.notify_vk, u.notify_telegram
+            FROM {s}.master_bookings mb
+            LEFT JOIN {s}.users u ON u.id = mb.client_id
+            WHERE {where}
+            ORDER BY mb.created_at DESC
+        """, tuple(vals))
+        rows = cur.fetchall()
+        cols = ["id","name","email","telegram","status","preferred_channel","user_id","tg_username",
+                "vk_id","vk_notify_allowed","tg_chat_id","tg_notify_allowed",
+                "notify_email","notify_vk","notify_telegram"]
+        recipients = []
+        for r in rows:
+            d = dict(zip(cols, r))
+            has_vk = bool(d.get("vk_id") and d.get("vk_notify_allowed"))
+            has_tg = bool(d.get("tg_chat_id") and d.get("tg_notify_allowed"))
+            has_email = bool(d.get("email") and "@vk.local" not in (d.get("email") or ""))
+            has_site = bool(d.get("user_id"))
+            d["has_vk"] = has_vk
+            d["has_tg"] = has_tg
+            d["has_email"] = has_email
+            d["has_site"] = has_site
+            auto = None
+            if has_vk: auto = "vk"
+            elif has_tg: auto = "telegram"
+            elif has_email: auto = "email"
+            elif has_site: auto = "site"
+            d["auto_channel"] = auto
+            recipients.append(d)
+        return ok({"recipients": recipients, "total": len(recipients)})
+
+    # ─── Источник: события (по умолчанию) ──────────────────────────────────────
     event_id = params.get("event_id")
     if not event_id:
         return err("Укажите event_id")
@@ -278,10 +333,140 @@ def handle_recipients_get(cur, user_id, params, s):
     return ok({"recipients": recipients, "total": len(recipients)})
 
 
+def handle_send_master_bookings(cur, conn, user_id, booking_ids, scenario_id, channel,
+                                 subject_tpl, body_html_tpl, s):
+    """Отправка сообщений клиентам мастера по записям master_bookings."""
+    cur.execute(f"SELECT id FROM {s}.masters WHERE user_id = %s LIMIT 1", (user_id,))
+    m = cur.fetchone()
+    if not m:
+        return err("У вас нет профиля мастера", 403)
+    master_id = m[0]
+
+    if not booking_ids:
+        return err("Укажите booking_ids")
+    id_list = ",".join(str(int(i)) for i in booking_ids)
+
+    cur.execute(f"""
+        SELECT mb.id, mb.client_name, mb.client_email, mb.status,
+               u.id as user_id_v, u.vk_id, u.vk_notify_allowed,
+               u.tg_chat_id, u.tg_notify_allowed,
+               mb.datetime_start, ms.name as service_name, mb.price
+        FROM {s}.master_bookings mb
+        LEFT JOIN {s}.users u ON u.id = mb.client_id
+        LEFT JOIN {s}.master_services ms ON ms.id = mb.service_id
+        WHERE mb.id IN ({id_list}) AND mb.master_id = %s
+    """, (master_id,))
+    bookings = cur.fetchall()
+    if not bookings:
+        return err("Нет получателей")
+
+    def pick(has_vk, has_tg, has_email, has_site, requested):
+        if requested == "auto":
+            if has_vk: return "vk"
+            if has_tg: return "telegram"
+            if has_email: return "email"
+            if has_site: return "site"
+            return None
+        if requested == "vk" and has_vk: return "vk"
+        if requested == "telegram" and has_tg: return "telegram"
+        if requested == "email" and has_email: return "email"
+        if requested == "site" and has_site: return "site"
+        return None
+
+    sent, failed, skipped = 0, 0, 0
+    by_channel = {"vk": 0, "telegram": 0, "email": 0, "site": 0}
+    log_rows = []
+    failures_detail = []
+
+    for row in bookings:
+        (bid, name, email, status, user_id_v,
+         vk_id, vk_allowed, tg_chat_id, tg_allowed,
+         dt_start, service_name, price) = row
+
+        has_vk = bool(vk_id and vk_allowed)
+        has_tg = bool(tg_chat_id and tg_allowed)
+        has_email = bool(email and "@vk.local" not in (email or ""))
+        has_site = bool(user_id_v)
+        actual = pick(has_vk, has_tg, has_email, has_site, channel)
+
+        booking_data = {
+            "title": service_name or "Запись",
+            "event_date": dt_start.date() if dt_start else None,
+            "start_time": dt_start.time() if dt_start else None,
+            "price_amount": price,
+            "bath_name": "",
+        }
+        vars_ = build_vars({"name": name}, booking_data)
+        subj = render_template(subject_tpl, vars_) if subject_tpl else ""
+        html = render_template(body_html_tpl, vars_)
+        plain = html_to_text(html)
+
+        if not actual:
+            skipped += 1
+            failures_detail.append({"booking_id": bid, "name": name, "reason": "Нет доступного канала связи"})
+            log_rows.append((scenario_id, user_id, None, "skip", None, email, name,
+                             subj, "failed", "Нет доступного канала", None, "master_booking", bid))
+            continue
+
+        ok_send, err_msg = False, None
+        if actual == "vk":
+            ok_send, err_msg = send_vk_message(vk_id, plain)
+        elif actual == "telegram":
+            ok_send, err_msg = send_telegram_message(tg_chat_id, plain)
+        elif actual == "email":
+            try:
+                send_email_via_unisender(email, name, subj or "Уведомление", html)
+                ok_send = True
+            except Exception as e:
+                err_msg = str(e)
+        elif actual == "site":
+            ok_send = True
+
+        if ok_send:
+            sent += 1
+            by_channel[actual] = by_channel.get(actual, 0) + 1
+            log_rows.append((scenario_id, user_id, None, actual, None, email, name,
+                             subj, "sent", None, datetime.now(), "master_booking", bid))
+            try:
+                cur.execute(f"""
+                    INSERT INTO {s}.client_messages
+                        (owner_id, source_type, source_id, direction, channel, body, delivered)
+                    VALUES (%s, 'master_booking', %s, 'out', %s, %s, TRUE)
+                """, (user_id, bid, actual, plain))
+            except Exception:
+                pass
+        else:
+            failed += 1
+            failures_detail.append({"booking_id": bid, "name": name, "channel": actual, "reason": err_msg or "Ошибка отправки"})
+            log_rows.append((scenario_id, user_id, None, actual, None, email, name,
+                             subj, "failed", err_msg, None, "master_booking", bid))
+
+    for lr in log_rows:
+        cur.execute(f"""
+            INSERT INTO {s}.notify_log
+                (scenario_id, owner_id, event_id, channel, recipient_user_id,
+                 recipient_email, recipient_name, subject, status, error_text, sent_at,
+                 source_type, source_id)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, lr)
+    conn.commit()
+
+    return ok({
+        "sent": sent,
+        "failed": failed,
+        "skipped": skipped,
+        "total": sent + failed + skipped,
+        "by_channel": by_channel,
+        "failures": failures_detail,
+    })
+
+
 def handle_send(cur, conn, user_id, body, s):
     """Ручная отправка: по сценарию или прямая. channel='auto' — умная отправка по доступному каналу."""
+    source = body.get("source", "event_signup")
     event_id = body.get("event_id")
     signup_ids = body.get("signup_ids", [])
+    booking_ids = body.get("booking_ids", [])
     scenario_id = body.get("scenario_id")
     channel = body.get("channel", "auto")
 
@@ -304,7 +489,14 @@ def handle_send(cur, conn, user_id, body, s):
     if channel == "email" and not subject_tpl:
         return err("Для email укажите тему письма")
 
-    # Получаем получателей с полной информацией о каналах
+    # ─── Источник: записи мастера ──────────────────────────────────────────────
+    if source == "master_booking":
+        return handle_send_master_bookings(
+            cur, conn, user_id, booking_ids, scenario_id, channel,
+            subject_tpl, body_html_tpl, s
+        )
+
+    # ─── Источник: события (по умолчанию) ──────────────────────────────────────
     base_select = f"""
         SELECT es.id, es.name, es.email, es.status, es.preferred_channel,
                u.id as user_id_v, u.vk_id, u.vk_notify_allowed,
@@ -436,6 +628,27 @@ def handle_send(cur, conn, user_id, body, s):
     })
 
 
+def handle_master_bookings_list(cur, user_id, s):
+    """Список записей текущего мастера для выбора получателей в рассылке."""
+    cur.execute(f"SELECT id FROM {s}.masters WHERE user_id = %s LIMIT 1", (user_id,))
+    m = cur.fetchone()
+    if not m:
+        return ok({"bookings": []})
+    master_id = m[0]
+    cur.execute(f"""
+        SELECT mb.id, mb.client_name, mb.client_phone, mb.client_email,
+               mb.datetime_start, mb.status, ms.name as service_name
+        FROM {s}.master_bookings mb
+        LEFT JOIN {s}.master_services ms ON ms.id = mb.service_id
+        WHERE mb.master_id = %s AND mb.status NOT IN ('canceled','no_show')
+        ORDER BY mb.datetime_start DESC NULLS LAST, mb.created_at DESC
+        LIMIT 200
+    """, (master_id,))
+    rows = cur.fetchall()
+    cols = ["id","client_name","client_phone","client_email","datetime_start","status","service_name"]
+    return ok({"bookings": [dict(zip(cols, r)) for r in rows]})
+
+
 def handle_log_get(cur, user_id, params, s):
     event_id = params.get("event_id")
     limit = min(int(params.get("limit", 50)), 200)
@@ -533,6 +746,10 @@ def handler(event: dict, context) -> dict:
         elif resource == "recipients":
             if method == "GET":
                 return handle_recipients_get(cur, user_id, params, s)
+
+        elif resource == "master_bookings":
+            if method == "GET":
+                return handle_master_bookings_list(cur, user_id, s)
 
         return err(f"Неизвестный ресурс: {resource}", 404)
 

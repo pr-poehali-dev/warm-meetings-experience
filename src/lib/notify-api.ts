@@ -101,9 +101,19 @@ export const notifyApi = {
     return req(`${BASE}?resource=recipients&event_id=${eventId}`);
   },
 
+  getMasterRecipients(): Promise<{ recipients: NotifyRecipient[]; total: number }> {
+    return req(`${BASE}?resource=recipients&source=master_booking`);
+  },
+
+  getMasterBookings(): Promise<{ bookings: MasterBookingShort[] }> {
+    return req(`${BASE}?resource=master_bookings`);
+  },
+
   send(data: {
+    source?: "event_signup" | "master_booking";
     event_id?: number;
     signup_ids?: number[];
+    booking_ids?: number[];
     scenario_id?: number;
     channel?: SendChannel;
     subject?: string;
@@ -117,6 +127,16 @@ export const notifyApi = {
     return req(`${BASE}?resource=log${q}&limit=${limit}`);
   },
 };
+
+export interface MasterBookingShort {
+  id: number;
+  client_name: string;
+  client_phone: string | null;
+  client_email: string | null;
+  datetime_start: string | null;
+  status: string;
+  service_name: string | null;
+}
 
 // ─── Константы ────────────────────────────────────────────────────────────────
 
