@@ -497,15 +497,15 @@ def handler(event: dict, context) -> dict:
 
     user_id, user_name, user_email = user['id'], user['name'], user['email']
 
-    if not has_role(cur, s, user_id, "organizer", "master", "admin"):
+    if not has_role(cur, s, user_id, "organizer", "master", "parmaster", "partner", "admin"):
         cur.close(); conn.close()
-        return err("Нет доступа. Модуль доступен организаторам и мастерам.", 403)
+        return err("Нет доступа. Модуль доступен коммерческим пользователям.", 403)
 
     # Определяем роль для новых сценариев
     cur.execute(f"""
         SELECT r.slug FROM {s}.user_roles ur
         JOIN {s}.roles r ON r.id = ur.role_id
-        WHERE ur.user_id = %s AND r.slug IN ('organizer','master','admin') AND ur.status = 'active'
+        WHERE ur.user_id = %s AND r.slug IN ('organizer','master','parmaster','partner','admin') AND ur.status = 'active'
         LIMIT 1
     """, (user_id,))
     role_row = cur.fetchone()

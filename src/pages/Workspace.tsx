@@ -40,6 +40,7 @@ export default function Workspace() {
     if (p === "partner" && isPartner) return "partner";
     if (p === "telegram") return "telegram";
     if (p === "landing") return "landing";
+    if (p === "notify") return "notify";
     return "dashboard";
   };
 
@@ -154,6 +155,7 @@ export default function Workspace() {
   const currentLabel = () => {
     if (roleTab === "telegram") return "Telegram-каналы";
     if (roleTab === "landing") return "Моя визитка";
+    if (roleTab === "notify") return "Рассылки";
     if (roleTab === "dashboard") return "Обзор";
     if (roleTab === "master") {
       const label = MASTER_NAV.find((n) => n.id === masterSection)?.label ?? "Мастер";

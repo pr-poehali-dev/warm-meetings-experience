@@ -161,12 +161,6 @@ export default function WorkspaceSidebar({
             label="Калькулятор"
           />
           <NavItem
-            active={roleTab === "organizer" && orgView === "notify"}
-            onClick={() => switchOrgView("notify")}
-            icon="Bell"
-            label="Рассылки"
-          />
-          <NavItem
             active={roleTab === "organizer" && orgView === "blog"}
             onClick={() => switchOrgView("blog")}
             icon="BookOpen"
@@ -175,7 +169,7 @@ export default function WorkspaceSidebar({
         </CollapsibleSection>
       )}
 
-      {/* Общий блок: Визитка + Telegram — для всех коммерческих ролей */}
+      {/* Общий блок: Визитка + Telegram + Рассылки — для всех коммерческих ролей */}
       <div className="border-t border-border/60 pt-2 mt-3">
         <NavItem
           active={roleTab === "landing"}
@@ -191,6 +185,13 @@ export default function WorkspaceSidebar({
           label="Telegram-каналы"
           badge={tgChannelsCount || undefined}
           accent="text-sky-500"
+        />
+        <NavItem
+          active={roleTab === "notify"}
+          onClick={() => switchRoleTab("notify")}
+          icon="Bell"
+          label="Рассылки"
+          accent="text-rose-500"
         />
       </div>
 

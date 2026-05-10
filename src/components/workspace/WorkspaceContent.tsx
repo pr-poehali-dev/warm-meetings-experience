@@ -110,6 +110,16 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     return <LandingSection />;
   }
 
+  // ─── Универсальный раздел «Рассылки» для всех коммерческих ролей ───────────
+  if (roleTab === "notify") {
+    const notifyRole: "organizer" | "master" = isOrganizer ? "organizer" : "master";
+    return (
+      <div className="max-w-4xl mx-auto">
+        <NotifyModule role={notifyRole} eventId={null} />
+      </div>
+    );
+  }
+
   // ─── Универсальный раздел Telegram для всех коммерческих ролей ──────────────
   if (roleTab === "telegram") {
     const userRole = isOrganizer ? "organizer" : isMaster ? "master" : isPartner ? "partner" : "organizer";
