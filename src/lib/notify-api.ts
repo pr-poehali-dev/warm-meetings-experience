@@ -109,8 +109,20 @@ export const notifyApi = {
     return req(`${BASE}?resource=master_bookings`);
   },
 
+  getRitualRecipients(): Promise<{ recipients: NotifyRecipient[]; total: number }> {
+    return req(`${BASE}?resource=recipients&source=ritual_booking`);
+  },
+
+  getRitualBookings(): Promise<{ bookings: RitualBookingShort[] }> {
+    return req(`${BASE}?resource=ritual_bookings`);
+  },
+
+  getPartnerEvents(): Promise<{ events: PartnerEventShort[] }> {
+    return req(`${BASE}?resource=partner_events`);
+  },
+
   send(data: {
-    source?: "event_signup" | "master_booking";
+    source?: "event_signup" | "master_booking" | "ritual_booking";
     event_id?: number;
     signup_ids?: number[];
     booking_ids?: number[];
@@ -136,6 +148,26 @@ export interface MasterBookingShort {
   datetime_start: string | null;
   status: string;
   service_name: string | null;
+}
+
+export interface RitualBookingShort {
+  id: number;
+  client_name: string;
+  client_phone: string | null;
+  client_email: string | null;
+  selected_date: string | null;
+  status: string;
+  ritual_name: string | null;
+  location_name: string | null;
+}
+
+export interface PartnerEventShort {
+  id: number;
+  title: string;
+  event_date: string | null;
+  start_time: string | null;
+  status: string;
+  bath_name: string | null;
 }
 
 // ─── Константы ────────────────────────────────────────────────────────────────

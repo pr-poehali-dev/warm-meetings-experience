@@ -279,10 +279,58 @@ def handle_recipients_get(cur, user_id, params, s):
             recipients.append(d)
         return ok({"recipients": recipients, "total": len(recipients)})
 
+    # ─── Источник: брони ритуалов (для партнёра) ───────────────────────────────
+    if source == "ritual_booking":
+        booking_id = params.get("booking_id")
+        where = """rb.status NOT IN ('canceled','cancelled','no_show')
+                   AND rl.bath_id IN (SELECT id FROM {s}.baths WHERE owner_id = %s)""".format(s=s)
+        vals = [user_id]
+        if booking_id:
+            where += " AND rb.id = %s"
+            vals.append(int(booking_id))
+        cur.execute(f"""
+            SELECT rb.id, rb.client_name as name, rb.client_email as email,
+                   NULL as telegram, rb.status, NULL as preferred_channel,
+                   u.id as user_id, u.telegram as tg_username,
+                   u.vk_id, u.vk_notify_allowed,
+                   u.tg_chat_id, u.tg_notify_allowed,
+                   u.notify_email, u.notify_vk, u.notify_telegram
+            FROM {s}.ritual_bookings rb
+            LEFT JOIN {s}.ritual_locations rl ON rl.id = rb.location_id
+            LEFT JOIN {s}.users u ON u.email = rb.client_email
+            WHERE {where}
+            ORDER BY rb.created_at DESC
+        """, tuple(vals))
+        rows = cur.fetchall()
+        cols = ["id","name","email","telegram","status","preferred_channel","user_id","tg_username",
+                "vk_id","vk_notify_allowed","tg_chat_id","tg_notify_allowed",
+                "notify_email","notify_vk","notify_telegram"]
+        recipients = []
+        for r in rows:
+            d = dict(zip(cols, r))
+            has_vk = bool(d.get("vk_id") and d.get("vk_notify_allowed"))
+            has_tg = bool(d.get("tg_chat_id") and d.get("tg_notify_allowed"))
+            has_email = bool(d.get("email") and "@vk.local" not in (d.get("email") or ""))
+            has_site = bool(d.get("user_id"))
+            d["has_vk"] = has_vk
+            d["has_tg"] = has_tg
+            d["has_email"] = has_email
+            d["has_site"] = has_site
+            auto = None
+            if has_vk: auto = "vk"
+            elif has_tg: auto = "telegram"
+            elif has_email: auto = "email"
+            elif has_site: auto = "site"
+            d["auto_channel"] = auto
+            recipients.append(d)
+        return ok({"recipients": recipients, "total": len(recipients)})
+
     # ─── Источник: события (по умолчанию) ──────────────────────────────────────
     event_id = params.get("event_id")
     if not event_id:
         return err("Укажите event_id")
+    # Пользователь видит участников события если он либо организатор события,
+    # либо владелец бани, к которой это событие привязано.
     cur.execute(f"""
         SELECT es.id, es.name, es.email, es.telegram, es.status, es.preferred_channel,
                u.id as user_id, u.telegram as tg_username,
@@ -292,10 +340,12 @@ def handle_recipients_get(cur, user_id, params, s):
         FROM {s}.event_signups es
         LEFT JOIN {s}.users u ON u.id = es.user_id
         JOIN {s}.events e ON e.id = es.event_id
-        WHERE es.event_id = %s AND e.organizer_id = %s
+        LEFT JOIN {s}.baths b ON b.id = e.bath_id
+        WHERE es.event_id = %s
+          AND (e.organizer_id = %s OR b.owner_id = %s)
           AND es.status NOT IN ('cancelled')
         ORDER BY es.created_at
-    """, (event_id, user_id))
+    """, (event_id, user_id, user_id))
     rows = cur.fetchall()
     cols = ["id","name","email","telegram","status","preferred_channel","user_id","tg_username",
             "vk_id","vk_notify_allowed","tg_chat_id","tg_notify_allowed",
@@ -461,6 +511,132 @@ def handle_send_master_bookings(cur, conn, user_id, booking_ids, scenario_id, ch
     })
 
 
+def handle_send_ritual_bookings(cur, conn, user_id, booking_ids, scenario_id, channel,
+                                subject_tpl, body_html_tpl, s):
+    """Отправка сообщений клиентам броней ритуалов (для партнёра — владельца бани)."""
+    if not booking_ids:
+        return err("Укажите booking_ids")
+    id_list = ",".join(str(int(i)) for i in booking_ids)
+
+    cur.execute(f"""
+        SELECT rb.id, rb.client_name, rb.client_email, rb.status,
+               u.id as user_id_v, u.vk_id, u.vk_notify_allowed,
+               u.tg_chat_id, u.tg_notify_allowed,
+               rb.selected_date, rf.name as ritual_name, rb.total_price,
+               rl.name as location_name, rl.bath_id, b.owner_id
+        FROM {s}.ritual_bookings rb
+        LEFT JOIN {s}.ritual_locations rl ON rl.id = rb.location_id
+        LEFT JOIN {s}.baths b ON b.id = rl.bath_id
+        LEFT JOIN {s}.ritual_formats rf ON rf.id = rb.ritual_format_id
+        LEFT JOIN {s}.users u ON u.email = rb.client_email
+        WHERE rb.id IN ({id_list}) AND b.owner_id = %s
+    """, (user_id,))
+    bookings = cur.fetchall()
+    if not bookings:
+        return err("Нет получателей или нет доступа к броням")
+
+    def pick(has_vk, has_tg, has_email, has_site, requested):
+        if requested == "auto":
+            if has_vk: return "vk"
+            if has_tg: return "telegram"
+            if has_email: return "email"
+            if has_site: return "site"
+            return None
+        if requested == "vk" and has_vk: return "vk"
+        if requested == "telegram" and has_tg: return "telegram"
+        if requested == "email" and has_email: return "email"
+        if requested == "site" and has_site: return "site"
+        return None
+
+    sent, failed, skipped = 0, 0, 0
+    by_channel = {"vk": 0, "telegram": 0, "email": 0, "site": 0}
+    log_rows = []
+    failures_detail = []
+
+    for row in bookings:
+        (bid, name, email, status, user_id_v,
+         vk_id, vk_allowed, tg_chat_id, tg_allowed,
+         sel_date, ritual_name, total_price,
+         location_name, bath_id_v, owner_id_v) = row
+
+        has_vk = bool(vk_id and vk_allowed)
+        has_tg = bool(tg_chat_id and tg_allowed)
+        has_email = bool(email and "@vk.local" not in (email or ""))
+        has_site = bool(user_id_v)
+        actual = pick(has_vk, has_tg, has_email, has_site, channel)
+
+        booking_data = {
+            "title": ritual_name or "Бронь",
+            "event_date": sel_date,
+            "start_time": None,
+            "price_amount": total_price,
+            "bath_name": location_name or "",
+        }
+        vars_ = build_vars({"name": name}, booking_data)
+        subj = render_template(subject_tpl, vars_) if subject_tpl else ""
+        html = render_template(body_html_tpl, vars_)
+        plain = html_to_text(html)
+
+        if not actual:
+            skipped += 1
+            failures_detail.append({"booking_id": bid, "name": name, "reason": "Нет доступного канала связи"})
+            log_rows.append((scenario_id, user_id, None, "skip", None, email, name,
+                             subj, "failed", "Нет доступного канала", None, "ritual_booking", bid))
+            continue
+
+        ok_send, err_msg = False, None
+        if actual == "vk":
+            ok_send, err_msg = send_vk_message(vk_id, plain)
+        elif actual == "telegram":
+            ok_send, err_msg = send_telegram_message(tg_chat_id, plain)
+        elif actual == "email":
+            try:
+                send_email_via_unisender(email, name, subj or "Уведомление", html)
+                ok_send = True
+            except Exception as e:
+                err_msg = str(e)
+        elif actual == "site":
+            ok_send = True
+
+        if ok_send:
+            sent += 1
+            by_channel[actual] = by_channel.get(actual, 0) + 1
+            log_rows.append((scenario_id, user_id, None, actual, None, email, name,
+                             subj, "sent", None, datetime.now(), "ritual_booking", bid))
+            try:
+                cur.execute(f"""
+                    INSERT INTO {s}.client_messages
+                        (owner_id, source_type, source_id, direction, channel, body, delivered)
+                    VALUES (%s, 'ritual_booking', %s, 'out', %s, %s, TRUE)
+                """, (user_id, bid, actual, plain))
+            except Exception:
+                pass
+        else:
+            failed += 1
+            failures_detail.append({"booking_id": bid, "name": name, "channel": actual, "reason": err_msg or "Ошибка отправки"})
+            log_rows.append((scenario_id, user_id, None, actual, None, email, name,
+                             subj, "failed", err_msg, None, "ritual_booking", bid))
+
+    for lr in log_rows:
+        cur.execute(f"""
+            INSERT INTO {s}.notify_log
+                (scenario_id, owner_id, event_id, channel, recipient_user_id,
+                 recipient_email, recipient_name, subject, status, error_text, sent_at,
+                 source_type, source_id)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, lr)
+    conn.commit()
+
+    return ok({
+        "sent": sent,
+        "failed": failed,
+        "skipped": skipped,
+        "total": sent + failed + skipped,
+        "by_channel": by_channel,
+        "failures": failures_detail,
+    })
+
+
 def handle_send(cur, conn, user_id, body, s):
     """Ручная отправка: по сценарию или прямая. channel='auto' — умная отправка по доступному каналу."""
     source = body.get("source", "event_signup")
@@ -496,6 +672,13 @@ def handle_send(cur, conn, user_id, body, s):
             subject_tpl, body_html_tpl, s
         )
 
+    # ─── Источник: брони ритуалов (для партнёра) ───────────────────────────────
+    if source == "ritual_booking":
+        return handle_send_ritual_bookings(
+            cur, conn, user_id, booking_ids, scenario_id, channel,
+            subject_tpl, body_html_tpl, s
+        )
+
     # ─── Источник: события (по умолчанию) ──────────────────────────────────────
     base_select = f"""
         SELECT es.id, es.name, es.email, es.status, es.preferred_channel,
@@ -508,11 +691,13 @@ def handle_send(cur, conn, user_id, body, s):
         JOIN {s}.events e ON e.id = es.event_id
         LEFT JOIN {s}.baths b ON b.id = e.bath_id
     """
+    # Доступ: организатор события ИЛИ владелец бани, в которой событие
+    access = "(e.organizer_id = %s OR b.owner_id = %s)"
     if signup_ids:
         id_list = ",".join(str(int(i)) for i in signup_ids)
-        cur.execute(base_select + f" WHERE es.id IN ({id_list}) AND e.organizer_id = %s", (user_id,))
+        cur.execute(base_select + f" WHERE es.id IN ({id_list}) AND {access}", (user_id, user_id))
     elif event_id:
-        cur.execute(base_select + " WHERE es.event_id = %s AND e.organizer_id = %s AND es.status NOT IN ('cancelled')", (event_id, user_id))
+        cur.execute(base_select + f" WHERE es.event_id = %s AND {access} AND es.status NOT IN ('cancelled')", (event_id, user_id, user_id))
     else:
         return err("Укажите event_id или signup_ids")
 
@@ -626,6 +811,42 @@ def handle_send(cur, conn, user_id, body, s):
         "by_channel": by_channel,
         "failures": failures_detail,
     })
+
+
+def handle_partner_events_list(cur, user_id, s):
+    """События в банях партнёра + события, где он сам организатор."""
+    cur.execute(f"""
+        SELECT DISTINCT e.id, e.title, e.event_date, e.start_time, e.status,
+               COALESCE(b.name, e.bath_name) as bath_name
+        FROM {s}.events e
+        LEFT JOIN {s}.baths b ON b.id = e.bath_id
+        WHERE e.organizer_id = %s
+           OR b.owner_id = %s
+        ORDER BY e.event_date DESC NULLS LAST
+        LIMIT 200
+    """, (user_id, user_id))
+    rows = cur.fetchall()
+    cols = ["id","title","event_date","start_time","status","bath_name"]
+    return ok({"events": [dict(zip(cols, r)) for r in rows]})
+
+
+def handle_ritual_bookings_list(cur, user_id, s):
+    """Список броней ритуалов в банях партнёра."""
+    cur.execute(f"""
+        SELECT rb.id, rb.client_name, rb.client_phone, rb.client_email,
+               rb.selected_date, rb.status, rf.name as ritual_name,
+               rl.name as location_name
+        FROM {s}.ritual_bookings rb
+        LEFT JOIN {s}.ritual_locations rl ON rl.id = rb.location_id
+        LEFT JOIN {s}.ritual_formats rf ON rf.id = rb.ritual_format_id
+        WHERE rl.bath_id IN (SELECT id FROM {s}.baths WHERE owner_id = %s)
+          AND rb.status NOT IN ('canceled','cancelled','no_show')
+        ORDER BY rb.selected_date DESC NULLS LAST, rb.created_at DESC
+        LIMIT 200
+    """, (user_id,))
+    rows = cur.fetchall()
+    cols = ["id","client_name","client_phone","client_email","selected_date","status","ritual_name","location_name"]
+    return ok({"bookings": [dict(zip(cols, r)) for r in rows]})
 
 
 def handle_master_bookings_list(cur, user_id, s):
@@ -750,6 +971,14 @@ def handler(event: dict, context) -> dict:
         elif resource == "master_bookings":
             if method == "GET":
                 return handle_master_bookings_list(cur, user_id, s)
+
+        elif resource == "partner_events":
+            if method == "GET":
+                return handle_partner_events_list(cur, user_id, s)
+
+        elif resource == "ritual_bookings":
+            if method == "GET":
+                return handle_ritual_bookings_list(cur, user_id, s)
 
         return err(f"Неизвестный ресурс: {resource}", 404)
 

@@ -22,12 +22,13 @@ type Tab = "scenarios" | "send" | "history";
 type SubView = "list" | "editor" | "send";
 
 interface Props {
-  role?: "organizer" | "master";
+  role?: "organizer" | "master" | "partner";
   eventId?: number | null;
 }
 
 export default function NotifyModule({ role = "organizer", eventId = null }: Props) {
-  const sendMode: "organizer" | "master" = role === "master" ? "master" : "organizer";
+  const sendMode: "organizer" | "master" | "partner" =
+    role === "master" ? "master" : role === "partner" ? "partner" : "organizer";
   const [tab, setTab] = useState<Tab>("scenarios");
   const [subView, setSubView] = useState<SubView>("list");
 

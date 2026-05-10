@@ -9,19 +9,23 @@ import {
   CHANNEL_LABELS, CHANNEL_ICONS, TEMPLATE_VARS,
   notifyApi, SendResult,
 } from "@/lib/notify-api";
-import { organizerApi, OrgEvent } from "@/lib/organizer-api";
+import { organizerApi } from "@/lib/organizer-api";
 
 interface Props {
   scenario: NotifyScenario | null;
   eventId: number | null;
   onClose: () => void;
   onSent: (result: SendResult) => void;
-  mode?: "organizer" | "master";
+  mode?: "organizer" | "master" | "partner";
 }
+
+type PartnerSource = "events" | "rituals";
 
 export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onSent, mode = "organizer" }: Props) {
   const isMaster = mode === "master";
-  const [events, setEvents] = useState<OrgEvent[]>([]);
+  const isPartner = mode === "partner";
+  const [partnerSource, setPartnerSource] = useState<PartnerSource>("events");
+  const [events, setEvents] = useState<{ id: number; title: string; event_date: string | null; bath_name?: string | null }[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<number | null>(eventIdProp);
   const [recipients, setRecipients] = useState<NotifyRecipient[]>([]);
   const [loadingRec, setLoadingRec] = useState(false);
@@ -36,8 +40,14 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
 
   useEffect(() => {
     if (isMaster) return;
-    organizerApi.getEvents("active").then(setEvents).catch(() => {});
-  }, [isMaster]);
+    if (isPartner) {
+      notifyApi.getPartnerEvents()
+        .then(({ events: ev }) => setEvents(ev))
+        .catch(() => {});
+      return;
+    }
+    organizerApi.getEvents("active").then((ev) => setEvents(ev)).catch(() => {});
+  }, [isMaster, isPartner]);
 
   useEffect(() => {
     setSelectedEventId(eventIdProp);
@@ -53,9 +63,19 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
 
   useEffect(() => {
     if (isMaster) {
-      // Загружаем всех клиентов мастера (всех записей разом)
       setLoadingRec(true);
       notifyApi.getMasterRecipients()
+        .then(({ recipients: r }) => {
+          setRecipients(r);
+          setSelected(new Set(r.map((rc) => rc.id)));
+        })
+        .catch(() => {})
+        .finally(() => setLoadingRec(false));
+      return;
+    }
+    if (isPartner && partnerSource === "rituals") {
+      setLoadingRec(true);
+      notifyApi.getRitualRecipients()
         .then(({ recipients: r }) => {
           setRecipients(r);
           setSelected(new Set(r.map((rc) => rc.id)));
@@ -73,7 +93,7 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
       })
       .catch(() => {})
       .finally(() => setLoadingRec(false));
-  }, [eventId, isMaster]);
+  }, [eventId, isMaster, isPartner, partnerSource]);
 
   const filtered = filterStatus === "all"
     ? recipients
@@ -108,25 +128,30 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
     if (channel === "email" && !subject.trim()) return;
     setSending(true);
     try {
-      const result = await notifyApi.send(
-        isMaster
-          ? {
-              source: "master_booking",
-              booking_ids: Array.from(selected),
-              scenario_id: scenario?.id,
-              channel,
-              subject,
-              body_html: bodyHtml,
-            }
-          : {
-              event_id: eventId ?? undefined,
-              signup_ids: Array.from(selected),
-              scenario_id: scenario?.id,
-              channel,
-              subject,
-              body_html: bodyHtml,
-            }
-      );
+      let payload: Parameters<typeof notifyApi.send>[0];
+      if (isMaster) {
+        payload = {
+          source: "master_booking",
+          booking_ids: Array.from(selected),
+          scenario_id: scenario?.id,
+          channel, subject, body_html: bodyHtml,
+        };
+      } else if (isPartner && partnerSource === "rituals") {
+        payload = {
+          source: "ritual_booking",
+          booking_ids: Array.from(selected),
+          scenario_id: scenario?.id,
+          channel, subject, body_html: bodyHtml,
+        };
+      } else {
+        payload = {
+          event_id: eventId ?? undefined,
+          signup_ids: Array.from(selected),
+          scenario_id: scenario?.id,
+          channel, subject, body_html: bodyHtml,
+        };
+      }
+      const result = await notifyApi.send(payload);
       onSent(result);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Ошибка отправки");
@@ -194,8 +219,31 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
         )}
       </div>
 
-      {/* Выбор события (только для организатора) */}
-      {!isMaster && (
+      {/* Источник получателей — только для партнёра */}
+      {isPartner && (
+        <div className="space-y-1.5">
+          <Label className="text-xs">Кому отправить</Label>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPartnerSource("events")}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${partnerSource === "events" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+            >
+              <Icon name="CalendarDays" size={13} />
+              Гостям событий
+            </button>
+            <button
+              onClick={() => setPartnerSource("rituals")}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${partnerSource === "rituals" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+            >
+              <Icon name="Flame" size={13} />
+              Клиентам бронирований
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Выбор события — для организатора и партнёра в режиме events */}
+      {!isMaster && !(isPartner && partnerSource === "rituals") && (
         <div className="space-y-1.5">
           <Label className="text-xs">Событие</Label>
           <div className="relative">
@@ -220,10 +268,10 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-xs">
-            {isMaster ? "Клиенты" : "Получатели"}
-            {(eventId || isMaster) && !loadingRec && (
+            {isMaster || (isPartner && partnerSource === "rituals") ? "Клиенты" : "Получатели"}
+            {(eventId || isMaster || (isPartner && partnerSource === "rituals")) && !loadingRec && (
               <span className="ml-2 text-muted-foreground">
-                ({recipients.length} {isMaster ? "клиентов" : "участников"}, доступно: {recipients.filter((r) => !!recipientChannel(r)).length})
+                ({recipients.length} {isMaster || (isPartner && partnerSource === "rituals") ? "клиентов" : "участников"}, доступно: {recipients.filter((r) => !!recipientChannel(r)).length})
               </span>
             )}
           </Label>
@@ -242,7 +290,7 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
           )}
         </div>
 
-        {!eventId && !isMaster ? (
+        {!eventId && !isMaster && !(isPartner && partnerSource === "rituals") ? (
           <div className="text-center py-6 border-2 border-dashed rounded-xl text-muted-foreground">
             <Icon name="CalendarSearch" size={20} className="mx-auto mb-1.5 opacity-40" />
             <p className="text-sm">Выберите событие выше</p>
@@ -253,7 +301,7 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-6 border-2 border-dashed rounded-xl">
-            <p className="text-sm text-muted-foreground">{isMaster ? "Нет клиентов" : "Нет участников"}</p>
+            <p className="text-sm text-muted-foreground">{isMaster || (isPartner && partnerSource === "rituals") ? "Нет клиентов" : "Нет участников"}</p>
           </div>
         ) : (
           <div className="border rounded-xl overflow-hidden">

@@ -112,24 +112,13 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
 
   // ─── Универсальный раздел «Рассылки» для всех коммерческих ролей ───────────
   if (roleTab === "notify") {
-    // Организатор → события и их гости. Мастер → клиенты записей.
-    // Партнёр пока попадает в режим организатора (если он же организатор) или показывает пустой список.
-    const notifyRole: "organizer" | "master" = isOrganizer ? "organizer" : isMaster ? "master" : "organizer";
+    // Приоритет ролей: партнёр → организатор → мастер. Партнёр получает специальный
+    // режим с переключателем «гости событий» / «клиенты бронирований».
+    const notifyRole: "organizer" | "master" | "partner" =
+      isPartner ? "partner" : isOrganizer ? "organizer" : isMaster ? "master" : "organizer";
     return (
       <div className="max-w-4xl mx-auto">
-        {!isOrganizer && !isMaster && isPartner ? (
-          <Card className="border-dashed">
-            <CardContent className="p-6 text-center space-y-2">
-              <Icon name="Construction" size={28} className="text-muted-foreground mx-auto" />
-              <p className="text-sm text-muted-foreground">
-                Рассылки для управляющих появятся в ближайшее время — мы готовим инструмент
-                для общения с клиентами событий и броней в ваших банях.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <NotifyModule role={notifyRole} eventId={null} />
-        )}
+        <NotifyModule role={notifyRole} eventId={null} />
       </div>
     );
   }

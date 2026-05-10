@@ -49,6 +49,24 @@
       "method": "GET",
       "path": "/?resource=recipients&source=master_booking",
       "expectedStatus": 401
+    },
+    {
+      "name": "Partner events list without token returns 401",
+      "method": "GET",
+      "path": "/?resource=partner_events",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Ritual bookings list without token returns 401",
+      "method": "GET",
+      "path": "/?resource=ritual_bookings",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Ritual booking recipients without token returns 401",
+      "method": "GET",
+      "path": "/?resource=recipients&source=ritual_booking",
+      "expectedStatus": 401
     }
   ]
 }
