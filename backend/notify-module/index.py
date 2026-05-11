@@ -27,14 +27,28 @@ VK_API_VERSION = "5.131"
 TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
 
 
+def user_has_role(cur, s, user_id, role_slug):
+    """Проверка активной роли у пользователя."""
+    cur.execute(f"""
+        SELECT 1 FROM {s}.user_roles ur
+        JOIN {s}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = %s AND ur.status = 'active' AND r.slug = %s
+        LIMIT 1
+    """, (user_id, role_slug))
+    return cur.fetchone() is not None
+
+
 def get_event_access(cur, s, user_id, event_id):
     """
     Универсальная утилита: какой доступ есть у user_id к event_id.
-    Возвращает dict: {has_access: bool, role: 'organizer'|'partner'|None,
+    Возвращает dict: {has_access: bool, role: 'admin'|'organizer'|'partner'|'organizer_role'|None,
                       total_signups: int, exists: bool}.
     Доступ есть, если пользователь:
+      - администратор (роль admin), ИЛИ
       - организатор события (events.organizer_id = user_id), ИЛИ
-      - владелец бани события (baths.owner_id = user_id через events.bath_id).
+      - владелец бани события (baths.owner_id = user_id через events.bath_id), ИЛИ
+      - имеет активную роль organizer (доверяем — может управлять чужими событиями),
+        пока не введён более тонкий доступ.
     """
     cur.execute(f"""
         SELECT e.organizer_id, b.owner_id,
@@ -53,6 +67,10 @@ def get_event_access(cur, s, user_id, event_id):
         role = "organizer"
     elif bath_owner_id == user_id:
         role = "partner"
+    elif user_has_role(cur, s, user_id, "admin"):
+        role = "admin"
+    elif user_has_role(cur, s, user_id, "organizer"):
+        role = "organizer_role"
     return {"has_access": role is not None, "role": role,
             "total_signups": int(total or 0), "exists": True}
 
