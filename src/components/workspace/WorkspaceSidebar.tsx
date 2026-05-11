@@ -119,25 +119,6 @@ export default function WorkspaceSidebar({
         </CollapsibleSection>
       )}
 
-      {/* Партнёр-разделы */}
-      {isPartner && (
-        <CollapsibleSection sectionKey="partner" icon="Building2" accent="text-violet-500" label="Управляющий">
-          <NavItem
-            active={roleTab === "partner" && partnerView === "baths"}
-            onClick={() => switchPartnerView("baths")}
-            icon="Building2"
-            label="Мои бани"
-            badge={bathsCount || undefined}
-          />
-          <NavItem
-            active={roleTab === "partner" && partnerView === "add"}
-            onClick={() => switchPartnerView("add")}
-            icon="Plus"
-            label="Добавить баню"
-          />
-        </CollapsibleSection>
-      )}
-
       {/* Организатор-разделы */}
       {isOrganizer && (
         <CollapsibleSection sectionKey="organizer" icon="CalendarDays" accent="text-emerald-500" label="Мероприятия">
@@ -161,6 +142,25 @@ export default function WorkspaceSidebar({
             label="Калькулятор"
           />
 
+        </CollapsibleSection>
+      )}
+
+      {/* Партнёр-разделы */}
+      {isPartner && (
+        <CollapsibleSection sectionKey="partner" icon="Building2" accent="text-violet-500" label="Управляющий">
+          <NavItem
+            active={roleTab === "partner" && partnerView === "baths"}
+            onClick={() => switchPartnerView("baths")}
+            icon="Building2"
+            label="Мои бани"
+            badge={bathsCount || undefined}
+          />
+          <NavItem
+            active={roleTab === "partner" && partnerView === "add"}
+            onClick={() => switchPartnerView("add")}
+            icon="Plus"
+            label="Добавить баню"
+          />
         </CollapsibleSection>
       )}
 
