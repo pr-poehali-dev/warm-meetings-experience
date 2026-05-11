@@ -1008,7 +1008,9 @@ def handler(event: dict, context) -> dict:
         cur.close(); conn.close()
         return err("Сессия истекла или недействительна", 401)
 
-    user_id, user_name, user_email = user['id'], user['name'], user['email']
+    # get_user_from_token использует обычный курсор → возвращает tuple
+    # Колонки: u.id, u.name, u.email, u.phone, u.telegram
+    user_id, user_name, user_email = user[0], user[1], user[2]
 
     if not has_role(cur, s, user_id, "organizer", "master", "parmaster", "partner", "admin"):
         cur.close(); conn.close()
