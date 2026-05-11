@@ -123,6 +123,15 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     );
   }
 
+  // ─── Блог — доступен всем пользователям ─────────────────────────────────────
+  if (roleTab === "blog") {
+    return (
+      <div className="max-w-3xl mx-auto">
+        <MyArticles />
+      </div>
+    );
+  }
+
   // ─── Универсальный раздел Telegram для всех коммерческих ролей ──────────────
   if (roleTab === "telegram") {
     const userRole = isOrganizer ? "organizer" : isMaster ? "master" : isPartner ? "partner" : "organizer";

@@ -160,12 +160,7 @@ export default function WorkspaceSidebar({
             icon="Calculator"
             label="Калькулятор"
           />
-          <NavItem
-            active={roleTab === "organizer" && orgView === "blog"}
-            onClick={() => switchOrgView("blog")}
-            icon="BookOpen"
-            label="Блог"
-          />
+
         </CollapsibleSection>
       )}
 
@@ -185,6 +180,13 @@ export default function WorkspaceSidebar({
           label="Telegram-каналы"
           badge={tgChannelsCount || undefined}
           accent="text-sky-500"
+        />
+        <NavItem
+          active={roleTab === "blog"}
+          onClick={() => switchRoleTab("blog")}
+          icon="BookOpen"
+          label="Блог"
+          accent="text-amber-500"
         />
         <NavItem
           active={roleTab === "notify"}
