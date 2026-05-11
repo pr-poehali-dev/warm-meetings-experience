@@ -480,8 +480,8 @@ export function MasterNotificationsSection({ masterId }: { masterId: number }) {
           <div key={t.key} className="flex items-center justify-between gap-4 bg-card border rounded-2xl p-4">
             <div><div className="font-medium text-sm">{t.label}</div><div className="text-xs text-muted-foreground mt-0.5">{t.desc}</div></div>
             <button onClick={() => setSettings((p) => ({ ...p, [t.key]: !p[t.key] }))}
-              className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${settings[t.key] ? "bg-primary" : "bg-muted"}`}>
-              <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${settings[t.key] ? "translate-x-5" : "translate-x-0.5"}`} />
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${settings[t.key] ? "bg-primary" : "bg-muted"}`}>
+              <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${settings[t.key] ? "translate-x-5" : "translate-x-0"}`} />
             </button>
           </div>
         ))}
