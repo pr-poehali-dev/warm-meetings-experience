@@ -876,7 +876,9 @@ def handle_partner_events_list(cur, user_id, s):
     """События в банях партнёра + события, где он сам организатор."""
     cur.execute(f"""
         SELECT DISTINCT e.id, e.title, e.event_date, e.start_time, e.status,
-               COALESCE(b.name, e.bath_name) as bath_name
+               COALESCE(b.name, e.bath_name) as bath_name,
+               e.image_url,
+               (SELECT COUNT(*) FROM {s}.event_signups es WHERE es.event_id = e.id) as signups_count
         FROM {s}.events e
         LEFT JOIN {s}.baths b ON b.id = e.bath_id
         WHERE e.organizer_id = %s
@@ -885,7 +887,7 @@ def handle_partner_events_list(cur, user_id, s):
         LIMIT 200
     """, (user_id, user_id))
     rows = cur.fetchall()
-    cols = ["id","title","event_date","start_time","status","bath_name"]
+    cols = ["id","title","event_date","start_time","status","bath_name","image_url","signups_count"]
     return ok({"events": [dict(zip(cols, r)) for r in rows]})
 
 

@@ -168,6 +168,8 @@ export interface PartnerEventShort {
   start_time: string | null;
   status: string;
   bath_name: string | null;
+  image_url?: string | null;
+  signups_count?: number;
 }
 
 // ─── Константы ────────────────────────────────────────────────────────────────

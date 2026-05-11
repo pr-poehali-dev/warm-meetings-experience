@@ -10,6 +10,7 @@ import {
   notifyApi, SendResult,
 } from "@/lib/notify-api";
 import { organizerApi } from "@/lib/organizer-api";
+import EventPicker, { EventPickerItem } from "./EventPicker";
 
 interface Props {
   scenario: NotifyScenario | null;
@@ -25,7 +26,7 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
   const isMaster = mode === "master";
   const isPartner = mode === "partner";
   const [partnerSource, setPartnerSource] = useState<PartnerSource>("events");
-  const [events, setEvents] = useState<{ id: number; title: string; event_date: string | null; bath_name?: string | null }[]>([]);
+  const [events, setEvents] = useState<EventPickerItem[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<number | null>(eventIdProp);
   const [recipients, setRecipients] = useState<NotifyRecipient[]>([]);
   const [loadingRec, setLoadingRec] = useState(false);
@@ -254,21 +255,12 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
       {!isMaster && !(isPartner && partnerSource === "rituals") && (
         <div className="space-y-1.5">
           <Label className="text-xs">Событие</Label>
-          <div className="relative">
-            <select
-              value={selectedEventId ?? ""}
-              onChange={(e) => setSelectedEventId(e.target.value ? Number(e.target.value) : null)}
-              className="w-full h-9 rounded-xl border bg-background px-3 pr-8 text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">— выберите событие —</option>
-              {events.map((ev) => (
-                <option key={ev.id} value={ev.id}>
-                  {ev.title}{ev.event_date ? ` · ${new Date(ev.event_date).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}` : ""}
-                </option>
-              ))}
-            </select>
-            <Icon name="ChevronDown" size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          </div>
+          <EventPicker
+            events={events}
+            value={selectedEventId}
+            onChange={setSelectedEventId}
+            placeholder="— выберите событие —"
+          />
         </div>
       )}
 
