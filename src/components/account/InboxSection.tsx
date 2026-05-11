@@ -142,7 +142,8 @@ export default function InboxSection() {
     return (
       <div className="text-center py-8 border-2 border-dashed rounded-xl">
         <Icon name="Inbox" size={24} className="mx-auto mb-2 text-muted-foreground/50" />
-        <p className="text-sm text-muted-foreground">Пока нет сообщений от организаторов</p>
+        <p className="text-sm font-medium text-muted-foreground">Сообщений пока нет</p>
+        <p className="text-xs text-muted-foreground/70 mt-1 max-w-xs mx-auto">Здесь будут сообщения от организаторов мероприятий, на которые вы записаны</p>
       </div>
     );
   }
