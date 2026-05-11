@@ -131,6 +131,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         <TelegramSettings
           tgLinked={tgLinked}
           tgChannelsCount={tgChannelsCount}
+          userId={masterId}
           onRefresh={refreshTgInfo}
           userRole={userRole}
         />

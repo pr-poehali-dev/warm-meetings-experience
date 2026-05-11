@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { organizerApi, OrgNotifySettings } from "@/lib/organizer-api";
+import { tgPublishApi, TgChannel } from "@/lib/tg-publish-api";
 import { toast } from "sonner";
 
 import TelegramProgressSteps from "./telegram/TelegramProgressSteps";
@@ -12,6 +13,7 @@ import TelegramChannelStep from "./telegram/TelegramChannelStep";
 interface Props {
   tgLinked: boolean;
   tgChannelsCount: number;
+  userId: number;
   onRefresh: () => void;
   userRole?: "organizer" | "master" | "partner" | "editor";
 }
@@ -59,7 +61,7 @@ const ROLE_COPY: Record<string, { title: string; desc: string }> = {
   },
 };
 
-export default function TelegramSettings({ tgLinked, tgChannelsCount, onRefresh, userRole = "organizer" }: Props) {
+export default function TelegramSettings({ tgLinked, tgChannelsCount, userId, onRefresh, userRole = "organizer" }: Props) {
   const roleCopy = ROLE_COPY[userRole] || ROLE_COPY.organizer;
   const [code, setCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -67,12 +69,20 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, onRefresh,
   const [checking, setChecking] = useState(false);
   const [notifySettings, setNotifySettings] = useState<OrgNotifySettings | null>(null);
   const [savingNotify, setSavingNotify] = useState(false);
+  const [channels, setChannels] = useState<TgChannel[]>([]);
 
   useEffect(() => {
     organizerApi.getNotifySettings()
       .then(setNotifySettings)
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!tgChannelsCount || !userId) return;
+    tgPublishApi.getChannels(userId)
+      .then(setChannels)
+      .catch(() => {});
+  }, [tgChannelsCount, userId]);
 
   const handleNotifyToggle = async (field: keyof Pick<OrgNotifySettings, "notify_telegram" | "notify_email" | "notify_vk">) => {
     if (!notifySettings) return;
@@ -138,6 +148,7 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, onRefresh,
         step2Done={step2Done}
         tgChannelsCount={tgChannelsCount}
         notifySettings={notifySettings}
+        channels={channels}
       />
 
       {/* Всё настроено */}
