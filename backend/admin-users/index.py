@@ -11,7 +11,7 @@ def get_user_full(cur, schema, user_id):
     cur.execute(f"""
         SELECT
             u.id, u.name, u.email, u.phone, u.telegram,
-            u.is_active, u.created_at, u.updated_at, u.consent_photo,
+            u.is_active, u.blocked_reason, u.created_at, u.updated_at, u.consent_photo,
             COALESCE(json_agg(
                 json_build_object('id', r.id, 'name', r.name, 'slug', r.slug, 'icon', r.icon, 'status', ur.status)
             ) FILTER (WHERE ur.id IS NOT NULL), '[]') as roles
@@ -70,7 +70,7 @@ def handler(event, context):
         cur.execute(f"""
             SELECT
                 u.id, u.name, u.email, u.phone, u.telegram,
-                u.is_active, u.created_at, u.consent_photo,
+                u.is_active, u.blocked_reason, u.created_at, u.consent_photo,
                 COALESCE(json_agg(
                     json_build_object('id', r.id, 'name', r.name, 'slug', r.slug, 'icon', r.icon, 'status', ur.status)
                 ) FILTER (WHERE ur.id IS NOT NULL), '[]') as roles
@@ -118,6 +118,53 @@ def handler(event, context):
             conn.commit()
             conn.close()
             return respond(200, {'id': row['id'], 'is_active': row['is_active']})
+
+        if action == 'block_user':
+            reason = str(body.get('reason', 'banned'))
+            if reason not in ('banned', 'duplicate'):
+                conn.close()
+                return respond(400, {'error': 'Недопустимая причина блокировки'})
+            cur.execute(f"""
+                UPDATE {schema}.users
+                SET is_active = false,
+                    blocked_reason = '{reason}',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = {user_id}
+                RETURNING id, is_active, blocked_reason
+            """)
+            row = cur.fetchone()
+            if not row:
+                conn.close()
+                return respond(404, {'error': 'Пользователь не найден'})
+            cur.execute(f"""
+                UPDATE {schema}.user_sessions
+                SET expires_at = NOW() - INTERVAL '1 second'
+                WHERE user_id = {user_id}
+            """)
+            audit_log(cur, schema, 'user', user_id, 'block',
+                      field='blocked_reason', new_value=reason)
+            conn.commit()
+            conn.close()
+            return respond(200, {'id': row['id'], 'is_active': row['is_active'], 'blocked_reason': row['blocked_reason']})
+
+        if action == 'unblock_user':
+            cur.execute(f"""
+                UPDATE {schema}.users
+                SET is_active = true,
+                    blocked_reason = NULL,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = {user_id}
+                RETURNING id, is_active, blocked_reason
+            """)
+            row = cur.fetchone()
+            if not row:
+                conn.close()
+                return respond(404, {'error': 'Пользователь не найден'})
+            audit_log(cur, schema, 'user', user_id, 'unblock',
+                      field='blocked_reason', old_value='banned', new_value=None)
+            conn.commit()
+            conn.close()
+            return respond(200, {'id': row['id'], 'is_active': row['is_active'], 'blocked_reason': row['blocked_reason']})
 
         if action == 'update_user':
             fields = []

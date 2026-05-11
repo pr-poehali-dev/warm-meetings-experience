@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import Icon from "@/components/ui/icon";
 import ConsentPhotoBadge from "@/components/ui/ConsentPhotoBadge";
 import { useStickyFilters } from "@/hooks/useStickyFilters";
@@ -36,6 +37,7 @@ interface User {
   phone: string | null;
   telegram: string | null;
   is_active: boolean;
+  blocked_reason: "banned" | "duplicate" | null;
   created_at: string;
   consent_photo?: "yes" | "no" | null;
   roles: UserRole[];
@@ -75,6 +77,7 @@ export default function AdminUsers() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<{ name: string; phone: string; telegram: string }>({ name: "", phone: "", telegram: "" });
   const [saving, setSaving] = useState(false);
+  const [blockDialog, setBlockDialog] = useState(false);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -135,13 +138,28 @@ export default function AdminUsers() {
     }
   };
 
-  const toggleActive = async () => {
+  const blockUser = async (reason: "banned" | "duplicate") => {
+    if (!selected) return;
+    setSaving(true);
+    setBlockDialog(false);
+    try {
+      const data = await adminPost({ action: "block_user", user_id: selected.id, reason });
+      syncSelected({ ...selected, is_active: data.is_active, blocked_reason: data.blocked_reason });
+      toast.success(reason === "banned" ? "Пользователь заблокирован (бан)" : "Дубликат заблокирован");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const unblockUser = async () => {
     if (!selected) return;
     setSaving(true);
     try {
-      const data = await adminPost({ action: "toggle_active", user_id: selected.id });
-      syncSelected({ ...selected, is_active: data.is_active });
-      toast.success(data.is_active ? "Пользователь активирован" : "Пользователь заблокирован");
+      const data = await adminPost({ action: "unblock_user", user_id: selected.id });
+      syncSelected({ ...selected, is_active: data.is_active, blocked_reason: data.blocked_reason });
+      toast.success("Пользователь разблокирован");
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Ошибка");
     } finally {
@@ -266,9 +284,13 @@ export default function AdminUsers() {
                       </td>
                       <td className="py-3 pr-4 text-gray-500">{formatDate(user.created_at)}</td>
                       <td className="py-3">
-                        <Badge variant={user.is_active ? "default" : "destructive"} className="text-xs">
-                          {user.is_active ? "Активен" : "Заблокирован"}
-                        </Badge>
+                        {user.is_active ? (
+                          <Badge variant="default" className="text-xs">Активен</Badge>
+                        ) : user.blocked_reason === "banned" ? (
+                          <Badge variant="destructive" className="text-xs">Бан</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs text-gray-500">Заблокирован</Badge>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -300,9 +322,13 @@ export default function AdminUsers() {
             <SheetTitle className="flex items-center gap-2">
               <Icon name="User" size={18} />
               {selected?.name}
-              <Badge variant={selected?.is_active ? "default" : "destructive"} className="text-xs ml-1">
-                {selected?.is_active ? "Активен" : "Заблокирован"}
-              </Badge>
+              {selected?.is_active ? (
+                <Badge variant="default" className="text-xs ml-1">Активен</Badge>
+              ) : selected?.blocked_reason === "banned" ? (
+                <Badge variant="destructive" className="text-xs ml-1">Бан</Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs ml-1 text-gray-500">Заблокирован</Badge>
+              )}
             </SheetTitle>
           </SheetHeader>
 
@@ -396,17 +422,31 @@ export default function AdminUsers() {
               </>
             ) : (
               <>
-                <Button
-                  variant="outline"
-                  onClick={toggleActive}
-                  disabled={saving}
-                  className={selected?.is_active ? "text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200" : "text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"}
-                >
-                  {saving
-                    ? <Icon name="Loader2" size={14} className="animate-spin mr-1" />
-                    : <Icon name={selected?.is_active ? "Ban" : "CheckCircle"} size={14} className="mr-1.5" />}
-                  {selected?.is_active ? "Заблокировать" : "Разблокировать"}
-                </Button>
+                {selected?.is_active ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => setBlockDialog(true)}
+                    disabled={saving}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                  >
+                    {saving
+                      ? <Icon name="Loader2" size={14} className="animate-spin mr-1" />
+                      : <Icon name="Ban" size={14} className="mr-1.5" />}
+                    Заблокировать
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={unblockUser}
+                    disabled={saving}
+                    className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+                  >
+                    {saving
+                      ? <Icon name="Loader2" size={14} className="animate-spin mr-1" />
+                      : <Icon name="CheckCircle" size={14} className="mr-1.5" />}
+                    Разблокировать
+                  </Button>
+                )}
                 <Button variant="outline" onClick={() => setEditing(true)}>
                   <Icon name="Pencil" size={14} className="mr-1.5" />
                   Редактировать
@@ -416,6 +456,35 @@ export default function AdminUsers() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={blockDialog} onOpenChange={setBlockDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Заблокировать пользователя</AlertDialogTitle>
+            <AlertDialogDescription>
+              Выберите причину блокировки. При бане пользователь не сможет зарегистрироваться повторно с тем же email.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => blockUser("duplicate")}
+              className="text-yellow-600 hover:bg-yellow-50 border-yellow-300"
+            >
+              <Icon name="Copy" size={14} className="mr-1.5" />
+              Дубликат
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => blockUser("banned")}
+            >
+              <Icon name="Ban" size={14} className="mr-1.5" />
+              Бан (нарушение)
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
