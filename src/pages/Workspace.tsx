@@ -49,13 +49,19 @@ export default function Workspace() {
   const [orgView, setOrgView] = useState<OrgView>("dashboard");
   const [partnerView, setPartnerView] = useState<PartnerView>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    master: true,
-    partner: true,
-    organizer: true,
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem("ws_open_sections");
+      if (saved) return JSON.parse(saved);
+    } catch (_) { /* ignore */ }
+    return { master: true, partner: true, organizer: true };
   });
   const toggleSection = (key: string) =>
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+    setOpenSections((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      localStorage.setItem("ws_open_sections", JSON.stringify(next));
+      return next;
+    });
 
   // Partner state
   const [baths, setBaths] = useState<PartnerBath[]>([]);
