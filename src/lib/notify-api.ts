@@ -97,7 +97,7 @@ export const notifyApi = {
     return req(`${BASE}?resource=scenarios&id=${id}`, { method: "DELETE" });
   },
 
-  getRecipients(eventId: number): Promise<{ recipients: NotifyRecipient[]; total: number }> {
+  getRecipients(eventId: number): Promise<{ recipients: NotifyRecipient[]; total: number; total_signups?: number; access_role?: "organizer" | "partner" | null }> {
     return req(`${BASE}?resource=recipients&event_id=${eventId}`);
   },
 

@@ -35,6 +35,8 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
   const [bodyHtml, setBodyHtml] = useState("");
   const [sending, setSending] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [totalSignups, setTotalSignups] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const eventId = selectedEventId;
 
@@ -84,14 +86,20 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
         .finally(() => setLoadingRec(false));
       return;
     }
-    if (!eventId) { setRecipients([]); setSelected(new Set()); return; }
+    if (!eventId) { setRecipients([]); setSelected(new Set()); setTotalSignups(null); setLoadError(null); return; }
     setLoadingRec(true);
+    setLoadError(null);
     notifyApi.getRecipients(eventId)
-      .then(({ recipients: r }) => {
+      .then(({ recipients: r, total_signups }) => {
         setRecipients(r);
         setSelected(new Set(r.map((rc) => rc.id)));
+        setTotalSignups(typeof total_signups === "number" ? total_signups : null);
       })
-      .catch(() => {})
+      .catch((e: unknown) => {
+        setRecipients([]);
+        setSelected(new Set());
+        setLoadError(e instanceof Error ? e.message : "Не удалось загрузить участников");
+      })
       .finally(() => setLoadingRec(false));
   }, [eventId, isMaster, isPartner, partnerSource]);
 
@@ -300,8 +308,26 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
             <Icon name="Loader2" size={18} className="animate-spin text-muted-foreground" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-6 border-2 border-dashed rounded-xl">
-            <p className="text-sm text-muted-foreground">{isMaster || (isPartner && partnerSource === "rituals") ? "Нет клиентов" : "Нет участников"}</p>
+          <div className="text-center py-6 border-2 border-dashed rounded-xl space-y-1">
+            {loadError ? (
+              <>
+                <Icon name="ShieldAlert" size={18} className="mx-auto text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">{loadError}</p>
+              </>
+            ) : !isMaster && !(isPartner && partnerSource === "rituals") && totalSignups === 0 ? (
+              <>
+                <Icon name="UserX" size={18} className="mx-auto text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">В это событие ещё никто не записался</p>
+                <p className="text-[11px] text-muted-foreground">Как только появятся первые гости — они отобразятся здесь</p>
+              </>
+            ) : !isMaster && !(isPartner && partnerSource === "rituals") && totalSignups && filterStatus !== "all" ? (
+              <>
+                <p className="text-sm text-muted-foreground">Нет участников с этим статусом</p>
+                <button onClick={() => setFilterStatus("all")} className="text-xs text-primary hover:underline">Показать всех ({totalSignups})</button>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">{isMaster || (isPartner && partnerSource === "rituals") ? "Нет клиентов" : "Нет участников"}</p>
+            )}
           </div>
         ) : (
           <div className="border rounded-xl overflow-hidden">

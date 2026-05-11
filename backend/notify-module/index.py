@@ -27,6 +27,40 @@ VK_API_VERSION = "5.131"
 TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
 
 
+def get_event_access(cur, s, user_id, event_id):
+    """
+    Универсальная утилита: какой доступ есть у user_id к event_id.
+    Возвращает dict: {has_access: bool, role: 'organizer'|'partner'|None,
+                      total_signups: int, exists: bool}.
+    Доступ есть, если пользователь:
+      - организатор события (events.organizer_id = user_id), ИЛИ
+      - владелец бани события (baths.owner_id = user_id через events.bath_id).
+    """
+    cur.execute(f"""
+        SELECT e.organizer_id, b.owner_id,
+               (SELECT COUNT(*) FROM {s}.event_signups es WHERE es.event_id = e.id)
+        FROM {s}.events e
+        LEFT JOIN {s}.baths b ON b.id = e.bath_id
+        WHERE e.id = %s
+        LIMIT 1
+    """, (event_id,))
+    row = cur.fetchone()
+    if not row:
+        return {"has_access": False, "role": None, "total_signups": 0, "exists": False}
+    organizer_id, bath_owner_id, total = row
+    role = None
+    if organizer_id == user_id:
+        role = "organizer"
+    elif bath_owner_id == user_id:
+        role = "partner"
+    return {"has_access": role is not None, "role": role,
+            "total_signups": int(total or 0), "exists": True}
+
+
+# Статусы записей, которые НИКОГДА не получают рассылку
+EXCLUDED_SIGNUP_STATUSES = ("cancelled", "canceled", "declined", "spam")
+
+
 def html_to_text(html):
     """Грубая конвертация HTML в plain text для VK/Telegram."""
     if not html:
@@ -329,8 +363,14 @@ def handle_recipients_get(cur, user_id, params, s):
     event_id = params.get("event_id")
     if not event_id:
         return err("Укажите event_id")
-    # Пользователь видит участников события если он либо организатор события,
-    # либо владелец бани, к которой это событие привязано.
+
+    access = get_event_access(cur, s, user_id, int(event_id))
+    if not access["exists"]:
+        return err("Событие не найдено", 404)
+    if not access["has_access"]:
+        return err("Нет доступа к участникам этого события", 403)
+
+    excluded = ",".join(f"'{x}'" for x in EXCLUDED_SIGNUP_STATUSES)
     cur.execute(f"""
         SELECT es.id, es.name, es.email, es.telegram, es.status, es.preferred_channel,
                u.id as user_id, u.telegram as tg_username,
@@ -339,13 +379,10 @@ def handle_recipients_get(cur, user_id, params, s):
                u.notify_email, u.notify_vk, u.notify_telegram
         FROM {s}.event_signups es
         LEFT JOIN {s}.users u ON u.id = es.user_id
-        JOIN {s}.events e ON e.id = es.event_id
-        LEFT JOIN {s}.baths b ON b.id = e.bath_id
         WHERE es.event_id = %s
-          AND (e.organizer_id = %s OR b.owner_id = %s)
-          AND es.status NOT IN ('cancelled')
+          AND COALESCE(es.status, '') NOT IN ({excluded})
         ORDER BY es.created_at
-    """, (event_id, user_id, user_id))
+    """, (event_id,))
     rows = cur.fetchall()
     cols = ["id","name","email","telegram","status","preferred_channel","user_id","tg_username",
             "vk_id","vk_notify_allowed","tg_chat_id","tg_notify_allowed",
@@ -380,7 +417,12 @@ def handle_recipients_get(cur, user_id, params, s):
             elif has_site: auto = "site"
         d["auto_channel"] = auto
         recipients.append(d)
-    return ok({"recipients": recipients, "total": len(recipients)})
+    return ok({
+        "recipients": recipients,
+        "total": len(recipients),
+        "total_signups": access["total_signups"],
+        "access_role": access["role"],
+    })
 
 
 def handle_send_master_bookings(cur, conn, user_id, booking_ids, scenario_id, channel,
@@ -680,26 +722,43 @@ def handle_send(cur, conn, user_id, body, s):
         )
 
     # ─── Источник: события (по умолчанию) ──────────────────────────────────────
+    if not event_id and not signup_ids:
+        return err("Укажите event_id или signup_ids")
+
+    # Если указан event_id — проверяем доступ ОДИН раз через утилиту
+    if event_id:
+        acc = get_event_access(cur, s, user_id, int(event_id))
+        if not acc["exists"]:
+            return err("Событие не найдено", 404)
+        if not acc["has_access"]:
+            return err("Нет доступа к участникам этого события", 403)
+
     base_select = f"""
         SELECT es.id, es.name, es.email, es.status, es.preferred_channel,
                u.id as user_id_v, u.vk_id, u.vk_notify_allowed,
                u.tg_chat_id, u.tg_notify_allowed,
                e.id as eid, e.title, e.event_date, e.start_time, e.price_amount,
-               b.name as bath_name
+               COALESCE(b.name, e.bath_name) as bath_name
         FROM {s}.event_signups es
         LEFT JOIN {s}.users u ON u.id = es.user_id
         JOIN {s}.events e ON e.id = es.event_id
         LEFT JOIN {s}.baths b ON b.id = e.bath_id
     """
-    # Доступ: организатор события ИЛИ владелец бани, в которой событие
-    access = "(e.organizer_id = %s OR b.owner_id = %s)"
+    excluded = ",".join(f"'{x}'" for x in EXCLUDED_SIGNUP_STATUSES)
     if signup_ids:
+        # При выборочной отправке доступ проверяем по каждому event
         id_list = ",".join(str(int(i)) for i in signup_ids)
-        cur.execute(base_select + f" WHERE es.id IN ({id_list}) AND {access}", (user_id, user_id))
-    elif event_id:
-        cur.execute(base_select + f" WHERE es.event_id = %s AND {access} AND es.status NOT IN ('cancelled')", (event_id, user_id, user_id))
+        cur.execute(
+            base_select + f" WHERE es.id IN ({id_list}) "
+            f"AND (e.organizer_id = %s OR b.owner_id = %s)",
+            (user_id, user_id),
+        )
     else:
-        return err("Укажите event_id или signup_ids")
+        cur.execute(
+            base_select + f" WHERE es.event_id = %s "
+            f"AND COALESCE(es.status, '') NOT IN ({excluded})",
+            (event_id,),
+        )
 
     signups = cur.fetchall()
     if not signups:
