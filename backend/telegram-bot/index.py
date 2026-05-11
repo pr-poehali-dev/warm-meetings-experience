@@ -79,6 +79,8 @@ def handler(event, context):
             return handle_publish_event(body)
         if body.get('action') == 'publish_content':
             return handle_publish_content(body)
+        if body.get('action') == 'flush_scheduled':
+            return handle_flush_scheduled(body)
         if body.get('action') == 'notify_signup':
             return handle_notify_signup(body)
         if body.get('action') == 'get_channels':
@@ -1238,6 +1240,26 @@ def handle_publish_content(body):
         else:
             text, photo_url = _format_content(content_type, data, ch.get('template'))
 
+        pub_type_safe = pub_type.replace("'", "''")
+        published_by_sql = str(int(published_by)) if published_by else 'NULL'
+        sched_sql = f"'{scheduled_at}'" if scheduled_at else 'NULL'
+
+        # Отложенная публикация — только сохраняем запись
+        if scheduled_at:
+            cur.execute(f"""
+                INSERT INTO {schema}.tg_pub_universal
+                    (user_id, channel_id, content_type, content_id, message_id,
+                     status, error_text, scheduled_at, published_by, publication_type)
+                VALUES
+                    ({int(user_id)}, {ch['id']}, '{content_type}', {int(content_id)},
+                     NULL, 'scheduled', NULL, {sched_sql}, {published_by_sql}, '{pub_type_safe}')
+                ON CONFLICT (channel_id, content_type, content_id, publication_type)
+                DO UPDATE SET status='scheduled', scheduled_at=EXCLUDED.scheduled_at,
+                              published_by=EXCLUDED.published_by
+            """)
+            published += 1
+            continue
+
         result = None
         if photo_url and ch.get('include_photo'):
             result = tg_api('sendPhoto', {
@@ -1257,11 +1279,8 @@ def handle_publish_content(body):
         if err_text:
             err_text = err_text.replace("'", "''")
 
-        pub_type_safe = pub_type.replace("'", "''")
         msg_id_sql = str(msg_id) if msg_id else 'NULL'
         err_sql = f"'{err_text}'" if err_text else 'NULL'
-        published_by_sql = str(int(published_by)) if published_by else 'NULL'
-        sched_sql = f"'{scheduled_at}'" if scheduled_at else 'NULL'
 
         cur.execute(f"""
             INSERT INTO {schema}.tg_pub_universal
@@ -1282,4 +1301,76 @@ def handle_publish_content(body):
 
     conn.commit()
     conn.close()
-    return respond(200, {'ok': True, 'published': published, 'errors': errors})
+    return respond(200, {'ok': True, 'published': published, 'scheduled': scheduled_at is not None, 'errors': errors})
+
+
+def handle_flush_scheduled(body):
+    """Отправляет все отложенные публикации, время которых уже наступило."""
+    user_id = body.get('user_id')
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    schema = get_schema()
+
+    where_user = f"AND p.user_id = {int(user_id)}" if user_id else ''
+    cur.execute(f"""
+        SELECT p.id, p.user_id, p.channel_id, p.content_type, p.content_id,
+               p.publication_type, p.published_by,
+               ch.chat_id, ch.chat_title, ch.template, ch.include_photo
+        FROM {schema}.tg_pub_universal p
+        JOIN {schema}.tg_channels ch ON ch.id = p.channel_id
+        WHERE p.status = 'scheduled'
+          AND p.scheduled_at <= NOW()
+          {where_user}
+        ORDER BY p.scheduled_at
+        LIMIT 50
+    """)
+    rows = [dict(r) for r in cur.fetchall()]
+
+    sent = 0
+    errors = []
+
+    for row in rows:
+        content_type = row['content_type']
+        content_id = row['content_id']
+        data = None
+
+        if content_type == 'event':
+            cur.execute(f"SELECT e.*, u.name as organizer_name FROM {schema}.events e LEFT JOIN {schema}.users u ON u.id = e.organizer_id WHERE e.id = {int(content_id)}")
+        elif content_type == 'master_service':
+            cur.execute(f"SELECT ms.*, m.name as master_name, m.slug as master_slug, m.id as master_id, m.avatar, m.city FROM {schema}.master_services ms JOIN {schema}.masters m ON m.id = ms.master_id WHERE ms.id = {int(content_id)}")
+        elif content_type == 'bath':
+            cur.execute(f"SELECT * FROM {schema}.baths WHERE id = {int(content_id)}")
+        elif content_type == 'article':
+            cur.execute(f"SELECT a.*, u.name as author_name FROM {schema}.blog_articles a JOIN {schema}.users u ON u.id = a.author_id WHERE a.id = {int(content_id)}")
+        else:
+            continue
+
+        r = cur.fetchone()
+        if not r:
+            cur.execute(f"UPDATE {schema}.tg_pub_universal SET status='error', error_text='content_not_found' WHERE id = {row['id']}")
+            continue
+        data = dict(r)
+
+        text, photo_url = _format_content(content_type, data, row.get('template'))
+
+        result = None
+        if photo_url and row.get('include_photo'):
+            result = tg_api('sendPhoto', {'chat_id': row['chat_id'], 'photo': photo_url, 'caption': text, 'parse_mode': 'Markdown'})
+            if not result.get('ok'):
+                result = send_message(row['chat_id'], text)
+        else:
+            result = send_message(row['chat_id'], text)
+
+        if result and result.get('ok'):
+            msg_id = result.get('result', {}).get('message_id')
+            msg_id_sql = str(msg_id) if msg_id else 'NULL'
+            cur.execute(f"UPDATE {schema}.tg_pub_universal SET status='sent', message_id={msg_id_sql}, published_at=NOW() WHERE id = {row['id']}")
+            sent += 1
+        else:
+            err = (result.get('description', 'unknown') if result else 'no_response').replace("'", "''")
+            cur.execute(f"UPDATE {schema}.tg_pub_universal SET status='error', error_text='{err}' WHERE id = {row['id']}")
+            errors.append({'channel': row.get('chat_title', ''), 'error': err})
+
+    conn.commit()
+    conn.close()
+    return respond(200, {'ok': True, 'flushed': sent, 'errors': errors})

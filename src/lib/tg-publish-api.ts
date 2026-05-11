@@ -92,6 +92,15 @@ export const tgPublishApi = {
     return res.json();
   },
 
+  flushScheduled: async (userId: number): Promise<{ ok: boolean; flushed: number }> => {
+    const res = await fetch(TG_BOT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "flush_scheduled", user_id: userId }),
+    });
+    return res.json();
+  },
+
   publishArticle: async (params: {
     articleId: number;
     channelIds?: number[];

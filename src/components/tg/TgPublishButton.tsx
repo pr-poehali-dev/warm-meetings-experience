@@ -157,6 +157,15 @@ export default function TgPublishButton({
     }
   };
 
+  // Периодически отправляем просроченные отложенные публикации
+  useEffect(() => {
+    if (!open) return;
+    const timer = setInterval(() => {
+      tgPublishApi.flushScheduled(userId).catch(() => {});
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, [open, userId]);
+
   const handleClose = () => setOpen(false);
 
   return (
@@ -414,12 +423,13 @@ export default function TgPublishButton({
             <div className="px-5 py-8 flex flex-col items-center gap-3 text-center">
               {result.published > 0 ? (
                 <>
-                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                    <Icon name="Check" size={24} className="text-green-600" />
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${scheduleMode ? "bg-blue-100" : "bg-green-100"}`}>
+                    <Icon name={scheduleMode ? "Clock" : "Check"} size={24} className={scheduleMode ? "text-blue-600" : "text-green-600"} />
                   </div>
                   <p className="font-semibold text-sm">
-                    Опубликовано в {result.published}{" "}
-                    {result.published === 1 ? "канал" : result.published < 5 ? "канала" : "каналов"}
+                    {scheduleMode
+                      ? `Запланировано в ${result.published} ${result.published === 1 ? "канал" : result.published < 5 ? "канала" : "каналов"} на ${new Date(scheduledAt).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`
+                      : `Опубликовано в ${result.published} ${result.published === 1 ? "канал" : result.published < 5 ? "канала" : "каналов"}`}
                   </p>
                   {result.errors.length > 0 && (
                     <p className="text-xs text-destructive">
