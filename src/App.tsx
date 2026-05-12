@@ -11,6 +11,7 @@ import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import NotFoundPage from "./pages/NotFoundPage";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Documents from "./pages/Documents";
@@ -100,7 +101,7 @@ const AppContent = () => {
         <Route path="/terms" element={<Navigate to="/documents?tab=terms" replace />} />
         {/* Персональные мини-сайты пользователей. ВАЖНО: должно быть последним перед NotFound */}
         <Route path="/:slug" element={<LandingPage />} />
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </>
   );

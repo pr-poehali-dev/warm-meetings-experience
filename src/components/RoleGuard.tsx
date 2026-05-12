@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import Forbidden from "@/pages/Forbidden";
 
 interface RoleGuardProps {
   role: string | string[];
@@ -7,7 +8,7 @@ interface RoleGuardProps {
   redirectTo?: string;
 }
 
-export default function RoleGuard({ role, children, redirectTo = "/" }: RoleGuardProps) {
+export default function RoleGuard({ role, children, redirectTo }: RoleGuardProps) {
   const { user, loading, hasRole } = useAuth();
 
   if (loading) return null;
@@ -18,7 +19,9 @@ export default function RoleGuard({ role, children, redirectTo = "/" }: RoleGuar
   const hasAccess = roles.includes("auth") || roles.some((r) => hasRole(r));
 
   if (!hasAccess) {
-    return <Navigate to={redirectTo} replace />;
+    if (redirectTo) return <Navigate to={redirectTo} replace />;
+    const displayRoles = roles.filter(r => r !== "auth");
+    return <Forbidden requiredRole={displayRoles.length > 0 ? displayRoles : undefined} />;
   }
 
   return <>{children}</>;
