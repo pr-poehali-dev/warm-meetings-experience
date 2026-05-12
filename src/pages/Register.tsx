@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,51 @@ import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
 import AppendixLinkModal from "@/components/AppendixLinkModal";
+
+type CaptchaTask = { question: string; emoji: string; hint: string; answer: number };
+
+const CAPTCHA_TASKS: CaptchaTask[] = [
+  {
+    emoji: "🪨",
+    question: "На каменку положили 8 камней, 3 убрали. Сколько камней осталось?",
+    hint: "Камни любят тепло и простую математику",
+    answer: 5,
+  },
+  {
+    emoji: "🌿",
+    question: "Берёзовый веник распаривается 10 минут. Дубовый — 5. Сколько минут разница?",
+    hint: "Каждый веник требует своего времени",
+    answer: 5,
+  },
+  {
+    emoji: "🧴",
+    question: "На полке 6 флаконов с маслом. Использовали 2. Сколько осталось?",
+    hint: "Ароматы бани — дело тонкое",
+    answer: 4,
+  },
+  {
+    emoji: "🌊",
+    question: "В парилку зашли 4 человека, вышли 2. Сколько ещё парятся?",
+    hint: "Кто-то любит погорячее",
+    answer: 2,
+  },
+  {
+    emoji: "🔥",
+    question: "Печь топили 3 часа утром и 2 часа вечером. Сколько часов всего?",
+    hint: "Хорошая баня требует времени",
+    answer: 5,
+  },
+  {
+    emoji: "🪵",
+    question: "В поленнице было 12 дров, подкинули ещё 4. Сколько стало?",
+    hint: "Дрова — основа тепла",
+    answer: 16,
+  },
+];
+
+function makeCaptcha(): CaptchaTask {
+  return CAPTCHA_TASKS[Math.floor(Math.random() * CAPTCHA_TASKS.length)];
+}
 
 export default function Register() {
   const { user, loading: authLoading, register } = useAuth();
@@ -27,6 +72,14 @@ export default function Register() {
   const [consentRules, setConsentRules] = useState(false);
   const [consentPhoto, setConsentPhoto] = useState<"yes" | "no" | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [captcha, setCaptcha] = useState<CaptchaTask>(() => makeCaptcha());
+  const [captchaInput, setCaptchaInput] = useState("");
+  const captchaOk = captchaInput.trim() !== "" && parseInt(captchaInput, 10) === captcha.answer;
+
+  const resetCaptcha = useCallback(() => {
+    setCaptcha(makeCaptcha());
+    setCaptchaInput("");
+  }, []);
 
   const allRequired = consentTerms && consentPd && consentRules && isPhoneComplete(phone);
 
@@ -46,6 +99,11 @@ export default function Register() {
 
     if (!allRequired) {
       toast.error("Необходимо принять все обязательные условия");
+      return;
+    }
+
+    if (!captchaOk) {
+      toast.error("Ответьте на вопрос-проверку");
       return;
     }
 
@@ -241,10 +299,48 @@ export default function Register() {
                 </div>
               </div>
 
+              {/* Капча */}
+              <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 p-3">
+                <div className="flex items-start gap-2 mb-2">
+                  <span className="text-2xl leading-none">{captcha.emoji}</span>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium">{captcha.question}</div>
+                    <div className="text-[11px] text-muted-foreground">{captcha.hint}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={resetCaptcha}
+                    className="text-muted-foreground hover:text-foreground p-1 transition-colors"
+                    title="Другой вопрос"
+                  >
+                    <Icon name="RefreshCw" size={14} />
+                  </button>
+                </div>
+                <Input
+                  type="number"
+                  value={captchaInput}
+                  onChange={(e) => setCaptchaInput(e.target.value)}
+                  placeholder="Ответ числом"
+                  className={
+                    captchaInput && !captchaOk
+                      ? "border-rose-400 focus-visible:ring-rose-300"
+                      : captchaOk
+                        ? "border-green-500 focus-visible:ring-green-300"
+                        : ""
+                  }
+                />
+                {captchaInput && captchaOk && (
+                  <div className="text-[11px] text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                    <Icon name="Flame" size={11} />
+                    Верно — печка горит!
+                  </div>
+                )}
+              </div>
+
               <Button
                 type="submit"
                 className="w-full"
-                disabled={submitting || !allRequired}
+                disabled={submitting || !allRequired || !captchaOk}
               >
                 {submitting ? (
                   <>
