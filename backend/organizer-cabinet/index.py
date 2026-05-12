@@ -330,6 +330,23 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         if pricing_type not in ('fixed', 'dynamic'):
             pricing_type = 'fixed'
 
+        # Crowdfund (вскладчину) — необязательные поля
+        pricing_mode = body.get('pricing_mode', 'fixed')
+        if pricing_mode not in ('fixed', 'crowdfund'):
+            pricing_mode = 'fixed'
+        cf_target = body.get('cf_target_amount')
+        cf_min = body.get('cf_min_participants')
+        cf_max = body.get('cf_max_participants')
+        cf_club_fee = body.get('cf_club_fee', 500)
+        cf_fee_mode = body.get('cf_fee_mode', 'fixed')
+        if cf_fee_mode not in ('fixed', 'percent'):
+            cf_fee_mode = 'fixed'
+        cf_fee_percent = body.get('cf_fee_percent', 20)
+        cf_commission = body.get('cf_commission_percent', 15)
+        cf_freeze_hours = body.get('cf_freeze_hours', 48)
+        cf_extra = body.get('cf_extra_costs', 0)
+        cf_topup_deadline = body.get('cf_topup_deadline_hours', 24)
+
         admin = has_role(cur, schema, user_id, 'admin')
         requested_visible = body.get('is_visible', False)
         if admin:
@@ -375,9 +392,32 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                 })}
             return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': err})}
         row = cur.fetchone()
+        created = dict(row)
+
+        # Сохраняем crowdfund-поля отдельным UPDATE (если режим crowdfund)
+        if pricing_mode == 'crowdfund':
+            cf_sets = [f"pricing_mode = 'crowdfund'"]
+            if cf_target is not None:
+                cf_sets.append(f"cf_target_amount = {int(cf_target)}")
+            if cf_min is not None:
+                cf_sets.append(f"cf_min_participants = {int(cf_min)}")
+            if cf_max is not None:
+                cf_sets.append(f"cf_max_participants = {int(cf_max)}")
+            cf_sets.append(f"cf_club_fee = {int(cf_club_fee or 0)}")
+            cf_sets.append(f"cf_fee_mode = '{cf_fee_mode}'")
+            cf_sets.append(f"cf_fee_percent = {float(cf_fee_percent or 0)}")
+            cf_sets.append(f"cf_commission_percent = {float(cf_commission or 0)}")
+            cf_sets.append(f"cf_freeze_hours = {int(cf_freeze_hours or 48)}")
+            cf_sets.append(f"cf_extra_costs = {int(cf_extra or 0)}")
+            cf_sets.append(f"cf_topup_deadline_hours = {int(cf_topup_deadline or 24)}")
+            cf_sets.append("cf_status = 'collecting'")
+            cur.execute(f"UPDATE {schema}.events SET {', '.join(cf_sets)} WHERE id = {created['id']} RETURNING *")
+            row2 = cur.fetchone()
+            if row2:
+                created = dict(row2)
+
         conn.commit()
         conn.close()
-        created = dict(row)
         if created.get('is_visible'):
             trigger_tg_publish(created['id'], user_id)
         if created.get('status') == 'pending':
@@ -442,6 +482,17 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             sets.append(f"pricing_lines = {'ARRAY[' + ','.join(chr(39)+x.replace(chr(39),chr(39)*2)+chr(39) for x in pl) + ']::text[]' if pl else 'ARRAY[]::text[]'}")
         if 'pricing_type' in body and body['pricing_type'] in ('fixed', 'dynamic'):
             sets.append(f"pricing_type = '{body['pricing_type']}'")
+        # Crowdfund: режим и параметры
+        if 'pricing_mode' in body and body['pricing_mode'] in ('fixed', 'crowdfund'):
+            sets.append(f"pricing_mode = '{body['pricing_mode']}'")
+        for field in ['cf_target_amount','cf_min_participants','cf_max_participants','cf_club_fee','cf_freeze_hours','cf_extra_costs','cf_topup_deadline_hours']:
+            if field in body and body[field] is not None:
+                sets.append(f"{field} = {int(body[field])}")
+        for field in ['cf_fee_percent','cf_commission_percent']:
+            if field in body and body[field] is not None:
+                sets.append(f"{field} = {float(body[field])}")
+        if 'cf_fee_mode' in body and body['cf_fee_mode'] in ('fixed', 'percent'):
+            sets.append(f"cf_fee_mode = '{body['cf_fee_mode']}'")
         sets.append("updated_at = CURRENT_TIMESTAMP")
 
         try:

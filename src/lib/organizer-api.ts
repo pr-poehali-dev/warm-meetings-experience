@@ -45,6 +45,21 @@ export interface OrgEvent {
   created_at: string;
   status?: 'draft' | 'pending' | 'published' | 'rejected';
   rejection_reason?: string;
+  // Crowdfund (вскладчину)
+  pricing_mode?: 'fixed' | 'crowdfund';
+  cf_target_amount?: number | null;
+  cf_min_participants?: number | null;
+  cf_max_participants?: number | null;
+  cf_club_fee?: number;
+  cf_fee_mode?: 'fixed' | 'percent';
+  cf_fee_percent?: number;
+  cf_commission_percent?: number;
+  cf_freeze_hours?: number;
+  cf_extra_costs?: number;
+  cf_topup_deadline_hours?: number;
+  cf_status?: 'collecting' | 'confirmed' | 'cancelled';
+  cf_final_price?: number | null;
+  cf_frozen_at?: string | null;
 }
 
 export interface OrgParticipant {

@@ -15,6 +15,7 @@ import { format, parseISO, isValid } from "date-fns";
 import { ru } from "date-fns/locale";
 import PricingTiersEditor from "@/components/admin/PricingTiersEditor";
 import CoOrganizersPanel from "./CoOrganizersPanel";
+import CrowdfundEditor from "./CrowdfundEditor";
 import {
   InlineText,
   InlineList,
@@ -215,77 +216,126 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
 
         {showPricingPanel && (
           <div className="border rounded-lg p-4 bg-muted/30 mb-3 space-y-3">
-            <div className="flex gap-2">
-              {["fixed", "dynamic"].map((pt) => (
+            {/* Переключатель режима: обычное ценообразование vs вскладчину */}
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { v: "fixed", label: "Обычная цена", icon: "DollarSign" },
+                { v: "crowdfund", label: "Вскладчину", icon: "Users" },
+              ].map((opt) => (
                 <button
-                  key={pt}
+                  key={opt.v}
                   type="button"
-                  onClick={() =>
-                    set({ pricing_type: pt as "fixed" | "dynamic" })
-                  }
-                  className={`flex-1 py-2 px-3 rounded border text-xs font-medium transition-colors ${
-                    (fd.pricing_type || "fixed") === pt
+                  onClick={() => set({ pricing_mode: opt.v as "fixed" | "crowdfund" })}
+                  className={`py-2 px-3 rounded border text-xs font-medium transition-colors ${
+                    (fd.pricing_mode || "fixed") === opt.v
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-background border-border hover:bg-muted"
                   }`}
                 >
-                  <Icon
-                    name={pt === "fixed" ? "DollarSign" : "TrendingUp"}
-                    size={12}
-                    className="inline mr-1"
-                  />
-                  {pt === "fixed" ? "Фиксированная" : "Динамическая"}
+                  <Icon name={opt.icon} size={12} className="inline mr-1" />
+                  {opt.label}
                 </button>
               ))}
             </div>
 
-            {(fd.pricing_type || "fixed") === "fixed" ? (
-              <div className="space-y-3">
-                <InlinePricingLines
-                  lines={fd.pricing_lines || []}
-                  onChange={(v) => set({ pricing_lines: v })}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-muted-foreground block mb-1">
-                      Цена, ₽ (число)
-                    </label>
-                    <Input
-                      type="number"
-                      value={fd.price_amount || ""}
-                      onChange={(e) =>
-                        set({ price_amount: parseInt(e.target.value) || 0 })
-                      }
-                      className="h-8 text-sm"
-                      placeholder="5000"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground block mb-1">
-                      Отображение цены
-                    </label>
-                    <Input
-                      value={fd.price_label || ""}
-                      onChange={(e) => set({ price_label: e.target.value })}
-                      className="h-8 text-sm"
-                      placeholder="от 5 000 ₽"
-                    />
-                  </div>
-                </div>
-              </div>
+            {(fd.pricing_mode || "fixed") === "crowdfund" ? (
+              <CrowdfundEditor fd={fd} set={set} />
             ) : (
-              <PricingTiersEditor
-                tiers={fd.pricing_tiers || []}
-                onChange={(tiers: PricingTier[]) =>
-                  set({ pricing_tiers: tiers })
-                }
-              />
+              <>
+                <div className="flex gap-2">
+                  {["fixed", "dynamic"].map((pt) => (
+                    <button
+                      key={pt}
+                      type="button"
+                      onClick={() =>
+                        set({ pricing_type: pt as "fixed" | "dynamic" })
+                      }
+                      className={`flex-1 py-2 px-3 rounded border text-xs font-medium transition-colors ${
+                        (fd.pricing_type || "fixed") === pt
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background border-border hover:bg-muted"
+                      }`}
+                    >
+                      <Icon
+                        name={pt === "fixed" ? "DollarSign" : "TrendingUp"}
+                        size={12}
+                        className="inline mr-1"
+                      />
+                      {pt === "fixed" ? "Фиксированная" : "Динамическая"}
+                    </button>
+                  ))}
+                </div>
+
+                {(fd.pricing_type || "fixed") === "fixed" ? (
+                  <div className="space-y-3">
+                    <InlinePricingLines
+                      lines={fd.pricing_lines || []}
+                      onChange={(v) => set({ pricing_lines: v })}
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">
+                          Цена, ₽ (число)
+                        </label>
+                        <Input
+                          type="number"
+                          value={fd.price_amount || ""}
+                          onChange={(e) =>
+                            set({ price_amount: parseInt(e.target.value) || 0 })
+                          }
+                          className="h-8 text-sm"
+                          placeholder="5000"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">
+                          Отображение цены
+                        </label>
+                        <Input
+                          value={fd.price_label || ""}
+                          onChange={(e) => set({ price_label: e.target.value })}
+                          className="h-8 text-sm"
+                          placeholder="от 5 000 ₽"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <PricingTiersEditor
+                    tiers={fd.pricing_tiers || []}
+                    onChange={(tiers: PricingTier[]) =>
+                      set({ pricing_tiers: tiers })
+                    }
+                  />
+                )}
+              </>
             )}
           </div>
         )}
 
         {/* price display */}
-        {fd.pricing_type === "dynamic" && fd.pricing_tiers?.length ? (
+        {fd.pricing_mode === "crowdfund" ? (
+          <div className="rounded-lg border border-orange-200 bg-orange-50/60 p-3 text-sm space-y-1">
+            <div className="flex items-center gap-1.5 font-semibold text-orange-900">
+              <Icon name="Users" size={14} />
+              Сбор вскладчину
+            </div>
+            <div className="text-xs text-orange-900/80">
+              Цель: <b>{Number(fd.cf_target_amount || 0).toLocaleString("ru-RU")} ₽</b> ·{" "}
+              мин. <b>{fd.cf_min_participants || "?"}</b> / макс.{" "}
+              <b>{fd.cf_max_participants || "?"}</b> чел.
+            </div>
+            <div className="text-xs text-orange-900/80">
+              Клубный взнос:{" "}
+              <b>
+                {fd.cf_fee_mode === "percent"
+                  ? `${fd.cf_fee_percent || 0}% от макс. цены`
+                  : `${(fd.cf_club_fee || 0).toLocaleString("ru-RU")} ₽`}
+              </b>{" "}
+              · Стоп-сбор за <b>{fd.cf_freeze_hours || 48}ч</b>
+            </div>
+          </div>
+        ) : fd.pricing_type === "dynamic" && fd.pricing_tiers?.length ? (
           <div className="space-y-1">
             {fd.pricing_tiers.map((tier, i) => (
               <div
