@@ -9,6 +9,7 @@ import LiveEventEditor from "@/components/organizer/LiveEventEditor";
 import UnifiedPeoplePanel from "@/components/organizer/UnifiedPeoplePanel";
 import TelegramSettings from "@/components/organizer/TelegramSettings";
 import EventCalculator from "@/components/organizer/EventCalculator";
+import EventQuestionsSection from "@/components/organizer/EventQuestionsSection";
 import NotifyModule from "@/components/notify/NotifyModule";
 import BathCard from "@/components/partner/BathCard";
 import BathForm from "@/components/partner/BathForm";
@@ -332,6 +333,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
           />
         ) : null;
       case "calculator": return <EventCalculator onCreateEvent={(data) => { setFormData(data as OrgEvent); setSelectedEvent(null); setOrgView("create"); }} />;
+      case "questions": return <EventQuestionsSection />;
       case "notify": return <div className="max-w-2xl mx-auto"><NotifyModule role="organizer" eventId={selectedEvent?.id ?? null} /></div>;
       case "blog": return <div className="max-w-3xl mx-auto"><MyArticles /></div>;
     }

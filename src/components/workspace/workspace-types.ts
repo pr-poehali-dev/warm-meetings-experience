@@ -1,6 +1,6 @@
 export type RoleTab = "dashboard" | "master" | "organizer" | "partner" | "telegram" | "landing" | "notify" | "blog";
 export type MasterSection = "dashboard" | "profile" | "schedule" | "bookings" | "reviews" | "finances" | "notifications";
-export type OrgView = "dashboard" | "create" | "edit" | "participants" | "calculator" | "notify" | "blog";
+export type OrgView = "dashboard" | "create" | "edit" | "participants" | "calculator" | "notify" | "blog" | "questions";
 export type PartnerView = "dashboard" | "baths" | "add" | "edit";
 
 export const MASTER_NAV: { id: MasterSection; label: string; icon: string }[] = [

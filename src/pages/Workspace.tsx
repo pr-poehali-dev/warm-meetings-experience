@@ -177,7 +177,7 @@ export default function Workspace() {
       return `Управляющий · ${map[partnerView]}`;
     }
     const label = ORG_NAV.find((n) => n.id === orgView)?.label
-      ?? (orgView === "create" ? "Создание события" : orgView === "edit" ? "Редактирование" : orgView === "participants" ? "Участники" : "Организатор");
+      ?? (orgView === "create" ? "Создание события" : orgView === "edit" ? "Редактирование" : orgView === "participants" ? "Участники" : orgView === "questions" ? "Вопросы по событиям" : "Организатор");
     return `Организатор · ${label}`;
   };
 
@@ -193,6 +193,7 @@ export default function Workspace() {
       bathsCount={baths.length}
       eventsCount={events.length}
       tgChannelsCount={tgChannelsCount}
+      unreadQuestions={orgDashboard?.unread_questions ?? orgDashboard?.stats?.unread_questions ?? 0}
       openSections={openSections}
       toggleSection={toggleSection}
       switchRoleTab={switchRoleTab}

@@ -13,6 +13,7 @@ interface WorkspaceSidebarProps {
   bathsCount: number;
   eventsCount: number;
   tgChannelsCount?: number;
+  unreadQuestions?: number;
   openSections: Record<string, boolean>;
   toggleSection: (key: string) => void;
   switchRoleTab: (tab: RoleTab) => void;
@@ -34,6 +35,7 @@ export default function WorkspaceSidebar({
   bathsCount,
   eventsCount,
   tgChannelsCount,
+  unreadQuestions,
   openSections,
   toggleSection,
   switchRoleTab,
@@ -134,6 +136,13 @@ export default function WorkspaceSidebar({
             onClick={onCreateOrgEvent}
             icon="Plus"
             label="Создать событие"
+          />
+          <NavItem
+            active={roleTab === "organizer" && orgView === "questions"}
+            onClick={() => switchOrgView("questions")}
+            icon="MessageCircleQuestion"
+            label="Вопросы"
+            badge={unreadQuestions || undefined}
           />
           <NavItem
             active={roleTab === "organizer" && orgView === "calculator"}

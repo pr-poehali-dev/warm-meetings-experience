@@ -95,11 +95,39 @@ export interface DashboardData {
     upcoming_events: number;
     drafts: number;
     total_participants: number;
+    unread_questions?: number;
   };
   upcoming_events: OrgEvent[];
   profile: { display_name: string; bio: string; photo_url: string; telegram_chat_id: number | null } | null;
   tg_linked: boolean;
   tg_channels_count: number;
+  unread_questions?: number;
+}
+
+export type EventQuestionStatus = "new" | "read" | "answered";
+
+export interface EventQuestion {
+  id: number;
+  event_id: number;
+  guest_name: string;
+  guest_contact: string;
+  contact_type: "email" | "phone" | "telegram";
+  message: string;
+  status: EventQuestionStatus;
+  email_sent: boolean;
+  created_at: string;
+  read_at: string | null;
+  answered_at: string | null;
+  event_title: string;
+  event_slug: string | null;
+  event_date: string;
+  start_time: string;
+  bath_name: string | null;
+}
+
+export interface EventQuestionsResponse {
+  questions: EventQuestion[];
+  unread: number;
 }
 
 export const organizerApi = {
@@ -238,6 +266,21 @@ export const organizerApi = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ signup_ids: signupIds, message }),
+    }),
+
+  listEventQuestions: (filter?: { event_id?: number; status?: EventQuestionStatus; only_unread?: boolean }): Promise<EventQuestionsResponse> => {
+    const qs = new URLSearchParams({ resource: "event_questions" });
+    if (filter?.event_id) qs.set("event_id", String(filter.event_id));
+    if (filter?.status) qs.set("status", filter.status);
+    if (filter?.only_unread) qs.set("only_unread", "true");
+    return authenticatedRequest(`${BASE}/?${qs.toString()}`);
+  },
+
+  updateEventQuestion: (id: number, action: "mark_read" | "mark_answered" | "reopen"): Promise<{ ok: boolean }> =>
+    authenticatedRequest(`${BASE}/?resource=event_questions`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, action }),
     }),
 
   getNotifySettings: (): Promise<OrgNotifySettings> =>

@@ -138,6 +138,8 @@ def handler(event, context):
         return handle_guests(event, method, params, cur, conn, user_id, schema, headers)
     elif resource == 'messages':
         return handle_messages(event, method, params, cur, conn, user_id, schema, headers)
+    elif resource == 'event_questions':
+        return handle_event_questions(event, method, params, cur, conn, user_id, schema, headers)
     elif resource == 'notify_settings':
         return handle_notify_settings(event, method, cur, conn, user_id, schema, headers)
 
@@ -202,6 +204,15 @@ def handle_dashboard(cur, conn, user_id, user, schema, headers):
     cur.execute(f"SELECT COUNT(*) as cnt FROM {schema}.tg_channels WHERE user_id = {user_id} AND is_active = TRUE")
     tg_channels = cur.fetchone()
 
+    # Непрочитанные вопросы по событиям
+    questions_filter = f"organizer_id = {user_id}" if not admin else "1=1"
+    cur.execute(f"""
+        SELECT COUNT(*) AS cnt
+        FROM {schema}.event_questions
+        WHERE {questions_filter} AND read_at IS NULL
+    """)
+    unread_questions = (cur.fetchone() or {}).get('cnt', 0) or 0
+
     conn.close()
     return {
         'statusCode': 200,
@@ -214,11 +225,13 @@ def handle_dashboard(cur, conn, user_id, user, schema, headers):
                 'upcoming_events': event_stats['upcoming_events'] or 0,
                 'drafts': event_stats['drafts'] or 0,
                 'total_participants': participant_stats['total_participants'] or 0,
+                'unread_questions': unread_questions,
             },
             'upcoming_events': [dict(e) for e in upcoming],
             'profile': dict(profile) if profile else None,
             'tg_linked': tg_linked,
             'tg_channels_count': tg_channels['cnt'] if tg_channels else 0,
+            'unread_questions': unread_questions,
         }, default=str)
     }
 
@@ -1443,6 +1456,113 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, headers):
         conn.commit()
         conn.close()
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'sent': sent, 'errors': errors})}
+
+
+def handle_event_questions(event, method, params, cur, conn, user_id, schema, headers):
+    """Вопросы от гостей по событиям организатора.
+
+    GET ?resource=event_questions[&event_id=N][&status=new]  — список
+    PUT ?resource=event_questions  body={id, action: 'mark_read'|'mark_answered'|'reopen'}
+    """
+    admin = has_role(cur, schema, user_id, 'admin')
+    access_filter = "1=1" if admin else f"q.organizer_id = {user_id}"
+
+    if method == 'GET':
+        event_id = params.get('event_id')
+        status_f = params.get('status')
+        only_unread = params.get('only_unread')
+
+        where = [access_filter]
+        if event_id and str(event_id).isdigit():
+            where.append(f"q.event_id = {int(event_id)}")
+        if status_f in ('new', 'read', 'answered'):
+            where.append(f"q.status = '{status_f}'")
+        if only_unread == 'true':
+            where.append("q.read_at IS NULL")
+        where_sql = " AND ".join(where)
+
+        cur.execute(f"""
+            SELECT q.id, q.event_id, q.guest_name, q.guest_contact, q.contact_type,
+                   q.message, q.status, q.email_sent, q.created_at, q.read_at, q.answered_at,
+                   e.title AS event_title, e.slug AS event_slug, e.event_date, e.start_time,
+                   COALESCE(b.name, e.bath_name) AS bath_name
+            FROM {schema}.event_questions q
+            JOIN {schema}.events e ON e.id = q.event_id
+            LEFT JOIN {schema}.baths b ON b.id = e.bath_id
+            WHERE {where_sql}
+            ORDER BY q.created_at DESC
+            LIMIT 200
+        """)
+        questions = [dict(r) for r in cur.fetchall()]
+
+        cur.execute(f"""
+            SELECT COUNT(*) AS unread
+            FROM {schema}.event_questions q
+            WHERE {access_filter} AND q.read_at IS NULL
+        """)
+        unread = (cur.fetchone() or {}).get('unread', 0) or 0
+
+        conn.close()
+        return {
+            'statusCode': 200,
+            'headers': headers,
+            'body': json.dumps({'questions': questions, 'unread': unread}, default=str),
+        }
+
+    if method == 'PUT':
+        try:
+            body = json.loads(event.get('body', '{}'))
+        except Exception:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Bad JSON'})}
+
+        qid = body.get('id')
+        action = body.get('action')
+        if not qid or not str(qid).isdigit():
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id required'})}
+        if action not in ('mark_read', 'mark_answered', 'reopen'):
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'invalid action'})}
+
+        # Проверка владения
+        cur.execute(f"""
+            SELECT q.id FROM {schema}.event_questions q
+            WHERE q.id = {int(qid)} AND {access_filter}
+        """)
+        if not cur.fetchone():
+            conn.close()
+            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Question not found'})}
+
+        if action == 'mark_read':
+            cur.execute(f"""
+                UPDATE {schema}.event_questions
+                SET status = CASE WHEN status = 'new' THEN 'read' ELSE status END,
+                    read_at = COALESCE(read_at, NOW())
+                WHERE id = {int(qid)}
+            """)
+        elif action == 'mark_answered':
+            cur.execute(f"""
+                UPDATE {schema}.event_questions
+                SET status = 'answered',
+                    read_at = COALESCE(read_at, NOW()),
+                    answered_at = NOW()
+                WHERE id = {int(qid)}
+            """)
+        elif action == 'reopen':
+            cur.execute(f"""
+                UPDATE {schema}.event_questions
+                SET status = 'new',
+                    answered_at = NULL
+                WHERE id = {int(qid)}
+            """)
+
+        conn.commit()
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True})}
+
+    conn.close()
+    return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
 
 
 def handle_notify_settings(event, method, cur, conn, user_id, schema, headers):
