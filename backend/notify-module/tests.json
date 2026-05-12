@@ -67,6 +67,42 @@
       "method": "GET",
       "path": "/?resource=recipients&source=ritual_booking",
       "expectedStatus": 401
+    },
+    {
+      "name": "Каналы — channels без токена",
+      "method": "GET",
+      "path": "/?action=channels",
+      "expectedStatus": 401,
+      "bodyMatcher": "partial",
+      "expectedBody": {"error": "Необходима авторизация"}
+    },
+    {
+      "name": "Каналы — set_channel без токена",
+      "method": "POST",
+      "path": "/?action=set_channel",
+      "body": {"channel": "email", "active": true},
+      "expectedStatus": 401
+    },
+    {
+      "name": "Каналы — set_prefs без токена",
+      "method": "POST",
+      "path": "/?action=set_prefs",
+      "body": {"channel": "vk"},
+      "expectedStatus": 401
+    },
+    {
+      "name": "Каналы — allow_vk без токена",
+      "method": "POST",
+      "path": "/?action=allow_vk",
+      "body": {"allow": true},
+      "expectedStatus": 401
+    },
+    {
+      "name": "Каналы — send_broadcast без пароля",
+      "method": "POST",
+      "path": "/?action=send_broadcast",
+      "body": {"message": "test"},
+      "expectedStatus": 403
     }
   ]
 }

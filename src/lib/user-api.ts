@@ -2,7 +2,7 @@ import { request as authRequest, authenticatedRequest as profileRequest } from "
 
 const USER_AUTH_API = "https://functions.poehali.dev/d5d9f568-ba92-4605-9b95-646ba409fd8d";
 const USER_PROFILE_API = "https://functions.poehali.dev/5322ffd0-7079-40ce-9d4e-8d7fee29624c";
-const VK_NOTIFY_API = "https://functions.poehali.dev/d80d1556-27a6-4477-b864-c621e0b9eaf7";
+const VK_NOTIFY_API = "https://functions.poehali.dev/47bb36f1-5d1a-45e7-86e3-bd7a07a3d8de";
 
 export interface UserRole {
   id: number;

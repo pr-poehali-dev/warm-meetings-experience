@@ -21,6 +21,7 @@ import psycopg2.extras
 import requests
 
 from shared import *
+from channels import handle_channels_router, CHANNEL_ACTIONS
 
 VK_API_URL = "https://api.vk.com/method"
 VK_API_VERSION = "5.131"
@@ -977,19 +978,15 @@ def handle_log_get(cur, user_id, params, s):
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
 def handler(event: dict, context) -> dict:
-    """Модуль персонализированных уведомлений для организаторов и мастеров."""
+    """Модуль персонализированных уведомлений + управление каналами (бывшая vk-notify).
+    Маршрутизация:
+      - ?action=channels|set_channel|set_prefs|allow_vk|send_broadcast → каналы пользователя
+      - ?resource=scenarios|send|log|recipients|... → сценарии и отправка
+    """
     if event.get("httpMethod") == "OPTIONS":
         return options_response()
 
-    token = (event.get("headers") or {}).get("X-Session-Token") or \
-            (event.get("headers") or {}).get("x-session-token") or \
-            (event.get("headers") or {}).get("X-Authorization", "").replace("Bearer ", "") or \
-            (event.get("headers") or {}).get("x-authorization", "").replace("Bearer ", "")
-    if not token:
-        return err("Необходима авторизация", 401)
-
     params = event.get("queryStringParameters") or {}
-    resource = params.get("resource", "")
     method = event.get("httpMethod", "GET").upper()
 
     body = {}
@@ -998,6 +995,20 @@ def handler(event: dict, context) -> dict:
             body = json.loads(event["body"])
         except Exception:
             return err("Некорректный JSON")
+
+    # Управление каналами уведомлений (бывшая vk-notify) — своя авторизация
+    action = params.get("action") or body.get("action", "")
+    if action in CHANNEL_ACTIONS:
+        return handle_channels_router(event, method, params, body)
+
+    token = (event.get("headers") or {}).get("X-Session-Token") or \
+            (event.get("headers") or {}).get("x-session-token") or \
+            (event.get("headers") or {}).get("X-Authorization", "").replace("Bearer ", "") or \
+            (event.get("headers") or {}).get("x-authorization", "").replace("Bearer ", "")
+    if not token:
+        return err("Необходима авторизация", 401)
+
+    resource = params.get("resource", "")
 
     s = get_schema()
     conn = get_conn()

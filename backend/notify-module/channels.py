@@ -1,19 +1,27 @@
+"""Управление каналами уведомлений пользователя (бывшая vk-notify).
+Маршрутизируется через ?action=channels|set_channel|set_prefs|allow_vk|send_broadcast.
+Имеет собственную авторизацию (через X-Session-Token / X-Auth-Token), независимую от основного notify-module.
+"""
+
 import json
 import os
 import random
-import psycopg2
 import psycopg2.extras
 import requests
-from datetime import datetime
 
-from shared import *
+from shared import (
+    CORS_HEADERS, options_response, get_conn, get_schema,
+    get_user_from_token, respond,
+)
 
 VK_API_URL = "https://api.vk.com/method"
 VK_API_VERSION = "5.131"
 
+_VK_EXTRA = ('u.vk_id, u.vk_notify_allowed, u.tg_user_id, u.tg_chat_id, u.tg_notify_allowed, '
+             'u.notify_email, u.notify_telegram, u.notify_vk, u.notify_sms')
+
 
 def vk_api(method, params):
-    """Вызов VK API с токеном сообщества."""
     token = os.environ.get("VK_COMMUNITY_TOKEN", "")
     if not token:
         return {"error": {"error_msg": "VK_COMMUNITY_TOKEN not set"}}
@@ -23,22 +31,17 @@ def vk_api(method, params):
     return r.json()
 
 
-def send_vk_message(vk_user_id: int, message: str) -> dict:
+def _send_vk_message(vk_user_id: int, message: str) -> dict:
     community_id = int(os.environ.get("VK_COMMUNITY_ID", "0"))
-    result = vk_api("messages.send", {
+    return vk_api("messages.send", {
         "peer_id": vk_user_id,
         "message": message,
         "random_id": random.randint(1, 2**31),
         "group_id": community_id,
     })
-    if "error" in result:
-        print(f"[VK ERROR] user_id={vk_user_id} code={result['error'].get('error_code')} msg={result['error'].get('error_msg')}")
-    else:
-        print(f"[VK OK] user_id={vk_user_id} message_id={result.get('response')}")
-    return result
 
 
-def send_tg_message(chat_id: int, message: str) -> dict:
+def _send_tg_message(chat_id: int, message: str) -> dict:
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     if not bot_token:
         return {"error": "TELEGRAM_BOT_TOKEN not set"}
@@ -50,21 +53,14 @@ def send_tg_message(chat_id: int, message: str) -> dict:
     return r.json()
 
 
-def handler(event: dict, context) -> dict:
-    """Управление каналами уведомлений пользователя: VK, Telegram, Email, SMS."""
+def handle_channels_router(event, method, params, body):
+    """Маршрутизация запросов управления каналами уведомлений."""
     if event.get("httpMethod") == "OPTIONS":
         return options_response()
 
-    method = event.get("httpMethod", "GET")
-    params = event.get("queryStringParameters") or {}
     headers = event.get("headers") or {}
-    token = headers.get("X-Session-Token", "") or headers.get("X-Auth-Token", "")
-    body = {}
-    if method in ("POST", "PUT"):
-        try:
-            body = json.loads(event.get("body") or "{}")
-        except Exception:
-            return respond(400, {"error": "Invalid JSON"})
+    token = headers.get("X-Session-Token", "") or headers.get("X-Auth-Token", "") or \
+            headers.get("X-Authorization", "").replace("Bearer ", "")
 
     action = params.get("action") or body.get("action", "")
 
@@ -72,9 +68,7 @@ def handler(event: dict, context) -> dict:
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     schema = get_schema()
 
-    # ── GET /channels — текущие настройки каналов пользователя ──────────────
-    _VK_EXTRA = 'u.vk_id, u.vk_notify_allowed, u.tg_user_id, u.tg_chat_id, u.tg_notify_allowed, u.notify_email, u.notify_telegram, u.notify_vk, u.notify_sms'
-
+    # ── GET /channels ──────────────────────
     if method == "GET" and action == "channels":
         user = get_user_from_token(cur, schema, token, extra_fields=_VK_EXTRA)
         if not user:
@@ -119,7 +113,7 @@ def handler(event: dict, context) -> dict:
             }
         })
 
-    # ── POST /set_channel — включить/выключить канал ─────────────────────────
+    # ── POST set_channel ──────────────────────
     if method == "POST" and action == "set_channel":
         user = get_user_from_token(cur, schema, token, extra_fields=_VK_EXTRA)
         if not user:
@@ -140,7 +134,7 @@ def handler(event: dict, context) -> dict:
         conn.close()
         return respond(200, {"ok": True})
 
-    # ── POST /set_prefs — тонкие настройки конкретного канала ───────────────
+    # ── POST set_prefs ──────────────────────
     if method == "POST" and action == "set_prefs":
         user = get_user_from_token(cur, schema, token, extra_fields=_VK_EXTRA)
         if not user:
@@ -174,7 +168,7 @@ def handler(event: dict, context) -> dict:
         conn.close()
         return respond(200, {"ok": True})
 
-    # ── POST /allow_vk — пользователь разрешает VK-уведомления ─────────────
+    # ── POST allow_vk ──────────────────────
     if method == "POST" and action == "allow_vk":
         user = get_user_from_token(cur, schema, token, extra_fields=_VK_EXTRA)
         if not user:
@@ -194,7 +188,7 @@ def handler(event: dict, context) -> dict:
         conn.close()
         return respond(200, {"ok": True, "vk_notify_allowed": allow})
 
-    # ── POST /send_broadcast — рассылка (только с паролем администратора) ───
+    # ── POST send_broadcast (admin only) ──────────────────────
     if method == "POST" and action == "send_broadcast":
         admin_pass = body.get("admin_password", "")
         if admin_pass != os.environ.get("ADMIN_PASSWORD", ""):
@@ -232,7 +226,7 @@ def handler(event: dict, context) -> dict:
         for u in users:
             if "vk" in channels and u["vk_id"] and u["vk_notify_allowed"] and u["notify_vk"] and u.get("vk_pref_ok", True) is not False:
                 try:
-                    res = send_vk_message(int(u["vk_id"]), message)
+                    res = _send_vk_message(int(u["vk_id"]), message)
                     if "error" in res:
                         failed.append({"user_id": u["id"], "channel": "vk", "error": res["error"].get("error_msg")})
                     else:
@@ -242,7 +236,7 @@ def handler(event: dict, context) -> dict:
 
             if "telegram" in channels and u["tg_chat_id"] and u["tg_notify_allowed"] and u["notify_telegram"] and u.get("tg_pref_ok", True) is not False:
                 try:
-                    res = send_tg_message(int(u["tg_chat_id"]), message)
+                    res = _send_tg_message(int(u["tg_chat_id"]), message)
                     if not res.get("ok"):
                         failed.append({"user_id": u["id"], "channel": "telegram", "error": res.get("description")})
                     else:
@@ -254,3 +248,6 @@ def handler(event: dict, context) -> dict:
 
     conn.close()
     return respond(400, {"error": "Неизвестное действие"})
+
+
+CHANNEL_ACTIONS = {"channels", "set_channel", "set_prefs", "allow_vk", "send_broadcast"}
