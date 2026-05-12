@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { supportApi, FaqItem } from "@/lib/support-api";
 import AttachmentPicker from "@/components/support/AttachmentPicker";
 import { toast } from "sonner";
+import BathCaptcha, { useBathCaptcha } from "@/components/BathCaptcha";
 
 type Tab = "faq" | "search" | "form";
 
@@ -28,49 +28,6 @@ const CATEGORIES = [
   { value: "other", label: "Другое" },
 ];
 
-// «Тёплая» капча: задача в стиле бани
-type CaptchaTask = {
-  question: string;
-  image: string;
-  hint: string;
-  answer: number;
-};
-
-function makeCaptcha(): CaptchaTask {
-  const variants: CaptchaTask[] = [
-    {
-      image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/6766bfb6-bf3b-4fe3-91d5-c03c14173bcd.jpg",
-      question: "Сколько поленьев нужно подкинуть в печку, если уже горит 2, а нужно 5?",
-      hint: "Считайте, как в бане — спокойно и без спешки",
-      answer: 3,
-    },
-    {
-      image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/5c6fbf75-7a77-4b79-9b0b-c106b1c8892d.jpg",
-      question: "В чайник входит 4 чашки чая. Сколько чашек ещё помещается, если налили 1?",
-      hint: "Тёплая математика для тёплой компании",
-      answer: 3,
-    },
-    {
-      image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/9b2d4339-3be7-43ca-b23e-83a718b169f5.jpg",
-      question: "В парилке +60°C, а нужно +90°C. На сколько градусов поднять температуру?",
-      hint: "Аккуратно — пар любит точность",
-      answer: 30,
-    },
-    {
-      image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/1189d6ed-62ab-4c3a-a345-76800b353855.jpg",
-      question: "У вас 2 веника, а пришло 6 человек. Сколько ещё веников связать?",
-      hint: "По одному на каждого",
-      answer: 4,
-    },
-    {
-      image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/f7176144-3455-4fa5-8db7-bcaeb192fe08.jpg",
-      question: "В шайке 3 ковша воды. Сколько ковшей долить, чтобы стало 7?",
-      hint: "Не больше, не меньше",
-      answer: 4,
-    },
-  ];
-  return variants[Math.floor(Math.random() * variants.length)];
-}
 
 export default function SupportWidget() {
   const { user } = useAuth();
@@ -351,8 +308,7 @@ function ContactForm({ onDone }: { onDone: () => void }) {
   const [category, setCategory] = useState("other");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
-  const [captcha, setCaptcha] = useState<CaptchaTask>(() => makeCaptcha());
-  const [captchaInput, setCaptchaInput] = useState("");
+  const captcha = useBathCaptcha();
   const [attachment, setAttachment] = useState<import("@/lib/support-api").AttachmentInfo | null>(null);
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
@@ -364,9 +320,7 @@ function ContactForm({ onDone }: { onDone: () => void }) {
     }
   }, [user]);
 
-  const captchaOk = !user
-    ? Number(captchaInput.trim()) === captcha.answer
-    : true;
+  const captchaOk = !user ? captcha.isValid : true;
 
   const submit = async () => {
     if (sending) return;
@@ -415,8 +369,7 @@ function ContactForm({ onDone }: { onDone: () => void }) {
             setSubject("");
             setMessage("");
             setAttachment(null);
-            setCaptcha(makeCaptcha());
-            setCaptchaInput("");
+            captcha.reset();
             onDone();
           }}
         >
@@ -490,49 +443,7 @@ function ContactForm({ onDone }: { onDone: () => void }) {
         <AttachmentPicker attachment={attachment} onChange={setAttachment} />
       </div>
 
-      {!user && (
-        <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 p-3">
-          <div className="flex items-start gap-2 mb-2">
-            <img src={captcha.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" style={{ mixBlendMode: "multiply" }} />
-            <div className="flex-1">
-              <div className="text-sm font-medium">{captcha.question}</div>
-              <div className="text-[11px] text-muted-foreground">
-                {captcha.hint}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setCaptcha(makeCaptcha());
-                setCaptchaInput("");
-              }}
-              className="text-muted-foreground hover:text-foreground p-1"
-              title="Другая задача"
-            >
-              <Icon name="RefreshCw" size={14} />
-            </button>
-          </div>
-          <Input
-            type="number"
-            value={captchaInput}
-            onChange={(e) => setCaptchaInput(e.target.value)}
-            placeholder="Ответ числом"
-            className={
-              captchaInput && !captchaOk
-                ? "border-rose-400 focus-visible:ring-rose-300"
-                : captchaOk && captchaInput
-                  ? "border-green-500 focus-visible:ring-green-300"
-                  : ""
-            }
-          />
-          {captchaInput && captchaOk && (
-            <div className="text-[11px] text-green-600 mt-1 flex items-center gap-1">
-              <Icon name="Flame" size={11} />
-              Печка горит ровно — можно отправлять
-            </div>
-          )}
-        </div>
-      )}
+      {!user && <BathCaptcha {...captcha} />}
 
       <Button onClick={submit} disabled={sending} className="w-full">
         {sending ? (

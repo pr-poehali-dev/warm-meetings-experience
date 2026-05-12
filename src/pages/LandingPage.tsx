@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import BathCaptcha, { useBathCaptcha } from "@/components/BathCaptcha";
 import { useParams } from "react-router-dom";
 import NotFound from "@/pages/NotFoundPage";
 import { Card, CardContent } from "@/components/ui/card";
@@ -305,11 +306,16 @@ function CtaForm({ slug, title, description, accent }: { slug: string; title?: s
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const captcha = useBathCaptcha();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !contact.trim()) {
       toast.error("Укажите имя и контакт");
+      return;
+    }
+    if (!captcha.isValid) {
+      toast.error("Ответьте на вопрос-проверку");
       return;
     }
     setLoading(true);
@@ -342,7 +348,8 @@ function CtaForm({ slug, title, description, accent }: { slug: string; title?: s
             <Input placeholder="Ваше имя" value={name} onChange={(e) => setName(e.target.value)} required />
             <Input placeholder="Телефон или Telegram" value={contact} onChange={(e) => setContact(e.target.value)} required />
             <Textarea placeholder="Сообщение (необязательно)" value={message} onChange={(e) => setMessage(e.target.value)} rows={3} />
-            <Button type="submit" disabled={loading} className="w-full bg-orange-600 hover:bg-orange-700 text-white">
+            <BathCaptcha {...captcha} />
+            <Button type="submit" disabled={loading || !captcha.isValid} className="w-full bg-orange-600 hover:bg-orange-700 text-white">
               {loading ? <Icon name="Loader2" size={16} className="animate-spin" /> : "Отправить заявку"}
             </Button>
           </form>

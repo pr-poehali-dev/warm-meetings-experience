@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import BathCaptcha, { useBathCaptcha } from "@/components/BathCaptcha";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -119,6 +120,7 @@ export default function SignUpForm({
   const [consentShare, setConsentShare] = useState(false);
   const [consentCancel, setConsentCancel] = useState(false);
   const [loading, setLoading] = useState(false);
+  const captcha = useBathCaptcha();
 
   // Авто-подстановка данных авторизованного пользователя
   useEffect(() => {
@@ -152,7 +154,7 @@ export default function SignUpForm({
     (preferredChannel === "email" && !errors.email) ||
     (preferredChannel === "phone" && !errors.phone);
 
-  const canSubmit = !errors.name && !errors.phone && !errors.email && !errors.consentPd && !errors.consentShare && !errors.consentCancel && !!channelValueOk;
+  const canSubmit = !errors.name && !errors.phone && !errors.email && !errors.consentPd && !errors.consentShare && !errors.consentCancel && !!channelValueOk && (!!user || captcha.isValid);
 
   const filledSpots = totalSpots && totalSpots > 0 ? Math.max(0, totalSpots - spotsLeft) : 0;
   const fillPercent = totalSpots && totalSpots > 0 ? Math.min(100, Math.round((filledSpots / totalSpots) * 100)) : 0;
@@ -172,6 +174,7 @@ export default function SignUpForm({
   const reset = () => {
     if (!user) {
       setName(""); setPhone(""); setEmail(""); setTelegram("");
+      captcha.reset();
     }
     setVkContact("");
     setConsentPd(false); setConsentShare(false); setConsentCancel(false);
@@ -574,11 +577,12 @@ export default function SignUpForm({
                 </div>
 
               </form>
-              <div className="px-6 pb-6 pt-3 flex-shrink-0 border-t">
+              <div className="px-6 pb-6 pt-3 flex-shrink-0 border-t space-y-3">
+                {!user && <BathCaptcha {...captcha} />}
                 <Button
                   type="submit"
                   form="signup-form"
-                  disabled={loading}
+                  disabled={loading || !canSubmit}
                   className="w-full rounded-xl gap-2"
                   size="lg"
                   onClick={handleSubmit}

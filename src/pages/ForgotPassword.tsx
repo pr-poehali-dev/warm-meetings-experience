@@ -7,14 +7,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { userAuthApi } from "@/lib/user-api";
 import { toast } from "sonner";
+import BathCaptcha, { useBathCaptcha } from "@/components/BathCaptcha";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const captcha = useBathCaptcha();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!captcha.isValid) {
+      toast.error("Ответьте на вопрос-проверку");
+      return;
+    }
     setSubmitting(true);
     try {
       await userAuthApi.forgot(email);
@@ -74,7 +80,9 @@ export default function ForgotPassword() {
                     />
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={submitting}>
+                  <BathCaptcha {...captcha} />
+
+                  <Button type="submit" className="w-full" disabled={submitting || !captcha.isValid}>
                     {submitting ? (
                       <>
                         <Icon name="Loader2" size={16} className="animate-spin mr-2" />

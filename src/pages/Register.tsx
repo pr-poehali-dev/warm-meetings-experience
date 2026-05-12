@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,51 +11,7 @@ import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
 import AppendixLinkModal from "@/components/AppendixLinkModal";
-
-type CaptchaTask = { question: string; image: string; hint: string; answer: number };
-
-const CAPTCHA_TASKS: CaptchaTask[] = [
-  {
-    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/9ac0077d-d0f8-4685-80b9-51206fb1bb77.jpg",
-    question: "На каменку положили 8 камней, 3 убрали. Сколько камней осталось?",
-    hint: "Камни любят тепло и простую математику",
-    answer: 5,
-  },
-  {
-    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/1189d6ed-62ab-4c3a-a345-76800b353855.jpg",
-    question: "Берёзовый веник распаривается 10 минут. Дубовый — 5. Сколько минут разница?",
-    hint: "Каждый веник требует своего времени",
-    answer: 5,
-  },
-  {
-    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/93080a27-b774-4cad-9e55-94892cc26723.jpg",
-    question: "На полке 6 флаконов с маслом. Использовали 2. Сколько осталось?",
-    hint: "Ароматы бани — дело тонкое",
-    answer: 4,
-  },
-  {
-    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/c729a9df-7ef4-4777-adca-705efa0f03fb.jpg",
-    question: "В парилку зашли 4 человека, вышли 2. Сколько ещё парятся?",
-    hint: "Кто-то любит погорячее",
-    answer: 2,
-  },
-  {
-    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/46ca1671-bb35-4ef9-8870-a1b9df2ce2ab.jpg",
-    question: "Печь топили 3 часа утром и 2 часа вечером. Сколько часов всего?",
-    hint: "Хорошая баня требует времени",
-    answer: 5,
-  },
-  {
-    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/e5c25c16-b943-408b-9156-84876d5cb54b.jpg",
-    question: "В поленнице было 12 дров, подкинули ещё 4. Сколько стало?",
-    hint: "Дрова — основа тепла",
-    answer: 16,
-  },
-];
-
-function makeCaptcha(): CaptchaTask {
-  return CAPTCHA_TASKS[Math.floor(Math.random() * CAPTCHA_TASKS.length)];
-}
+import BathCaptcha, { useBathCaptcha } from "@/components/BathCaptcha";
 
 export default function Register() {
   const { user, loading: authLoading, register } = useAuth();
@@ -72,14 +28,7 @@ export default function Register() {
   const [consentRules, setConsentRules] = useState(false);
   const [consentPhoto, setConsentPhoto] = useState<"yes" | "no" | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [captcha, setCaptcha] = useState<CaptchaTask>(() => makeCaptcha());
-  const [captchaInput, setCaptchaInput] = useState("");
-  const captchaOk = captchaInput.trim() !== "" && parseInt(captchaInput, 10) === captcha.answer;
-
-  const resetCaptcha = useCallback(() => {
-    setCaptcha(makeCaptcha());
-    setCaptchaInput("");
-  }, []);
+  const captcha = useBathCaptcha();
 
   const allRequired = consentTerms && consentPd && consentRules && isPhoneComplete(phone);
 
@@ -102,7 +51,7 @@ export default function Register() {
       return;
     }
 
-    if (!captchaOk) {
+    if (!captcha.isValid) {
       toast.error("Ответьте на вопрос-проверку");
       return;
     }
@@ -299,53 +248,12 @@ export default function Register() {
                 </div>
               </div>
 
-              {/* Капча */}
-              <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 p-3">
-                <div className="flex items-start gap-3 mb-2">
-                  <img
-                    src={captcha.image}
-                    alt=""
-                    className="w-12 h-12 rounded-lg object-cover shrink-0"
-                    style={{ mixBlendMode: "multiply" }}
-                  />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{captcha.question}</div>
-                    <div className="text-[11px] text-muted-foreground">{captcha.hint}</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={resetCaptcha}
-                    className="text-muted-foreground hover:text-foreground p-1 transition-colors"
-                    title="Другой вопрос"
-                  >
-                    <Icon name="RefreshCw" size={14} />
-                  </button>
-                </div>
-                <Input
-                  type="number"
-                  value={captchaInput}
-                  onChange={(e) => setCaptchaInput(e.target.value)}
-                  placeholder="Ответ числом"
-                  className={
-                    captchaInput && !captchaOk
-                      ? "border-rose-400 focus-visible:ring-rose-300"
-                      : captchaOk
-                        ? "border-green-500 focus-visible:ring-green-300"
-                        : ""
-                  }
-                />
-                {captchaInput && captchaOk && (
-                  <div className="text-[11px] text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
-                    <Icon name="Flame" size={11} />
-                    Верно — печка горит!
-                  </div>
-                )}
-              </div>
+              <BathCaptcha {...captcha} />
 
               <Button
                 type="submit"
                 className="w-full"
-                disabled={submitting || !allRequired || !captchaOk}
+                disabled={submitting || !allRequired || !captcha.isValid}
               >
                 {submitting ? (
                   <>
