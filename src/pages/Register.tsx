@@ -12,41 +12,41 @@ import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
 import AppendixLinkModal from "@/components/AppendixLinkModal";
 
-type CaptchaTask = { question: string; emoji: string; hint: string; answer: number };
+type CaptchaTask = { question: string; image: string; hint: string; answer: number };
 
 const CAPTCHA_TASKS: CaptchaTask[] = [
   {
-    emoji: "🪨",
+    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/dd5a155a-dc5a-47bf-abd5-436b3e69887a.jpg",
     question: "На каменку положили 8 камней, 3 убрали. Сколько камней осталось?",
     hint: "Камни любят тепло и простую математику",
     answer: 5,
   },
   {
-    emoji: "🌿",
+    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/da3a1921-5e32-47fd-9839-653d19f4376d.jpg",
     question: "Берёзовый веник распаривается 10 минут. Дубовый — 5. Сколько минут разница?",
     hint: "Каждый веник требует своего времени",
     answer: 5,
   },
   {
-    emoji: "🧴",
+    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/e43c02d8-9254-4914-a653-1309b507518a.jpg",
     question: "На полке 6 флаконов с маслом. Использовали 2. Сколько осталось?",
     hint: "Ароматы бани — дело тонкое",
     answer: 4,
   },
   {
-    emoji: "🌊",
+    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/2d5ccc77-6b5f-4126-ade6-73e124a4d231.jpg",
     question: "В парилку зашли 4 человека, вышли 2. Сколько ещё парятся?",
     hint: "Кто-то любит погорячее",
     answer: 2,
   },
   {
-    emoji: "🔥",
+    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/766022db-c2a6-4633-91e7-404cda1a77b8.jpg",
     question: "Печь топили 3 часа утром и 2 часа вечером. Сколько часов всего?",
     hint: "Хорошая баня требует времени",
     answer: 5,
   },
   {
-    emoji: "🪵",
+    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/d4be3e2d-ae82-4790-a6ab-5b2d95c9aab2.jpg",
     question: "В поленнице было 12 дров, подкинули ещё 4. Сколько стало?",
     hint: "Дрова — основа тепла",
     answer: 16,
@@ -301,8 +301,12 @@ export default function Register() {
 
               {/* Капча */}
               <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 p-3">
-                <div className="flex items-start gap-2 mb-2">
-                  <span className="text-2xl leading-none">{captcha.emoji}</span>
+                <div className="flex items-start gap-3 mb-2">
+                  <img
+                    src={captcha.image}
+                    alt=""
+                    className="w-14 h-14 rounded-xl object-cover shrink-0 shadow-sm"
+                  />
                   <div className="flex-1">
                     <div className="text-sm font-medium">{captcha.question}</div>
                     <div className="text-[11px] text-muted-foreground">{captcha.hint}</div>
