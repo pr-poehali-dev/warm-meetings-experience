@@ -1482,8 +1482,9 @@ def handle_event_questions(event, method, params, cur, conn, user_id, schema, he
         where_sql = " AND ".join(where)
 
         cur.execute(f"""
-            SELECT q.id, q.event_id, q.guest_name, q.guest_contact, q.contact_type,
+            SELECT q.id, q.event_id, q.guest_user_id, q.guest_name, q.guest_contact, q.contact_type,
                    q.message, q.status, q.email_sent, q.created_at, q.read_at, q.answered_at,
+                   q.answer_text, q.answer_channel, q.answer_sent_at, q.answer_user_read_at,
                    e.title AS event_title, e.slug AS event_slug, e.event_date, e.start_time,
                    COALESCE(b.name, e.bath_name) AS bath_name
             FROM {schema}.event_questions q
@@ -1561,8 +1562,182 @@ def handle_event_questions(event, method, params, cur, conn, user_id, schema, he
         conn.close()
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True})}
 
+    if method == 'POST':
+        # Отправка ответа гостю
+        try:
+            body = json.loads(event.get('body', '{}'))
+        except Exception:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Bad JSON'})}
+
+        qid = body.get('id')
+        answer = (body.get('answer') or '').strip()
+        if not qid or not str(qid).isdigit():
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id required'})}
+        if len(answer) < 2:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Текст ответа не может быть пустым'})}
+        if len(answer) > 4000:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Слишком длинный ответ'})}
+
+        cur.execute(f"""
+            SELECT q.id, q.guest_user_id, q.guest_name, q.guest_contact, q.contact_type,
+                   q.message,
+                   e.id AS event_id, e.title AS event_title, e.slug AS event_slug,
+                   e.event_date, e.start_time,
+                   COALESCE(b.name, e.bath_name) AS bath_name,
+                   uo.name AS organizer_name
+            FROM {schema}.event_questions q
+            JOIN {schema}.events e ON e.id = q.event_id
+            LEFT JOIN {schema}.baths b ON b.id = e.bath_id
+            LEFT JOIN {schema}.users uo ON uo.id = e.organizer_id
+            WHERE q.id = {int(qid)} AND {access_filter}
+        """)
+        q = cur.fetchone()
+        if not q:
+            conn.close()
+            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Question not found'})}
+
+        # Определяем канал доставки
+        # Приоритет: 1) inbox если есть guest_user_id 2) email если contact_type=email 3) email fallback
+        channel = 'site'
+        delivered = False
+        delivery_note = ''
+        if q.get('guest_user_id'):
+            channel = 'site'
+            delivered = True  # уведомление будет видно в кабинете
+            delivery_note = 'inbox'
+        elif q.get('contact_type') == 'email':
+            channel = 'email'
+            try:
+                send_question_answer_email(q['guest_contact'], q, answer)
+                delivered = True
+                delivery_note = 'email'
+            except Exception as e:
+                delivery_note = f'email_error: {str(e)[:200]}'
+        elif q.get('contact_type') == 'phone':
+            # SMS пока не подключён — отправим письмо если у пользователя в системе есть email с этим телефоном
+            phone_safe = (q['guest_contact'] or '').replace("'", "''")
+            cur.execute(f"""
+                SELECT email FROM {schema}.users
+                WHERE phone = '{phone_safe}' AND email IS NOT NULL AND email <> ''
+                LIMIT 1
+            """)
+            urow = cur.fetchone()
+            if urow and urow.get('email'):
+                channel = 'email'
+                try:
+                    send_question_answer_email(urow['email'], q, answer)
+                    delivered = True
+                    delivery_note = 'email_by_phone'
+                except Exception as e:
+                    delivery_note = f'email_error: {str(e)[:200]}'
+            else:
+                channel = 'phone'
+                delivery_note = 'sms_not_configured'
+        elif q.get('contact_type') == 'telegram':
+            # Telegram-канал гостя без привязки бота — отправляем email, если знаем
+            channel = 'telegram'
+            delivery_note = 'telegram_not_supported'
+
+        answer_q = answer.replace("'", "''")
+        cur.execute(f"""
+            UPDATE {schema}.event_questions
+            SET answer_text = '{answer_q}',
+                answer_channel = '{channel}',
+                answer_sent_at = NOW(),
+                status = 'answered',
+                read_at = COALESCE(read_at, NOW()),
+                answered_at = NOW()
+            WHERE id = {int(qid)}
+        """)
+        conn.commit()
+        conn.close()
+        return {
+            'statusCode': 200,
+            'headers': headers,
+            'body': json.dumps({
+                'ok': True,
+                'channel': channel,
+                'delivered': delivered,
+                'note': delivery_note,
+            }),
+        }
+
     conn.close()
     return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+
+
+def send_question_answer_email(to_email, q, answer_text):
+    """Письмо гостю с ответом организатора на вопрос."""
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
+    if not api_key or not sender_email:
+        raise RuntimeError("Unisender не настроен")
+
+    site_url = os.environ.get("SITE_URL", "https://warm-meetings-experience.poehali.dev").rstrip("/")
+    event_url = f"{site_url}/events/{q['event_slug']}" if q.get('event_slug') else f"{site_url}/events/{q['event_id']}"
+    event_title = q.get('event_title') or 'Событие'
+    event_date = str(q.get('event_date', '') or '')
+    start_time = str(q.get('start_time', '') or '')[:5]
+    bath_name = q.get('bath_name') or ''
+    organizer_name = q.get('organizer_name') or 'Организатор'
+    guest_name = q.get('guest_name') or ''
+    orig_q = (q.get('message') or '').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
+    safe_ans = (answer_text or '').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
+
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fafafa;">
+      <div style="background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+        <h1 style="font-size: 20px; margin: 0 0 12px;">Ответ организатора на ваш вопрос</h1>
+        <p style="color: #666; margin: 0 0 20px;">{guest_name}, организатор события «{event_title}» ответил на ваш вопрос.</p>
+
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+          <div style="font-weight: 600; margin-bottom: 6px;">{event_title}</div>
+          <div style="color: #555; font-size: 14px;">🗓 {event_date} {start_time}</div>
+          {f'<div style="color: #555; font-size: 14px;">📍 {bath_name}</div>' if bath_name else ''}
+        </div>
+
+        <div style="border-left: 3px solid #cbd5e1; padding: 6px 0 6px 12px; color: #64748b; font-size: 13px; margin-bottom: 16px;">
+          <div style="font-weight: 600; margin-bottom: 4px;">Ваш вопрос:</div>
+          {orig_q}
+        </div>
+
+        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+          <div style="font-size: 13px; color: #047857; margin-bottom: 6px;"><b>{organizer_name}</b> отвечает:</div>
+          <div style="font-size: 14px; color: #064e3b; line-height: 1.6;">{safe_ans}</div>
+        </div>
+
+        <p style="margin: 0 0 16px;">
+          <a href="{event_url}" style="display: inline-block; background: #ea580c; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 14px;">Перейти к событию</a>
+        </p>
+
+        <p style="color: #999; font-size: 12px; margin-top: 24px;">Это автоматическое письмо. Чтобы продолжить переписку — свяжитесь с организатором или зарегистрируйтесь на событие.</p>
+      </div>
+    </div>
+    """
+
+    msg = {
+        "recipients": [{"email": to_email, "name": guest_name or ""}],
+        "from_email": sender_email,
+        "subject": f"Ответ на ваш вопрос по событию: {event_title}",
+        "body": {"html": html},
+        "tags": ["event-question-answer"],
+    }
+    if sender_name:
+        msg["from_name"] = sender_name
+
+    resp = requests.post(
+        "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
+        headers={"Content-Type": "application/json", "X-API-KEY": api_key},
+        json={"message": msg},
+        timeout=10,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"Unisender status {resp.status_code}")
 
 
 def handle_notify_settings(event, method, cur, conn, user_id, schema, headers):

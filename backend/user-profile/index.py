@@ -948,8 +948,20 @@ def handle_inbox_list(cur, conn, schema, user, params):
               AND gm.read_at IS NULL
         """)
         row = cur.fetchone()
+        unread_msgs = int(row['n']) if row else 0
+
+        cur.execute(f"""
+            SELECT COUNT(*) AS n
+            FROM {schema}.event_questions q
+            WHERE q.guest_user_id = {uid}
+              AND q.answer_text IS NOT NULL
+              AND q.answer_user_read_at IS NULL
+        """)
+        row2 = cur.fetchone()
+        unread_answers = int(row2['n']) if row2 else 0
+
         conn.close()
-        return respond(200, {'unread': int(row['n']) if row else 0})
+        return respond(200, {'unread': unread_msgs + unread_answers})
 
     where_unread = "AND gm.read_at IS NULL" if only_unread else ""
     cur.execute(f"""
@@ -971,15 +983,78 @@ def handle_inbox_list(cur, conn, schema, user, params):
         LIMIT 200
     """)
     rows = [dict(r) for r in cur.fetchall()]
+
+    # Ответы организаторов на вопросы (event_questions) — для авторизованных пользователей
+    where_q_unread = "AND q.answer_user_read_at IS NULL" if only_unread else ""
+    cur.execute(f"""
+        SELECT q.id AS q_id, q.event_id, q.message AS original_question,
+               q.answer_text AS body, q.answer_channel AS channel,
+               q.answer_sent_at AS created_at, q.answer_user_read_at AS read_at,
+               e.title AS event_title, e.event_date, e.start_time,
+               u.id AS organizer_id, u.name AS organizer_name, u.avatar_url AS organizer_avatar
+        FROM {schema}.event_questions q
+        JOIN {schema}.events e ON e.id = q.event_id
+        LEFT JOIN {schema}.users u ON u.id = e.organizer_id
+        WHERE q.guest_user_id = {uid}
+          AND q.answer_text IS NOT NULL
+          {where_q_unread}
+        ORDER BY q.answer_sent_at DESC
+        LIMIT 100
+    """)
+    answers = []
+    for r in cur.fetchall():
+        d = dict(r)
+        answers.append({
+            'id': -int(d['q_id']),  # отрицательный, чтобы не конфликтовать с guest_messages.id
+            'kind': 'question_answer',
+            'question_id': int(d['q_id']),
+            'signup_id': None,
+            'event_id': d.get('event_id'),
+            'direction': 'out',
+            'channel': d.get('channel') or 'site',
+            'body': d.get('body') or '',
+            'original_question': d.get('original_question') or '',
+            'delivered': True,
+            'created_at': d.get('created_at'),
+            'read_at': d.get('read_at'),
+            'event_title': d.get('event_title'),
+            'event_date': d.get('event_date'),
+            'start_time': d.get('start_time'),
+            'organizer_id': d.get('organizer_id'),
+            'organizer_name': d.get('organizer_name'),
+            'organizer_avatar': d.get('organizer_avatar'),
+        })
+
+    all_rows = rows + answers
+    # сортируем по created_at DESC (str-сравнение работает для ISO дат)
+    def _sort_key(r):
+        c = r.get('created_at')
+        return str(c) if c is not None else ''
+    all_rows.sort(key=_sort_key, reverse=True)
+
     conn.close()
-    return respond(200, {'messages': rows, 'total': len(rows)})
+    return respond(200, {'messages': all_rows, 'total': len(all_rows)})
 
 
 def handle_inbox_read(cur, conn, schema, user, body):
-    """Пометить сообщения прочитанными. body: {ids: [..]} либо {signup_id: N} (все из диалога)."""
+    """Пометить сообщения прочитанными. body: {ids:[..]} | {signup_id:N} | {question_id:N}."""
     uid = user['id']
     ids = body.get('ids') or []
     signup_id = body.get('signup_id')
+    question_id = body.get('question_id')
+
+    if question_id:
+        cur.execute(f"""
+            UPDATE {schema}.event_questions
+            SET answer_user_read_at = NOW()
+            WHERE id = {int(question_id)}
+              AND guest_user_id = {uid}
+              AND answer_text IS NOT NULL
+              AND answer_user_read_at IS NULL
+        """)
+        conn.commit()
+        conn.close()
+        return respond(200, {'ok': True})
 
     if ids:
         id_list = ",".join(str(int(i)) for i in ids)
@@ -1013,6 +1088,14 @@ def handle_inbox_read(cur, conn, schema, user, body):
               AND s.user_id = {uid}
               AND gm.direction = 'out'
               AND gm.read_at IS NULL
+        """)
+        # И пометим прочитанными все ответы на вопросы
+        cur.execute(f"""
+            UPDATE {schema}.event_questions
+            SET answer_user_read_at = NOW()
+            WHERE guest_user_id = {uid}
+              AND answer_text IS NOT NULL
+              AND answer_user_read_at IS NULL
         """)
     conn.commit()
     conn.close()

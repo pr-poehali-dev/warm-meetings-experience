@@ -136,7 +136,7 @@ export const userProfileApi = {
   getInboxUnreadCount: (): Promise<{ unread: number }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=inbox&count=1`),
 
-  inboxRead: (data: { ids?: number[]; signup_id?: number }): Promise<{ ok: boolean }> =>
+  inboxRead: (data: { ids?: number[]; signup_id?: number; question_id?: number }): Promise<{ ok: boolean }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=inbox_read`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -153,7 +153,7 @@ export const userProfileApi = {
 
 export interface InboxMessage {
   id: number;
-  signup_id: number;
+  signup_id: number | null;
   event_id: number;
   direction: "in" | "out";
   channel: string;
@@ -167,6 +167,9 @@ export interface InboxMessage {
   organizer_id: number;
   organizer_name: string;
   organizer_avatar: string | null;
+  kind?: "question_answer";
+  question_id?: number;
+  original_question?: string;
 }
 
 export interface FavoriteItem {

@@ -109,6 +109,7 @@ export type EventQuestionStatus = "new" | "read" | "answered";
 export interface EventQuestion {
   id: number;
   event_id: number;
+  guest_user_id: number | null;
   guest_name: string;
   guest_contact: string;
   contact_type: "email" | "phone" | "telegram";
@@ -118,6 +119,10 @@ export interface EventQuestion {
   created_at: string;
   read_at: string | null;
   answered_at: string | null;
+  answer_text: string | null;
+  answer_channel: string | null;
+  answer_sent_at: string | null;
+  answer_user_read_at: string | null;
   event_title: string;
   event_slug: string | null;
   event_date: string;
@@ -281,6 +286,13 @@ export const organizerApi = {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, action }),
+    }),
+
+  answerEventQuestion: (id: number, answer: string): Promise<{ ok: boolean; channel: string; delivered: boolean; note: string }> =>
+    authenticatedRequest(`${BASE}/?resource=event_questions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, answer }),
     }),
 
   getNotifySettings: (): Promise<OrgNotifySettings> =>
