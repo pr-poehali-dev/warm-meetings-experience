@@ -15,10 +15,14 @@ const NotFoundPage = () => {
       <div className="text-center max-w-md w-full">
         <div className="flex justify-center mb-6">
           <div className="relative">
-            <div className="w-24 h-24 rounded-3xl bg-amber-100 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/40 flex items-center justify-center text-5xl shadow-sm">
-              🪣
+            <div className="w-32 h-32 rounded-3xl overflow-hidden shadow-md border border-amber-200 dark:border-amber-900/40">
+              <img
+                src="https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/04067879-52cd-41cd-abff-341917939bcb.jpg"
+                alt="Пустая шайка"
+                className="w-full h-full object-cover"
+              />
             </div>
-            <div className="absolute -top-2 -right-2 w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/40 flex items-center justify-center text-lg">
+            <div className="absolute -top-2 -right-2 w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/40 flex items-center justify-center text-lg shadow-sm">
               ❓
             </div>
           </div>
