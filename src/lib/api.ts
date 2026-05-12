@@ -35,6 +35,32 @@ export interface EventFromAPI {
   pricing_tiers?: import('@/lib/organizer-api').PricingTier[];
   created_at: string;
   updated_at: string;
+  // Crowdfund («в складчину»)
+  pricing_mode?: 'fixed' | 'crowdfund';
+  cf?: CrowdfundInfo;
+  cf_status?: 'collecting' | 'confirmed' | 'cancelled';
+}
+
+export interface CrowdfundInfo {
+  target_amount: number;
+  extra_costs: number;
+  total_to_collect: number;
+  commission_percent: number;
+  min_participants: number;
+  max_participants: number;
+  current_count: number;
+  price_current: number;
+  price_at_min: number;
+  price_at_max: number;
+  club_fee: number;
+  fee_mode: 'fixed' | 'percent';
+  threshold_reached: boolean;
+  progress_percent: number;
+  freeze_at: string | null;
+  status: 'collecting' | 'confirmed' | 'cancelled';
+  final_price: number | null;
+  frozen_at: string | null;
+  topup_deadline_hours: number;
 }
 
 export interface SignupFromAPI {

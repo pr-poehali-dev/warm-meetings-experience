@@ -220,7 +220,7 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
             <div className="grid grid-cols-2 gap-2">
               {[
                 { v: "fixed", label: "Обычная цена", icon: "DollarSign" },
-                { v: "crowdfund", label: "Вскладчину", icon: "Users" },
+                { v: "crowdfund", label: "В складчину", icon: "Users" },
               ].map((opt) => (
                 <button
                   key={opt.v}
@@ -318,7 +318,7 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
           <div className="rounded-lg border border-orange-200 bg-orange-50/60 p-3 text-sm space-y-1">
             <div className="flex items-center gap-1.5 font-semibold text-orange-900">
               <Icon name="Users" size={14} />
-              Сбор вскладчину
+              Сбор в складчину
             </div>
             <div className="text-xs text-orange-900/80">
               Цель: <b>{Number(fd.cf_target_amount || 0).toLocaleString("ru-RU")} ₽</b> ·{" "}

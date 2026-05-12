@@ -36,6 +36,9 @@ interface SignUpFormProps {
   timeEnd?: string;
   bathName?: string;
   totalSpots?: number;
+  crowdfundFee?: number;
+  crowdfundAfterFreeze?: boolean;
+  crowdfundFullPrice?: number;
 }
 
 type Screen = "form" | "success" | "already_registered";
@@ -53,6 +56,9 @@ export default function SignUpForm({
   timeEnd,
   bathName,
   totalSpots,
+  crowdfundFee,
+  crowdfundAfterFreeze,
+  crowdfundFullPrice,
 }: SignUpFormProps) {
   const { user } = useAuth();
   const vkAuth = useVkAuth({
@@ -248,8 +254,23 @@ export default function SignUpForm({
     <>
       <Button size="lg" className="w-full rounded-xl gap-2 text-base" onClick={openModal}>
         <Icon name="CalendarCheck" size={18} />
-        Записаться
+        {crowdfundAfterFreeze && crowdfundFullPrice
+          ? `Записаться за ${crowdfundFullPrice.toLocaleString("ru-RU")} ₽`
+          : crowdfundFee
+            ? `Записаться за ${crowdfundFee.toLocaleString("ru-RU")} ₽`
+            : "Записаться"}
       </Button>
+      {crowdfundFee !== undefined && !crowdfundAfterFreeze && (
+        <p className="text-[11px] text-muted-foreground mt-1 text-center px-1">
+          Клубный взнос {crowdfundFee.toLocaleString("ru-RU")} ₽ при записи. Разницу до итоговой
+          цены доплатите после стоп-сбора.
+        </p>
+      )}
+      {crowdfundAfterFreeze && (
+        <p className="text-[11px] text-muted-foreground mt-1 text-center px-1">
+          Сбор закрыт — оплачиваете полную цену сразу.
+        </p>
+      )}
 
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-lg p-0 gap-0 flex flex-col">

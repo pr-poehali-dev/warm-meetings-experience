@@ -1,4 +1,4 @@
-import { EventFromAPI } from "@/lib/api";
+import { EventFromAPI, CrowdfundInfo } from "@/lib/api";
 
 export type EventType = string;
 
@@ -27,6 +27,8 @@ export interface EventItem {
   spotsLeft: number;
   featured: boolean;
   isVisible?: boolean;
+  pricingMode?: 'fixed' | 'crowdfund';
+  cf?: CrowdfundInfo;
 }
 
 export const EVENT_TYPE_COLORS: Record<string, { color: string; bg: string }> = {
@@ -74,6 +76,8 @@ export function mapApiEvent(e: EventFromAPI): EventItem {
     spotsLeft: e.spots_left || 0,
     featured: e.featured || false,
     isVisible: e.is_visible,
+    pricingMode: e.pricing_mode || 'fixed',
+    cf: e.cf,
   };
 }
 

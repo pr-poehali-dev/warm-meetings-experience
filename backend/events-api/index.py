@@ -43,7 +43,7 @@ def handle_events(event, method, params, schema, headers):
             conn.close()
             if not row:
                 return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Not found'})}
-            return {'statusCode': 200, 'headers': headers, 'body': json.dumps(serialize_event(row), default=str)}
+            return {'statusCode': 200, 'headers': headers, 'body': json.dumps(serialize_event(row, cur, schema), default=str)}
 
         slug = params.get('slug')
         if slug:
@@ -59,7 +59,7 @@ def handle_events(event, method, params, schema, headers):
             if not row:
                 conn.close()
                 return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Not found'})}
-            event_data = serialize_event(row)
+            event_data = serialize_event(row, cur, schema)
             if row.get('pricing_type') == 'dynamic':
                 cur.execute(f"SELECT * FROM event_pricing_tiers WHERE event_id = {row['id']} ORDER BY sort_order, valid_until NULLS LAST")
                 event_data['pricing_tiers'] = [dict(t) for t in cur.fetchall()]
@@ -71,11 +71,12 @@ def handle_events(event, method, params, schema, headers):
         order = "ORDER BY event_date ASC, start_time ASC"
         cur.execute(f"SELECT * FROM {schema}.events {where} {order}")
         rows = cur.fetchall()
+        results = [serialize_event(r, cur, schema) for r in rows]
         conn.close()
         return {
             'statusCode': 200,
             'headers': headers,
-            'body': json.dumps([serialize_event(r) for r in rows], default=str)
+            'body': json.dumps(results, default=str)
         }
 
     if method == 'POST':
@@ -270,14 +271,55 @@ def handle_signups(event, method, params, schema, headers):
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Необходимо согласие на обработку персональных данных'})}
 
-        cur.execute(f"SELECT id, title, event_date, start_time, end_time, bath_name, bath_address, spots_left, organizer_id FROM {schema}.events WHERE id = {event_id}")
+        cur.execute(f"SELECT * FROM {schema}.events WHERE id = {event_id}")
         ev = cur.fetchone()
         if not ev:
             conn.close()
             return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Event not found'})}
-        if ev['spots_left'] <= 0:
-            conn.close()
-            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'No spots left'})}
+        ev = dict(ev)
+        is_crowdfund = ev.get('pricing_mode') == 'crowdfund'
+
+        # Для crowdfund: считаем спецлогику взноса/максцены
+        cf_club_fee_charged = 0
+        cf_joined_after_freeze = False
+        cf_final_price_due = None
+        if is_crowdfund:
+            # Сколько уже записано
+            cur.execute(
+                f"SELECT COUNT(*) AS n FROM {schema}.event_signups "
+                f"WHERE event_id = {event_id} AND COALESCE(status,'') NOT IN ('cancelled','отменено')"
+            )
+            r = cur.fetchone()
+            current_count = int(r['n']) if r else 0
+            cf_info = compute_crowdfund_info(ev, current_count)
+            cf_max = cf_info['max_participants'] or ev.get('total_spots') or 0
+            if cf_max and current_count >= cf_max:
+                conn.close()
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'No spots left'})}
+            if ev.get('cf_status') == 'cancelled':
+                conn.close()
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Event cancelled'})}
+
+            # После стоп-сбора — платим максцену сразу
+            try:
+                from datetime import datetime
+                fr = cf_info.get('freeze_at')
+                if fr:
+                    freeze_dt = datetime.fromisoformat(fr)
+                    if datetime.now() >= freeze_dt:
+                        cf_joined_after_freeze = True
+            except Exception:
+                pass
+
+            if cf_joined_after_freeze:
+                cf_club_fee_charged = cf_info['price_at_min']
+                cf_final_price_due = cf_info['price_at_min']
+            else:
+                cf_club_fee_charged = cf_info['club_fee']
+        else:
+            if ev.get('spots_left') is not None and ev['spots_left'] <= 0:
+                conn.close()
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'No spots left'})}
 
         # Проверка на дублирующую запись по телефону или email
         cur.execute(f"""
@@ -293,13 +335,31 @@ def handle_signups(event, method, params, schema, headers):
 
         user_id = find_or_create_user(cur, schema, email, name, phone, telegram)
 
-        cur.execute(f"""
-            INSERT INTO {schema}.event_signups (event_id, name, phone, email, telegram, consent_pd, user_id, preferred_channel)
-            VALUES ({event_id}, '{name}', '{phone}', '{email}', '{telegram}', true, {user_id}, '{preferred_channel}')
-            RETURNING *
-        """)
+        if is_crowdfund:
+            # Запись с клубным взносом (заглушка — помечаем как «оплачен» без реального шлюза)
+            cur.execute(f"""
+                INSERT INTO {schema}.event_signups (
+                    event_id, name, phone, email, telegram, consent_pd, user_id, preferred_channel,
+                    payment_type, payment_amount,
+                    joined_after_freeze, club_fee_paid, club_fee_paid_at, final_price_due, status
+                )
+                VALUES (
+                    {event_id}, '{name}', '{phone}', '{email}', '{telegram}', true, {user_id}, '{preferred_channel}',
+                    'club_fee', {int(cf_club_fee_charged or 0)},
+                    {bool(cf_joined_after_freeze)}, {int(cf_club_fee_charged or 0)}, NOW(),
+                    {int(cf_final_price_due) if cf_final_price_due else 'NULL'},
+                    '{'paid' if cf_joined_after_freeze else 'new'}'
+                )
+                RETURNING *
+            """)
+        else:
+            cur.execute(f"""
+                INSERT INTO {schema}.event_signups (event_id, name, phone, email, telegram, consent_pd, user_id, preferred_channel)
+                VALUES ({event_id}, '{name}', '{phone}', '{email}', '{telegram}', true, {user_id}, '{preferred_channel}')
+                RETURNING *
+            """)
         row = cur.fetchone()
-        cur.execute(f"UPDATE {schema}.events SET spots_left = spots_left - 1 WHERE id = {event_id}")
+        cur.execute(f"UPDATE {schema}.events SET spots_left = GREATEST(spots_left - 1, 0) WHERE id = {event_id}")
 
         if ip_safe:
             cur.execute(f"INSERT INTO {schema}.signup_rate_limit (ip_address, event_id) VALUES ('{ip_safe}', {int(event_id)})")
@@ -690,10 +750,96 @@ def notify_organizer_telegram(event_data, signup_name, signup_phone, signup_emai
         pass
 
 
-def serialize_event(row):
+def _round_up_50(n: float) -> int:
+    import math
+    return int(math.ceil(n / 50.0) * 50)
+
+
+def compute_crowdfund_info(d: dict, current_count: int) -> dict:
+    """Считает текущую/мин/макс цены и клубный взнос для события «в складчину»."""
+    target = int(d.get('cf_target_amount') or 0)
+    extra = int(d.get('cf_extra_costs') or 0)
+    commission = float(d.get('cf_commission_percent') or 0)
+    cf_min = int(d.get('cf_min_participants') or 0)
+    cf_max = int(d.get('cf_max_participants') or d.get('total_spots') or 0)
+    total = target + extra
+
+    def price_for(n: int) -> int:
+        if not n or n <= 0 or total <= 0:
+            return 0
+        return round((total / n) * (1 + commission / 100.0))
+
+    price_at_min = price_for(cf_min) if cf_min else 0
+    price_at_max = price_for(cf_max) if cf_max else 0
+    price_current = price_for(max(current_count, cf_min or 1))
+
+    fee_mode = d.get('cf_fee_mode') or 'fixed'
+    if fee_mode == 'percent':
+        fp = float(d.get('cf_fee_percent') or 0)
+        club_fee = _round_up_50(price_at_min * fp / 100.0) if price_at_min else 0
+    else:
+        club_fee = int(d.get('cf_club_fee') or 0)
+
+    threshold_reached = bool(cf_min and current_count >= cf_min)
+    progress_percent = 0
+    if cf_max:
+        progress_percent = min(100, round(current_count * 100 / cf_max))
+
+    # Расчёт момента стоп-сбора
+    freeze_at = None
+    try:
+        from datetime import datetime, timedelta
+        ed = d.get('event_date')
+        st = d.get('start_time')
+        if ed and st:
+            ed_s = str(ed)
+            st_s = str(st)
+            dt = datetime.fromisoformat(f"{ed_s}T{st_s[:8]}")
+            hours = int(d.get('cf_freeze_hours') or 48)
+            freeze_at = (dt - timedelta(hours=hours)).isoformat()
+    except Exception:
+        freeze_at = None
+
+    return {
+        'target_amount': target,
+        'extra_costs': extra,
+        'total_to_collect': total,
+        'commission_percent': commission,
+        'min_participants': cf_min,
+        'max_participants': cf_max,
+        'current_count': current_count,
+        'price_current': price_current,
+        'price_at_min': price_at_min,
+        'price_at_max': price_at_max,
+        'club_fee': club_fee,
+        'fee_mode': fee_mode,
+        'threshold_reached': threshold_reached,
+        'progress_percent': progress_percent,
+        'freeze_at': freeze_at,
+        'status': d.get('cf_status') or 'collecting',
+        'final_price': d.get('cf_final_price'),
+        'frozen_at': d.get('cf_frozen_at'),
+        'topup_deadline_hours': int(d.get('cf_topup_deadline_hours') or 24),
+    }
+
+
+def serialize_event(row, cur=None, schema=None):
     d = dict(row)
     if d.get('program') is None:
         d['program'] = []
     if d.get('rules') is None:
         d['rules'] = []
+
+    # Crowdfund: добавляем расчётный объект cf
+    if d.get('pricing_mode') == 'crowdfund' and cur is not None and schema:
+        try:
+            cur.execute(
+                f"SELECT COUNT(*) AS n FROM {schema}.event_signups "
+                f"WHERE event_id = {int(d['id'])} AND COALESCE(status,'') NOT IN ('cancelled','отменено')"
+            )
+            r = cur.fetchone()
+            current_count = int(r['n']) if r else 0
+        except Exception:
+            current_count = 0
+        d['cf'] = compute_crowdfund_info(d, current_count)
     return d

@@ -330,7 +330,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         if pricing_type not in ('fixed', 'dynamic'):
             pricing_type = 'fixed'
 
-        # Crowdfund (вскладчину) — необязательные поля
+        # Crowdfund (в складчину) — необязательные поля
         pricing_mode = body.get('pricing_mode', 'fixed')
         if pricing_mode not in ('fixed', 'crowdfund'):
             pricing_mode = 'fixed'

@@ -45,7 +45,7 @@ export interface OrgEvent {
   created_at: string;
   status?: 'draft' | 'pending' | 'published' | 'rejected';
   rejection_reason?: string;
-  // Crowdfund (вскладчину)
+  // Crowdfund (в складчину)
   pricing_mode?: 'fixed' | 'crowdfund';
   cf_target_amount?: number | null;
   cf_min_participants?: number | null;

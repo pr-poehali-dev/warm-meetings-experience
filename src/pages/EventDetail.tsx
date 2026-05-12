@@ -10,6 +10,7 @@ import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import Header from "@/components/Header";
 import DynamicPricingBlock from "@/components/events/DynamicPricingBlock";
+import CrowdfundWidget from "@/components/events/CrowdfundWidget";
 
 export default function EventDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -57,9 +58,11 @@ export default function EventDetail() {
         ? `Последние ${event.spotsLeft} места`
         : `Осталось ${event.spotsLeft} из ${event.totalSpots} мест`;
 
-  const priceDisplay = event.pricingType === "dynamic" && event.pricingTiers?.length
-    ? null
-    : event.priceLabel || null;
+  const priceDisplay = event.pricingMode === "crowdfund" && event.cf
+    ? `${event.cf.price_current ? event.cf.price_current.toLocaleString("ru-RU") : "—"} ₽/чел`
+    : event.pricingType === "dynamic" && event.pricingTiers?.length
+      ? null
+      : event.priceLabel || null;
 
   return (
     <div className="min-h-screen bg-background pb-32 lg:pb-0">
@@ -150,7 +153,9 @@ export default function EventDetail() {
             {/* Стоимость (мобильные) */}
             <section className="lg:hidden">
               <h2 className="text-xl font-semibold mb-3">Стоимость</h2>
-              {event.pricingType === "dynamic" && event.pricingTiers?.length ? (
+              {event.pricingMode === "crowdfund" && event.cf ? (
+                <CrowdfundWidget cf={event.cf} />
+              ) : event.pricingType === "dynamic" && event.pricingTiers?.length ? (
                 <Card className="border shadow-sm">
                   <CardContent className="p-5">
                     <DynamicPricingBlock tiers={event.pricingTiers} />
@@ -181,6 +186,9 @@ export default function EventDetail() {
           {/* Десктопная боковая панель */}
           <div className="hidden lg:block lg:w-[340px] shrink-0">
             <div className="sticky top-24 space-y-4">
+              {event.pricingMode === "crowdfund" && event.cf && (
+                <CrowdfundWidget cf={event.cf} />
+              )}
               <SidebarCard
                 event={event}
                 spotsColor={spotsColor}
@@ -220,6 +228,17 @@ export default function EventDetail() {
                 timeEnd={event.timeEnd}
                 bathName={event.bathName}
                 totalSpots={event.totalSpots}
+                crowdfundFee={
+                  event.pricingMode === "crowdfund" ? event.cf?.club_fee : undefined
+                }
+                crowdfundAfterFreeze={
+                  event.pricingMode === "crowdfund" && event.cf?.freeze_at
+                    ? new Date(event.cf.freeze_at).getTime() <= Date.now()
+                    : false
+                }
+                crowdfundFullPrice={
+                  event.pricingMode === "crowdfund" ? event.cf?.price_at_min : undefined
+                }
               />
             </div>
             <AskOrganizerModal
@@ -322,6 +341,17 @@ function SidebarCard({ event, spotsColor, spotsLabel, priceDisplay, dateObj }: {
                 timeEnd={event.timeEnd}
                 bathName={event.bathName}
                 totalSpots={event.totalSpots}
+                crowdfundFee={
+                  event.pricingMode === "crowdfund" ? event.cf?.club_fee : undefined
+                }
+                crowdfundAfterFreeze={
+                  event.pricingMode === "crowdfund" && event.cf?.freeze_at
+                    ? new Date(event.cf.freeze_at).getTime() <= Date.now()
+                    : false
+                }
+                crowdfundFullPrice={
+                  event.pricingMode === "crowdfund" ? event.cf?.price_at_min : undefined
+                }
               />
               <AskOrganizerModal
                 eventId={event.id}
