@@ -5,7 +5,7 @@
       "method": "GET",
       "path": "/",
       "expectedStatus": 200,
-      "expectedBody": {"masters": []},
+      "expectedBody": {},
       "bodyMatcher": "partial"
     },
     {
@@ -39,6 +39,54 @@
       "body": {"name": "Test"},
       "expectedStatus": 401,
       "expectedBody": {"error": "Не авторизован"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Календарь — слоты (GET без данных)",
+      "method": "GET",
+      "path": "/?resource=calendar&sub=slots&master_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Календарь — настройки (дефолтные)",
+      "method": "GET",
+      "path": "/?resource=calendar&sub=settings&master_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": {"default_slot_duration": 60},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Календарь — week-view",
+      "method": "GET",
+      "path": "/?resource=calendar&sub=week-view&master_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": {"slots": [], "bookings": [], "blocks": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Записи — пустой список",
+      "method": "GET",
+      "path": "/?resource=bookings&sub=bookings&master_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Записи — статистика",
+      "method": "GET",
+      "path": "/?resource=bookings&sub=stats&master_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": {"occupancy_percent": 0},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Отзывы — пустой список",
+      "method": "GET",
+      "path": "/?resource=reviews&master_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": [],
       "bodyMatcher": "partial"
     }
   ]

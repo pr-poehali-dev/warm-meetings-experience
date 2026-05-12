@@ -1,7 +1,8 @@
 import FUNC_URLS from "../../backend/func2url.json";
 
-const CALENDAR_URL = FUNC_URLS["master-calendar"];
-const BOOKINGS_URL = FUNC_URLS["master-bookings"];
+const MASTERS_URL = FUNC_URLS["masters-api"];
+const CALENDAR_URL = `${MASTERS_URL}?resource=calendar`;
+const BOOKINGS_URL = `${MASTERS_URL}?resource=bookings`;
 
 export interface MasterService {
   id?: number;
@@ -139,124 +140,126 @@ async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
 
 export const masterCalendarApi = {
   getWeekView: (masterId: number, weekStart?: string) => {
-    let url = `${CALENDAR_URL}?resource=week-view&master_id=${masterId}`;
+    let url = `${CALENDAR_URL}&sub=week-view&master_id=${masterId}`;
     if (weekStart) url += `&week_start=${weekStart}`;
     return fetchApi<WeekViewData>(url);
   },
 
   getSlots: (masterId: number, dateFrom?: string, dateTo?: string) => {
-    let url = `${CALENDAR_URL}?resource=slots&master_id=${masterId}`;
+    let url = `${CALENDAR_URL}&sub=slots&master_id=${masterId}`;
     if (dateFrom) url += `&date_from=${dateFrom}`;
     if (dateTo) url += `&date_to=${dateTo}`;
     return fetchApi<MasterSlot[]>(url);
   },
 
   createSlot: (data: Partial<MasterSlot>) =>
-    fetchApi<MasterSlot>(`${CALENDAR_URL}?resource=slots`, {
+    fetchApi<MasterSlot>(`${CALENDAR_URL}&sub=slots`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   updateSlot: (data: Partial<MasterSlot> & { id: number }) =>
-    fetchApi<MasterSlot>(`${CALENDAR_URL}?resource=slots`, {
+    fetchApi<MasterSlot>(`${CALENDAR_URL}&sub=slots`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),
 
   deleteSlot: (id: number) =>
-    fetchApi(`${CALENDAR_URL}?resource=slots`, {
+    fetchApi(`${CALENDAR_URL}&sub=slots`, {
       method: "DELETE",
       body: JSON.stringify({ id }),
     }),
 
   blockSlot: (id: number) =>
-    fetchApi<MasterSlot>(`${CALENDAR_URL}?resource=slots`, {
+    fetchApi<MasterSlot>(`${CALENDAR_URL}&sub=slots`, {
       method: "PUT",
       body: JSON.stringify({ id, status: "blocked" }),
     }),
 
   unblockSlot: (id: number) =>
-    fetchApi<MasterSlot>(`${CALENDAR_URL}?resource=slots`, {
+    fetchApi<MasterSlot>(`${CALENDAR_URL}&sub=slots`, {
       method: "PUT",
       body: JSON.stringify({ id, status: "available" }),
     }),
 
   getServices: (masterId: number) =>
-    fetchApi<MasterService[]>(`${CALENDAR_URL}?resource=services&master_id=${masterId}`),
+    fetchApi<MasterService[]>(`${CALENDAR_URL}&sub=services&master_id=${masterId}`),
 
   createService: (data: Partial<MasterService>) =>
-    fetchApi<MasterService>(`${CALENDAR_URL}?resource=services`, {
+    fetchApi<MasterService>(`${CALENDAR_URL}&sub=services`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   updateService: (data: Partial<MasterService> & { id: number }) =>
-    fetchApi<MasterService>(`${CALENDAR_URL}?resource=services`, {
+    fetchApi<MasterService>(`${CALENDAR_URL}&sub=services`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),
 
   deleteService: (id: number) =>
-    fetchApi(`${CALENDAR_URL}?resource=services`, {
+    fetchApi(`${CALENDAR_URL}&sub=services`, {
       method: "DELETE",
       body: JSON.stringify({ id }),
     }),
 
   getTemplates: (masterId: number) =>
-    fetchApi<ScheduleTemplate[]>(`${CALENDAR_URL}?resource=templates&master_id=${masterId}`),
+    fetchApi<ScheduleTemplate[]>(`${CALENDAR_URL}&sub=templates&master_id=${masterId}`),
 
   createTemplate: (data: { master_id: number; name: string; rules: TemplateRule[] }) =>
-    fetchApi<ScheduleTemplate>(`${CALENDAR_URL}?resource=templates`, {
+    fetchApi<ScheduleTemplate>(`${CALENDAR_URL}&sub=templates`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   updateTemplate: (data: { id: number; name?: string; rules?: TemplateRule[] }) =>
-    fetchApi(`${CALENDAR_URL}?resource=templates`, {
+    fetchApi(`${CALENDAR_URL}&sub=templates`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),
 
   deleteTemplate: (id: number) =>
-    fetchApi(`${CALENDAR_URL}?resource=templates`, {
+    fetchApi(`${CALENDAR_URL}&sub=templates`, {
       method: "DELETE",
       body: JSON.stringify({ id }),
     }),
 
   applyTemplate: (data: { template_id: number; master_id: number; weeks: number; start_date?: string }) =>
     fetchApi<{ success: boolean; created: number; skipped: number; period: string }>(
-      `${CALENDAR_URL}?resource=apply-template`,
+      `${CALENDAR_URL}&sub=apply-template`,
       { method: "POST", body: JSON.stringify(data) }
     ),
 
   getSettings: (masterId: number) =>
-    fetchApi<CalendarSettings>(`${CALENDAR_URL}?resource=settings&master_id=${masterId}`),
+    fetchApi<CalendarSettings>(`${CALENDAR_URL}&sub=settings&master_id=${masterId}`),
 
   saveSettings: (data: Partial<CalendarSettings>) =>
-    fetchApi<CalendarSettings>(`${CALENDAR_URL}?resource=settings`, {
+    fetchApi<CalendarSettings>(`${CALENDAR_URL}&sub=settings`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   getBlocks: (masterId: number) =>
-    fetchApi<DayBlock[]>(`${CALENDAR_URL}?resource=blocks&master_id=${masterId}`),
+    fetchApi<DayBlock[]>(`${CALENDAR_URL}&sub=blocks&master_id=${masterId}`),
 
   createBlock: (data: Partial<DayBlock>) =>
-    fetchApi(`${CALENDAR_URL}?resource=blocks`, {
+    fetchApi(`${CALENDAR_URL}&sub=blocks`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   deleteBlock: (id: number, masterId: number) =>
-    fetchApi(`${CALENDAR_URL}?resource=blocks`, {
+    fetchApi(`${CALENDAR_URL}&sub=blocks`, {
       method: "DELETE",
       body: JSON.stringify({ id, master_id: masterId }),
     }),
 };
 
+const REVIEWS_URL = `${MASTERS_URL}?resource=reviews`;
+
 export const masterBookingsApi = {
   getBookings: (masterId: number, status?: string, dateFrom?: string, dateTo?: string) => {
-    let url = `${BOOKINGS_URL}?resource=bookings&master_id=${masterId}`;
+    let url = `${BOOKINGS_URL}&sub=bookings&master_id=${masterId}`;
     if (status) url += `&status=${status}`;
     if (dateFrom) url += `&date_from=${dateFrom}`;
     if (dateTo) url += `&date_to=${dateTo}`;
@@ -264,41 +267,41 @@ export const masterBookingsApi = {
   },
 
   createBooking: (data: Partial<MasterBooking>) =>
-    fetchApi<MasterBooking>(`${BOOKINGS_URL}?resource=bookings`, {
+    fetchApi<MasterBooking>(`${BOOKINGS_URL}&sub=bookings`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   updateBooking: (data: { id: number; action: string; cancel_reason?: string }) =>
-    fetchApi<MasterBooking>(`${BOOKINGS_URL}?resource=bookings`, {
+    fetchApi<MasterBooking>(`${BOOKINGS_URL}&sub=bookings`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),
 
   getStats: (masterId: number, period?: string) => {
-    let url = `${BOOKINGS_URL}?resource=stats&master_id=${masterId}`;
+    let url = `${BOOKINGS_URL}&sub=stats&master_id=${masterId}`;
     if (period) url += `&period=${period}`;
     return fetchApi<BookingStats>(url);
   },
 
   getPublicSlots: (masterId: number, dateFrom?: string, serviceId?: number) => {
-    let url = `${BOOKINGS_URL}?resource=public-slots&master_id=${masterId}`;
+    let url = `${BOOKINGS_URL}&sub=public-slots&master_id=${masterId}`;
     if (dateFrom) url += `&date_from=${dateFrom}`;
     if (serviceId) url += `&service_id=${serviceId}`;
     return fetchApi<MasterSlot[]>(url);
   },
 
   publicBook: (data: { slot_id: number; client_name: string; client_phone: string; client_email?: string; comment?: string }) =>
-    fetchApi(`${BOOKINGS_URL}?resource=public-book`, {
+    fetchApi(`${BOOKINGS_URL}&sub=public-book`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   getReviews: (masterId: number) =>
-    fetchApi<MasterReview[]>(`${BOOKINGS_URL}?resource=reviews&master_id=${masterId}`),
+    fetchApi<MasterReview[]>(`${REVIEWS_URL}&master_id=${masterId}`),
 
   createReview: (data: { master_id: number; client_name: string; client_phone?: string; rating: number; text?: string }) =>
-    fetchApi<MasterReview>(`${BOOKINGS_URL}?resource=reviews`, {
+    fetchApi<MasterReview>(`${REVIEWS_URL}`, {
       method: "POST",
       body: JSON.stringify(data),
     }),

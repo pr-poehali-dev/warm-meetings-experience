@@ -1,37 +1,21 @@
 import json
-import os
-import psycopg2
 import psycopg2.extras
 from datetime import datetime
-from shared import *
+from shared import CORS_HEADERS, get_conn, get_schema
 
 
-def handler(event, context):
-    """API записей к мастеру: создание, подтверждение, отмена, список"""
-    if event.get('httpMethod') == 'OPTIONS':
-        return options_response()
-
-    headers = CORS_HEADERS
-    method = event.get('httpMethod', 'GET')
-    params = event.get('queryStringParameters') or {}
-    resource = params.get('resource', 'bookings')
-    schema = get_schema()
-
-    try:
-        if resource == 'bookings':
-            return handle_bookings(event, method, params, schema, headers)
-        elif resource == 'public-slots':
-            return handle_public_slots(event, method, params, schema, headers)
-        elif resource == 'public-book':
-            return handle_public_book(event, method, params, schema, headers)
-        elif resource == 'stats':
-            return handle_stats(event, method, params, schema, headers)
-        elif resource == 'reviews':
-            return handle_reviews(event, method, params, schema, headers)
-        else:
-            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown resource'})}
-    except Exception as e:
-        return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': str(e)})}
+def handle_bookings_root(event, method, params, schema, headers):
+    """Маршрутизация подресурсов записей: bookings/public-slots/public-book/stats/reviews"""
+    sub = params.get('sub') or params.get('subresource') or 'bookings'
+    if sub == 'bookings':
+        return handle_bookings(event, method, params, schema, headers)
+    elif sub == 'public-slots':
+        return handle_public_slots(event, method, params, schema, headers)
+    elif sub == 'public-book':
+        return handle_public_book(event, method, params, schema, headers)
+    elif sub == 'stats':
+        return handle_stats(event, method, params, schema, headers)
+    return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown bookings sub'})}
 
 
 def handle_bookings(event, method, params, schema, headers):

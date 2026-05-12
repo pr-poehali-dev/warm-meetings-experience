@@ -1,42 +1,27 @@
 import json
-import os
-import psycopg2
 import psycopg2.extras
 from datetime import datetime, timedelta, date, time
+from shared import CORS_HEADERS, get_conn, get_schema
 
-from shared import *
 
-
-def handler(event, context):
-    """API календаря мастера: слоты, шаблоны, услуги, настройки, блокировки"""
-    if event.get('httpMethod') == 'OPTIONS':
-        return options_response()
-
-    headers = CORS_HEADERS
-    method = event.get('httpMethod', 'GET')
-    params = event.get('queryStringParameters') or {}
-    resource = params.get('resource', 'slots')
-    schema = get_schema()
-
-    try:
-        if resource == 'slots':
-            return handle_slots(event, method, params, schema, headers)
-        elif resource == 'services':
-            return handle_services(event, method, params, schema, headers)
-        elif resource == 'templates':
-            return handle_templates(event, method, params, schema, headers)
-        elif resource == 'settings':
-            return handle_settings(event, method, params, schema, headers)
-        elif resource == 'blocks':
-            return handle_blocks(event, method, params, schema, headers)
-        elif resource == 'apply-template':
-            return handle_apply_template(event, method, params, schema, headers)
-        elif resource == 'week-view':
-            return handle_week_view(event, method, params, schema, headers)
-        else:
-            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown resource'})}
-    except Exception as e:
-        return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': str(e)})}
+def handle_calendar(event, method, params, schema, headers):
+    """Маршрутизация подресурсов календаря: slots/services/templates/settings/blocks/apply-template/week-view"""
+    sub = params.get('sub') or params.get('subresource') or 'slots'
+    if sub == 'slots':
+        return handle_slots(event, method, params, schema, headers)
+    elif sub == 'services':
+        return handle_services(event, method, params, schema, headers)
+    elif sub == 'templates':
+        return handle_templates(event, method, params, schema, headers)
+    elif sub == 'settings':
+        return handle_settings(event, method, params, schema, headers)
+    elif sub == 'blocks':
+        return handle_blocks(event, method, params, schema, headers)
+    elif sub == 'apply-template':
+        return handle_apply_template(event, method, params, schema, headers)
+    elif sub == 'week-view':
+        return handle_week_view(event, method, params, schema, headers)
+    return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown calendar sub'})}
 
 
 def handle_slots(event, method, params, schema, headers):
@@ -82,8 +67,7 @@ def handle_slots(event, method, params, schema, headers):
               AND datetime_end > '{dt_start}'
             LIMIT 1
         """)
-        conflict = cur.fetchone()
-        if conflict:
+        if cur.fetchone():
             conn.close()
             return {'statusCode': 409, 'headers': headers, 'body': json.dumps({'error': 'Конфликт времени: слот пересекается с существующим'})}
 
@@ -147,13 +131,9 @@ def handle_slots(event, method, params, schema, headers):
 
     if method == 'DELETE':
         body = json.loads(event.get('body', '{}'))
-        slot_id = body.get('id')
-        if not slot_id:
-            slot_id = params.get('id')
+        slot_id = body.get('id') or params.get('id')
 
-        cur.execute(f"""
-            SELECT id, status FROM {schema}.master_slots WHERE id = {int(slot_id)}
-        """)
+        cur.execute(f"SELECT id, status FROM {schema}.master_slots WHERE id = {int(slot_id)}")
         slot = cur.fetchone()
         if not slot:
             conn.close()
@@ -337,9 +317,6 @@ def handle_templates(event, method, params, schema, headers):
             cur.execute(f"UPDATE {schema}.master_schedule_templates SET name = '{name}', updated_at = CURRENT_TIMESTAMP WHERE id = {int(tmpl_id)}")
 
         if 'rules' in body:
-            # Полная замена правил: удаляем старые и вставляем новые.
-            # Это позволяет хранить несколько правил на один день недели
-            # и корректно обрабатывать удаление правил из шаблона.
             cur.execute(f"DELETE FROM {schema}.master_template_rules WHERE template_id = {int(tmpl_id)}")
             for rule in body['rules']:
                 svc = rule.get('service_id')
@@ -595,10 +572,6 @@ def handle_blocks(event, method, params, schema, headers):
             """)
             created += 1
 
-        # Блокировка дня НЕ меняет статус существующих слотов.
-        # Слоты остаются как есть — день перекрывается на фронте оверлеем.
-        # Это позволяет отдельно блокировать конкретные слоты (через updateSlot status='blocked').
-
         conn.commit()
         conn.close()
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps({'success': True, 'blocked_days': created})}
@@ -611,9 +584,6 @@ def handle_blocks(event, method, params, schema, headers):
             UPDATE {schema}.master_day_blocks SET reason = 'removed'
             WHERE id = {int(block_id)}
         """)
-
-        # Снятие блокировки дня не трогает статусы слотов —
-        # они отдельно управляются мастером.
 
         conn.commit()
         conn.close()
