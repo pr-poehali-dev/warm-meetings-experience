@@ -42,7 +42,6 @@ import EventShortLink from "./pages/EventShortLink";
 import VerifyEmail from "./pages/VerifyEmail";
 import Functional from "./pages/Functional";
 import AccountDemo from "./pages/AccountDemo";
-import EventsDemo from "./pages/EventsDemo";
 import EventsGlassDemo from "./pages/EventsGlassDemo";
 import IndexGlass from "./pages/IndexGlass";
 import IndexNew from "./pages/IndexNew";
@@ -94,7 +93,6 @@ const AppContent = () => {
         <Route path="/documents" element={<Documents />} />
         <Route path="/functional" element={<Functional />} />
         <Route path="/account-demo" element={<AccountDemo />} />
-        <Route path="/events-demo" element={<EventsDemo />} />
         <Route path="/events-glass" element={<EventsGlassDemo />} />
         <Route path="/index-glass" element={<IndexGlass />} />
         <Route path="/home-new" element={<IndexNew />} />
