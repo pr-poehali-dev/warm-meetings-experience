@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import SignUpForm from "@/components/events/SignUpForm";
+import AskOrganizerModal from "@/components/events/AskOrganizerModal";
 import { EventItem, mapApiEvent, getTypeColors } from "@/data/events";
 import { eventsApi } from "@/lib/api";
 import { format, parseISO } from "date-fns";
@@ -207,17 +208,28 @@ export default function EventDetail() {
           </div>
         )}
         {event.id && (
-          <SignUpForm
-            eventId={event.id}
-            eventTitle={event.title}
-            spotsLeft={event.spotsLeft}
-            priceLabel={priceDisplay ?? undefined}
-            eventDate={event.date}
-            timeStart={event.timeStart}
-            timeEnd={event.timeEnd}
-            bathName={event.bathName}
-            totalSpots={event.totalSpots}
-          />
+          <div className="flex gap-2 items-stretch">
+            <div className="flex-1">
+              <SignUpForm
+                eventId={event.id}
+                eventTitle={event.title}
+                spotsLeft={event.spotsLeft}
+                priceLabel={priceDisplay ?? undefined}
+                eventDate={event.date}
+                timeStart={event.timeStart}
+                timeEnd={event.timeEnd}
+                bathName={event.bathName}
+                totalSpots={event.totalSpots}
+              />
+            </div>
+            <AskOrganizerModal
+              eventId={event.id}
+              eventTitle={event.title}
+              variant="outline"
+              size="default"
+              className="shrink-0 px-3"
+            />
+          </div>
         )}
       </div>
     </div>
@@ -299,17 +311,26 @@ function SidebarCard({ event, spotsColor, spotsLabel, priceDisplay, dateObj }: {
 
           {/* Кнопка */}
           {event.id && (
-            <SignUpForm
-              eventId={event.id}
-              eventTitle={event.title}
-              spotsLeft={event.spotsLeft}
-              priceLabel={priceDisplay ?? undefined}
-              eventDate={event.date}
-              timeStart={event.timeStart}
-              timeEnd={event.timeEnd}
-              bathName={event.bathName}
-              totalSpots={event.totalSpots}
-            />
+            <div className="space-y-2">
+              <SignUpForm
+                eventId={event.id}
+                eventTitle={event.title}
+                spotsLeft={event.spotsLeft}
+                priceLabel={priceDisplay ?? undefined}
+                eventDate={event.date}
+                timeStart={event.timeStart}
+                timeEnd={event.timeEnd}
+                bathName={event.bathName}
+                totalSpots={event.totalSpots}
+              />
+              <AskOrganizerModal
+                eventId={event.id}
+                eventTitle={event.title}
+                variant="ghost"
+                size="sm"
+                className="w-full text-muted-foreground hover:text-foreground"
+              />
+            </div>
           )}
         </CardContent>
       </Card>

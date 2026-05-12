@@ -105,6 +105,21 @@ export const signupsApi = {
     }),
 };
 
+export const eventQuestionsApi = {
+  ask: (data: {
+    event_id: number;
+    name: string;
+    contact: string;
+    contact_type: "email" | "phone" | "telegram";
+    message: string;
+  }): Promise<{ ok: boolean; id: number; email_sent: boolean }> =>
+    request(`${EVENTS_API}/?resource=question`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+};
+
 export const authApi = {
   login: (password: string): Promise<{ token: string; expires_at: string }> =>
     request(AUTH_API, {

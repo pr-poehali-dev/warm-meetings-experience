@@ -23,6 +23,9 @@ def handler(event, context):
     if resource == 'signups':
         return handle_signups(event, method, params, schema, headers)
 
+    if resource == 'question':
+        return handle_question(event, method, params, schema, headers)
+
     return handle_events(event, method, params, schema, headers)
 
 
@@ -343,6 +346,184 @@ def handle_signups(event, method, params, schema, headers):
 
     conn.close()
     return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+
+
+def handle_question(event, method, params, schema, headers):
+    """Вопрос гостя организатору события. Пишет в event_questions + email."""
+    if method != 'POST':
+        return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        body = json.loads(event.get('body', '{}'))
+    except Exception:
+        conn.close()
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Bad JSON'})}
+
+    event_id = body.get('event_id')
+    name = (body.get('name') or '').strip()
+    contact = (body.get('contact') or '').strip()
+    contact_type = (body.get('contact_type') or 'email').strip().lower()
+    message = (body.get('message') or '').strip()
+
+    # авторизованный пользователь (если есть)
+    auth_headers = event.get('headers', {}) or {}
+    guest_user_id = None
+    try:
+        uid = auth_headers.get('X-User-Id') or auth_headers.get('x-user-id')
+        if uid:
+            guest_user_id = int(uid)
+    except Exception:
+        guest_user_id = None
+
+    if not event_id or not name or not contact or not message:
+        conn.close()
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'event_id, name, contact, message required'})}
+
+    if len(name) > 200 or len(contact) > 200 or len(message) > 4000:
+        conn.close()
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Слишком длинные поля'})}
+
+    if contact_type not in ('email', 'phone', 'telegram'):
+        contact_type = 'email'
+
+    # IP rate-limit: не более 3 вопросов в минуту и 10 в час
+    try:
+        ip_address = (event.get('requestContext', {}) or {}).get('identity', {}).get('sourceIp', '') or ''
+    except Exception:
+        ip_address = ''
+    ip_safe = ip_address.replace("'", "''")[:64]
+    if ip_safe:
+        cur.execute(f"SELECT COUNT(*) AS c FROM {schema}.event_questions WHERE ip_address = '{ip_safe}' AND created_at > NOW() - INTERVAL '1 minute'")
+        cnt_min = (cur.fetchone() or {}).get('c', 0) or 0
+        cur.execute(f"SELECT COUNT(*) AS c FROM {schema}.event_questions WHERE ip_address = '{ip_safe}' AND created_at > NOW() - INTERVAL '1 hour'")
+        cnt_hr = (cur.fetchone() or {}).get('c', 0) or 0
+        if cnt_min >= 3 or cnt_hr >= 10:
+            conn.close()
+            return {'statusCode': 429, 'headers': headers, 'body': json.dumps({'error': 'Слишком много обращений. Попробуйте позже.'})}
+
+    # Достаём событие и организатора
+    cur.execute(f"""
+        SELECT e.id, e.title, e.slug, e.event_date, e.start_time,
+               COALESCE(b.name, e.bath_name) AS bath_name,
+               e.organizer_id,
+               u.email AS organizer_email,
+               u.name AS organizer_name
+        FROM {schema}.events e
+        LEFT JOIN {schema}.baths b ON b.id = e.bath_id
+        LEFT JOIN {schema}.users u ON u.id = e.organizer_id
+        WHERE e.id = {int(event_id)}
+    """)
+    ev = cur.fetchone()
+    if not ev:
+        conn.close()
+        return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Event not found'})}
+
+    # SQL-санитизация
+    name_q = name.replace("'", "''")
+    contact_q = contact.replace("'", "''")
+    message_q = message.replace("'", "''")
+    organizer_id_v = ev.get('organizer_id')
+
+    cur.execute(f"""
+        INSERT INTO {schema}.event_questions
+            (event_id, organizer_id, guest_user_id, guest_name, guest_contact, contact_type, message, ip_address)
+        VALUES (
+            {int(event_id)},
+            {organizer_id_v if organizer_id_v else 'NULL'},
+            {guest_user_id if guest_user_id else 'NULL'},
+            '{name_q}', '{contact_q}', '{contact_type}',
+            '{message_q}',
+            {f"'{ip_safe}'" if ip_safe else 'NULL'}
+        )
+        RETURNING id
+    """)
+    qid = cur.fetchone()['id']
+    conn.commit()
+
+    # Email организатору
+    email_sent = False
+    organizer_email = ev.get('organizer_email')
+    if organizer_email:
+        try:
+            send_event_question_email(organizer_email, ev, name, contact, contact_type, message)
+            cur.execute(f"UPDATE {schema}.event_questions SET email_sent = TRUE WHERE id = {qid}")
+            conn.commit()
+            email_sent = True
+        except Exception:
+            pass
+
+    conn.close()
+    return {
+        'statusCode': 200,
+        'headers': headers,
+        'body': json.dumps({'ok': True, 'id': qid, 'email_sent': email_sent}),
+    }
+
+
+def send_event_question_email(to_email, ev, guest_name, guest_contact, contact_type, message):
+    """Письмо организатору: новый вопрос от гостя по событию."""
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
+    if not api_key or not sender_email:
+        return
+
+    site_url = os.environ.get("SITE_URL", "https://warm-meetings-experience.poehali.dev").rstrip("/")
+    event_url = f"{site_url}/events/{ev['slug']}" if ev.get('slug') else f"{site_url}/events/{ev['id']}"
+    event_title = ev.get('title') or 'Событие'
+    event_date = str(ev.get('event_date', '') or '')
+    start_time = str(ev.get('start_time', '') or '')[:5]
+    bath_name = ev.get('bath_name') or ''
+    organizer_name = ev.get('organizer_name') or ''
+
+    contact_label = {'email': 'Email', 'phone': 'Телефон', 'telegram': 'Telegram'}.get(contact_type, 'Контакт')
+    safe_msg = (message or '').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
+
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fafafa;">
+      <div style="background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+        <h1 style="font-size: 20px; margin: 0 0 16px;">Новый вопрос по событию</h1>
+        <p style="color: #666; margin: 0 0 20px;">Здравствуйте{', ' + organizer_name if organizer_name else ''}! Гость задал вопрос по вашему событию.</p>
+
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+          <div style="font-weight: 600; margin-bottom: 6px;">{event_title}</div>
+          <div style="color: #555; font-size: 14px;">🗓 {event_date} {start_time}</div>
+          {f'<div style="color: #555; font-size: 14px;">📍 {bath_name}</div>' if bath_name else ''}
+        </div>
+
+        <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+          <div style="font-size: 14px; color: #444; margin-bottom: 4px;"><b>{guest_name}</b></div>
+          <div style="font-size: 13px; color: #777; margin-bottom: 12px;">{contact_label}: {guest_contact}</div>
+          <div style="font-size: 14px; color: #1a1a1a; line-height: 1.6;">{safe_msg}</div>
+        </div>
+
+        <p style="margin: 0 0 16px;">
+          <a href="{event_url}" style="display: inline-block; background: #ea580c; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-size: 14px;">Открыть событие</a>
+        </p>
+        <p style="color: #888; font-size: 12px; margin-top: 24px;">Свяжитесь с гостем удобным способом — он указал свой контакт выше.</p>
+      </div>
+    </div>
+    """
+
+    message_payload = {
+        "recipients": [{"email": to_email, "name": organizer_name or "Организатор"}],
+        "from_email": sender_email,
+        "subject": f"Вопрос по событию: {event_title}",
+        "body": {"html": html},
+        "tags": ["event-question"],
+    }
+    if sender_name:
+        message_payload["from_name"] = sender_name
+
+    requests.post(
+        "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
+        headers={"Content-Type": "application/json", "X-API-KEY": api_key},
+        json={"message": message_payload},
+        timeout=10,
+    )
 
 
 def find_or_create_user(cur, schema, email, name, phone, telegram):
