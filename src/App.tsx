@@ -10,7 +10,6 @@ import Index from "./pages/Index";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import Admin from "./pages/Admin";
-import NotFound from "./pages/NotFound";
 import NotFoundPage from "./pages/NotFoundPage";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
