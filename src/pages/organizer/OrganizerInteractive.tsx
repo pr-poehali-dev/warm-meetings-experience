@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
 import { FAQ } from "./organizerData";
 import { FaqItem } from "./OrganizerSections";
-import func2url from "../../../backend/func2url.json";
+import { supportApi } from "@/lib/support-api";
 
 // ── Income Calculator ─────────────────────────────────────────────────────────
 export function OrganizerCalculator() {
@@ -89,30 +89,35 @@ interface ApplicationFormProps {
 }
 
 export function OrganizerApplicationForm({ formRef }: ApplicationFormProps) {
-  const [form, setForm] = useState({ name: "", telegram: "", email: "", has_own_bath: "no", event_format: "", additional_info: "" });
+  const [form, setForm] = useState({ name: "", email: "", telegram: "", event_format: "", additional_info: "" });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
-  const [accountData, setAccountData] = useState<{ email: string; password: string; token: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.telegram.trim() || !form.email.trim()) {
+    if (!form.name.trim() || !form.email.trim()) {
       setError("Заполните обязательные поля");
       return;
     }
     setSending(true);
     setError("");
     try {
-      const res = await fetch(func2url["organizer-request"], {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+      const message = [
+        `Имя: ${form.name}`,
+        form.telegram ? `Telegram: ${form.telegram}` : null,
+        form.event_format ? `Формат встречи: ${form.event_format}` : null,
+        form.additional_info ? `О себе: ${form.additional_info}` : null,
+      ].filter(Boolean).join("\n");
+
+      await supportApi.createTicket({
+        name: form.name,
+        email: form.email,
+        subject: "Новый организатор",
+        category: "other",
+        message,
+        captcha_ok: true,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Ошибка отправки");
-      setAccountData({ email: data.user?.email || form.email, password: data.generated_password || "", token: data.token || "" });
-      if (data.token) localStorage.setItem("token", data.token);
       setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось отправить заявку");
@@ -127,40 +132,16 @@ export function OrganizerApplicationForm({ formRef }: ApplicationFormProps) {
         <div className="max-w-xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="text-3xl md:text-4xl font-semibold mb-3">Готов провести своё событие?</h2>
-            <p className="text-muted-foreground text-lg">Заполни заявку — мы свяжемся в течение 24 часов и откроем доступ к кабинету</p>
+            <p className="text-muted-foreground text-lg">Оставь заявку — мы свяжемся в течение 24 часов</p>
           </div>
 
           {sent ? (
-            <Card className="p-10 border-0 shadow-sm">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Icon name="Check" size={32} className="text-green-600" />
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Заявка принята, аккаунт создан!</h3>
-                <p className="text-muted-foreground text-sm">Мы свяжемся с вами в течение 24 часов. Сохраните данные для входа:</p>
+            <Card className="p-10 border-0 shadow-sm text-center">
+              <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Icon name="Check" size={32} className="text-green-600" />
               </div>
-              {accountData && (
-                <div className="bg-muted/50 rounded-xl p-5 space-y-3 mb-6 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Email</span>
-                    <span className="font-medium">{accountData.email}</span>
-                  </div>
-                  <div className="border-t border-border" />
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Пароль</span>
-                    <span className="font-mono font-medium bg-white px-3 py-1 rounded-lg border text-sm">{accountData.password}</span>
-                  </div>
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground text-center mb-6">Данные для входа также отправлены на вашу почту</p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button asChild className="flex-1 rounded-full" size="lg">
-                  <Link to="/organizer-cabinet">Открыть кабинет</Link>
-                </Button>
-                <Button asChild variant="outline" className="flex-1 rounded-full" size="lg">
-                  <Link to="/login">Войти</Link>
-                </Button>
-              </div>
+              <h3 className="text-xl font-semibold mb-2">Заявка отправлена!</h3>
+              <p className="text-muted-foreground text-sm">Мы свяжемся с вами в течение 24 часов</p>
             </Card>
           ) : (
             <Card className="p-8 border-0 shadow-sm">
@@ -170,27 +151,12 @@ export function OrganizerApplicationForm({ formRef }: ApplicationFormProps) {
                   <Input placeholder="Как к вам обращаться" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">Telegram *</label>
-                  <Input placeholder="@username" value={form.telegram} onChange={(e) => setForm({ ...form, telegram: e.target.value })} />
-                </div>
-                <div>
                   <label className="text-sm font-medium mb-1.5 block">Email *</label>
-                  <Input type="email" placeholder="для входа в кабинет" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                  <Input type="email" placeholder="your@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">Есть своя баня?</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[["yes", "Да, есть"], ["no", "Нет, нужна площадка"]].map(([val, label]) => (
-                      <button
-                        key={val}
-                        type="button"
-                        onClick={() => setForm({ ...form, has_own_bath: val })}
-                        className={`rounded-xl border py-2.5 px-4 text-sm font-medium transition-all ${form.has_own_bath === val ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-border/80"}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+                  <label className="text-sm font-medium mb-1.5 block">Telegram</label>
+                  <Input placeholder="@username" value={form.telegram} onChange={(e) => setForm({ ...form, telegram: e.target.value })} />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">Формат встречи</label>
