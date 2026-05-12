@@ -185,6 +185,15 @@ def handler(event, context):
             body = json.loads(event.get('body', '{}'))
             return handle_inbox_reply(cur, conn, schema, user, body)
 
+    if resource == 'refunds':
+        if method == 'GET':
+            return handle_refunds_list(cur, conn, schema, user)
+
+    if resource == 'refund_choose':
+        if method == 'POST':
+            body = json.loads(event.get('body', '{}'))
+            return handle_refund_choose(cur, conn, schema, user, body)
+
     conn.close()
     return respond(400, {'error': 'Unknown resource'})
 
@@ -1130,3 +1139,86 @@ def handle_inbox_reply(cur, conn, schema, user, body):
     conn.commit()
     conn.close()
     return respond(200, {'ok': True, 'id': new_msg['id'], 'created_at': str(new_msg['created_at'])})
+
+
+# =============================================================================
+# REFUND REQUESTS (отмена событий «в складчину»)
+# =============================================================================
+
+def handle_refunds_list(cur, conn, schema, user):
+    """Список заявок на возврат у пользователя (по отменённым событиям)."""
+    uid = user['id']
+    cur.execute(f"""
+        SELECT r.id, r.signup_id, r.event_id, r.amount, r.method, r.status,
+               r.reason, r.chosen_at, r.processed_at, r.created_at,
+               e.title AS event_title, e.event_date, e.start_time,
+               e.bath_name, e.cf_cancelled_at
+        FROM {schema}.refund_requests r
+        JOIN {schema}.events e ON e.id = r.event_id
+        WHERE r.user_id = {uid}
+        ORDER BY r.created_at DESC
+        LIMIT 100
+    """)
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return respond(200, {'refunds': rows, 'total': len(rows)})
+
+
+def handle_refund_choose(cur, conn, schema, user, body):
+    """Гость выбирает способ возврата: bonus | card."""
+    uid = user['id']
+    rid = body.get('id')
+    method = (body.get('method') or '').strip()
+    card_hint = (body.get('card_payment_hint') or '').strip()[:500]
+
+    if not rid or method not in ('bonus', 'card'):
+        conn.close()
+        return respond(400, {'error': 'id и method (bonus|card) обязательны'})
+
+    cur.execute(f"""
+        SELECT r.id, r.amount, r.status, r.signup_id, r.event_id
+        FROM {schema}.refund_requests r
+        WHERE r.id = {int(rid)} AND r.user_id = {uid}
+    """)
+    r = cur.fetchone()
+    if not r:
+        conn.close()
+        return respond(404, {'error': 'Заявка не найдена'})
+    if r['status'] != 'pending':
+        conn.close()
+        return respond(409, {'error': 'Заявка уже обработана'})
+
+    amount = int(r['amount'])
+    eid = int(r['event_id'])
+
+    if method == 'bonus':
+        # Зачисляем мгновенно
+        cur.execute(
+            f"UPDATE {schema}.users SET bonus_balance = COALESCE(bonus_balance,0) + {amount} "
+            f"WHERE id = {uid}"
+        )
+        cur.execute(
+            f"INSERT INTO {schema}.wallet_transactions "
+            f"(user_id, type, amount, description, ref_type, ref_id) "
+            f"VALUES ({uid}, 'refund_bonus', {amount}, "
+            f"'Возврат бонусом за отменённое событие #{eid}', 'refund_request', {int(rid)})"
+        )
+        cur.execute(
+            f"UPDATE {schema}.refund_requests "
+            f"SET method = 'bonus', status = 'done', chosen_at = NOW(), processed_at = NOW() "
+            f"WHERE id = {int(rid)}"
+        )
+        new_status = 'done'
+    else:
+        # card — ставим в очередь на ручную обработку
+        hint_safe = card_hint.replace("'", "''")
+        cur.execute(
+            f"UPDATE {schema}.refund_requests "
+            f"SET method = 'card', chosen_at = NOW(), card_payment_hint = '{hint_safe}' "
+            f"WHERE id = {int(rid)}"
+        )
+        new_status = 'pending'
+
+    conn.commit()
+    conn.close()
+    return respond(200, {'ok': True, 'method': method, 'status': new_status, 'amount': amount})

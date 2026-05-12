@@ -20,6 +20,7 @@ import MyArticles from "@/components/account/MyArticles";
 import MyCalendar from "@/components/account/MyCalendar";
 import NotificationsSection from "@/components/account/NotificationsSection";
 import InboxSection from "@/components/account/InboxSection";
+import RefundsSection from "@/components/account/RefundsSection";
 import FavoritesSection from "@/components/account/FavoritesSection";
 import WalletSection from "@/components/account/WalletSection";
 import ReferralsSection from "@/components/account/ReferralsSection";
@@ -279,6 +280,7 @@ export default function Account() {
           {/* Мои события */}
           {mainTab === "signups" && (
             <div className="space-y-4">
+              <RefundsSection />
               <SignupsList
                 signups={upcomingSignups}
                 signupsLoading={signupsLoading}

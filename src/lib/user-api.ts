@@ -149,7 +149,35 @@ export const userProfileApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ signup_id, message }),
     }),
+
+  getRefunds: (): Promise<{ refunds: RefundRequest[]; total: number }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=refunds`),
+
+  chooseRefund: (data: { id: number; method: "bonus" | "card"; card_payment_hint?: string }): Promise<{ ok: boolean; method: string; status: string; amount: number }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=refund_choose`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
 };
+
+export interface RefundRequest {
+  id: number;
+  signup_id: number;
+  event_id: number;
+  amount: number;
+  method: "bonus" | "card" | null;
+  status: "pending" | "done" | "rejected";
+  reason: string;
+  chosen_at: string | null;
+  processed_at: string | null;
+  created_at: string;
+  event_title: string;
+  event_date: string;
+  start_time: string;
+  bath_name: string | null;
+  cf_cancelled_at: string | null;
+}
 
 export interface InboxMessage {
   id: number;
