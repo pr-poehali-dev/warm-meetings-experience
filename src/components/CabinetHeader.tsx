@@ -37,16 +37,12 @@ export default function CabinetHeader({
           </button>
         )}
 
-        <Link to="/account" className="flex items-center gap-2.5 hover:opacity-80 transition shrink-0">
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${iconBgClass}`}>
-            <Icon name={icon} size={15} className={iconColorClass} />
-          </div>
-          <div className="leading-tight">
-            <div className="font-semibold text-sm">{title}</div>
-            {subtitle && (
-              <div className="text-[11px] text-muted-foreground hidden sm:block">{subtitle}</div>
-            )}
-          </div>
+        <Link to="/" className="flex items-center hover:opacity-80 transition shrink-0">
+          <img
+            src="https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/e7f1ef5a-7323-4d3a-9a22-3a19e538df7d.png"
+            alt="Спарком"
+            className="h-7 w-auto"
+          />
         </Link>
 
         <div className="ml-auto flex items-center gap-2">
