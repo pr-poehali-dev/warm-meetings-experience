@@ -1350,14 +1350,40 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, headers):
             cur.execute(f"""
                 SELECT s.id, s.name, s.phone, s.email, s.telegram, s.preferred_channel, s.user_id,
                        u.tg_chat_id, u.vk_id, u.tg_notify_allowed, u.vk_notify_allowed,
-                       u.notify_email, u.notify_vk, u.notify_telegram
+                       u.notify_email, u.notify_vk, u.notify_telegram,
+                       e.title as event_title, e.event_date, e.start_time,
+                       e.slug as event_slug, e.id as event_id,
+                       COALESCE(b.name, e.bath_name) as event_bath,
+                       COALESCE(org.name, org.email, '') as organizer_name
                 FROM {schema}.event_signups s
                 LEFT JOIN {schema}.users u ON u.id = s.user_id
+                JOIN {schema}.events e ON e.id = s.event_id
+                LEFT JOIN {schema}.baths b ON b.id = e.bath_id
+                LEFT JOIN {schema}.users org ON org.id = e.organizer_id
                 WHERE s.id = {sid}
             """)
             signup = cur.fetchone()
             if not signup:
                 continue
+
+            # Подпись для ВК с реквизитами события
+            site_url = os.environ.get("SITE_URL", "https://warm-meetings-experience.poehali.dev").rstrip("/")
+            evt_url = f"{site_url}/events/{signup['event_slug']}" if signup.get('event_slug') else f"{site_url}/events/{signup['event_id']}"
+            sig_parts = []
+            if signup.get('event_title'):
+                sig_parts.append(f"📌 Событие: {signup['event_title']}")
+            _date = signup.get('event_date')
+            _time = signup.get('start_time')
+            when = []
+            if _date: when.append(str(_date))
+            if _time: when.append(str(_time)[:5])
+            if when: sig_parts.append(f"🗓 Когда: {' в '.join(when)}")
+            if signup.get('event_bath'):
+                sig_parts.append(f"📍 Место: {signup['event_bath']}")
+            if signup.get('organizer_name'):
+                sig_parts.append(f"👤 Пишет организатор: {signup['organizer_name']}")
+            sig_parts.append(f"✉️ Чтобы ответить — откройте страницу события и нажмите «Задать вопрос»:\n{evt_url}")
+            vk_text = (text or '').rstrip() + "\n\n— — —\n" + "\n".join(sig_parts)
 
             channel = signup['preferred_channel'] or 'site'
             if channel == 'site':
@@ -1372,7 +1398,7 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, headers):
             error_msg = None
 
             if channel == 'vk' and signup.get('vk_id'):
-                ok, err = send_vk_message(signup['vk_id'], text)
+                ok, err = send_vk_message(signup['vk_id'], vk_text)
                 delivered = ok
                 if not ok:
                     error_msg = err

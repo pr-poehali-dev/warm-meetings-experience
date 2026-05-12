@@ -27,6 +27,9 @@ VK_API_URL = "https://api.vk.com/method"
 VK_API_VERSION = "5.131"
 TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
 
+# Базовый URL фронтенда — для построения ссылок в уведомлениях
+SITE_URL = os.environ.get("SITE_URL", "https://warm-meetings-experience.poehali.dev").rstrip("/")
+
 
 def user_has_role(cur, s, user_id, role_slug):
     """Проверка активной роли у пользователя."""
@@ -186,7 +189,66 @@ def build_vars(signup, event):
         "event_time": str(event.get("start_time", "")),
         "bath_name": event.get("bath_name") or "",
         "price": str(event.get("price_amount") or ""),
+        "organizer_name": event.get("organizer_name") or "",
+        "event_url": event.get("event_url") or "",
     }
+
+
+def event_public_url(event):
+    """Публичная ссылка на событие — по slug или по id."""
+    slug = event.get("slug")
+    eid = event.get("id") or event.get("event_id")
+    if slug:
+        return f"{SITE_URL}/events/{slug}"
+    if eid:
+        return f"{SITE_URL}/events/{eid}"
+    return ""
+
+
+def vk_event_signature(event, sender_role="организатор"):
+    """Подпись к сообщению ВК: реквизиты события и инструкция ответа.
+
+    Решает проблему: получатель не понимает, от кого и о чём пришло сообщение.
+    """
+    parts = []
+    title = event.get("title")
+    if title:
+        parts.append(f"📌 Событие: {title}")
+
+    date_str = event.get("event_date")
+    time_str = event.get("start_time")
+    when_bits = []
+    if date_str:
+        when_bits.append(str(date_str))
+    if time_str:
+        # обрезаем секунды у time-объекта/строки
+        t = str(time_str)
+        when_bits.append(t[:5] if len(t) >= 5 else t)
+    if when_bits:
+        parts.append(f"🗓 Когда: {' в '.join(when_bits)}")
+
+    bath = event.get("bath_name")
+    if bath:
+        parts.append(f"📍 Место: {bath}")
+
+    organizer = event.get("organizer_name")
+    if organizer:
+        parts.append(f"👤 Пишет {sender_role}: {organizer}")
+
+    url = event.get("event_url") or event_public_url(event)
+    if url:
+        parts.append(f"✉️ Чтобы ответить — откройте страницу события и нажмите «Задать вопрос»:\n{url}")
+
+    return "\n".join(parts)
+
+
+def attach_vk_signature(message, event, sender_role="организатор"):
+    """Приклеивает подпись к ВК-сообщению через разделитель."""
+    sig = vk_event_signature(event, sender_role=sender_role)
+    if not sig:
+        return message
+    base = (message or "").rstrip()
+    return f"{base}\n\n— — —\n{sig}" if base else sig
 
 
 # ─── Handlers ─────────────────────────────────────────────────────────────────
@@ -447,11 +509,12 @@ def handle_recipients_get(cur, user_id, params, s):
 def handle_send_master_bookings(cur, conn, user_id, booking_ids, scenario_id, channel,
                                  subject_tpl, body_html_tpl, s):
     """Отправка сообщений клиентам мастера по записям master_bookings."""
-    cur.execute(f"SELECT id FROM {s}.masters WHERE user_id = %s LIMIT 1", (user_id,))
+    cur.execute(f"SELECT id, name, slug FROM {s}.masters WHERE user_id = %s LIMIT 1", (user_id,))
     m = cur.fetchone()
     if not m:
         return err("У вас нет профиля мастера", 403)
-    master_id = m[0]
+    master_id, master_name, master_slug = m[0], m[1], m[2]
+    master_url = f"{SITE_URL}/masters/{master_slug}" if master_slug else ""
 
     if not booking_ids:
         return err("Укажите booking_ids")
@@ -506,11 +569,14 @@ def handle_send_master_bookings(cur, conn, user_id, booking_ids, scenario_id, ch
             "start_time": dt_start.time() if dt_start else None,
             "price_amount": price,
             "bath_name": "",
+            "organizer_name": master_name,
+            "event_url": master_url,
         }
         vars_ = build_vars({"name": name}, booking_data)
         subj = render_template(subject_tpl, vars_) if subject_tpl else ""
         html = render_template(body_html_tpl, vars_)
         plain = html_to_text(html)
+        vk_text = attach_vk_signature(plain, booking_data, sender_role="мастер")
 
         if not actual:
             skipped += 1
@@ -521,7 +587,7 @@ def handle_send_master_bookings(cur, conn, user_id, booking_ids, scenario_id, ch
 
         ok_send, err_msg = False, None
         if actual == "vk":
-            ok_send, err_msg = send_vk_message(vk_id, plain)
+            ok_send, err_msg = send_vk_message(vk_id, vk_text)
         elif actual == "telegram":
             ok_send, err_msg = send_telegram_message(tg_chat_id, plain)
         elif actual == "email":
@@ -632,11 +698,14 @@ def handle_send_ritual_bookings(cur, conn, user_id, booking_ids, scenario_id, ch
             "start_time": None,
             "price_amount": total_price,
             "bath_name": location_name or "",
+            "organizer_name": location_name or "",
+            "event_url": "",
         }
         vars_ = build_vars({"name": name}, booking_data)
         subj = render_template(subject_tpl, vars_) if subject_tpl else ""
         html = render_template(body_html_tpl, vars_)
         plain = html_to_text(html)
+        vk_text = attach_vk_signature(plain, booking_data, sender_role="управляющий бани")
 
         if not actual:
             skipped += 1
@@ -647,7 +716,7 @@ def handle_send_ritual_bookings(cur, conn, user_id, booking_ids, scenario_id, ch
 
         ok_send, err_msg = False, None
         if actual == "vk":
-            ok_send, err_msg = send_vk_message(vk_id, plain)
+            ok_send, err_msg = send_vk_message(vk_id, vk_text)
         elif actual == "telegram":
             ok_send, err_msg = send_telegram_message(tg_chat_id, plain)
         elif actual == "email":
@@ -757,11 +826,14 @@ def handle_send(cur, conn, user_id, body, s):
                u.id as user_id_v, u.vk_id, u.vk_notify_allowed,
                u.tg_chat_id, u.tg_notify_allowed,
                e.id as eid, e.title, e.event_date, e.start_time, e.price_amount,
-               COALESCE(b.name, e.bath_name) as bath_name
+               COALESCE(b.name, e.bath_name) as bath_name,
+               e.slug as event_slug,
+               COALESCE(org.name, org.email, '') as organizer_name
         FROM {s}.event_signups es
         LEFT JOIN {s}.users u ON u.id = es.user_id
         JOIN {s}.events e ON e.id = es.event_id
         LEFT JOIN {s}.baths b ON b.id = e.bath_id
+        LEFT JOIN {s}.users org ON org.id = e.organizer_id
     """
     excluded = ",".join(f"'{x}'" for x in EXCLUDED_SIGNUP_STATUSES)
     if signup_ids:
@@ -809,7 +881,8 @@ def handle_send(cur, conn, user_id, body, s):
     for row in signups:
         (sid, name, email, status, pref, user_id_v,
          vk_id, vk_allowed, tg_chat_id, tg_allowed,
-         eid, title, edate, etime, price, bath_name) = row
+         eid, title, edate, etime, price, bath_name,
+         event_slug, organizer_name) = row
 
         has_vk = bool(vk_id and vk_allowed)
         has_tg = bool(tg_chat_id and tg_allowed)
@@ -818,12 +891,23 @@ def handle_send(cur, conn, user_id, body, s):
 
         actual = pick_channel(pref or "site", has_vk, has_tg, has_email, has_site, channel)
 
-        event_data = {"title": title, "event_date": edate, "start_time": etime,
-                      "price_amount": price, "bath_name": bath_name}
+        event_data = {
+            "id": eid,
+            "title": title,
+            "event_date": edate,
+            "start_time": etime,
+            "price_amount": price,
+            "bath_name": bath_name,
+            "slug": event_slug,
+            "organizer_name": organizer_name,
+        }
+        event_data["event_url"] = event_public_url(event_data)
         vars_ = build_vars({"name": name}, event_data)
         subj = render_template(subject_tpl, vars_) if subject_tpl else ""
         html = render_template(body_html_tpl, vars_)
         plain = html_to_text(html)
+        # Для ВК — добавляем подпись с реквизитами события и инструкцией ответа
+        vk_text = attach_vk_signature(plain, event_data, sender_role="организатор")
 
         if not actual:
             skipped += 1
@@ -834,7 +918,7 @@ def handle_send(cur, conn, user_id, body, s):
 
         ok_send, err_msg = False, None
         if actual == "vk":
-            ok_send, err_msg = send_vk_message(vk_id, plain)
+            ok_send, err_msg = send_vk_message(vk_id, vk_text)
         elif actual == "telegram":
             ok_send, err_msg = send_telegram_message(tg_chat_id, plain)
         elif actual == "email":
