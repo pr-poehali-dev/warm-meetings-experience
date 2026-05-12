@@ -31,7 +31,7 @@ const CATEGORIES = [
 // «Тёплая» капча: задача в стиле бани
 type CaptchaTask = {
   question: string;
-  emoji: string;
+  image: string;
   hint: string;
   answer: number;
 };
@@ -39,31 +39,31 @@ type CaptchaTask = {
 function makeCaptcha(): CaptchaTask {
   const variants: CaptchaTask[] = [
     {
-      emoji: "🪵",
+      image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/a1619179-149e-4609-9c5a-c3441887ff5c.jpg",
       question: "Сколько поленьев нужно подкинуть в печку, если уже горит 2, а нужно 5?",
       hint: "Считайте, как в бане — спокойно и без спешки",
       answer: 3,
     },
     {
-      emoji: "🍵",
+      image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/69d3513a-a0a8-4cf0-856d-da7d60dad9e1.jpg",
       question: "В чайник входит 4 чашки чая. Сколько чашек ещё помещается, если налили 1?",
       hint: "Тёплая математика для тёплой компании",
       answer: 3,
     },
     {
-      emoji: "🌡️",
+      image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/c7b14206-d862-476c-bb68-21f206310077.jpg",
       question: "В парилке +60°C, а нужно +90°C. На сколько градусов поднять температуру?",
       hint: "Аккуратно — пар любит точность",
       answer: 30,
     },
     {
-      emoji: "🌿",
+      image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/fbeef153-e043-46ce-891f-1f7ae43e55a9.jpg",
       question: "У вас 2 веника, а пришло 6 человек. Сколько ещё веников связать?",
       hint: "По одному на каждого",
       answer: 4,
     },
     {
-      emoji: "🪣",
+      image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/cdaa6f57-627f-4183-ac95-2d026d91e2c5.jpg",
       question: "В шайке 3 ковша воды. Сколько ковшей долить, чтобы стало 7?",
       hint: "Не больше, не меньше",
       answer: 4,
@@ -493,7 +493,7 @@ function ContactForm({ onDone }: { onDone: () => void }) {
       {!user && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 p-3">
           <div className="flex items-start gap-2 mb-2">
-            <span className="text-2xl leading-none">{captcha.emoji}</span>
+            <img src={captcha.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
             <div className="flex-1">
               <div className="text-sm font-medium">{captcha.question}</div>
               <div className="text-[11px] text-muted-foreground">

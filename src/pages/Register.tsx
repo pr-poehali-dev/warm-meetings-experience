@@ -16,37 +16,37 @@ type CaptchaTask = { question: string; image: string; hint: string; answer: numb
 
 const CAPTCHA_TASKS: CaptchaTask[] = [
   {
-    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/dd5a155a-dc5a-47bf-abd5-436b3e69887a.jpg",
+    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/0c4cd256-c80e-4fa7-b0c1-cb85f30c6c8f.jpg",
     question: "На каменку положили 8 камней, 3 убрали. Сколько камней осталось?",
     hint: "Камни любят тепло и простую математику",
     answer: 5,
   },
   {
-    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/da3a1921-5e32-47fd-9839-653d19f4376d.jpg",
+    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/fbeef153-e043-46ce-891f-1f7ae43e55a9.jpg",
     question: "Берёзовый веник распаривается 10 минут. Дубовый — 5. Сколько минут разница?",
     hint: "Каждый веник требует своего времени",
     answer: 5,
   },
   {
-    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/e43c02d8-9254-4914-a653-1309b507518a.jpg",
+    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/8042c032-a21e-41e3-b44b-d8c5fdd11280.jpg",
     question: "На полке 6 флаконов с маслом. Использовали 2. Сколько осталось?",
     hint: "Ароматы бани — дело тонкое",
     answer: 4,
   },
   {
-    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/2d5ccc77-6b5f-4126-ade6-73e124a4d231.jpg",
+    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/8a9da4f6-5203-41d6-bd06-0f0490f90104.jpg",
     question: "В парилку зашли 4 человека, вышли 2. Сколько ещё парятся?",
     hint: "Кто-то любит погорячее",
     answer: 2,
   },
   {
-    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/766022db-c2a6-4633-91e7-404cda1a77b8.jpg",
+    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/ee96c2cd-3c89-41e9-ae1e-5fe7a1c3bd4f.jpg",
     question: "Печь топили 3 часа утром и 2 часа вечером. Сколько часов всего?",
     hint: "Хорошая баня требует времени",
     answer: 5,
   },
   {
-    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/d4be3e2d-ae82-4790-a6ab-5b2d95c9aab2.jpg",
+    image: "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/3ea5b7a3-530e-4047-8c00-6805b362e1d3.jpg",
     question: "В поленнице было 12 дров, подкинули ещё 4. Сколько стало?",
     hint: "Дрова — основа тепла",
     answer: 16,
