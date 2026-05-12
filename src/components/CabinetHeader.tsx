@@ -37,7 +37,7 @@ export default function CabinetHeader({
           </button>
         )}
 
-        <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition shrink-0">
+        <Link to="/account" className="flex items-center gap-2.5 hover:opacity-80 transition shrink-0">
           <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${iconBgClass}`}>
             <Icon name={icon} size={15} className={iconColorClass} />
           </div>
