@@ -1,4 +1,5 @@
 {
+  "tg-scheduler": "https://functions.poehali.dev/b01be6c4-c072-4ad9-aaa4-115e4f7f0f2f",
   "event-types": "https://functions.poehali.dev/bedd9307-0f03-4eb0-99d0-4eb32f523a8a",
   "crowdfund-freezer": "https://functions.poehali.dev/edde4eed-3a61-4681-9daa-9ce1e9ed5620",
   "audit-log": "https://functions.poehali.dev/b0f875d7-7795-4fec-b376-4d479d4204c5",
