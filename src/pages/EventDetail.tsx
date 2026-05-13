@@ -223,6 +223,7 @@ export default function EventDetail() {
                 eventTitle={event.title}
                 spotsLeft={event.spotsLeft}
                 priceLabel={priceDisplay ?? undefined}
+                pricingLines={event.pricingLines}
                 eventDate={event.date}
                 timeStart={event.timeStart}
                 timeEnd={event.timeEnd}
@@ -336,6 +337,7 @@ function SidebarCard({ event, spotsColor, spotsLabel, priceDisplay, dateObj }: {
                 eventTitle={event.title}
                 spotsLeft={event.spotsLeft}
                 priceLabel={priceDisplay ?? undefined}
+                pricingLines={event.pricingLines}
                 eventDate={event.date}
                 timeStart={event.timeStart}
                 timeEnd={event.timeEnd}

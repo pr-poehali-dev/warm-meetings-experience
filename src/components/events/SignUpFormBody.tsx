@@ -7,6 +7,7 @@ import Icon from "@/components/ui/icon";
 import ConsentModal from "@/components/ConsentModal";
 import { formatPhone } from "@/hooks/usePhoneMask";
 import { User } from "@/lib/user-api";
+import PricingCalculator from "@/components/events/PricingCalculator";
 
 interface SignUpFormBodyProps {
   user: User | null;
@@ -48,6 +49,7 @@ interface SignUpFormBodyProps {
   yandexAuthLoading: boolean;
   onSocialLogin: (provider: "vk" | "yandex") => void;
   onSubmit: (e: React.FormEvent) => void;
+  pricingLines?: string[];
 }
 
 export default function SignUpFormBody({
@@ -71,6 +73,7 @@ export default function SignUpFormBody({
   yandexAuthLoading,
   onSocialLogin,
   onSubmit,
+  pricingLines,
 }: SignUpFormBodyProps) {
   const showError = (field: keyof typeof errors) => touched && errors[field];
   const errBorder = (field: keyof typeof errors) =>
@@ -146,6 +149,11 @@ export default function SignUpFormBody({
               <div className="flex-1 h-px bg-border" />
             </div>
           </div>
+        )}
+
+        {/* Калькулятор стоимости */}
+        {pricingLines && pricingLines.filter(Boolean).length > 0 && (
+          <PricingCalculator lines={pricingLines.filter(Boolean)} />
         )}
 
         {/* Контактные данные */}

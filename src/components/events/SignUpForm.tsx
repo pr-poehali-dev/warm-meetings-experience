@@ -25,6 +25,7 @@ interface SignUpFormProps {
   spotsLeft: number;
   price?: number;
   priceLabel?: string;
+  pricingLines?: string[];
   eventDate?: string;
   timeStart?: string;
   timeEnd?: string;
@@ -45,6 +46,7 @@ export default function SignUpForm({
   spotsLeft,
   price,
   priceLabel,
+  pricingLines,
   eventDate,
   timeStart,
   timeEnd,
@@ -314,6 +316,7 @@ export default function SignUpForm({
                 yandexAuthLoading={yandexAuth.isLoading}
                 onSocialLogin={handleSocialLogin}
                 onSubmit={handleSubmit}
+                pricingLines={pricingLines}
               />
             </>
           )}
