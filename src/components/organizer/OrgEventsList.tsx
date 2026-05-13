@@ -71,6 +71,21 @@ export default function OrgEventsList({
     return <Badge className="bg-green-100 text-green-700 text-xs">Есть места</Badge>;
   };
 
+  const statusBadge = (ev: OrgEvent) => {
+    if (ev.status === "published" && ev.is_visible)
+      return { label: "Опубликовано", icon: "CheckCircle2", cls: "bg-green-100 text-green-700 border-green-200" };
+    if (ev.status === "published" && !ev.is_visible)
+      return { label: "Скрыто", icon: "EyeOff", cls: "bg-gray-100 text-gray-600 border-gray-200" };
+    if (ev.status === "private")
+      return { label: "Приватное", icon: "Lock", cls: "bg-purple-100 text-purple-700 border-purple-200" };
+    if (ev.status === "pending")
+      return { label: "На модерации", icon: "Clock", cls: "bg-amber-100 text-amber-700 border-amber-200" };
+    if (ev.status === "rejected")
+      return { label: "Отклонено", icon: "XCircle", cls: "bg-red-100 text-red-700 border-red-200" };
+    // draft или нет статуса
+    return { label: "Черновик", icon: "FileEdit", cls: "bg-gray-100 text-gray-500 border-gray-200" };
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -191,14 +206,19 @@ export default function OrgEventsList({
                     <Icon name="Trash2" size={16} />
                   </Button>
                 </div>
-                {!ev.is_visible && (
-                  <div className="absolute top-2 left-2">
-                    <span className="text-xs bg-gray-800/80 text-white px-2 py-1 rounded">Скрыто</span>
-                  </div>
-                )}
+
               </div>
 
               <CardContent className="p-4">
+                {(() => { const s = statusBadge(ev); return (
+                  <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-md border w-fit mb-3 ${s.cls}`}>
+                    <Icon name={s.icon} size={13} />
+                    {s.label}
+                    {ev.status === "rejected" && ev.rejection_reason && (
+                      <span className="ml-1 opacity-70" title={ev.rejection_reason}>· {ev.rejection_reason.slice(0, 30)}{ev.rejection_reason.length > 30 ? "…" : ""}</span>
+                    )}
+                  </div>
+                ); })()}
                 <div className="flex items-center gap-2 mb-2">
                   {ev.event_type && (
                     <div className="flex items-center gap-1.5 text-blue-600 text-xs bg-blue-50 px-2 py-1 rounded">
