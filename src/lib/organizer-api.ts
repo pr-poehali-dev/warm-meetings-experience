@@ -44,6 +44,7 @@ export interface OrgEvent {
   occupancy: string;
   created_at: string;
   status?: 'draft' | 'pending' | 'published' | 'private' | 'rejected';
+  is_private?: boolean;
   rejection_reason?: string;
   // Crowdfund (в складчину)
   pricing_mode?: 'fixed' | 'crowdfund';

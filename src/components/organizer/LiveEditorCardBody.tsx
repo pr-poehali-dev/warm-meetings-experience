@@ -379,6 +379,43 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
       <div className="space-y-3">
         <h3 className="font-semibold text-sm">Публикация</h3>
 
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => set({ is_private: false })}
+            className={`flex items-start gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
+              !fd.is_private
+                ? "border-green-400 bg-green-50"
+                : "border-border bg-muted/20 hover:bg-muted/40"
+            }`}
+          >
+            <div className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${!fd.is_private ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground"}`}>
+              <Icon name="Globe" size={14} />
+            </div>
+            <div>
+              <p className="font-medium text-sm">Публичное</p>
+              <p className="text-xs text-muted-foreground">Видно всем в каталоге</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => set({ is_private: true })}
+            className={`flex items-start gap-3 p-3 rounded-lg border-2 transition-colors text-left ${
+              fd.is_private
+                ? "border-purple-400 bg-purple-50"
+                : "border-border bg-muted/20 hover:bg-muted/40"
+            }`}
+          >
+            <div className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${fd.is_private ? "bg-purple-100 text-purple-600" : "bg-muted text-muted-foreground"}`}>
+              <Icon name="Lock" size={14} />
+            </div>
+            <div>
+              <p className="font-medium text-sm">Приватное</p>
+              <p className="text-xs text-muted-foreground">Только по прямой ссылке</p>
+            </div>
+          </button>
+        </div>
+
         <div className="flex items-center gap-4 flex-wrap">
           <label className="flex items-center gap-2 cursor-pointer">
             <input

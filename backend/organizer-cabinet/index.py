@@ -349,6 +349,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
 
         admin = has_role(cur, schema, user_id, 'admin')
         requested_visible = body.get('is_visible', False)
+        is_private = body.get('is_private', False)
         if admin:
             event_status = 'published' if requested_visible else 'draft'
             event_visible = requested_visible
@@ -369,7 +370,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                     event_type, event_type_icon, occupancy,
                     bath_name, bath_address, image_url,
                     price, price_amount, price_label,
-                    total_spots, spots_left, featured, is_visible, status,
+                    total_spots, spots_left, featured, is_visible, status, is_private,
                     program, rules, pricing_lines, pricing_type, organizer_id
                 ) VALUES (
                     '{title}', '{slug}', '{short_desc}', '{full_desc}', '{description}',
@@ -378,7 +379,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                     '{bath_name}', '{bath_address}', '{body.get('image_url', '')}',
                     '{price_label}', {body.get('price_amount', 0)}, '{price_label}',
                     {body.get('total_spots', 10)}, {body.get('spots_left', body.get('total_spots', 10))},
-                    {body.get('featured', False)}, {event_visible}, '{event_status}',
+                    {body.get('featured', False)}, {event_visible}, '{event_status}', {is_private},
                     {program_sql}, {rules_sql}, {pricing_sql}, '{pricing_type}', {user_id}
                 ) RETURNING *
             """)
@@ -463,6 +464,8 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         if 'is_visible' in body:
             if admin:
                 sets.append(f"is_visible = {bool(body['is_visible'])}")
+        if 'is_private' in body:
+            sets.append(f"is_private = {bool(body['is_private'])}")
         if 'submit_action' in body and not admin:
             action = body['submit_action']
             if action == 'submit':
@@ -581,27 +584,29 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
             return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Event not found'})}
 
         if action == 'approve':
-            cur.execute(f"UPDATE {schema}.events SET status = 'published', is_visible = true WHERE id = {event_id}")
-            publish_to_telegram = body.get('publish_to_telegram', True)
-            if publish_to_telegram:
-                trigger_tg_publish(event_id, ev['organizer_id'])
-            tg_notify_admin(
-                f"✅ <b>Событие одобрено</b>\n\n"
-                f"🎪 <b>{ev['title']}</b>\n"
-                f"📅 {ev['event_date']}  🕐 {str(ev.get('start_time', ''))[:5]}\n"
-                f"📍 {ev.get('bath_name', '—')}\n"
-                f"👤 Организатор: {ev.get('organizer_name', '—')}"
-            )
-        elif action == 'private':
-            cur.execute(f"UPDATE {schema}.events SET status = 'private', is_visible = false WHERE id = {event_id}")
-            tg_notify_admin(
-                f"🔒 <b>Событие одобрено как приватное</b>\n\n"
-                f"🎪 <b>{ev['title']}</b>\n"
-                f"📅 {ev['event_date']}  🕐 {str(ev.get('start_time', ''))[:5]}\n"
-                f"📍 {ev.get('bath_name', '—')}\n"
-                f"👤 Организатор: {ev.get('organizer_name', '—')}\n"
-                f"🔗 Доступно только по прямой ссылке"
-            )
+            is_private_event = ev.get('is_private', False)
+            if is_private_event:
+                cur.execute(f"UPDATE {schema}.events SET status = 'private', is_visible = false WHERE id = {event_id}")
+                tg_notify_admin(
+                    f"🔒 <b>Событие одобрено (приватное)</b>\n\n"
+                    f"🎪 <b>{ev['title']}</b>\n"
+                    f"📅 {ev['event_date']}  🕐 {str(ev.get('start_time', ''))[:5]}\n"
+                    f"📍 {ev.get('bath_name', '—')}\n"
+                    f"👤 Организатор: {ev.get('organizer_name', '—')}\n"
+                    f"🔗 Доступно только по прямой ссылке"
+                )
+            else:
+                cur.execute(f"UPDATE {schema}.events SET status = 'published', is_visible = true WHERE id = {event_id}")
+                publish_to_telegram = body.get('publish_to_telegram', True)
+                if publish_to_telegram:
+                    trigger_tg_publish(event_id, ev['organizer_id'])
+                tg_notify_admin(
+                    f"✅ <b>Событие одобрено</b>\n\n"
+                    f"🎪 <b>{ev['title']}</b>\n"
+                    f"📅 {ev['event_date']}  🕐 {str(ev.get('start_time', ''))[:5]}\n"
+                    f"📍 {ev.get('bath_name', '—')}\n"
+                    f"👤 Организатор: {ev.get('organizer_name', '—')}"
+                )
         else:
             cur.execute(f"UPDATE {schema}.events SET status = 'rejected', is_visible = false WHERE id = {event_id}")
             reason_display = reason.replace("''", "'") or 'не указана'

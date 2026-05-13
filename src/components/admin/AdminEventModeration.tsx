@@ -40,16 +40,6 @@ export default function AdminEventModeration() {
     }
   };
 
-  const handleApprovePrivate = async (ev: EventWithMeta) => {
-    setActionLoading(ev.id);
-    try {
-      await organizerApi.moderateEvent(ev.id, "private", undefined, false);
-      setEvents((prev) => prev.filter((e) => e.id !== ev.id));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   const handleRejectConfirm = async () => {
     if (!rejectTarget) return;
     setActionLoading(rejectTarget.id);
@@ -141,10 +131,23 @@ export default function AdminEventModeration() {
                           </div>
                         )}
                       </div>
-                      <span className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1">
-                        <Icon name="Clock" size={11} />
-                        Ожидает
-                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1">
+                          <Icon name="Clock" size={11} />
+                          Ожидает
+                        </span>
+                        {ev.is_private ? (
+                          <span className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-full bg-purple-100 text-purple-700 flex items-center gap-1">
+                            <Icon name="Lock" size={11} />
+                            Приватное
+                          </span>
+                        ) : (
+                          <span className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
+                            <Icon name="Globe" size={11} />
+                            Публичное
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {ev.short_description && (
@@ -174,24 +177,26 @@ export default function AdminEventModeration() {
 
                 {/* Action bar */}
                 <div className="mt-4 pt-4 border-t flex flex-col gap-3">
-                  {/* Telegram toggle */}
-                  <button
-                    type="button"
-                    onClick={() => toggleTg(ev.id)}
-                    className={`flex items-center gap-2.5 w-fit rounded-lg px-3 py-2 text-sm transition-colors border ${
-                      tgOn
-                        ? "bg-blue-50 border-blue-200 text-blue-700"
-                        : "bg-gray-50 border-gray-200 text-gray-500"
-                    }`}
-                  >
-                    <div className={`relative w-8 h-4 rounded-full transition-colors flex-shrink-0 ${tgOn ? "bg-blue-500" : "bg-gray-300"}`}>
-                      <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${tgOn ? "translate-x-4" : "translate-x-0.5"}`} />
-                    </div>
-                    <Icon name="Send" size={14} />
-                    <span>
-                      {tgOn ? "Отправить в привязанные каналы и чаты" : "Не отправлять в Telegram"}
-                    </span>
-                  </button>
+                  {/* Telegram toggle — только для публичных */}
+                  {!ev.is_private && (
+                    <button
+                      type="button"
+                      onClick={() => toggleTg(ev.id)}
+                      className={`flex items-center gap-2.5 w-fit rounded-lg px-3 py-2 text-sm transition-colors border ${
+                        tgOn
+                          ? "bg-blue-50 border-blue-200 text-blue-700"
+                          : "bg-gray-50 border-gray-200 text-gray-500"
+                      }`}
+                    >
+                      <div className={`relative w-8 h-4 rounded-full transition-colors flex-shrink-0 ${tgOn ? "bg-blue-500" : "bg-gray-300"}`}>
+                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${tgOn ? "translate-x-4" : "translate-x-0.5"}`} />
+                      </div>
+                      <Icon name="Send" size={14} />
+                      <span>
+                        {tgOn ? "Отправить в привязанные каналы и чаты" : "Не отправлять в Telegram"}
+                      </span>
+                    </button>
+                  )}
 
                   {/* Approve / Reject buttons */}
                   <div className="flex items-center gap-2 flex-wrap">
@@ -207,19 +212,6 @@ export default function AdminEventModeration() {
                         <Icon name="CheckCircle" size={14} className="mr-1.5" />
                       )}
                       Одобрить
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleApprovePrivate(ev)}
-                      disabled={actionLoading === ev.id}
-                      className="bg-purple-600 hover:bg-purple-700 text-white"
-                    >
-                      {actionLoading === ev.id ? (
-                        <Icon name="Loader2" size={14} className="animate-spin mr-1.5" />
-                      ) : (
-                        <Icon name="Lock" size={14} className="mr-1.5" />
-                      )}
-                      Приватное
                     </Button>
                     <Button
                       size="sm"
