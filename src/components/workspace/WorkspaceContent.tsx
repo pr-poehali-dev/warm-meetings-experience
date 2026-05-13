@@ -305,15 +305,19 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                   const submitAction = merged.submit_action || "draft";
                   const existingId = selectedEvent?.id || merged.id;
                   if (existingId) {
-                    await organizerApi.updateEvent({ ...merged, id: existingId, submit_action: submitAction } as OrgEvent & { id: number; submit_action: string });
+                    const updated = await organizerApi.updateEvent({ ...merged, id: existingId, submit_action: submitAction } as OrgEvent & { id: number; submit_action: string });
+                    setFormData({ ...updated });
+                    setSelectedEvent(updated);
                     toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
+                    if (submitAction === "submit") setOrgView("dashboard");
                   } else {
                     const created = await organizerApi.createEvent({ ...merged, submit_action: submitAction } as Parameters<typeof organizerApi.createEvent>[0]);
                     setSelectedEvent(created);
+                    setFormData({ ...created });
                     toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
+                    if (submitAction === "submit") setOrgView("dashboard");
                   }
                   await Promise.all([loadOrgDashboard(), loadOrgEvents()]);
-                  setOrgView("dashboard");
                 } catch (e: unknown) {
                   toast({ title: "Ошибка", description: e instanceof Error ? e.message : "Не удалось сохранить", variant: "destructive" });
                 } finally {
