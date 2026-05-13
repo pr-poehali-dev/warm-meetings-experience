@@ -93,9 +93,10 @@ export default function SupportWidget() {
       <button
         aria-label="Открыть помощь"
         onClick={() => setOpen((v) => !v)}
-        className={`fixed bottom-4 right-4 z-[30] w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-xl flex items-center justify-center transition-all
+        className={`fixed bottom-6 right-4 z-[30] w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-xl flex items-center justify-center transition-all
           bg-primary text-primary-foreground hover:scale-105 active:scale-95
           ${open ? "rotate-45" : ""}`}
+        style={{ bottom: 'max(24px, env(safe-area-inset-bottom, 0px) + 16px)', right: 'max(16px, env(safe-area-inset-right, 0px) + 8px)' }}
       >
         <Icon name={open ? "X" : "MessageCircleQuestion"} size={26} />
       </button>
@@ -103,8 +104,9 @@ export default function SupportWidget() {
       {/* Окно виджета */}
       {open && (
         <div
-          className="fixed inset-0 sm:inset-auto sm:bottom-24 sm:right-4 z-[95] sm:w-[380px] sm:max-w-[calc(100vw-2rem)] sm:max-h-[80vh]
+          className="fixed inset-0 sm:inset-auto sm:right-4 z-[95] sm:w-[380px] sm:max-w-[calc(100vw-2rem)] sm:max-h-[80vh]
             bg-background border border-border shadow-2xl sm:rounded-2xl flex flex-col overflow-hidden"
+          style={{ bottom: 'max(88px, env(safe-area-inset-bottom, 0px) + 80px)' }}
           role="dialog"
           aria-label="Помощь и поддержка"
         >
