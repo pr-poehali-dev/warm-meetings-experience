@@ -50,58 +50,71 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
   return (
     <div className="border border-t-0 rounded-b-2xl bg-card px-5 pt-4 pb-5 space-y-4 mb-4">
       {/* Date & time row */}
-      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-        <label className="flex items-center gap-1.5 cursor-pointer group">
-          <Icon name="Calendar" size={14} />
-          <input
-            type="date"
-            value={fd.event_date || ""}
-            onChange={(e) => set({ event_date: e.target.value })}
-            className="bg-transparent border-0 outline-none cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors focus:text-foreground [color-scheme:light]"
-          />
-        </label>
-        <label className="flex items-center gap-1.5 cursor-pointer">
-          <Icon name="Clock" size={14} />
-          <input
-            type="time"
-            value={fd.start_time || ""}
-            onChange={(e) => set({ start_time: e.target.value })}
-            className="bg-transparent border-0 outline-none cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors w-20"
-          />
-          <span className="text-muted-foreground/50">—</span>
-          <input
-            type="time"
-            value={fd.end_time || ""}
-            onChange={(e) => set({ end_time: e.target.value })}
-            className="bg-transparent border-0 outline-none cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors w-20"
-          />
-        </label>
-        {dateObj && (
-          <span className="text-xs text-muted-foreground/60 hidden sm:inline">
-            {format(dateObj, "EEEE", { locale: ru })}
-          </span>
-        )}
-        <label className="flex items-center gap-1.5 cursor-pointer group">
-          <Icon name="CalendarCheck" size={14} className="text-muted-foreground/60" />
-          <span className="text-xs text-muted-foreground/60">до</span>
-          <input
-            type="date"
-            value={fd.end_date || ""}
-            min={fd.event_date || ""}
-            onChange={(e) => set({ end_date: e.target.value || null })}
-            className="bg-transparent border-0 outline-none cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors [color-scheme:light]"
-          />
-          {fd.end_date && (
-            <button
-              type="button"
-              onClick={() => set({ end_date: null })}
-              className="text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-              title="Убрать дату окончания"
-            >
-              <Icon name="X" size={12} />
-            </button>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+        <div>
+          <div className="text-xs text-muted-foreground mb-1">Дата начала</div>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <Icon name="Calendar" size={14} className="text-muted-foreground flex-shrink-0" />
+            <input
+              type="date"
+              value={fd.event_date || ""}
+              onChange={(e) => set({ event_date: e.target.value })}
+              className="bg-transparent border-0 outline-none cursor-pointer text-sm text-foreground hover:text-primary transition-colors focus:text-primary [color-scheme:light]"
+            />
+          </label>
+          {dateObj && (
+            <div className="text-xs text-muted-foreground/60 mt-0.5 pl-5">
+              {format(dateObj, "EEEE", { locale: ru })}
+            </div>
           )}
-        </label>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground mb-1">Дата окончания <span className="text-muted-foreground/50">(если несколько дней)</span></div>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <Icon name="CalendarCheck" size={14} className="text-muted-foreground flex-shrink-0" />
+            <input
+              type="date"
+              value={fd.end_date || ""}
+              min={fd.event_date || ""}
+              onChange={(e) => set({ end_date: e.target.value || null })}
+              className="bg-transparent border-0 outline-none cursor-pointer text-sm text-foreground hover:text-primary transition-colors focus:text-primary [color-scheme:light]"
+            />
+            {fd.end_date && (
+              <button
+                type="button"
+                onClick={() => set({ end_date: null })}
+                className="text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                title="Убрать дату окончания"
+              >
+                <Icon name="X" size={12} />
+              </button>
+            )}
+          </label>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground mb-1">Время начала</div>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <Icon name="Clock" size={14} className="text-muted-foreground flex-shrink-0" />
+            <input
+              type="time"
+              value={fd.start_time || ""}
+              onChange={(e) => set({ start_time: e.target.value })}
+              className="bg-transparent border-0 outline-none cursor-pointer text-sm text-foreground hover:text-primary transition-colors w-24"
+            />
+          </label>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground mb-1">Время окончания</div>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <Icon name="Clock" size={14} className="text-muted-foreground flex-shrink-0" />
+            <input
+              type="time"
+              value={fd.end_time || ""}
+              onChange={(e) => set({ end_time: e.target.value })}
+              className="bg-transparent border-0 outline-none cursor-pointer text-sm text-foreground hover:text-primary transition-colors w-24"
+            />
+          </label>
+        </div>
       </div>
 
       {/* Title */}
