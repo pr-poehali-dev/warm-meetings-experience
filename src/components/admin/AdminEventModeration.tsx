@@ -5,6 +5,139 @@ import Icon from "@/components/ui/icon";
 
 type EventWithMeta = OrgEvent & { organizer_name?: string; organizer_email?: string };
 
+function EventDetailModal({ ev, onClose }: { ev: EventWithMeta; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg my-4">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 p-5 border-b">
+          <div className="min-w-0">
+            <h3 className="font-bold text-base leading-tight break-words">{ev.title}</h3>
+            <div className="flex flex-wrap gap-2 mt-1.5">
+              {ev.is_private ? (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Приватное</span>
+              ) : (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Публичное</span>
+              )}
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">На модерации</span>
+            </div>
+          </div>
+          <button onClick={onClose} className="flex-shrink-0 p-1 rounded-lg hover:bg-gray-100">
+            <Icon name="X" size={18} />
+          </button>
+        </div>
+
+        {/* Image */}
+        {ev.image_url && (
+          <img src={ev.image_url} alt={ev.title} className="w-full max-h-56 object-cover" />
+        )}
+
+        {/* Body */}
+        <div className="p-5 flex flex-col gap-4">
+          {/* Основная инфо */}
+          <Section title="Основная информация">
+            <Row icon="Calendar" label="Дата" value={ev.event_date} />
+            <Row icon="Clock" label="Время" value={[ev.start_time, ev.end_time].filter(Boolean).join(" – ")} />
+            <Row icon="MapPin" label="Место" value={ev.bath_name} />
+            <Row icon="Navigation" label="Адрес" value={ev.bath_address} />
+            <Row icon="Tag" label="Тип события" value={ev.event_type} />
+            <Row icon="Hash" label="Slug" value={ev.slug} />
+            <Row icon="Code" label="Короткий код" value={ev.short_code} />
+          </Section>
+
+          {/* Организатор */}
+          {(ev.organizer_name || ev.organizer_email) && (
+            <Section title="Организатор">
+              <Row icon="User" label="Имя" value={ev.organizer_name} />
+              <Row icon="Mail" label="Email" value={ev.organizer_email} />
+            </Section>
+          )}
+
+          {/* Цена и места */}
+          <Section title="Цена и участники">
+            <Row icon="Banknote" label="Цена" value={ev.price_label || (ev.price_amount ? `${ev.price_amount} ₽` : undefined)} />
+            <Row icon="Users" label="Всего мест" value={ev.total_spots?.toString()} />
+            <Row icon="UserCheck" label="Осталось мест" value={ev.spots_left?.toString()} />
+            <Row icon="BarChart2" label="Тип цены" value={ev.pricing_type} />
+          </Section>
+
+          {/* Описание */}
+          {ev.short_description && (
+            <Section title="Краткое описание">
+              <p className="text-sm text-gray-700 leading-relaxed">{ev.short_description}</p>
+            </Section>
+          )}
+
+          {ev.full_description && (
+            <Section title="Полное описание">
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{ev.full_description}</p>
+            </Section>
+          )}
+
+          {/* Программа */}
+          {ev.program?.length > 0 && (
+            <Section title="Программа">
+              <ul className="flex flex-col gap-1">
+                {ev.program.map((item, i) => (
+                  <li key={i} className="text-sm text-gray-700 flex gap-2">
+                    <span className="text-muted-foreground flex-shrink-0">{i + 1}.</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
+          {/* Правила */}
+          {ev.rules?.length > 0 && (
+            <Section title="Правила">
+              <ul className="flex flex-col gap-1">
+                {ev.rules.map((item, i) => (
+                  <li key={i} className="text-sm text-gray-700 flex gap-2">
+                    <span className="text-muted-foreground flex-shrink-0">•</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
+          {/* Прочее */}
+          <Section title="Дополнительно">
+            <Row icon="Eye" label="Видимость" value={ev.is_visible ? "Видимое" : "Скрытое"} />
+            <Row icon="Star" label="Рекомендуемое" value={ev.featured ? "Да" : "Нет"} />
+            <Row icon="CalendarClock" label="Создано" value={ev.created_at ? new Date(ev.created_at).toLocaleString("ru-RU") : undefined} />
+          </Section>
+        </div>
+
+        <div className="p-5 border-t">
+          <Button variant="outline" size="sm" onClick={onClose} className="w-full">Закрыть</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{title}</p>
+      <div className="flex flex-col gap-1.5">{children}</div>
+    </div>
+  );
+}
+
+function Row({ icon, label, value }: { icon: string; label: string; value?: string | null }) {
+  if (!value) return null;
+  return (
+    <div className="flex gap-2 text-sm">
+      <Icon name={icon as never} size={14} className="flex-shrink-0 mt-0.5 text-muted-foreground" />
+      <span className="text-muted-foreground flex-shrink-0">{label}:</span>
+      <span className="break-words min-w-0 text-gray-900">{value}</span>
+    </div>
+  );
+}
+
 export default function AdminEventModeration() {
   const [events, setEvents] = useState<EventWithMeta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,6 +145,7 @@ export default function AdminEventModeration() {
   const [rejectTarget, setRejectTarget] = useState<EventWithMeta | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [tgToggles, setTgToggles] = useState<Record<number, boolean>>({});
+  const [detailEvent, setDetailEvent] = useState<EventWithMeta | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -65,15 +199,15 @@ export default function AdminEventModeration() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="overflow-hidden">
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <div>
           <h2 className="text-xl font-bold">Модерация событий</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             Заявки организаторов на публикацию
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load}>
+        <Button variant="outline" size="sm" onClick={load} className="flex-shrink-0">
           <Icon name="RefreshCw" size={14} className="mr-1.5" />
           Обновить
         </Button>
@@ -90,94 +224,86 @@ export default function AdminEventModeration() {
           {events.map((ev) => {
             const tgOn = tgToggles[ev.id] ?? true;
             return (
-              <div key={ev.id} className="bg-white rounded-xl border p-5">
-                <div className="flex gap-4">
-                  {ev.image_url && (
-                    <img
-                      src={ev.image_url}
-                      alt={ev.title}
-                      className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="font-semibold text-base leading-tight">{ev.title}</h3>
-                        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Icon name="Calendar" size={13} />
-                            {ev.event_date}
+              <div key={ev.id} className="bg-white rounded-xl border overflow-hidden">
+                {/* Кликабельная часть карточки */}
+                <button
+                  type="button"
+                  onClick={() => setDetailEvent(ev)}
+                  className="w-full text-left p-5 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex gap-3">
+                    {ev.image_url && (
+                      <img
+                        src={ev.image_url}
+                        alt={ev.title}
+                        className="w-20 h-20 rounded-lg object-cover flex-shrink-0"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-semibold text-sm leading-tight break-words min-w-0 pr-1">{ev.title}</h3>
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap flex items-center gap-1">
+                            <Icon name="Clock" size={10} />
+                            Ожидает
                           </span>
-                          {ev.start_time && (
-                            <span className="flex items-center gap-1">
-                              <Icon name="Clock" size={13} />
-                              {ev.start_time}
+                          {ev.is_private ? (
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 whitespace-nowrap flex items-center gap-1">
+                              <Icon name="Lock" size={10} />
+                              Приватное
                             </span>
-                          )}
-                          {ev.bath_name && (
-                            <span className="flex items-center gap-1">
-                              <Icon name="MapPin" size={13} />
-                              {ev.bath_name}
+                          ) : (
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 whitespace-nowrap flex items-center gap-1">
+                              <Icon name="Globe" size={10} />
+                              Публичное
                             </span>
                           )}
                         </div>
-                        {ev.organizer_name && (
-                          <div className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
-                            <Icon name="User" size={12} />
-                            Организатор: {ev.organizer_name}
-                            {ev.organizer_email && (
-                              <span className="ml-1 opacity-60">({ev.organizer_email})</span>
-                            )}
-                          </div>
-                        )}
                       </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1">
-                          <Icon name="Clock" size={11} />
-                          Ожидает
+
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1 whitespace-nowrap">
+                          <Icon name="Calendar" size={11} />
+                          {ev.event_date}
                         </span>
-                        {ev.is_private ? (
-                          <span className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-full bg-purple-100 text-purple-700 flex items-center gap-1">
-                            <Icon name="Lock" size={11} />
-                            Приватное
+                        {ev.start_time && (
+                          <span className="flex items-center gap-1 whitespace-nowrap">
+                            <Icon name="Clock" size={11} />
+                            {ev.start_time}
                           </span>
-                        ) : (
-                          <span className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
-                            <Icon name="Globe" size={11} />
-                            Публичное
+                        )}
+                        {ev.bath_name && (
+                          <span className="flex items-center gap-1 min-w-0 truncate max-w-full">
+                            <Icon name="MapPin" size={11} className="flex-shrink-0" />
+                            <span className="truncate">{ev.bath_name}</span>
                           </span>
                         )}
                       </div>
-                    </div>
 
-                    {ev.short_description && (
-                      <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{ev.short_description}</p>
-                    )}
+                      {ev.organizer_name && (
+                        <div className="mt-1 text-xs text-muted-foreground truncate">
+                          <Icon name="User" size={11} className="inline mr-1" />
+                          {ev.organizer_name}
+                          {ev.organizer_email && (
+                            <span className="ml-1 opacity-60 truncate">({ev.organizer_email})</span>
+                          )}
+                        </div>
+                      )}
 
-                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                      {ev.price_label && (
-                        <span className="flex items-center gap-1">
-                          <Icon name="Banknote" size={12} />
-                          {ev.price_label}
-                        </span>
+                      {ev.short_description && (
+                        <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">{ev.short_description}</p>
                       )}
-                      {ev.total_spots && (
-                        <span className="flex items-center gap-1">
-                          <Icon name="Users" size={12} />
-                          {ev.total_spots} мест
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1 opacity-60">
-                        <Icon name="Tag" size={12} />
-                        {ev.event_type}
-                      </span>
                     </div>
                   </div>
-                </div>
+
+                  <div className="flex items-center gap-1 mt-2 text-xs text-primary font-medium">
+                    <Icon name="Eye" size={12} />
+                    Нажмите для просмотра всех полей
+                  </div>
+                </button>
 
                 {/* Action bar */}
-                <div className="mt-4 pt-4 border-t flex flex-col gap-3">
-                  {/* Telegram toggle — только для публичных */}
+                <div className="px-5 pb-5 flex flex-col gap-3 border-t pt-4">
                   {!ev.is_private && (
                     <button
                       type="button"
@@ -192,13 +318,12 @@ export default function AdminEventModeration() {
                         <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${tgOn ? "translate-x-4" : "translate-x-0.5"}`} />
                       </div>
                       <Icon name="Send" size={14} />
-                      <span>
-                        {tgOn ? "Отправить в привязанные каналы и чаты" : "Не отправлять в Telegram"}
+                      <span className="text-sm">
+                        {tgOn ? "Отправить в Telegram" : "Не отправлять в Telegram"}
                       </span>
                     </button>
                   )}
 
-                  {/* Approve / Reject buttons */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <Button
                       size="sm"
@@ -229,6 +354,11 @@ export default function AdminEventModeration() {
             );
           })}
         </div>
+      )}
+
+      {/* Detail modal */}
+      {detailEvent && (
+        <EventDetailModal ev={detailEvent} onClose={() => setDetailEvent(null)} />
       )}
 
       {/* Reject dialog */}
