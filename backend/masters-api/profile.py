@@ -120,6 +120,7 @@ def handle_profile(event, method, params, schema, headers):
             where.append('m.is_verified = true')
         elif verified == 'false':
             where.append('m.is_verified = false')
+            where.append('m.is_active = true')  # скрытые не требуют верификации
         where_sql = ' AND '.join(where)
         cur.execute(f"""
             SELECT m.id, m.slug, m.name, m.tagline, m.city, m.phone, m.telegram,
