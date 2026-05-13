@@ -46,6 +46,7 @@ import EventsGlassDemo from "./pages/EventsGlassDemo";
 import IndexGlass from "./pages/IndexGlass";
 import IndexNew from "./pages/IndexNew";
 import LandingPage from "./pages/LandingPage";
+import FunctionalDescription from "./pages/FunctionalDescription";
 import CookieConsent from "./components/CookieConsent";
 import MetrikaTracker from "./components/MetrikaTracker";
 import SupportWidget from "./components/support/SupportWidget";
@@ -92,6 +93,7 @@ const AppContent = () => {
         <Route path="/blog/:slug" element={<BlogArticle />} />
         <Route path="/documents" element={<Documents />} />
         <Route path="/functional" element={<Functional />} />
+        <Route path="/features" element={<FunctionalDescription />} />
         <Route path="/account-demo" element={<AccountDemo />} />
         <Route path="/events-glass" element={<EventsGlassDemo />} />
         <Route path="/index-glass" element={<IndexGlass />} />
