@@ -2,7 +2,6 @@ import { useState } from "react";
 import { OrgEvent, PricingTier } from "@/lib/organizer-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -379,40 +378,6 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
       {/* ── PUBLISH SETTINGS ── */}
       <div className="space-y-3">
         <h3 className="font-semibold text-sm">Публикация</h3>
-
-        <div
-          className={`flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${
-            fd.is_visible
-              ? "border-green-200 bg-green-50"
-              : "border-border bg-muted/30"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                fd.is_visible
-                  ? "bg-green-100 text-green-600"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              <Icon name={fd.is_visible ? "Eye" : "EyeOff"} size={16} />
-            </div>
-            <div>
-              <p className="font-medium text-sm">
-                {fd.is_visible ? "Опубликовано" : "Черновик"}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {fd.is_visible
-                  ? "Видно всем посетителям"
-                  : "Только вы видите встречу"}
-              </p>
-            </div>
-          </div>
-          <Switch
-            checked={fd.is_visible}
-            onCheckedChange={(v) => set({ is_visible: v })}
-          />
-        </div>
 
         <div className="flex items-center gap-4 flex-wrap">
           <label className="flex items-center gap-2 cursor-pointer">

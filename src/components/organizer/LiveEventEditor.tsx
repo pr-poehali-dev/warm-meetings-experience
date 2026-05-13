@@ -17,6 +17,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string; icon: string
   draft: { label: "Черновик", color: "text-gray-500", icon: "FileEdit" },
   pending: { label: "На модерации", color: "text-amber-600", icon: "Clock" },
   published: { label: "Опубликовано", color: "text-green-600", icon: "CheckCircle" },
+  private: { label: "Приватное", color: "text-purple-600", icon: "Lock" },
   rejected: { label: "Отклонено", color: "text-red-600", icon: "XCircle" },
 };
 
@@ -59,6 +60,7 @@ export default function LiveEventEditor({
 
   const isPending = currentStatus === "pending";
   const isPublished = currentStatus === "published";
+  const isPrivate = currentStatus === "private";
 
   return (
     <form onSubmit={handleSave} className="pb-24">
@@ -104,7 +106,18 @@ export default function LiveEventEditor({
           <Icon name="Clock" size={16} className="flex-shrink-0 mt-0.5" />
           <div>
             <div className="font-medium">Событие ожидает проверки администратором</div>
-            <div className="mt-0.5 text-xs text-amber-600">После одобрения событие будет опубликовано автоматически.</div>
+            <div className="mt-0.5 text-xs text-amber-600">После одобрения событие будет опубликовано или доступно по ссылке.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Private notice */}
+      {isPrivate && (
+        <div className="mb-4 p-3 rounded-lg bg-purple-50 border border-purple-200 text-sm text-purple-700 flex items-start gap-2">
+          <Icon name="Lock" size={16} className="flex-shrink-0 mt-0.5" />
+          <div>
+            <div className="font-medium">Приватное событие</div>
+            <div className="mt-0.5 text-xs text-purple-600">Не отображается в каталоге. Участники могут присоединиться только по прямой ссылке.</div>
           </div>
         </div>
       )}
@@ -138,7 +151,7 @@ export default function LiveEventEditor({
                   "Сохранить черновик"
                 )}
               </Button>
-              {!isPending && !isPublished && (
+              {!isPending && !isPublished && !isPrivate && (
                 <Button type="button" onClick={handleSubmitForReview} disabled={loading}>
                   {loading ? (
                     <>

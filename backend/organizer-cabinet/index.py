@@ -592,6 +592,16 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
                 f"📍 {ev.get('bath_name', '—')}\n"
                 f"👤 Организатор: {ev.get('organizer_name', '—')}"
             )
+        elif action == 'private':
+            cur.execute(f"UPDATE {schema}.events SET status = 'private', is_visible = false WHERE id = {event_id}")
+            tg_notify_admin(
+                f"🔒 <b>Событие одобрено как приватное</b>\n\n"
+                f"🎪 <b>{ev['title']}</b>\n"
+                f"📅 {ev['event_date']}  🕐 {str(ev.get('start_time', ''))[:5]}\n"
+                f"📍 {ev.get('bath_name', '—')}\n"
+                f"👤 Организатор: {ev.get('organizer_name', '—')}\n"
+                f"🔗 Доступно только по прямой ссылке"
+            )
         else:
             cur.execute(f"UPDATE {schema}.events SET status = 'rejected', is_visible = false WHERE id = {event_id}")
             reason_display = reason.replace("''", "'") or 'не указана'

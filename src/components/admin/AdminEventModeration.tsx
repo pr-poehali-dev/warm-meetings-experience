@@ -40,6 +40,16 @@ export default function AdminEventModeration() {
     }
   };
 
+  const handleApprovePrivate = async (ev: EventWithMeta) => {
+    setActionLoading(ev.id);
+    try {
+      await organizerApi.moderateEvent(ev.id, "private", undefined, false);
+      setEvents((prev) => prev.filter((e) => e.id !== ev.id));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleRejectConfirm = async () => {
     if (!rejectTarget) return;
     setActionLoading(rejectTarget.id);
@@ -184,7 +194,7 @@ export default function AdminEventModeration() {
                   </button>
 
                   {/* Approve / Reject buttons */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button
                       size="sm"
                       onClick={() => handleApprove(ev)}
@@ -197,6 +207,19 @@ export default function AdminEventModeration() {
                         <Icon name="CheckCircle" size={14} className="mr-1.5" />
                       )}
                       Одобрить
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleApprovePrivate(ev)}
+                      disabled={actionLoading === ev.id}
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      {actionLoading === ev.id ? (
+                        <Icon name="Loader2" size={14} className="animate-spin mr-1.5" />
+                      ) : (
+                        <Icon name="Lock" size={14} className="mr-1.5" />
+                      )}
+                      Приватное
                     </Button>
                     <Button
                       size="sm"

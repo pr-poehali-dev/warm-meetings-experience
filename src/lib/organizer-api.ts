@@ -43,7 +43,7 @@ export interface OrgEvent {
   featured: boolean;
   occupancy: string;
   created_at: string;
-  status?: 'draft' | 'pending' | 'published' | 'rejected';
+  status?: 'draft' | 'pending' | 'published' | 'private' | 'rejected';
   rejection_reason?: string;
   // Crowdfund (в складчину)
   pricing_mode?: 'fixed' | 'crowdfund';
@@ -257,7 +257,7 @@ export const organizerApi = {
   getPendingModeration: (): Promise<OrgEvent[]> =>
     adminModerationRequest(`${BASE}/?resource=moderation`),
 
-  moderateEvent: (eventId: number, action: 'approve' | 'reject', reason?: string, publishToTelegram?: boolean): Promise<{ ok: boolean; action: string }> =>
+  moderateEvent: (eventId: number, action: 'approve' | 'reject' | 'private', reason?: string, publishToTelegram?: boolean): Promise<{ ok: boolean; action: string }> =>
     adminModerationRequest(`${BASE}/?resource=moderation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
