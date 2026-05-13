@@ -114,7 +114,12 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
         onClick={() => {
           if (!open && buttonRef.current) {
             const r = buttonRef.current.getBoundingClientRect();
-            setDropdownPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
+            const dropdownH = 340;
+            const spaceBelow = window.innerHeight - r.bottom;
+            const top = spaceBelow >= dropdownH
+              ? r.bottom + 8
+              : r.top - dropdownH - 8;
+            setDropdownPos({ top: Math.max(8, top), right: window.innerWidth - r.right });
           }
           setOpen((v) => !v);
         }}
