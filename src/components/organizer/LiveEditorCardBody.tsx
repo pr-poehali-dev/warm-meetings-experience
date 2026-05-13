@@ -416,40 +416,7 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
           </button>
         </div>
 
-        <div className="flex items-center gap-4 flex-wrap">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={fd.featured || false}
-              onChange={(e) => set({ featured: e.target.checked })}
-              className="w-4 h-4 rounded"
-            />
-            <span className="text-sm">Избранное</span>
-            <span className="text-xs text-muted-foreground">
-              — выделить на главной
-            </span>
-          </label>
 
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              Загруженность:
-            </span>
-            <Select
-              value={fd.occupancy || "low"}
-              onValueChange={(v) => set({ occupancy: v })}
-            >
-              <SelectTrigger className="h-8 text-xs w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Низкая</SelectItem>
-                <SelectItem value="medium">Средняя</SelectItem>
-                <SelectItem value="high">Высокая</SelectItem>
-                <SelectItem value="full">Полная</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
       </div>
 
       <div className="border-t" />
