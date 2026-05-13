@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import EventCard from "@/components/events/EventCard";
 import EventFilters from "@/components/events/EventFilters";
 import EventCalendar from "@/components/events/EventCalendar";
+import EventTypeFilter from "@/components/ui/EventTypeFilter";
 import { EventItem, mapApiEvent } from "@/data/events";
 import { eventsApi } from "@/lib/api";
 import Footer from "@/components/Footer";
@@ -107,6 +108,10 @@ export default function Events() {
           ) : (
             <div className="flex flex-col lg:flex-row gap-8">
               <div className="flex-1 min-w-0">
+                <EventTypeFilter
+                  value={selectedType === "all" ? "" : selectedType}
+                  onChange={(v) => setSelectedType(v || "all")}
+                />
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <EventFilters
                     eventTypes={eventTypes}

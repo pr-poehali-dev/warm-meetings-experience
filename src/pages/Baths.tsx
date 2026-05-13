@@ -4,6 +4,9 @@ import Icon from "@/components/ui/icon";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/ui/PageHero";
 import { bathsApi, Bath } from "@/lib/baths-api";
+import { eventsApi } from "@/lib/api";
+import { mapApiEvent } from "@/data/events";
+import EventTypeFilter from "@/components/ui/EventTypeFilter";
 
 const BATH_TYPES = ["Русская парная", "Финская сауна", "Хамам", "Инфракрасная", "Японская офуро"];
 const FEATURES = ["Купель", "Бассейн", "Дровяная печь", "Финская печь", "Мангал", "Веники", "Парковка"];
@@ -79,10 +82,22 @@ export default function Baths() {
   const [selectedType, setSelectedType] = useState("");
   const [selectedFeature, setSelectedFeature] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
+  const [selectedEventType, setSelectedEventType] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [eventTypeBathNames, setEventTypeBathNames] = useState<Map<string, Set<string>>>(new Map());
 
   useEffect(() => {
     bathsApi.getAll().then(setBaths).catch(() => {}).finally(() => setLoading(false));
+    eventsApi.getAll(true).then((data) => {
+      const map = new Map<string, Set<string>>();
+      data.map(mapApiEvent).forEach((e) => {
+        if (e.type && e.bathName) {
+          if (!map.has(e.type)) map.set(e.type, new Set());
+          map.get(e.type)!.add(e.bathName);
+        }
+      });
+      setEventTypeBathNames(map);
+    }).catch(() => {});
   }, []);
 
   const filtered = useMemo(() => {
@@ -93,17 +108,22 @@ export default function Baths() {
       if (selectedType && !b.bath_types.includes(selectedType)) return false;
       if (selectedFeature && !b.features.includes(selectedFeature)) return false;
       if (selectedCity && b.city !== selectedCity) return false;
+      if (selectedEventType) {
+        const bathsForType = eventTypeBathNames.get(selectedEventType);
+        if (bathsForType && !bathsForType.has(b.name)) return false;
+      }
       return true;
     });
-  }, [baths, search, selectedType, selectedFeature, selectedCity]);
+  }, [baths, search, selectedType, selectedFeature, selectedCity, selectedEventType, eventTypeBathNames]);
 
-  const hasFilters = search || selectedType || selectedFeature || selectedCity;
+  const hasFilters = search || selectedType || selectedFeature || selectedCity || selectedEventType;
 
   const resetFilters = () => {
     setSearch("");
     setSelectedType("");
     setSelectedFeature("");
     setSelectedCity("");
+    setSelectedEventType("");
   };
 
   return (
@@ -116,6 +136,7 @@ export default function Baths() {
       />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <EventTypeFilter value={selectedEventType} onChange={setSelectedEventType} allLabel="Все события" />
         {/* Search + filter toggle */}
         <div className="flex gap-3 mb-6">
           <div className="relative flex-1">

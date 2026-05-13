@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/ui/PageHero";
 import { mastersApi, Master, Specialization } from "@/lib/masters-api";
+import EventTypeFilter from "@/components/ui/EventTypeFilter";
 
 const CITIES = ["Москва", "Санкт-Петербург"];
 
@@ -104,6 +105,7 @@ export default function Masters() {
   const [search, setSearch] = useState("");
   const [selectedSpec, setSelectedSpec] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
+  const [selectedEventType, setSelectedEventType] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
@@ -130,16 +132,25 @@ export default function Masters() {
         if (spec && !(m.specialization_ids || []).includes(spec.id)) return false;
       }
       if (selectedCity && m.city !== selectedCity) return false;
+      if (selectedEventType) {
+        const matchedSpec = specializations.find(
+          (s) => s.name.toLowerCase() === selectedEventType.toLowerCase()
+        );
+        if (matchedSpec) {
+          if (!(m.specialization_ids || []).includes(matchedSpec.id)) return false;
+        }
+      }
       return true;
     });
-  }, [masters, search, selectedSpec, selectedCity, specializations]);
+  }, [masters, search, selectedSpec, selectedCity, selectedEventType, specializations]);
 
-  const hasFilters = search || selectedSpec || selectedCity;
+  const hasFilters = search || selectedSpec || selectedCity || selectedEventType;
 
   const resetFilters = () => {
     setSearch("");
     setSelectedSpec("");
     setSelectedCity("");
+    setSelectedEventType("");
   };
 
   return (
@@ -152,6 +163,7 @@ export default function Masters() {
       />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <EventTypeFilter value={selectedEventType} onChange={setSelectedEventType} />
         <div className="flex gap-3 mb-6">
           <div className="relative flex-1">
             <Icon name="Search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
