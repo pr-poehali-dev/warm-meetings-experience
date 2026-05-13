@@ -366,7 +366,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             cur.execute(f"""
                 INSERT INTO {schema}.events (
                     title, slug, short_description, full_description, description,
-                    event_date, start_time, end_time,
+                    event_date, end_date, start_time, end_time,
                     event_type, event_type_icon, occupancy,
                     bath_name, bath_address, image_url,
                     price, price_amount, price_label,
@@ -374,7 +374,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                     program, rules, pricing_lines, pricing_type, organizer_id
                 ) VALUES (
                     '{title}', '{slug}', '{short_desc}', '{full_desc}', '{description}',
-                    '{body.get('event_date')}', '{body.get('start_time', '19:00')}', '{body.get('end_time', '23:00')}',
+                    '{body.get('event_date')}', {f"'{body.get('end_date')}'" if body.get('end_date') else 'NULL'}, '{body.get('start_time', '19:00')}', '{body.get('end_time', '23:00')}',
                     '{body.get('event_type', 'знакомство')}', '{body.get('event_type_icon', 'Users')}', '{body.get('occupancy', 'low')}',
                     '{bath_name}', '{bath_address}', '{body.get('image_url', '')}',
                     '{price_label}', {body.get('price_amount', 0)}, '{price_label}',
@@ -455,6 +455,8 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             if field in body:
                 val = str(body[field]).replace("'", "''")
                 sets.append(f"{field} = '{val}'")
+        if 'end_date' in body:
+            sets.append(f"end_date = {f\"'{body['end_date']}'\" if body['end_date'] else 'NULL'}")
         for field in ['price_amount','total_spots','spots_left']:
             if field in body:
                 sets.append(f"{field} = {int(body[field])}")

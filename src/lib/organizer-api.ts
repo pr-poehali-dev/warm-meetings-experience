@@ -17,6 +17,7 @@ export interface OrgEvent {
   slug: string;
   short_code?: string;
   event_date: string;
+  end_date?: string | null;
   start_time: string;
   end_time: string;
   bath_name: string;
