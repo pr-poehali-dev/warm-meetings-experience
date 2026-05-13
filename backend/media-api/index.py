@@ -176,6 +176,142 @@ def _delete_file(event: dict) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════
+# Раздел 1б: Медиа событий (event_media)
+# ═══════════════════════════════════════════════════════════════
+
+def _event_media_list(params: dict) -> dict:
+    """GET ?event_media=1&event_id=N — список медиафайлов события."""
+    event_id = params.get('event_id')
+    if not event_id:
+        return err('Не указан event_id')
+    schema = get_schema()
+    conn = get_conn(); cur = conn.cursor()
+    cur.execute(
+        f"SELECT id, event_id, s3_key, url, media_type, mime_type, sort_order, created_at "
+        f"FROM {schema}.event_media WHERE event_id = %s ORDER BY sort_order ASC, id ASC",
+        [int(event_id)],
+    )
+    rows = cur.fetchall(); cols = [d[0] for d in cur.description]
+    cur.close(); conn.close()
+    return ok({'media': [dict(zip(cols, r)) for r in rows]})
+
+
+def _event_media_upload(event: dict, user_token: str) -> dict:
+    """POST ?event_media=1 — загрузить файл и записать в event_media."""
+    if not user_token:
+        return err('Не авторизован', 401)
+    schema = get_schema()
+    conn = get_conn(); cur = conn.cursor()
+    user = get_user_from_token(cur, schema, user_token)
+    if not user:
+        conn.close(); return err('Не авторизован', 401)
+
+    body = json.loads(event.get('body') or '{}')
+    event_id = body.get('event_id')
+    if not event_id:
+        conn.close(); return err('Не указан event_id')
+
+    # Проверяем что пользователь — организатор события или админ
+    cur.execute(f"SELECT organizer_id FROM {schema}.events WHERE id = %s", [int(event_id)])
+    ev_row = cur.fetchone()
+    if not ev_row:
+        conn.close(); return err('Событие не найдено', 404)
+    is_admin = has_role(cur, schema, user['id'], 'admin')
+    if not is_admin and ev_row[0] != user['id']:
+        conn.close(); return err('Нет прав', 403)
+
+    # Загружаем файл в S3 (переиспользуем _upload_file логику)
+    file_data = body.get('file') or body.get('image', '')
+    filename = body.get('filename', 'file.jpg')
+    if not file_data:
+        conn.close(); return err('Файл не передан')
+
+    file_type = None
+    if 'base64,' in file_data:
+        header, b64 = file_data.split('base64,', 1)
+        if ':' in header:
+            file_type = header.split(':')[1].split(';')[0].strip()
+    else:
+        b64 = file_data
+
+    raw = base64.b64decode(b64)
+    size = len(raw)
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'jpg'
+    if not file_type or file_type in ('image/jpeg', 'application/octet-stream'):
+        if ext in VIDEO_BY_EXT:
+            file_type = VIDEO_BY_EXT[ext]
+        elif ext in IMAGE_BY_EXT:
+            file_type = IMAGE_BY_EXT[ext]
+        else:
+            file_type = file_type or 'image/jpeg'
+
+    is_image = file_type in ALLOWED_IMAGE_TYPES
+    is_video = file_type in ALLOWED_VIDEO_TYPES
+    if not is_image and not is_video:
+        conn.close(); return err(f'Неподдерживаемый тип: {file_type}')
+    if is_image and size > MAX_IMAGE_SIZE:
+        conn.close(); return err('Фото не должно превышать 10 МБ')
+    if is_video and size > MAX_VIDEO_H_SIZE:
+        conn.close(); return err('Видео не должно превышать 100 МБ')
+
+    file_ext = EXT_MAP.get(file_type, ext or 'bin')
+    uid = uuid.uuid4().hex[:8]
+    date_prefix = datetime.now().strftime('%Y%m')
+    key = f"events/{event_id}/{date_prefix}/{uid}.{file_ext}"
+
+    get_s3().put_object(Bucket='files', Key=key, Body=raw, ContentType=file_type)
+    url = make_cdn_url(key)
+    media_type = 'video' if is_video else 'photo'
+
+    cur.execute(
+        f"SELECT COALESCE(MAX(sort_order), -1) + 1 FROM {schema}.event_media WHERE event_id = %s",
+        [int(event_id)],
+    )
+    sort_order = cur.fetchone()[0]
+
+    cur.execute(
+        f"INSERT INTO {schema}.event_media (event_id, s3_key, url, media_type, mime_type, sort_order) "
+        f"VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+        [int(event_id), key, url, media_type, file_type, sort_order],
+    )
+    new_id = cur.fetchone()[0]
+    conn.commit(); cur.close(); conn.close()
+    return ok({'ok': True, 'id': new_id, 'url': url, 'key': key, 'media_type': media_type})
+
+
+def _event_media_delete(params: dict, user_token: str) -> dict:
+    """DELETE ?event_media=1&media_id=N — удалить медиафайл события."""
+    if not user_token:
+        return err('Не авторизован', 401)
+    media_id = params.get('media_id')
+    if not media_id:
+        return err('Не указан media_id')
+    schema = get_schema()
+    conn = get_conn(); cur = conn.cursor()
+    user = get_user_from_token(cur, schema, user_token)
+    if not user:
+        conn.close(); return err('Не авторизован', 401)
+
+    cur.execute(
+        f"SELECT em.s3_key, e.organizer_id FROM {schema}.event_media em "
+        f"JOIN {schema}.events e ON e.id = em.event_id WHERE em.id = %s",
+        [int(media_id)],
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close(); return err('Файл не найден', 404)
+    s3_key, organizer_id = row
+    is_admin = has_role(cur, schema, user['id'], 'admin')
+    if not is_admin and organizer_id != user['id']:
+        conn.close(); return err('Нет прав', 403)
+
+    get_s3().delete_object(Bucket='files', Key=s3_key)
+    cur.execute(f"DELETE FROM {schema}.event_media WHERE id = %s", [int(media_id)])
+    conn.commit(); cur.close(); conn.close()
+    return ok({'ok': True})
+
+
+# ═══════════════════════════════════════════════════════════════
 # Раздел 2: Внешние видео (бывший videos-api)
 # ═══════════════════════════════════════════════════════════════
 
@@ -373,6 +509,16 @@ def handler(event: dict, context) -> dict:
     hdrs   = event.get('headers') or {}
     user_token  = (hdrs.get('X-Authorization') or hdrs.get('X-Session-Token') or '').replace('Bearer ', '')
     admin_token = hdrs.get('X-Admin-Token', '')
+
+    # ── Роутинг медиа событий (?event_media=1) ───────────────────────────────
+    if params.get('event_media') == '1':
+        if method == 'GET':
+            return _event_media_list(params)
+        if method == 'POST':
+            return _event_media_upload(event, user_token)
+        if method == 'DELETE':
+            return _event_media_delete(params, user_token)
+        return err('Метод не поддерживается', 405)
 
     # ── Роутинг внешних видео (?videos=1 или ?admin_moderate=1) ───────────────
     is_videos = params.get('videos') == '1'

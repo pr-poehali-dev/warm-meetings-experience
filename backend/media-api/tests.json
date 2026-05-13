@@ -22,6 +22,22 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "Файл не передан"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET event_media без event_id — ошибка",
+      "method": "GET",
+      "path": "/?event_media=1",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "Не указан event_id"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET event_media список",
+      "method": "GET",
+      "path": "/?event_media=1&event_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": {"media": []},
+      "bodyMatcher": "partial"
     }
   ]
 }

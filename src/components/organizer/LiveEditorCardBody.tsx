@@ -1,4 +1,5 @@
 import { useState } from "react";
+import EventMediaUpload from "./EventMediaUpload";
 import { OrgEvent, PricingTier } from "@/lib/organizer-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -245,6 +246,16 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
           icon="Shield"
         />
       </div>
+
+      <div className="border-t" />
+
+      {/* Media gallery */}
+      {fd.id > 0 && (
+        <div>
+          <h3 className="font-semibold text-sm mb-2">Фото и видео с события</h3>
+          <EventMediaUpload eventId={fd.id} />
+        </div>
+      )}
 
       <div className="border-t" />
 
