@@ -71,6 +71,12 @@ export default function Footer() {
               >
                 Энциклопедия
               </Link>
+              <Link
+                to="/features"
+                className="text-sm text-background/60 hover:text-background transition-colors"
+              >
+                Функционал платформы
+              </Link>
             </nav>
           </div>
 
