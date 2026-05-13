@@ -80,15 +80,15 @@ export default function Header({ transparent = false }: HeaderProps) {
     <>
       <header className={headerBase}>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center hover:opacity-80 transition-opacity duration-300 shrink-0">
+          <div className="flex items-center justify-between gap-2 sm:gap-3 h-16 min-w-0">
+            <Link to="/" className="flex items-center hover:opacity-80 transition-opacity duration-300 shrink min-w-0 overflow-hidden">
               <img
                 src={onHero
                   ? "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/760cbfd5-821a-4526-9e92-8807a4ff87f6.png"
                   : "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/d2735e2c-6a4d-4538-b086-6156be8bd33a.png"
                 }
                 alt="Спарком"
-                className="h-7 w-auto"
+                className="h-6 sm:h-7 w-auto max-w-full object-contain object-left"
               />
             </Link>
 
@@ -112,7 +112,7 @@ export default function Header({ transparent = false }: HeaderProps) {
               ))}
             </nav>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {user ? (
                 <ProfileDropdown variant={onHero ? "transparent" : "default"} />
               ) : (

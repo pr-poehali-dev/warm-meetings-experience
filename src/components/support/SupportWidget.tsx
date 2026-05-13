@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,15 @@ const CATEGORIES = [
 
 export default function SupportWidget() {
   const { user } = useAuth();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
+
+  // На страницах с собственной кнопкой «Задать вопрос» виджет не показываем,
+  // чтобы не перекрывать действия пользователя.
+  const hideOnPath =
+    /^\/events\/[^/]+$/.test(location.pathname) ||
+    location.pathname.startsWith("/account") ||
+    location.pathname.startsWith("/workspace");
   const [tab, setTab] = useState<Tab>("faq");
   const [role, setRole] = useState<string>("guest");
   const [faq, setFaq] = useState<FaqItem[]>([]);
@@ -77,13 +85,15 @@ export default function SupportWidget() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  if (hideOnPath) return null;
+
   return (
     <>
       {/* Плавающая кнопка */}
       <button
         aria-label="Открыть помощь"
         onClick={() => setOpen((v) => !v)}
-        className={`fixed bottom-4 right-4 z-[90] w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all
+        className={`fixed bottom-4 right-4 z-[30] w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-xl flex items-center justify-center transition-all
           bg-primary text-primary-foreground hover:scale-105 active:scale-95
           ${open ? "rotate-45" : ""}`}
       >
