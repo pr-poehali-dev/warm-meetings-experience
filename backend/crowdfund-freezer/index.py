@@ -9,10 +9,23 @@
 """
 import json
 import os
+import urllib.request
 from datetime import datetime, timedelta
 import math
 import psycopg2
 from psycopg2.extras import RealDictCursor
+
+
+TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
+
+
+def flush_tg_scheduled():
+    payload = json.dumps({'action': 'flush_scheduled'}).encode('utf-8')
+    req = urllib.request.Request(TG_BOT_URL, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        result = json.loads(resp.read().decode('utf-8'))
+    print(f"[tg-scheduler] flushed={result.get('flushed', 0)} errors={result.get('errors', [])}")
+    return result
 
 
 def get_schema() -> str:
@@ -186,10 +199,17 @@ def handler(event: dict, context) -> dict:
                 results.append({'event_id': ev['id'], 'action': 'error', 'error': str(e)[:300]})
 
         conn.commit()
+
+        tg_result = {}
+        try:
+            tg_result = flush_tg_scheduled()
+        except Exception as e:
+            tg_result = {'error': str(e)[:200]}
+
         return {
             'statusCode': 200,
             'headers': headers,
-            'body': json.dumps({'ok': True, 'processed': len(results), 'results': results}, default=str),
+            'body': json.dumps({'ok': True, 'processed': len(results), 'results': results, 'tg_scheduled': tg_result}, default=str),
         }
     except Exception as e:
         conn.rollback()
