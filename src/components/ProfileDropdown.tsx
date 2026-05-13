@@ -131,7 +131,7 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
         <Icon
           name="ChevronDown"
           size={14}
-          className={`transition-transform flex-shrink-0 ${open ? "rotate-180" : ""} ${isTransparent ? "text-white/70" : "text-muted-foreground"}`}
+          className={`hidden sm:block transition-transform flex-shrink-0 ${open ? "rotate-180" : ""} ${isTransparent ? "text-white/70" : "text-muted-foreground"}`}
         />
       </button>
 
