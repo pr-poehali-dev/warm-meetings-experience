@@ -1,0 +1,11 @@
+{
+  "tests": [
+    {
+      "name": "GET all event types",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

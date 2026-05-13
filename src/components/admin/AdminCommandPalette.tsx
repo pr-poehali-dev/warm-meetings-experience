@@ -36,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: "blog", label: "Статьи блога", icon: "BookOpen", group: "Контент" },
   { view: "baths", label: "Бани", icon: "Home", group: "Контент" },
   { view: "videos", label: "Видео", icon: "Video", group: "Контент" },
+  { view: "event-types", label: "Типы мероприятий", icon: "Tags", group: "Контент" },
   { view: "bookings", label: "Заявки калькулятора", icon: "FileText", group: "Бронирования" },
   { view: "packages", label: "Пакеты", icon: "Package", group: "Бронирования" },
   { view: "addons", label: "Дополнения", icon: "ShoppingBag", group: "Бронирования" },

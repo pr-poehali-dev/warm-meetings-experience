@@ -4,16 +4,8 @@ import Icon from "@/components/ui/icon";
 import { getTypeColors } from "@/data/events";
 import ImageUpload from "@/components/admin/ImageUpload";
 import PhotoBank, { useRecentPhotos } from "@/components/admin/PhotoBank";
-
-const BASE_EVENT_TYPES = [
-  { value: "знакомство", label: "Знакомство", icon: "Users" },
-  { value: "свидание", label: "Свидание", icon: "Heart" },
-  { value: "обучение", label: "Обучение", icon: "GraduationCap" },
-  { value: "встреча", label: "Встреча", icon: "Coffee" },
-  { value: "вечеринка", label: "Вечеринка", icon: "PartyPopper" },
-  { value: "спорт", label: "Спорт", icon: "Dumbbell" },
-  { value: "другое", label: "Другое", icon: "Circle" },
-];
+import { useEventTypes } from "@/hooks/useEventTypes";
+import { Input } from "@/components/ui/input";
 
 interface Props {
   fd: OrgEvent;
@@ -24,7 +16,10 @@ export default function LiveEditorHero({ fd, set }: Props) {
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [showPhotoBank, setShowPhotoBank] = useState(false);
+  const [customInput, setCustomInput] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
   const { addRecent } = useRecentPhotos();
+  const { types } = useEventTypes();
 
   const typeColors = getTypeColors(fd.event_type || "знакомство");
   const typeIcon = fd.event_type_icon || "Users";
@@ -88,13 +83,14 @@ export default function LiveEditorHero({ fd, set }: Props) {
         <div className="border rounded-b-lg bg-background shadow-md p-3 mb-0 z-10 relative">
           <p className="text-xs text-muted-foreground mb-2 font-medium">Тип мероприятия</p>
           <div className="flex flex-wrap gap-2">
-            {BASE_EVENT_TYPES.map((t) => (
+            {types.map((t) => (
               <button
                 key={t.value}
                 type="button"
                 onClick={() => {
                   set({ event_type: t.value, event_type_icon: t.icon });
                   setShowTypeSelector(false);
+                  setShowCustomInput(false);
                 }}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
                   fd.event_type === t.value
@@ -106,7 +102,48 @@ export default function LiveEditorHero({ fd, set }: Props) {
                 {t.label}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => setShowCustomInput(!showCustomInput)}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-dashed border-primary text-primary hover:bg-primary/5 transition-colors"
+            >
+              <Icon name="Plus" size={13} />
+              Свой тип
+            </button>
           </div>
+          {showCustomInput && (
+            <div className="flex gap-2 mt-2">
+              <Input
+                className="h-7 text-xs"
+                placeholder="Например: Женская, Нетворкинг..."
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && customInput.trim()) {
+                    set({ event_type: customInput.trim(), event_type_icon: 'Circle' });
+                    setShowTypeSelector(false);
+                    setShowCustomInput(false);
+                    setCustomInput('');
+                  }
+                }}
+                maxLength={100}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (customInput.trim()) {
+                    set({ event_type: customInput.trim(), event_type_icon: 'Circle' });
+                    setShowTypeSelector(false);
+                    setShowCustomInput(false);
+                    setCustomInput('');
+                  }
+                }}
+                className="text-xs px-3 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                Готово
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
+import { useEventTypes } from "@/hooks/useEventTypes";
 
 interface Event {
   event_type: string;
@@ -17,37 +18,13 @@ interface Props {
   onFormChange: (data: Event) => void;
 }
 
-const BASE_EVENT_TYPES = [
-  { value: 'знакомство', label: 'Знакомство', icon: 'Users' },
-  { value: 'свидание', label: 'Свидание', icon: 'Heart' },
-  { value: 'обучение', label: 'Обучение', icon: 'GraduationCap' },
-  { value: 'встреча', label: 'Встреча', icon: 'Coffee' },
-  { value: 'вечеринка', label: 'Вечеринка', icon: 'PartyPopper' },
-  { value: 'спорт', label: 'Спорт', icon: 'Dumbbell' },
-  { value: 'другое', label: 'Другое', icon: 'Circle' },
-];
-
-const STORAGE_KEY = 'org_custom_event_types';
-
-function loadCustomTypes(): { value: string; label: string; icon: string }[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  } catch {
-    return [];
-  }
-}
-
-function saveCustomTypes(types: { value: string; label: string; icon: string }[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(types));
-}
+const ICON_OPTIONS = ["Users", "Heart", "GraduationCap", "Coffee", "PartyPopper", "Dumbbell", "Sparkles", "Star", "Flame", "Zap", "Music", "Leaf", "Sun", "Moon", "Wind", "Droplets", "Shield", "Award", "Gift", "Camera"];
 
 export default function EventFormTypeSelector({ formData, onFormChange }: Props) {
+  const { types, loading } = useEventTypes();
   const [customTypeName, setCustomTypeName] = useState('');
   const [customTypeIcon, setCustomTypeIcon] = useState('Circle');
   const [showCustomFields, setShowCustomFields] = useState(false);
-  const [customTypes, setCustomTypes] = useState<{ value: string; label: string; icon: string }[]>(loadCustomTypes);
-
-  const eventTypes = [...BASE_EVENT_TYPES, ...customTypes];
 
   const handleTypeChange = (value: string) => {
     if (value === 'custom') {
@@ -56,42 +33,20 @@ export default function EventFormTypeSelector({ formData, onFormChange }: Props)
       setShowCustomFields(true);
       return;
     }
-    const selectedType = eventTypes.find(t => t.value === value);
-    if (selectedType) {
-      onFormChange({
-        ...formData,
-        event_type: selectedType.value,
-        event_type_icon: selectedType.icon
-      });
+    const selected = types.find(t => t.value === value);
+    if (selected) {
+      onFormChange({ ...formData, event_type: selected.value, event_type_icon: selected.icon });
     }
     setShowCustomFields(false);
   };
 
-  const handleCustomTypeApply = () => {
+  const handleCustomApply = () => {
     if (!customTypeName.trim()) return;
-    const newType = { value: customTypeName.trim(), label: customTypeName.trim(), icon: customTypeIcon || 'Circle' };
-    const exists = eventTypes.find(t => t.value === newType.value);
-    if (!exists) {
-      const updated = [...customTypes, newType];
-      setCustomTypes(updated);
-      saveCustomTypes(updated);
-    }
-    onFormChange({
-      ...formData,
-      event_type: newType.value,
-      event_type_icon: newType.icon
-    });
+    onFormChange({ ...formData, event_type: customTypeName.trim(), event_type_icon: customTypeIcon });
     setShowCustomFields(false);
   };
 
-  const handleDeleteCustomType = (value: string) => {
-    const updated = customTypes.filter(t => t.value !== value);
-    setCustomTypes(updated);
-    saveCustomTypes(updated);
-    if (formData.event_type === value) {
-      onFormChange({ ...formData, event_type: 'другое', event_type_icon: 'Circle' });
-    }
-  };
+  const currentIcon = types.find(t => t.value === formData.event_type)?.icon || formData.event_type_icon || 'Users';
 
   return (
     <>
@@ -100,17 +55,18 @@ export default function EventFormTypeSelector({ formData, onFormChange }: Props)
         <Select
           value={formData.event_type || 'знакомство'}
           onValueChange={handleTypeChange}
+          disabled={loading}
         >
           <SelectTrigger>
             <SelectValue>
               <div className="flex items-center gap-2">
-                <Icon name={formData.event_type_icon || 'Users'} size={18} />
+                <Icon name={currentIcon} size={18} />
                 <span>{formData.event_type || 'Знакомство'}</span>
               </div>
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {BASE_EVENT_TYPES.map((type) => (
+            {types.map((type) => (
               <SelectItem key={type.value} value={type.value}>
                 <div className="flex items-center gap-2">
                   <Icon name={type.icon} size={18} />
@@ -118,33 +74,10 @@ export default function EventFormTypeSelector({ formData, onFormChange }: Props)
                 </div>
               </SelectItem>
             ))}
-            {customTypes.length > 0 && (
-              <>
-                <div className="px-2 py-1.5 text-xs text-muted-foreground font-medium border-t mt-1 pt-2">Мои типы</div>
-                {customTypes.map((type) => (
-                  <div key={type.value} className="flex items-center pr-1">
-                    <SelectItem value={type.value} className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <Icon name={type.icon} size={18} />
-                        <span>{type.label}</span>
-                      </div>
-                    </SelectItem>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); handleDeleteCustomType(type.value); }}
-                      className="ml-1 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex-shrink-0"
-                      title="Удалить тип"
-                    >
-                      <Icon name="X" size={13} />
-                    </button>
-                  </div>
-                ))}
-              </>
-            )}
             <SelectItem value="custom" className="border-t mt-1">
               <div className="flex items-center gap-2 text-primary">
                 <Icon name="Plus" size={18} />
-                <span>Добавить свой тип...</span>
+                <span>Указать свой тип...</span>
               </div>
             </SelectItem>
           </SelectContent>
@@ -159,7 +92,7 @@ export default function EventFormTypeSelector({ formData, onFormChange }: Props)
                 <Label htmlFor="custom_type_name">Название типа *</Label>
                 <Input
                   id="custom_type_name"
-                  placeholder="Например: Мастер-класс"
+                  placeholder="Например: Женская баня, Нетворкинг"
                   value={customTypeName}
                   onChange={(e) => setCustomTypeName(e.target.value)}
                   maxLength={100}
@@ -168,7 +101,7 @@ export default function EventFormTypeSelector({ formData, onFormChange }: Props)
               <div>
                 <Label>Иконка</Label>
                 <div className="grid grid-cols-7 gap-2 mt-2">
-                  {["Users", "Heart", "GraduationCap", "Coffee", "PartyPopper", "Dumbbell", "Sparkles", "Star", "Flame", "Zap", "Music", "Leaf", "Sun", "Moon", "Wind", "Droplets", "Shield", "Award", "Gift", "Camera"].map((icon) => (
+                  {ICON_OPTIONS.map((icon) => (
                     <button
                       key={icon}
                       type="button"
@@ -182,15 +115,10 @@ export default function EventFormTypeSelector({ formData, onFormChange }: Props)
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button type="button" size="sm" onClick={handleCustomTypeApply}>
+                <Button type="button" size="sm" onClick={handleCustomApply}>
                   Применить
                 </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowCustomFields(false)}
-                >
+                <Button type="button" size="sm" variant="outline" onClick={() => setShowCustomFields(false)}>
                   Отмена
                 </Button>
               </div>
