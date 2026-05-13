@@ -11,18 +11,33 @@ import { ru } from "date-fns/locale";
 import Header from "@/components/Header";
 import DynamicPricingBlock from "@/components/events/DynamicPricingBlock";
 import CrowdfundWidget from "@/components/events/CrowdfundWidget";
+import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
+import func2url from "../../backend/func2url.json";
+
+const MEDIA_API = func2url["media-api"];
 
 export default function EventDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [event, setEvent] = useState<EventItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [extVideos, setExtVideos] = useState<VideoItem[]>([]);
+  const [eventPhotos, setEventPhotos] = useState<{ id: number; url: string }[]>([]);
 
   useEffect(() => {
     if (!slug) return;
     eventsApi.getBySlug(slug).then((data) => {
-      setEvent(mapApiEvent(data));
+      const mapped = mapApiEvent(data);
+      setEvent(mapped);
       setLoading(false);
+      if (mapped.id) {
+        fetch(`${MEDIA_API}/?videos=1&owner_type=event&owner_id=${mapped.id}`)
+          .then((r) => r.json())
+          .then((d) => setExtVideos(d.videos || []));
+        fetch(`${MEDIA_API}/?event_media=1&event_id=${mapped.id}`)
+          .then((r) => r.json())
+          .then((d) => setEventPhotos((d.media || []).filter((m: { media_type: string }) => m.media_type === "photo")));
+      }
     }).catch(() => {
       setNotFound(true);
       setLoading(false);
@@ -147,6 +162,28 @@ export default function EventDetail() {
                     </ul>
                   </CardContent>
                 </Card>
+              </section>
+            )}
+
+            {/* Фотографии с события */}
+            {eventPhotos.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold mb-3">Фото с события</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {eventPhotos.map((photo) => (
+                    <a key={photo.id} href={photo.url} target="_blank" rel="noopener noreferrer" className="block rounded-xl overflow-hidden aspect-square bg-muted hover:opacity-90 transition-opacity">
+                      <img src={photo.url} alt="" className="w-full h-full object-cover" />
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Видео с события */}
+            {extVideos.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold mb-3">Видео</h2>
+                <VideoGallery videos={extVideos} />
               </section>
             )}
 
