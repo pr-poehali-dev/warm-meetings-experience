@@ -294,6 +294,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
           <div className="max-w-2xl mx-auto">
             <LiveEventEditor
               formData={formData}
+              initialData={selectedEvent}
               loading={orgFormLoading}
               onFormChange={(data) => setFormData(data as OrgEvent)}
               onSubmit={async (e, _saveAndNew, override) => {

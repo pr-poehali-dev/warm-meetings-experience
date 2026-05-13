@@ -440,7 +440,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id required'})}
 
         admin = has_role(cur, schema, user_id, 'admin')
-        cur.execute(f"SELECT organizer_id, is_visible, status FROM {schema}.events WHERE id = {event_id}")
+        cur.execute(f"SELECT organizer_id, is_visible, status, title, event_date, bath_name, bath_address, price_amount, price_label, image_url, short_description, full_description, description, pricing_lines, end_date FROM {schema}.events WHERE id = {event_id}")
         existing = cur.fetchone()
         if not existing:
             conn.close()
@@ -449,6 +449,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             conn.close()
             return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Forbidden'})}
         was_hidden = not existing['is_visible']
+        was_published = existing['status'] in ('published', 'private')
 
         sets = []
         for field in ['title','short_description','full_description','description','event_date','start_time','end_time','event_type','event_type_icon','occupancy','bath_name','bath_address','image_url','price','price_label','slug']:
@@ -515,6 +516,33 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
         conn.commit()
         conn.close()
         updated = dict(row)
+
+        # Уведомление модератора при изменении чувствительных полей опубликованного события
+        if was_published and not admin:
+            _SENSITIVE = ['title', 'short_description', 'full_description', 'description',
+                          'event_date', 'end_date', 'bath_name', 'bath_address',
+                          'price_amount', 'price_label', 'pricing_lines', 'image_url']
+            _LABELS = {
+                'title': 'название', 'short_description': 'краткое описание',
+                'full_description': 'полное описание', 'description': 'описание',
+                'event_date': 'дата', 'end_date': 'дата окончания',
+                'bath_name': 'место', 'bath_address': 'адрес',
+                'price_amount': 'цена', 'price_label': 'текст цены',
+                'pricing_lines': 'состав участия', 'image_url': 'фото обложки',
+            }
+            changed = [_LABELS[f] for f in _SENSITIVE
+                       if f in body and str(body.get(f, '')) != str(existing.get(f, '') or '')]
+            if changed:
+                tg_notify_admin(
+                    f"✏️ <b>Правки в опубликованном событии</b>\n\n"
+                    f"🎪 <b>{updated.get('title', '—')}</b>\n"
+                    f"📅 {updated.get('event_date', '—')}\n"
+                    f"📍 {updated.get('bath_name', '—')}\n"
+                    f"👤 Организатор ID: {user_id}\n\n"
+                    f"Изменено: {', '.join(changed)}\n\n"
+                    f"Проверьте актуальность события в каталоге."
+                )
+
         if was_hidden and updated.get('is_visible'):
             trigger_tg_publish(event_id, updated.get('organizer_id') or user_id)
         if body.get('submit_action') == 'submit' and updated.get('status') == 'pending':

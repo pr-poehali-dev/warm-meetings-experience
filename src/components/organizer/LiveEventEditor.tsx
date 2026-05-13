@@ -5,8 +5,39 @@ import { useToast } from "@/hooks/use-toast";
 import LiveEditorHero from "./LiveEditorHero";
 import LiveEditorCardBody from "./LiveEditorCardBody";
 
+const SENSITIVE_FIELDS: (keyof OrgEvent)[] = [
+  "title", "short_description", "full_description", "description",
+  "event_date", "end_date", "bath_name", "bath_address",
+  "price_amount", "price_label", "pricing_lines",
+  "image_url",
+];
+
+const SENSITIVE_LABELS: Partial<Record<keyof OrgEvent, string>> = {
+  title: "название",
+  short_description: "краткое описание",
+  full_description: "полное описание",
+  description: "описание",
+  event_date: "дата",
+  end_date: "дата окончания",
+  bath_name: "место",
+  bath_address: "адрес",
+  price_amount: "цена",
+  price_label: "текст цены",
+  pricing_lines: "состав участия",
+  image_url: "фото обложки",
+};
+
+function detectSensitiveChanges(initial: OrgEvent, current: OrgEvent): string[] {
+  return SENSITIVE_FIELDS.filter((f) => {
+    const a = initial[f];
+    const b = current[f];
+    return JSON.stringify(a) !== JSON.stringify(b);
+  }).map((f) => SENSITIVE_LABELS[f] || String(f));
+}
+
 interface Props {
   formData: OrgEvent;
+  initialData?: OrgEvent | null;
   loading: boolean;
   onFormChange: (data: OrgEvent) => void;
   onSubmit: (e: React.FormEvent, saveAndNew?: boolean, override?: Partial<OrgEvent> & { submit_action?: string }) => void;
@@ -23,6 +54,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string; icon: string
 
 export default function LiveEventEditor({
   formData: fd,
+  initialData,
   loading,
   onFormChange,
   onSubmit,
@@ -32,6 +64,11 @@ export default function LiveEventEditor({
   const isEditing = Boolean(fd.id);
   const currentStatus = fd.status || "draft";
   const statusInfo = STATUS_LABELS[currentStatus] || STATUS_LABELS.draft;
+
+  const isPublished = currentStatus === "published" || currentStatus === "private";
+  const sensitiveChanged = isPublished && initialData
+    ? detectSensitiveChanges(initialData, fd)
+    : [];
 
   const set = (patch: Partial<OrgEvent>) => onFormChange({ ...fd, ...patch });
 
@@ -59,7 +96,6 @@ export default function LiveEventEditor({
   };
 
   const isPending = currentStatus === "pending";
-  const isPublished = currentStatus === "published";
   const isPrivate = currentStatus === "private";
 
   return (
@@ -118,6 +154,19 @@ export default function LiveEventEditor({
           <div>
             <div className="font-medium">Приватное событие</div>
             <div className="mt-0.5 text-xs text-purple-600">Не отображается в каталоге. Участники могут присоединиться только по прямой ссылке.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Sensitive changes warning for published events */}
+      {isPublished && sensitiveChanged.length > 0 && (
+        <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700 flex items-start gap-2">
+          <Icon name="AlertTriangle" size={16} className="flex-shrink-0 mt-0.5" />
+          <div>
+            <div className="font-medium">Изменены важные поля</div>
+            <div className="mt-0.5 text-xs text-amber-600">
+              Изменено: {sensitiveChanged.join(", ")}. Правки сохранятся сразу, но модератор получит уведомление на проверку.
+            </div>
           </div>
         </div>
       )}
