@@ -169,15 +169,30 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
           />
         </div>
         {totalSpots > 0 && (
-          <span
-            className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${spotsColor(spotsLeft)}`}
-          >
-            {spotsLeft === 0
-              ? "Мест нет"
-              : spotsLeft <= 2
-                ? `Последние ${spotsLeft}`
-                : `Осталось ${spotsLeft}`}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Свободно:</span>
+            <input
+              type="number"
+              value={spotsLeft || ""}
+              min={0}
+              max={totalSpots}
+              onChange={(e) => {
+                const v = Math.min(parseInt(e.target.value) || 0, totalSpots);
+                set({ spots_left: v });
+              }}
+              className="w-14 text-sm font-medium bg-transparent border-b border-dashed border-muted-foreground/30 outline-none text-center hover:border-primary focus:border-primary transition-colors"
+              placeholder="0"
+            />
+            <span
+              className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${spotsColor(spotsLeft)}`}
+            >
+              {spotsLeft === 0
+                ? "Мест нет"
+                : spotsLeft <= 2
+                  ? `Последние ${spotsLeft}`
+                  : `Осталось ${spotsLeft}`}
+            </span>
+          </div>
         )}
       </div>
 
