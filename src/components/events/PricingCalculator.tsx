@@ -7,11 +7,22 @@ interface PricingCalculatorProps {
 }
 
 function parsePrice(line: string): number | null {
+  // Сначала ищем число с явным символом рубля
   const cleaned = line.replace(/\s/g, "");
-  const match = cleaned.match(/(\d[\d\s]*)(?:₽|руб\.?)/i);
-  if (!match) return null;
-  const num = parseInt(match[1].replace(/\D/g, ""), 10);
-  return isNaN(num) ? null : num;
+  const matchRub = cleaned.match(/(\d[\d]*)(?:₽|руб\.?)/i);
+  if (matchRub) {
+    const num = parseInt(matchRub[1], 10);
+    return isNaN(num) ? null : num;
+  }
+  // Иначе — первое число от 100 и выше в строке считаем ценой
+  const matchNum = line.match(/\b(\d[\d\s]*)\b/g);
+  if (matchNum) {
+    for (const m of matchNum) {
+      const num = parseInt(m.replace(/\s/g, ""), 10);
+      if (!isNaN(num) && num >= 100) return num;
+    }
+  }
+  return null;
 }
 
 function formatAmount(n: number): string {
