@@ -573,7 +573,7 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
 
         cur.execute(f"""
             SELECT e.id, e.organizer_id, e.title, e.event_date, e.start_time, e.bath_name,
-                   u.name as organizer_name
+                   e.is_private, u.name as organizer_name
             FROM {schema}.events e
             LEFT JOIN {schema}.users u ON u.id = e.organizer_id
             WHERE e.id = {event_id}
