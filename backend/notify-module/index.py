@@ -188,7 +188,7 @@ def build_vars(signup, event):
         "event_date": str(event.get("event_date", "")),
         "event_time": str(event.get("start_time", "")),
         "bath_name": event.get("bath_name") or "",
-        "price": str(event.get("price_amount") or ""),
+        "price": str(event.get("price_amount")) if event.get("price_amount") is not None else "",
         "organizer_name": event.get("organizer_name") or "",
         "event_url": event.get("event_url") or "",
     }
@@ -235,9 +235,7 @@ def vk_event_signature(event, sender_role="организатор"):
     if organizer:
         parts.append(f"👤 Пишет {sender_role}: {organizer}")
 
-    url = event.get("event_url") or event_public_url(event)
-    if url:
-        parts.append(f"✉️ Чтобы ответить — откройте страницу события и нажмите «Задать вопрос»:\n{url}")
+    parts.append("✉️ Чтобы ответить — напишите в этом диалоге")
 
     return "\n".join(parts)
 

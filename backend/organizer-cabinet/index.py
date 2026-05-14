@@ -1475,7 +1475,7 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, headers):
             if not signup:
                 continue
 
-            # Подпись для ВК с реквизитами события
+            # Подпись для ВК с реквизитами события (без ссылки — только диалог)
             site_url = os.environ.get("SITE_URL", "https://warm-meetings-experience.poehali.dev").rstrip("/")
             evt_url = f"{site_url}/events/{signup['event_slug']}" if signup.get('event_slug') else f"{site_url}/events/{signup['event_id']}"
             sig_parts = []
@@ -1491,7 +1491,7 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, headers):
                 sig_parts.append(f"📍 Место: {signup['event_bath']}")
             if signup.get('organizer_name'):
                 sig_parts.append(f"👤 Пишет организатор: {signup['organizer_name']}")
-            sig_parts.append(f"✉️ Чтобы ответить — откройте страницу события и нажмите «Задать вопрос»:\n{evt_url}")
+            sig_parts.append("✉️ Чтобы ответить — напишите в этом диалоге")
             vk_text = (text or '').rstrip() + "\n\n— — —\n" + "\n".join(sig_parts)
 
             channel = signup['preferred_channel'] or 'site'
