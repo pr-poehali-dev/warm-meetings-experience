@@ -180,13 +180,33 @@ def render_template(text, variables):
     return text
 
 
+MONTHS_RU = ["января","февраля","марта","апреля","мая","июня",
+             "июля","августа","сентября","октября","ноября","декабря"]
+
+def fmt_date(val):
+    """2026-05-20 → 20 мая"""
+    try:
+        from datetime import date as _date
+        if hasattr(val, "month"):
+            d = val
+        else:
+            d = _date.fromisoformat(str(val)[:10])
+        return f"{d.day} {MONTHS_RU[d.month - 1]}"
+    except Exception:
+        return str(val)
+
+def fmt_time(val):
+    """18:00:00 → 18:00"""
+    s = str(val)
+    return s[:5] if len(s) >= 5 else s
+
 def build_vars(signup, event):
     """Собирает словарь переменных из данных участника и события."""
     return {
         "name": signup.get("name") or signup.get("recipient_name") or "участник",
         "event_title": event.get("title", ""),
-        "event_date": str(event.get("event_date", "")),
-        "event_time": str(event.get("start_time", "")),
+        "event_date": fmt_date(event.get("event_date", "")) if event.get("event_date") else "",
+        "event_time": fmt_time(event.get("start_time", "")) if event.get("start_time") else "",
         "bath_name": event.get("bath_name") or "",
         "price": str(event.get("price_amount")) if event.get("price_amount") is not None else "",
         "organizer_name": event.get("organizer_name") or "",
