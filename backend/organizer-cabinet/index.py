@@ -1483,8 +1483,16 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, headers):
                 sig_parts.append(f"📌 Событие: {signup['event_title']}")
             _date = signup.get('event_date')
             _time = signup.get('start_time')
+            MONTHS_RU = ["января","февраля","марта","апреля","мая","июня",
+                         "июля","августа","сентября","октября","ноября","декабря"]
             when = []
-            if _date: when.append(str(_date))
+            if _date:
+                try:
+                    from datetime import date as _dclass
+                    d = _date if hasattr(_date, 'month') else _dclass.fromisoformat(str(_date)[:10])
+                    when.append(f"{d.day} {MONTHS_RU[d.month - 1]}")
+                except Exception:
+                    when.append(str(_date))
             if _time: when.append(str(_time)[:5])
             if when: sig_parts.append(f"🗓 Когда: {' в '.join(when)}")
             if signup.get('event_bath'):
