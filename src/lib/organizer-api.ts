@@ -1,6 +1,7 @@
 import { authenticatedRequest, adminModerationRequest } from "@/lib/http";
 
 const BASE = "https://functions.poehali.dev/730d60f4-a9cf-4f56-90d9-f48caaa9007d";
+const GUESTS_BASE = "https://functions.poehali.dev/7faf1d56-662a-4864-b752-0e8cabfcb78c";
 
 export interface PricingTier {
   id?: number;
@@ -267,24 +268,24 @@ export const organizerApi = {
     }),
 
   getGuests: (eventId: number): Promise<{ event: OrgEvent; guests: Guest[]; stats: GuestStats }> =>
-    authenticatedRequest(`${BASE}/?resource=guests&event_id=${eventId}`),
+    authenticatedRequest(`${GUESTS_BASE}/?resource=guests&event_id=${eventId}`),
 
   updateGuestStatus: (eventId: number, signupId: number, status: string): Promise<{ ok: boolean }> =>
-    authenticatedRequest(`${BASE}/?resource=guests`, {
+    authenticatedRequest(`${GUESTS_BASE}/?resource=guests`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ event_id: eventId, signup_id: signupId, status }),
     }),
 
   getMessages: (signupId: number): Promise<{ messages: GuestMessage[] }> =>
-    authenticatedRequest(`${BASE}/?resource=messages&signup_id=${signupId}`),
+    authenticatedRequest(`${GUESTS_BASE}/?resource=messages&signup_id=${signupId}`),
 
   sendMessages: (signupIds: number[], message: string): Promise<{
     ok: boolean;
     sent: Array<{ signup_id: number; channel: string; delivered: boolean | null; error: string | null }>;
     errors: Array<{ signup_id: number; channel: string; error: string }>;
   }> =>
-    authenticatedRequest(`${BASE}/?resource=messages`, {
+    authenticatedRequest(`${GUESTS_BASE}/?resource=messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ signup_ids: signupIds, message }),
