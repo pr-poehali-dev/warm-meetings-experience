@@ -11,6 +11,7 @@ import requests as http_requests
 from shared import *
 
 TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
+NOTIFY_MODULE_URL = "https://functions.poehali.dev/47bb36f1-5d1a-45e7-86e3-bd7a07a3d8de"
 
 VK_API_URL = "https://api.vk.com/method"
 VK_API_VERSION = "5.131"
@@ -1453,113 +1454,37 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, headers):
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'signup_ids and message required'})}
 
-        sent = []
-        errors = []
-        for sid in signup_ids:
-            cur.execute(f"""
-                SELECT s.id, s.name, s.phone, s.email, s.telegram, s.preferred_channel, s.user_id,
-                       u.tg_chat_id, u.vk_id, u.tg_notify_allowed, u.vk_notify_allowed,
-                       u.notify_email, u.notify_vk, u.notify_telegram,
-                       e.title as event_title, e.event_date, e.start_time,
-                       e.slug as event_slug, e.id as event_id,
-                       COALESCE(b.name, e.bath_name) as event_bath,
-                       COALESCE(org.name, org.email, '') as organizer_name
-                FROM {schema}.event_signups s
-                LEFT JOIN {schema}.users u ON u.id = s.user_id
-                JOIN {schema}.events e ON e.id = s.event_id
-                LEFT JOIN {schema}.baths b ON b.id = e.bath_id
-                LEFT JOIN {schema}.users org ON org.id = e.organizer_id
-                WHERE s.id = {sid}
-            """)
-            signup = cur.fetchone()
-            if not signup:
-                continue
-
-            # Подпись для ВК с реквизитами события (без ссылки — только диалог)
-            site_url = os.environ.get("SITE_URL", "https://warm-meetings-experience.poehali.dev").rstrip("/")
-            evt_url = f"{site_url}/events/{signup['event_slug']}" if signup.get('event_slug') else f"{site_url}/events/{signup['event_id']}"
-            sig_parts = []
-            if signup.get('event_title'):
-                sig_parts.append(f"📌 Событие: {signup['event_title']}")
-            _date = signup.get('event_date')
-            _time = signup.get('start_time')
-            MONTHS_RU = ["января","февраля","марта","апреля","мая","июня",
-                         "июля","августа","сентября","октября","ноября","декабря"]
-            when = []
-            if _date:
-                try:
-                    from datetime import date as _dclass
-                    d = _date if hasattr(_date, 'month') else _dclass.fromisoformat(str(_date)[:10])
-                    when.append(f"{d.day} {MONTHS_RU[d.month - 1]}")
-                except Exception:
-                    when.append(str(_date))
-            if _time: when.append(str(_time)[:5])
-            if when: sig_parts.append(f"🗓 Когда: {' в '.join(when)}")
-            if signup.get('event_bath'):
-                sig_parts.append(f"📍 Место: {signup['event_bath']}")
-            if signup.get('organizer_name'):
-                sig_parts.append(f"👤 Пишет организатор: {signup['organizer_name']}")
-            sig_parts.append("✉️ Чтобы ответить — напишите в этом диалоге")
-            vk_text = (text or '').rstrip() + "\n\n— — —\n" + "\n".join(sig_parts)
-
-            channel = signup['preferred_channel'] or 'site'
-            if channel == 'site':
-                if signup.get('vk_id') and signup.get('vk_notify_allowed'):
-                    channel = 'vk'
-                elif signup.get('tg_chat_id') and signup.get('tg_notify_allowed'):
-                    channel = 'telegram'
-                elif signup.get('notify_email') and signup.get('email'):
-                    channel = 'email'
-
-            delivered = None
-            error_msg = None
-
-            if channel == 'vk' and signup.get('vk_id'):
-                ok, err = send_vk_message(signup['vk_id'], vk_text)
-                delivered = ok
-                if not ok:
-                    error_msg = err
-                    errors.append({'signup_id': sid, 'channel': 'vk', 'error': err})
-            elif channel == 'telegram' and signup.get('tg_chat_id'):
-                try:
-                    http_requests.post(
-                        TG_BOT_URL,
-                        json={'action': 'send_message', 'chat_id': signup['tg_chat_id'], 'text': text},
-                        timeout=8
-                    )
-                    delivered = True
-                except Exception as e:
-                    delivered = False
-                    error_msg = str(e)
-                    errors.append({'signup_id': sid, 'channel': 'telegram', 'error': str(e)})
-            elif channel == 'site':
-                # Канал «Сайт» — гость увидит сообщение в своём кабинете
-                if signup.get('user_id'):
-                    delivered = True
-                else:
-                    delivered = False
-                    error_msg = 'Гость не зарегистрирован — нет доступа в кабинет'
-                    errors.append({'signup_id': sid, 'channel': 'site', 'error': error_msg})
-
-            delivered_sql = 'NULL' if delivered is None else ('TRUE' if delivered else 'FALSE')
-            cur.execute(f"""
-                INSERT INTO {schema}.guest_messages (event_id, signup_id, direction, channel, body, delivered)
-                SELECT s.event_id, {sid}, 'out', '{channel}', $msg${text}$msg$, {delivered_sql}
-                FROM {schema}.event_signups s WHERE s.id = {sid}
-            """)
-
-            cur.execute(f"""
-                UPDATE {schema}.event_signups
-                SET status = CASE WHEN status IN ('new', 'новая') THEN 'wrote' ELSE status END,
-                    wrote_at = NOW()
-                WHERE id = {sid}
-            """)
-
-            sent.append({'signup_id': sid, 'channel': channel, 'delivered': delivered, 'error': error_msg})
-
-        conn.commit()
         conn.close()
-        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'sent': sent, 'errors': errors})}
+
+        # Делегируем отправку в notify-module — единая точка логики доставки
+        session_token = (event.get('headers') or {}).get('X-Session-Token') or \
+                        (event.get('headers') or {}).get('x-session-token') or ''
+        try:
+            resp = http_requests.post(
+                f"{NOTIFY_MODULE_URL}?resource=send",
+                json={'signup_ids': signup_ids, 'body_html': text, 'channel': 'auto'},
+                headers={'X-Session-Token': session_token, 'Content-Type': 'application/json'},
+                timeout=25,
+            )
+            data = resp.json()
+        except Exception as e:
+            return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': str(e)}), 'isBase64Encoded': False}
+
+        # Приводим ответ notify-module к формату который ожидает фронтенд GuestDialog
+        sent_list = []
+        for f in (data.get('failures') or []):
+            sent_list.append({'signup_id': f.get('signup_id'), 'channel': f.get('channel', 'auto'),
+                              'delivered': False, 'error': f.get('reason')})
+        by_ch = data.get('by_channel') or {}
+        for ch, count in by_ch.items():
+            for sid in signup_ids:
+                if count > 0:
+                    sent_list.append({'signup_id': sid, 'channel': ch, 'delivered': True, 'error': None})
+                    count -= 1
+
+        return {'statusCode': 200, 'headers': headers,
+                'body': json.dumps({'ok': True, 'sent': sent_list, 'errors': []}),
+                'isBase64Encoded': False}
 
 
 def handle_event_questions(event, method, params, cur, conn, user_id, schema, headers):
