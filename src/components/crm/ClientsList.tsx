@@ -9,6 +9,7 @@ import { crmApi, CrmClient } from "@/lib/crm-api";
 interface ClientsListProps {
   onOpenClient: (key: string) => void;
   onAddExternal: () => void;
+  onImportCsv: () => void;
 }
 
 function formatMoney(n: number) {
@@ -25,7 +26,7 @@ function formatDate(s: string | null) {
   }
 }
 
-export default function ClientsList({ onOpenClient, onAddExternal }: ClientsListProps) {
+export default function ClientsList({ onOpenClient, onAddExternal, onImportCsv }: ClientsListProps) {
   const [clients, setClients] = useState<CrmClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -66,6 +67,10 @@ export default function ClientsList({ onOpenClient, onAddExternal }: ClientsList
           </div>
           <Button type="submit" variant="secondary" size="sm">Найти</Button>
         </form>
+        <Button size="sm" variant="outline" onClick={onImportCsv} className="gap-1.5">
+          <Icon name="Upload" size={14} />
+          Импорт CSV
+        </Button>
         <Button size="sm" onClick={onAddExternal} className="gap-1.5">
           <Icon name="UserPlus" size={14} />
           Добавить клиента

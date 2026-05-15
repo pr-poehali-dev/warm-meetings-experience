@@ -4,6 +4,7 @@ import ClientsList from "./ClientsList";
 import ClientCard from "./ClientCard";
 import TagsManager from "./TagsManager";
 import AddClientDialog from "./AddClientDialog";
+import ImportCsvDialog from "./ImportCsvDialog";
 import NotifyModule from "@/components/notify/NotifyModule";
 
 interface CrmModuleProps {
@@ -16,6 +17,7 @@ export default function CrmModule({ role }: CrmModuleProps) {
   const [tab, setTab] = useState<Tab>("clients");
   const [openClientKey, setOpenClientKey] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   const TabBtn = ({ id, icon, label }: { id: Tab; icon: string; label: string }) => (
@@ -55,6 +57,7 @@ export default function CrmModule({ role }: CrmModuleProps) {
           <ClientsList
             onOpenClient={setOpenClientKey}
             onAddExternal={() => setAddOpen(true)}
+            onImportCsv={() => setImportOpen(true)}
           />
         )}
         {tab === "tags" && <TagsManager />}
@@ -73,6 +76,12 @@ export default function CrmModule({ role }: CrmModuleProps) {
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onAdded={() => setReloadKey((k) => k + 1)}
+      />
+
+      <ImportCsvDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => setReloadKey((k) => k + 1)}
       />
     </div>
   );

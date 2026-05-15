@@ -113,6 +113,8 @@ def handler(event: dict, context) -> dict:
                 return update_note(cur, conn, user_id, schema, event, params)
         if resource == 'external_guest' and method == 'POST':
             return create_external_guest(cur, conn, user_id, schema, event)
+        if resource == 'import_csv' and method == 'POST':
+            return import_csv(cur, conn, user_id, schema, event)
     finally:
         try:
             conn.close()
@@ -531,3 +533,107 @@ def create_external_guest(cur, conn, user_id, schema, event):
     """)
     conn.commit()
     return respond(200, {'guest': dict(cur.fetchone()), 'created': True})
+
+
+def _norm_phone(p):
+    if not p:
+        return ''
+    digits = ''.join(ch for ch in str(p) if ch.isdigit())
+    return digits[-10:] if len(digits) >= 10 else digits
+
+
+def import_csv(cur, conn, user_id, schema, event):
+    """Массовый импорт клиентов из CSV.
+
+    Body: {"rows": [{"name","phone","email","telegram","vk","note"}, ...], "source": "csv"}
+    Возвращает: {created, skipped_duplicates, errors, total}.
+    Дубли определяются по нормализованному телефону (последние 10 цифр) или email
+    среди уже существующих внешних клиентов И внутри самого файла.
+    """
+    body = json.loads(event.get('body') or '{}')
+    rows = body.get('rows') or []
+    source = (body.get('source') or 'csv').replace("'", "''")[:50]
+
+    if not isinstance(rows, list):
+        return respond(400, {'error': 'rows must be array'})
+    if len(rows) > 5000:
+        return respond(400, {'error': 'too many rows (max 5000)'})
+
+    # Берём существующие телефоны/email одним запросом
+    cur.execute(f"""
+        SELECT id, phone, email
+        FROM {schema}.crm_external_guests
+        WHERE owner_id = {user_id}
+    """)
+    existing_phones = set()
+    existing_emails = set()
+    for r in cur.fetchall():
+        ph = _norm_phone(r.get('phone'))
+        if ph:
+            existing_phones.add(ph)
+        em = (r.get('email') or '').lower().strip()
+        if em:
+            existing_emails.add(em)
+
+    created = 0
+    skipped = 0
+    errors = []
+    notes_to_insert = []  # (external_id, note_text)
+
+    # Внутри-файловые дубли — добавляем в set по мере импорта
+    for idx, row in enumerate(rows):
+        try:
+            name = (row.get('name') or '').strip()
+            if not name:
+                errors.append({'row': idx + 1, 'reason': 'нет имени'})
+                continue
+
+            phone = (row.get('phone') or '').strip()
+            email = (row.get('email') or '').strip().lower()
+            tg = (row.get('telegram') or '').strip()
+            vk = (row.get('vk') or '').strip()
+            note_text = (row.get('note') or '').strip()
+
+            ph_norm = _norm_phone(phone)
+            if (ph_norm and ph_norm in existing_phones) or (email and email in existing_emails):
+                skipped += 1
+                continue
+
+            n = name.replace("'", "''")[:255]
+            ph_esc = phone.replace("'", "''")[:50]
+            em_esc = email.replace("'", "''")[:255]
+            tg_esc = tg.replace("'", "''")[:100]
+            vk_esc = vk.replace("'", "''")[:100]
+
+            cur.execute(f"""
+                INSERT INTO {schema}.crm_external_guests (owner_id, name, phone, email, telegram, vk, source)
+                VALUES ({user_id}, '{n}', NULLIF('{ph_esc}',''), NULLIF('{em_esc}',''), NULLIF('{tg_esc}',''), NULLIF('{vk_esc}',''), '{source}')
+                RETURNING id
+            """)
+            new_id = cur.fetchone()['id']
+            created += 1
+            if ph_norm:
+                existing_phones.add(ph_norm)
+            if email:
+                existing_emails.add(email)
+
+            if note_text:
+                notes_to_insert.append((new_id, note_text))
+        except Exception as e:
+            errors.append({'row': idx + 1, 'reason': str(e)[:200]})
+
+    # Заметки скопом
+    for ext_id, txt in notes_to_insert:
+        t = txt.replace("'", "''")[:5000]
+        cur.execute(f"""
+            INSERT INTO {schema}.crm_notes (owner_id, client_key, body)
+            VALUES ({user_id}, 'ext:{ext_id}', '{t}')
+        """)
+
+    conn.commit()
+    return respond(200, {
+        'total': len(rows),
+        'created': created,
+        'skipped_duplicates': skipped,
+        'errors': errors,
+    })

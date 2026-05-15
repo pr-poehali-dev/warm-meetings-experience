@@ -111,4 +111,27 @@ export const crmApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }),
+
+  importCsv: (rows: CrmImportRow[]): Promise<CrmImportResult> =>
+    authenticatedRequest(`${BASE}/?resource=import_csv`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rows, source: "csv" }),
+    }),
 };
+
+export interface CrmImportRow {
+  name: string;
+  phone?: string;
+  email?: string;
+  telegram?: string;
+  vk?: string;
+  note?: string;
+}
+
+export interface CrmImportResult {
+  total: number;
+  created: number;
+  skipped_duplicates: number;
+  errors: Array<{ row: number; reason: string }>;
+}
