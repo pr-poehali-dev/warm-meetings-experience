@@ -115,6 +115,13 @@ def handler(event: dict, context) -> dict:
             return create_external_guest(cur, conn, user_id, schema, event)
         if resource == 'import_csv' and method == 'POST':
             return import_csv(cur, conn, user_id, schema, event)
+        if resource == 'event_guest':
+            if method == 'PUT':
+                return update_event_guest(cur, conn, user_id, schema, event)
+            if method == 'POST':
+                return add_event_guest(cur, conn, user_id, schema, event)
+            if method == 'DELETE':
+                return delete_event_guest(cur, conn, user_id, schema, params)
     finally:
         try:
             conn.close()
@@ -126,12 +133,21 @@ def handler(event: dict, context) -> dict:
 
 def list_clients(cur, conn, user_id, schema, params):
     """Агрегирует всех клиентов владельца из event_signups, master_bookings, ritual_bookings,
-    crm_external_guests. Группирует по contact_key (телефон/email/user_id)."""
+    crm_external_guests. Группирует по contact_key (телефон/email/user_id).
+
+    Если передан event_id — возвращает только гостей конкретного события,
+    каждая запись отдельно (БЕЗ группировки), со всеми полями event_signups
+    (status, payment_amount, payment_type, attended, comment).
+    """
     search = (params.get('search') or '').strip().lower()
     search_sql = ''
     if search:
         s = search.replace("'", "''")
         search_sql = f" AND (LOWER(COALESCE(name,'')) LIKE '%{s}%' OR LOWER(COALESCE(phone,'')) LIKE '%{s}%' OR LOWER(COALESCE(email,'')) LIKE '%{s}%')"
+
+    event_id_filter = params.get('event_id')
+    if event_id_filter and str(event_id_filter).isdigit():
+        return list_event_guests(cur, user_id, schema, int(event_id_filter), search_sql)
 
     # 1. Гости событий (event_signups) — для организатора
     cur.execute(f"""
@@ -272,6 +288,191 @@ def list_clients(cur, conn, user_id, schema, params):
 
     result.sort(key=lambda x: str(x.get('last_visit_at') or ''), reverse=True)
     return respond(200, {'clients': result, 'total': len(result)})
+
+
+def list_event_guests(cur, user_id, schema, event_id, search_sql):
+    """Гости конкретного события для организатора. Проверяет права через events.organizer_id."""
+    cur.execute(f"SELECT id, title, event_date, organizer_id FROM {schema}.events WHERE id = {event_id}")
+    ev = cur.fetchone()
+    if not ev or ev['organizer_id'] != user_id:
+        return respond(403, {'error': 'no access to event'})
+
+    cur.execute(f"""
+        SELECT s.id AS signup_id, s.user_id, s.name, s.phone, s.email, s.telegram,
+               s.status, s.payment_amount, s.payment_type, s.attended, s.comment,
+               s.consent_pd, s.preferred_channel, s.wrote_at, s.created_at,
+               s.club_fee_paid, s.final_price_due, s.topup_amount, s.joined_after_freeze,
+               u.avatar_url
+        FROM {schema}.event_signups s
+        LEFT JOIN {schema}.users u ON u.id = s.user_id
+        WHERE s.event_id = {event_id} {search_sql}
+        ORDER BY s.created_at DESC
+    """)
+    rows = cur.fetchall()
+
+    # Подтягиваем теги CRM для каждой записи
+    keys = []
+    for r in rows:
+        if r.get('user_id'):
+            keys.append(f"user:{r['user_id']}")
+        elif r.get('phone'):
+            digits = ''.join(ch for ch in r['phone'] if ch.isdigit())
+            if digits:
+                keys.append(f"phone:{digits[-10:]}")
+        elif r.get('email'):
+            keys.append(f"email:{r['email'].lower().strip()}")
+        keys.append(f"signup:{r['signup_id']}")
+
+    tags_by_key = {}
+    if keys:
+        keys_sql = ', '.join(f"'{k}'" for k in set(keys))
+        cur.execute(f"""
+            SELECT gt.client_key, t.id, t.name, t.color
+            FROM {schema}.crm_guest_tags gt
+            JOIN {schema}.crm_tags t ON t.id = gt.tag_id
+            WHERE gt.owner_id = {user_id} AND gt.client_key IN ({keys_sql})
+        """)
+        for r in cur.fetchall():
+            tags_by_key.setdefault(r['client_key'], []).append({
+                'id': r['id'], 'name': r['name'], 'color': r['color']
+            })
+
+    guests = []
+    for r in rows:
+        if r.get('user_id'):
+            ckey = f"user:{r['user_id']}"
+        elif r.get('phone'):
+            digits = ''.join(ch for ch in r['phone'] if ch.isdigit())
+            ckey = f"phone:{digits[-10:]}" if digits else f"signup:{r['signup_id']}"
+        elif r.get('email'):
+            ckey = f"email:{r['email'].lower().strip()}"
+        else:
+            ckey = f"signup:{r['signup_id']}"
+
+        g = dict(r)
+        # Сериализация datetime
+        for k in ('created_at', 'wrote_at'):
+            if g.get(k):
+                g[k] = str(g[k])
+        g['client_key'] = ckey
+        g['tags'] = tags_by_key.get(ckey, []) + tags_by_key.get(f"signup:{r['signup_id']}", [])
+        guests.append(g)
+
+    # Статистика
+    total = len(guests)
+    confirmed = sum(1 for g in guests if g.get('status') in ('confirmed', 'paid', 'подтверждён', 'оплачено'))
+    cancelled = sum(1 for g in guests if g.get('status') in ('cancelled', 'отменено', 'refused'))
+    total_paid = sum(int(g.get('payment_amount') or 0) for g in guests)
+    attended = sum(1 for g in guests if g.get('attended') is True)
+
+    return respond(200, {
+        'mode': 'event_guests',
+        'event': {'id': ev['id'], 'title': ev['title'], 'event_date': str(ev['event_date']) if ev['event_date'] else None},
+        'guests': guests,
+        'stats': {
+            'total': total,
+            'confirmed': confirmed,
+            'cancelled': cancelled,
+            'attended': attended,
+            'total_paid': total_paid,
+        },
+    })
+
+
+def update_event_guest(cur, conn, user_id, schema, event):
+    """Обновление гостя события (status, payment_amount, payment_type, attended, comment, name, phone, email, telegram)."""
+    body = json.loads(event.get('body') or '{}')
+    signup_id = body.get('signup_id')
+    if not signup_id or not str(signup_id).isdigit():
+        return respond(400, {'error': 'signup_id required'})
+    sid = int(signup_id)
+
+    # Проверка прав
+    cur.execute(f"""
+        SELECT s.id FROM {schema}.event_signups s
+        JOIN {schema}.events e ON e.id = s.event_id
+        WHERE s.id = {sid} AND e.organizer_id = {user_id}
+    """)
+    if not cur.fetchone():
+        return respond(403, {'error': 'no access'})
+
+    allowed_str = {'name': 255, 'phone': 50, 'email': 255, 'telegram': 100, 'status': 20, 'payment_type': 20, 'comment': 5000}
+    allowed_int = {'payment_amount', 'club_fee_paid', 'topup_amount', 'final_price_due'}
+    allowed_bool = {'attended', 'consent_pd', 'joined_after_freeze'}
+
+    sets = []
+    for k, maxlen in allowed_str.items():
+        if k in body and body[k] is not None:
+            v = str(body[k]).replace("'", "''")[:maxlen]
+            sets.append(f"{k} = NULLIF('{v}', '')" if k != 'status' else f"{k} = '{v}'")
+    for k in allowed_int:
+        if k in body and body[k] is not None:
+            try:
+                sets.append(f"{k} = {int(body[k])}")
+            except Exception:
+                pass
+    for k in allowed_bool:
+        if k in body and body[k] is not None:
+            sets.append(f"{k} = {'true' if body[k] else 'false'}")
+
+    if not sets:
+        return respond(400, {'error': 'no fields to update'})
+
+    cur.execute(f"UPDATE {schema}.event_signups SET {', '.join(sets)} WHERE id = {sid}")
+    conn.commit()
+    return respond(200, {'ok': True})
+
+
+def add_event_guest(cur, conn, user_id, schema, event):
+    """Добавление гостя в событие вручную."""
+    body = json.loads(event.get('body') or '{}')
+    event_id = body.get('event_id')
+    name = (body.get('name') or '').strip()
+    phone = (body.get('phone') or '').strip()
+    if not event_id or not str(event_id).isdigit() or not name:
+        return respond(400, {'error': 'event_id and name required'})
+    eid = int(event_id)
+
+    cur.execute(f"SELECT id FROM {schema}.events WHERE id = {eid} AND organizer_id = {user_id}")
+    if not cur.fetchone():
+        return respond(403, {'error': 'no access'})
+
+    n = name.replace("'", "''")[:255]
+    ph = phone.replace("'", "''")[:50] or ' '  # phone NOT NULL
+    em = (body.get('email') or '').replace("'", "''")[:255]
+    tg = (body.get('telegram') or '').replace("'", "''")[:100]
+    status = (body.get('status') or 'confirmed').replace("'", "''")[:20]
+    p_type = (body.get('payment_type') or '').replace("'", "''")[:20]
+    p_amount = int(body.get('payment_amount') or 0)
+
+    cur.execute(f"""
+        INSERT INTO {schema}.event_signups
+            (event_id, name, phone, email, telegram, status, payment_type, payment_amount, preferred_channel)
+        VALUES
+            ({eid}, '{n}', '{ph}', NULLIF('{em}',''), NULLIF('{tg}',''), '{status}',
+             NULLIF('{p_type}',''), {p_amount}, 'manual')
+        RETURNING id, name, phone, email, telegram, status, payment_amount, payment_type, attended, comment, created_at
+    """)
+    row = dict(cur.fetchone())
+    if row.get('created_at'):
+        row['created_at'] = str(row['created_at'])
+    conn.commit()
+    return respond(200, {'guest': row})
+
+
+def delete_event_guest(cur, conn, user_id, schema, params):
+    sid = params.get('signup_id')
+    if not sid or not str(sid).isdigit():
+        return respond(400, {'error': 'signup_id required'})
+    sid = int(sid)
+    cur.execute(f"""
+        DELETE FROM {schema}.event_signups
+        WHERE id = {sid} AND event_id IN (
+            SELECT id FROM {schema}.events WHERE organizer_id = {user_id}
+        )
+    """)
+    conn.commit()
+    return respond(200, {'ok': True, 'deleted': cur.rowcount})
 
 
 def get_client(cur, conn, user_id, schema, params):

@@ -54,12 +54,80 @@ export interface CrmClientCard {
   stats: { total_spent: number; visits_count: number; total_bookings: number };
 }
 
+export interface CrmEventGuest {
+  signup_id: number;
+  user_id: number | null;
+  client_key: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  telegram: string | null;
+  status: string;
+  payment_amount: number;
+  payment_type: string | null;
+  attended: boolean | null;
+  comment: string | null;
+  consent_pd: boolean;
+  preferred_channel: string | null;
+  wrote_at: string | null;
+  created_at: string;
+  club_fee_paid: number;
+  final_price_due: number | null;
+  topup_amount: number;
+  joined_after_freeze: boolean;
+  avatar_url: string | null;
+  tags: CrmTag[];
+}
+
+export interface CrmEventGuestsResponse {
+  mode: "event_guests";
+  event: { id: number; title: string; event_date: string | null };
+  guests: CrmEventGuest[];
+  stats: { total: number; confirmed: number; cancelled: number; attended: number; total_paid: number };
+}
+
 export const crmApi = {
   listClients: (search?: string): Promise<{ clients: CrmClient[]; total: number }> => {
     const qs = new URLSearchParams({ resource: "clients" });
     if (search) qs.set("search", search);
     return authenticatedRequest(`${BASE}/?${qs.toString()}`);
   },
+
+  listEventGuests: (eventId: number, search?: string): Promise<CrmEventGuestsResponse> => {
+    const qs = new URLSearchParams({ resource: "clients", event_id: String(eventId) });
+    if (search) qs.set("search", search);
+    return authenticatedRequest(`${BASE}/?${qs.toString()}`);
+  },
+
+  updateEventGuest: (
+    signupId: number,
+    fields: Partial<{
+      name: string; phone: string; email: string; telegram: string;
+      status: string; payment_type: string; comment: string;
+      payment_amount: number; club_fee_paid: number; topup_amount: number; final_price_due: number;
+      attended: boolean; consent_pd: boolean;
+    }>,
+  ): Promise<{ ok: boolean }> =>
+    authenticatedRequest(`${BASE}/?resource=event_guest`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ signup_id: signupId, ...fields }),
+    }),
+
+  addEventGuest: (data: {
+    event_id: number; name: string; phone?: string; email?: string; telegram?: string;
+    status?: string; payment_type?: string; payment_amount?: number;
+  }): Promise<{ guest: CrmEventGuest }> =>
+    authenticatedRequest(`${BASE}/?resource=event_guest`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }),
+
+  deleteEventGuest: (signupId: number): Promise<{ ok: boolean; deleted: number }> =>
+    authenticatedRequest(`${BASE}/?resource=event_guest&signup_id=${signupId}`, {
+      method: "DELETE",
+    }),
 
   getClient: (key: string): Promise<CrmClientCard> =>
     authenticatedRequest(`${BASE}/?resource=client&key=${encodeURIComponent(key)}`),

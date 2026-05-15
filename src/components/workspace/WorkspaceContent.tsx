@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { OrgEvent, DashboardData } from "@/lib/organizer-api";
 import { PartnerBath } from "@/lib/partner-api";
+import React, { useState } from "react";
 import OrgDashboard from "@/components/organizer/OrgDashboard";
 import MyArticles from "@/components/account/MyArticles";
 import LiveEventEditor from "@/components/organizer/LiveEventEditor";
-import UnifiedPeoplePanel from "@/components/organizer/UnifiedPeoplePanel";
+import EventGuestsDialog from "@/components/crm/EventGuestsDialog";
 import TelegramSettings from "@/components/organizer/TelegramSettings";
 import EventCalculator from "@/components/organizer/EventCalculator";
 import EventQuestionsSection from "@/components/organizer/EventQuestionsSection";
@@ -106,9 +107,21 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     refreshTgInfo,
   } = props;
 
+  // Диалог гостей события (CRM)
+  const [guestsDialog, setGuestsDialog] = useState<{ id: number; title: string } | null>(null);
+
+  const guestsDialogNode = guestsDialog ? (
+    <EventGuestsDialog
+      open={!!guestsDialog}
+      eventId={guestsDialog.id}
+      eventTitle={guestsDialog.title}
+      onClose={() => { setGuestsDialog(null); loadOrgEvents(); loadOrgDashboard(); }}
+    />
+  ) : null;
+
   // ─── Универсальный раздел «Моя визитка» для всех коммерческих ролей ────────
   if (roleTab === "landing") {
-    return <LandingSection />;
+    return <>{guestsDialogNode}<LandingSection /></>;
   }
 
   // ─── Универсальный раздел «Клиенты» (CRM) для всех коммерческих ролей ──────
@@ -244,15 +257,16 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
   }
 
   if (roleTab === "organizer" && isOrganizer) {
+    const wrap = (node: React.ReactNode) => <>{guestsDialogNode}{node}</>;
     switch (orgView) {
       case "dashboard":
-        return orgDashboard ? (
+        return wrap(orgDashboard ? (
           <OrgDashboard
             data={orgDashboard}
             events={events}
             eventsLoading={false}
             onCreateEvent={() => setOrgView("create")}
-            onManageEvent={(ev) => { setSelectedEvent(ev); setOrgView("participants"); }}
+            onManageEvent={(ev) => { setSelectedEvent(ev); setGuestsDialog({ id: ev.id, title: ev.title }); }}
             onEditEvent={async (ev) => {
               setSelectedEvent(ev);
               let fullEvent = ev;
@@ -285,10 +299,10 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
               try { await organizerApi.deleteEvent(ev.id); await Promise.all([loadOrgEvents(), loadOrgDashboard()]); } catch { toast({ title: "Ошибка", variant: "destructive" }); }
             }}
           />
-        ) : <div className="flex justify-center py-16"><Icon name="Loader2" size={28} className="animate-spin text-muted-foreground" /></div>;
+        ) : <div className="flex justify-center py-16"><Icon name="Loader2" size={28} className="animate-spin text-muted-foreground" /></div>);
       case "create":
       case "edit":
-        return (
+        return wrap(
           <div className="max-w-2xl mx-auto">
             <LiveEventEditor
               formData={formData}
@@ -327,20 +341,20 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
             />
           </div>
         );
+       
       case "participants":
-        return selectedEvent ? (
-          <UnifiedPeoplePanel
-            event={selectedEvent}
-            onBack={() => setOrgView("dashboard")}
-            onNotify={() => setOrgView("notify")}
-          />
-        ) : null;
-      case "calculator": return <EventCalculator onCreateEvent={(data) => { setFormData(data as OrgEvent); setSelectedEvent(null); setOrgView("create"); }} />;
-      case "questions": return <EventQuestionsSection />;
-      case "notify": return <div className="max-w-2xl mx-auto"><NotifyModule role="organizer" eventId={selectedEvent?.id ?? null} /></div>;
-      case "blog": return <div className="max-w-3xl mx-auto"><MyArticles /></div>;
+      case "notify":
+        // Старые роуты больше не используются — всё через CRM диалог.
+        if (selectedEvent && !guestsDialog) {
+          setGuestsDialog({ id: selectedEvent.id, title: selectedEvent.title });
+          setOrgView("dashboard");
+        }
+        return wrap(null);
+      case "calculator": return wrap(<EventCalculator onCreateEvent={(data) => { setFormData(data as OrgEvent); setSelectedEvent(null); setOrgView("create"); }} />);
+      case "questions": return wrap(<EventQuestionsSection />);
+      case "blog": return wrap(<div className="max-w-3xl mx-auto"><MyArticles /></div>);
     }
   }
 
-  return null;
+  return guestsDialogNode;
 }
