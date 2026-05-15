@@ -1,0 +1,34 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Clients unauthorized",
+      "method": "GET",
+      "path": "/?resource=clients",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Tags unauthorized",
+      "method": "GET",
+      "path": "/?resource=tags",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Unknown resource",
+      "method": "GET",
+      "path": "/?resource=unknown",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

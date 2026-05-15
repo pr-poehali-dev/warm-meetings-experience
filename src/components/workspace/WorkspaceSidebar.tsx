@@ -200,8 +200,8 @@ export default function WorkspaceSidebar({
         <NavItem
           active={roleTab === "notify"}
           onClick={() => switchRoleTab("notify")}
-          icon="Bell"
-          label="Рассылки"
+          icon="Users"
+          label="Клиенты"
           accent="text-rose-500"
         />
       </div>

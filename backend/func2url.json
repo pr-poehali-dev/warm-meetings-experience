@@ -1,4 +1,5 @@
 {
+  "crm-api": "https://functions.poehali.dev/ceabf12a-ab18-40fd-8265-60883f655b47",
   "guests-api": "https://functions.poehali.dev/7faf1d56-662a-4864-b752-0e8cabfcb78c",
   "robokassa-robokassa-webhook": "https://functions.poehali.dev/3f95bff8-6115-4233-8db9-14aeb3f59653",
   "robokassa-robokassa": "https://functions.poehali.dev/0330b6c2-df84-4726-bde5-3c83f007ccdd",

@@ -10,7 +10,7 @@ import UnifiedPeoplePanel from "@/components/organizer/UnifiedPeoplePanel";
 import TelegramSettings from "@/components/organizer/TelegramSettings";
 import EventCalculator from "@/components/organizer/EventCalculator";
 import EventQuestionsSection from "@/components/organizer/EventQuestionsSection";
-import NotifyModule from "@/components/notify/NotifyModule";
+import CrmModule from "@/components/crm/CrmModule";
 import BathCard from "@/components/partner/BathCard";
 import BathForm from "@/components/partner/BathForm";
 import PartnerStats from "@/components/partner/PartnerStats";
@@ -111,15 +111,13 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     return <LandingSection />;
   }
 
-  // ─── Универсальный раздел «Рассылки» для всех коммерческих ролей ───────────
+  // ─── Универсальный раздел «Клиенты» (CRM) для всех коммерческих ролей ──────
   if (roleTab === "notify") {
-    // Приоритет ролей: партнёр → организатор → мастер. Партнёр получает специальный
-    // режим с переключателем «гости событий» / «клиенты бронирований».
-    const notifyRole: "organizer" | "master" | "partner" =
+    const crmRole: "organizer" | "master" | "partner" =
       isPartner ? "partner" : isOrganizer ? "organizer" : isMaster ? "master" : "organizer";
     return (
-      <div className="max-w-4xl mx-auto">
-        <NotifyModule role={notifyRole} eventId={null} />
+      <div className="max-w-5xl mx-auto">
+        <CrmModule role={crmRole} />
       </div>
     );
   }
