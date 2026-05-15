@@ -119,7 +119,20 @@ export default function ClientsList({ onOpenClient, onAddExternal, onImportCsv }
                     className="border-t border-border/50 hover:bg-muted/30 cursor-pointer"
                   >
                     <td className="px-3 py-2.5">
-                      <div className="font-medium">{c.name || "Без имени"}</div>
+                      <div className="font-medium flex items-center gap-1.5">
+                        {c.name || "Без имени"}
+                        <span className="flex items-center gap-0.5">
+                          {c.sources.includes("event") && (
+                            <Icon name="CalendarDays" size={11} className="text-emerald-500" fallback="Calendar" />
+                          )}
+                          {c.sources.includes("master") && (
+                            <Icon name="Flame" size={11} className="text-orange-500" />
+                          )}
+                          {c.sources.includes("external") && (
+                            <Icon name="UserPlus" size={11} className="text-muted-foreground" />
+                          )}
+                        </span>
+                      </div>
                       <div className="text-xs text-muted-foreground md:hidden">
                         {c.phone || c.email || c.telegram || "—"}
                       </div>

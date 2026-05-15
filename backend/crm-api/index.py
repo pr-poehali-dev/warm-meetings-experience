@@ -133,7 +133,7 @@ def list_clients(cur, conn, user_id, schema, params):
         s = search.replace("'", "''")
         search_sql = f" AND (LOWER(COALESCE(name,'')) LIKE '%{s}%' OR LOWER(COALESCE(phone,'')) LIKE '%{s}%' OR LOWER(COALESCE(email,'')) LIKE '%{s}%')"
 
-    # 1. Гости событий (event_signups)
+    # 1. Гости событий (event_signups) — для организатора
     cur.execute(f"""
         SELECT s.id AS signup_id, s.user_id, s.name, s.phone, s.email, s.telegram,
                s.status, s.payment_amount, s.created_at, s.preferred_channel,
@@ -147,16 +147,23 @@ def list_clients(cur, conn, user_id, schema, params):
     """)
     signups = cur.fetchall()
 
-    # 2. Записи на мастера (master_bookings) — если пользователь мастер
+    # 2. Записи на мастера (master_bookings) — если пользователь мастер.
+    # master_bookings.master_id ссылается на masters.id, а masters.user_id — на users.id
+    bookings_search = ''
+    if search:
+        s = search.replace("'", "''")
+        bookings_search = f" AND (LOWER(COALESCE(mb.client_name,'')) LIKE '%{s}%' OR LOWER(COALESCE(mb.client_phone,'')) LIKE '%{s}%' OR LOWER(COALESCE(mb.client_email,'')) LIKE '%{s}%')"
     cur.execute(f"""
-        SELECT mb.id AS booking_id, mb.client_id AS user_id, mb.client_name AS name,
-               mb.client_phone AS phone, mb.client_email AS email,
+        SELECT mb.id AS booking_id, mb.client_id AS user_id,
+               mb.client_name AS name, mb.client_phone AS phone, mb.client_email AS email,
                mb.status, mb.price, mb.created_at, mb.datetime_start
         FROM {schema}.master_bookings mb
-        WHERE mb.master_id = {user_id} {search_sql.replace('s.name','mb.client_name').replace('s.phone','mb.client_phone').replace('s.email','mb.client_email').replace('name', 'mb.client_name').replace('phone','mb.client_phone').replace('email','mb.client_email') if search else ''}
+        JOIN {schema}.masters m ON m.id = mb.master_id
+        WHERE m.user_id = {user_id} {bookings_search}
         ORDER BY mb.created_at DESC
         LIMIT 2000
-    """) if False else None  # отключено пока не интегрировано в кабинет
+    """)
+    master_bookings = cur.fetchall()
 
     # 3. Внешние клиенты
     cur.execute(f"""
@@ -225,6 +232,14 @@ def list_clients(cur, conn, user_id, schema, params):
             'source': 'event',
         })
 
+    for mb in master_bookings:
+        key = contact_key(mb) or f"booking:{mb['booking_id']}"
+        add_visit(key, mb, {
+            'date': mb.get('datetime_start') or mb.get('created_at'),
+            'amount': float(mb.get('price') or 0),
+            'source': 'master',
+        })
+
     for ex in externals:
         key = contact_key(ex) or f"ext:{ex['id']}"
         add_visit(key, ex, {
@@ -283,6 +298,7 @@ def get_client(cur, conn, user_id, schema, params):
         external_id = int(val) if val.isdigit() else None
     elif kind == 'signup':
         signup_id = int(val) if val.isdigit() else None
+    booking_id = int(val) if kind == 'booking' and val.isdigit() else None
 
     # Базовая инфа о клиенте — пробуем найти в users
     client_info = {'name': '', 'phone': '', 'email': '', 'telegram': '', 'vk': '', 'user_id': None, 'avatar_url': None}
@@ -336,6 +352,44 @@ def get_client(cur, conn, user_id, schema, params):
                 'event_id': r['event_id'], 'event_slug': r['slug'],
                 'bath_name': r['bath_name'], 'time': r['start_time'],
             })
+
+    # История мастер-записей: ищем по тем же критериям, но по master_bookings
+    mb_or = []
+    if user_filter:
+        mb_or.append(f"mb.client_id = {user_filter}")
+    if phone_filter:
+        digits = ''.join(ch for ch in phone_filter if ch.isdigit())[-10:]
+        if digits:
+            mb_or.append(f"REGEXP_REPLACE(COALESCE(mb.client_phone,''), '[^0-9]', '', 'g') LIKE '%{digits}'")
+    if email_filter:
+        e = email_filter.replace("'", "''")
+        mb_or.append(f"LOWER(COALESCE(mb.client_email,'')) = '{e}'")
+    if booking_id:
+        mb_or.append(f"mb.id = {booking_id}")
+
+    if mb_or:
+        try:
+            cur.execute(f"""
+                SELECT mb.id, mb.status, mb.price, mb.created_at, mb.datetime_start,
+                       mb.comment
+                FROM {schema}.master_bookings mb
+                JOIN {schema}.masters m ON m.id = mb.master_id
+                WHERE m.user_id = {user_id} AND ({' OR '.join(mb_or)})
+                ORDER BY mb.datetime_start DESC NULLS LAST, mb.created_at DESC
+                LIMIT 200
+            """)
+            for r in cur.fetchall():
+                history.append({
+                    'kind': 'master', 'signup_id': r['id'], 'status': r['status'],
+                    'amount': float(r['price'] or 0),
+                    'date': r['datetime_start'], 'created_at': r['created_at'],
+                    'title': 'Запись к мастеру',
+                    'event_id': None, 'event_slug': None,
+                    'bath_name': None, 'time': None,
+                })
+            history.sort(key=lambda x: str(x.get('date') or x.get('created_at') or ''), reverse=True)
+        except Exception:
+            pass
 
     # Заметки
     k = key.replace("'", "''")

@@ -188,22 +188,29 @@ export default function ClientCard({ clientKey, onClose, onChanged }: ClientCard
                 <div className="text-xs text-muted-foreground py-2">Пока нет записей</div>
               ) : (
                 <div className="space-y-1.5">
-                  {data.history.map((h, i) => (
-                    <Card key={i} className="border-0 shadow-sm">
-                      <CardContent className="p-3 flex items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-sm truncate">{h.title}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatDate(h.date)} {h.bath_name && `• ${h.bath_name}`}
+                  {data.history.map((h, i) => {
+                    const icon = h.kind === "master" ? "Flame" : h.kind === "ritual" ? "Sparkles" : "CalendarDays";
+                    const iconColor = h.kind === "master" ? "text-orange-500" : h.kind === "ritual" ? "text-violet-500" : "text-emerald-500";
+                    return (
+                      <Card key={i} className="border-0 shadow-sm">
+                        <CardContent className="p-3 flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center shrink-0`}>
+                            <Icon name={icon} size={14} className={iconColor} />
                           </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <Badge variant="outline" className="text-[10px]">{h.status}</Badge>
-                          {h.amount > 0 && <div className="text-xs mt-0.5">{formatMoney(h.amount)}</div>}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-sm truncate">{h.title}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {formatDate(h.date)} {h.bath_name && `• ${h.bath_name}`}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <Badge variant="outline" className="text-[10px]">{h.status}</Badge>
+                            {h.amount > 0 && <div className="text-xs mt-0.5">{formatMoney(h.amount)}</div>}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </div>
