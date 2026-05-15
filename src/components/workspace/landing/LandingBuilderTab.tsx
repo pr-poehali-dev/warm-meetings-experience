@@ -1,13 +1,5 @@
 import { useState } from "react";
 import { formatPhone } from "@/hooks/usePhoneMask";
-import {
-  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,11 +25,7 @@ export default function LandingBuilderTab({ landing, onSaved }: Props) {
   const [hidden, setHidden] = useState<LandingBlockId[]>(cd.hidden_blocks || []);
   const [data, setData] = useState<LandingCustomData>(cd);
   const [saving, setSaving] = useState(false);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
+  const [dragId, setDragId] = useState<LandingBlockId | null>(null);
 
   if (!landing) {
     return (
@@ -51,15 +39,21 @@ export default function LandingBuilderTab({ landing, onSaved }: Props) {
     );
   }
 
-  const handleDragEnd = (e: DragEndEvent) => {
-    const { active, over } = e;
-    if (!over || active.id === over.id) return;
+  const handleDragStart = (id: LandingBlockId) => setDragId(id);
+  const handleDragOver = (e: React.DragEvent, overId: LandingBlockId) => {
+    e.preventDefault();
+    if (!dragId || dragId === overId) return;
     setBlocks((items) => {
-      const oldIndex = items.indexOf(active.id as LandingBlockId);
-      const newIndex = items.indexOf(over.id as LandingBlockId);
-      return arrayMove(items, oldIndex, newIndex);
+      const oldIndex = items.indexOf(dragId);
+      const newIndex = items.indexOf(overId);
+      if (oldIndex === -1 || newIndex === -1) return items;
+      const copy = [...items];
+      copy.splice(oldIndex, 1);
+      copy.splice(newIndex, 0, dragId);
+      return copy;
     });
   };
+  const handleDragEnd = () => setDragId(null);
 
   const toggleVisible = (id: LandingBlockId) => {
     setHidden((h) => (h.includes(id) ? h.filter((x) => x !== id) : [...h, id]));
@@ -132,26 +126,26 @@ export default function LandingBuilderTab({ landing, onSaved }: Props) {
         <span>Перетаскивайте блоки за <Icon name="GripVertical" size={11} className="inline" /> чтобы менять порядок. Отключайте ненужные тумблером.</span>
       </div>
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={blocks} strategy={verticalListSortingStrategy}>
-          <div className="space-y-3">
-            {blocks.map((id) => (
-              <SortableBlock
-                key={id}
-                id={id}
-                hidden={hidden.includes(id)}
-                onToggle={() => toggleVisible(id)}
-                data={data}
-                updateField={updateField}
-                onAvatarUpload={handleAvatarUpload}
-                onPhotoUpload={handlePhotoUpload}
-                onAddVideo={addVideoLink}
-                onRemovePortfolio={removePortfolioItem}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
+      <div className="space-y-3">
+        {blocks.map((id) => (
+          <SortableBlock
+            key={id}
+            id={id}
+            hidden={hidden.includes(id)}
+            onToggle={() => toggleVisible(id)}
+            data={data}
+            updateField={updateField}
+            onAvatarUpload={handleAvatarUpload}
+            onPhotoUpload={handlePhotoUpload}
+            onAddVideo={addVideoLink}
+            onRemovePortfolio={removePortfolioItem}
+            onDragStart={() => handleDragStart(id)}
+            onDragOver={(e) => handleDragOver(e, id)}
+            onDragEnd={handleDragEnd}
+            isDragging={dragId === id}
+          />
+        ))}
+      </div>
 
       <div className="sticky bottom-3 z-10 bg-background pt-2">
         <Button onClick={save} disabled={saving} className="w-full">
@@ -173,24 +167,35 @@ interface SortableBlockProps {
   onPhotoUpload: (f: File) => void;
   onAddVideo: () => void;
   onRemovePortfolio: (idx: number) => void;
+  onDragStart: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
+  isDragging: boolean;
 }
 
-function SortableBlock({ id, hidden, onToggle, data, updateField, onAvatarUpload, onPhotoUpload, onAddVideo, onRemovePortfolio }: SortableBlockProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+function SortableBlock({ id, hidden, onToggle, data, updateField, onAvatarUpload, onPhotoUpload, onAddVideo, onRemovePortfolio, onDragStart, onDragOver, onDragEnd, isDragging }: SortableBlockProps) {
   const meta = ALL_BLOCKS.find((b) => b.id === id)!;
   const [open, setOpen] = useState(false);
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.6 : 1,
-  };
+  const [grabbing, setGrabbing] = useState(false);
 
   return (
-    <Card ref={setNodeRef} style={style} className={hidden ? "opacity-60" : ""}>
+    <Card
+      draggable={grabbing}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={() => { onDragEnd(); setGrabbing(false); }}
+      style={{ opacity: isDragging ? 0.5 : 1 }}
+      className={hidden ? "opacity-60" : ""}
+    >
       <CardContent className="p-3">
         <div className="flex items-center gap-2">
-          <button {...attributes} {...listeners} className="touch-none cursor-grab text-muted-foreground hover:text-foreground p-1.5">
+          <button
+            onMouseDown={() => setGrabbing(true)}
+            onMouseUp={() => setGrabbing(false)}
+            onTouchStart={() => setGrabbing(true)}
+            onTouchEnd={() => setGrabbing(false)}
+            className="touch-none cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1.5"
+          >
             <Icon name="GripVertical" size={16} />
           </button>
           <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
