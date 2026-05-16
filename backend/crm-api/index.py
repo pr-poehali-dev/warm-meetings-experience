@@ -291,10 +291,26 @@ def list_clients(cur, conn, user_id, schema, params):
 
 
 def list_event_guests(cur, user_id, schema, event_id, search_sql):
-    """Гости конкретного события для организатора. Проверяет права через events.organizer_id."""
-    cur.execute(f"SELECT id, title, event_date, organizer_id FROM {schema}.events WHERE id = {event_id}")
+    """Гости конкретного события. Доступ для:
+    - organizer_id события
+    - admin (любые события)
+    - partner-владелец бани, в которой проходит событие
+    """
+    cur.execute(f"""
+        SELECT e.id, e.title, e.event_date, e.organizer_id, e.bath_id,
+               b.owner_id AS bath_owner_id
+        FROM {schema}.events e
+        LEFT JOIN {schema}.baths b ON b.id = e.bath_id
+        WHERE e.id = {event_id}
+    """)
     ev = cur.fetchone()
-    if not ev or ev['organizer_id'] != user_id:
+    if not ev:
+        return respond(404, {'error': 'event not found'})
+
+    is_organizer_owner = ev.get('organizer_id') == user_id
+    is_bath_owner = ev.get('bath_owner_id') == user_id
+    is_admin = has_role(cur, schema, user_id, 'admin')
+    if not (is_organizer_owner or is_bath_owner or is_admin):
         return respond(403, {'error': 'no access to event'})
 
     cur.execute(f"""
