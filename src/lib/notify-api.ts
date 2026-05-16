@@ -18,7 +18,7 @@ async function req<T>(url: string, options?: RequestInit): Promise<T> {
 // ─── Типы ─────────────────────────────────────────────────────────────────────
 
 export type TriggerType = "manual" | "before_event" | "after_event" | "on_signup" | "on_status_change";
-export type NotifyChannel = "email" | "telegram" | "vk";
+export type NotifyChannel = "email" | "telegram" | "vk" | "site";
 export type SendChannel = NotifyChannel | "auto";
 
 export interface NotifyScenario {
@@ -52,6 +52,7 @@ export interface NotifyRecipient {
   has_vk: boolean;
   has_tg: boolean;
   has_email: boolean;
+  has_site?: boolean;
   auto_channel: NotifyChannel | null;
 }
 
@@ -186,12 +187,14 @@ export const CHANNEL_LABELS: Record<NotifyChannel, string> = {
   email: "Email",
   telegram: "Telegram",
   vk: "ВКонтакте",
+  site: "На сайте",
 };
 
 export const CHANNEL_ICONS: Record<NotifyChannel, string> = {
   email: "Mail",
   telegram: "Send",
   vk: "MessageCircle",
+  site: "Globe",
 };
 
 // Переменные для подстановки в шаблон
