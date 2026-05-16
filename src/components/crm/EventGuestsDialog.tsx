@@ -227,7 +227,7 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-auto p-3 sm:p-6">
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-auto p-3 sm:p-6 pb-24 sm:pb-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Icon name="Users" size={18} />
@@ -360,103 +360,106 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                     const stMeta = statusMeta(g.status);
                     const isEditing = editingId === g.signup_id;
                     return (
-                      <Card key={g.signup_id} className="border-0 shadow-sm">
-                        <CardContent className="p-2.5 space-y-2">
-                          {/* Шапка: чекбокс + имя/контакты + статус */}
-                          <div className="flex items-start gap-2">
-                            <Checkbox checked={selected.has(g.signup_id)} onCheckedChange={() => toggleSel(g.signup_id)} className="mt-1 shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              {isEditing ? (
-                                <div className="space-y-1.5">
-                                  <div className="grid grid-cols-2 gap-1.5">
-                                    <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Имя" className="h-8 text-xs" />
-                                    <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Телефон" className="h-8 text-xs" />
-                                    <Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" className="h-8 text-xs" />
-                                    <Input value={editForm.telegram} onChange={(e) => setEditForm({ ...editForm, telegram: e.target.value })} placeholder="@tg" className="h-8 text-xs" />
-                                  </div>
-                                  <Input value={editForm.comment} onChange={(e) => setEditForm({ ...editForm, comment: e.target.value })} placeholder="Комментарий" className="h-8 text-xs" />
-                                  <div className="flex gap-1.5">
-                                    <Button size="sm" onClick={saveEdit} disabled={savingId === g.signup_id} className="h-8 text-xs flex-1">Сохранить</Button>
-                                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-8 text-xs">Отмена</Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <button onClick={() => setOpenCard(g.client_key)} className="font-medium text-sm hover:underline truncate text-left">
-                                      {g.name || "Без имени"}
-                                    </button>
-                                    {g.tags.map((t) => (
-                                      <Badge key={t.id} variant="outline" className="text-[10px] py-0 px-1.5" style={{ borderColor: t.color, color: t.color }}>
-                                        {t.name}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                  <div className="flex items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground mt-0.5 flex-wrap">
-                                    {g.phone && <span className="flex items-center gap-1"><Icon name="Phone" size={10} />{g.phone}</span>}
-                                    {g.telegram && <span className="flex items-center gap-1"><Icon name="Send" size={10} />{g.telegram}</span>}
-                                    {g.email && <span className="flex items-center gap-1 truncate max-w-[180px]"><Icon name="Mail" size={10} />{g.email}</span>}
-                                  </div>
-                                  {g.comment && <div className="text-xs text-muted-foreground italic mt-1">«{g.comment}»</div>}
-                                </>
-                              )}
+                      <Card key={g.signup_id} className="border-0 shadow-sm overflow-hidden">
+                        <CardContent className="p-3 space-y-2.5">
+                          {isEditing ? (
+                            <div className="space-y-1.5">
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Имя" className="h-9 text-sm" />
+                                <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Телефон" className="h-9 text-sm" />
+                                <Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" className="h-9 text-sm" />
+                                <Input value={editForm.telegram} onChange={(e) => setEditForm({ ...editForm, telegram: e.target.value })} placeholder="@tg" className="h-9 text-sm" />
+                              </div>
+                              <Input value={editForm.comment} onChange={(e) => setEditForm({ ...editForm, comment: e.target.value })} placeholder="Комментарий" className="h-9 text-sm" />
+                              <div className="flex gap-1.5">
+                                <Button size="sm" onClick={saveEdit} disabled={savingId === g.signup_id} className="h-9 text-sm flex-1">Сохранить</Button>
+                                <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-9 text-sm">Отмена</Button>
+                              </div>
                             </div>
-                            {!isEditing && (
-                              <Select value={g.status} onValueChange={(v) => handleStatusChange(g, v)} disabled={savingId === g.signup_id}>
-                                <SelectTrigger className={`h-7 w-[112px] text-xs ${stMeta.color} border-0 shrink-0`}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {STATUS_OPTIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </div>
+                          ) : (
+                            <>
+                              {/* Строка 1: чекбокс + имя/теги + статус */}
+                              <div className="flex items-start gap-2">
+                                <Checkbox checked={selected.has(g.signup_id)} onCheckedChange={() => toggleSel(g.signup_id)} className="mt-1 shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <button onClick={() => setOpenCard(g.client_key)} className="font-semibold text-sm hover:underline truncate text-left w-full block">
+                                    {g.name || "Без имени"}
+                                  </button>
+                                  {g.tags.length > 0 && (
+                                    <div className="flex items-center gap-1 flex-wrap mt-1">
+                                      {g.tags.map((t) => (
+                                        <Badge key={t.id} variant="outline" className="text-[10px] py-0 px-1.5" style={{ borderColor: t.color, color: t.color }}>
+                                          {t.name}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                <Select value={g.status} onValueChange={(v) => handleStatusChange(g, v)} disabled={savingId === g.signup_id}>
+                                  <SelectTrigger className={`h-8 min-w-[124px] w-auto text-xs px-2 ${stMeta.color} border-0 shrink-0`}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {STATUS_OPTIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
 
-                          {/* Контролы — отдельной строкой, на мобиле грид 2 кол + блок кнопок */}
-                          {!isEditing && (
-                            <div className="grid grid-cols-[1fr_1fr_auto] sm:grid-cols-[90px_120px_1fr] gap-1.5 items-center pl-6">
-                              <Input
-                                type="number"
-                                value={g.payment_amount || ""}
-                                onChange={(e) => {
-                                  const v = parseInt(e.target.value) || 0;
-                                  setGuests((prev) => prev.map((x) => (x.signup_id === g.signup_id ? { ...x, payment_amount: v } : x)));
-                                }}
-                                onBlur={(e) => handlePaymentChange(g, parseInt(e.target.value) || 0)}
-                                placeholder="Сумма ₽"
-                                className="h-8 text-xs"
-                                title="Оплачено"
-                              />
-                              <Select value={g.payment_type || PAYMENT_NONE} onValueChange={(v) => handlePaymentType(g, v)}>
-                                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Способ" /></SelectTrigger>
-                                <SelectContent>
-                                  {PAYMENT_TYPES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                              <div className="flex items-center gap-1 justify-end">
+                              {/* Строка 2: контакты в столбик */}
+                              <div className="flex flex-col gap-0.5 text-xs text-muted-foreground pl-6">
+                                {g.phone && <a href={`tel:${g.phone}`} className="flex items-center gap-1.5 hover:text-foreground"><Icon name="Phone" size={11} className="shrink-0" /><span className="truncate">{g.phone}</span></a>}
+                                {g.telegram && <span className="flex items-center gap-1.5"><Icon name="Send" size={11} className="shrink-0" /><span className="truncate">{g.telegram}</span></span>}
+                                {g.email && <a href={`mailto:${g.email}`} className="flex items-center gap-1.5 hover:text-foreground"><Icon name="Mail" size={11} className="shrink-0" /><span className="truncate">{g.email}</span></a>}
+                                {g.comment && <div className="text-xs italic mt-0.5">«{g.comment}»</div>}
+                              </div>
+
+                              {/* Строка 3: сумма + способ */}
+                              <div className="grid grid-cols-2 gap-1.5 pl-6">
+                                <Input
+                                  type="number"
+                                  value={g.payment_amount || ""}
+                                  onChange={(e) => {
+                                    const v = parseInt(e.target.value) || 0;
+                                    setGuests((prev) => prev.map((x) => (x.signup_id === g.signup_id ? { ...x, payment_amount: v } : x)));
+                                  }}
+                                  onBlur={(e) => handlePaymentChange(g, parseInt(e.target.value) || 0)}
+                                  placeholder="Сумма ₽"
+                                  className="h-9 text-sm"
+                                  title="Оплачено"
+                                />
+                                <Select value={g.payment_type || PAYMENT_NONE} onValueChange={(v) => handlePaymentType(g, v)}>
+                                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Способ" /></SelectTrigger>
+                                  <SelectContent>
+                                    {PAYMENT_TYPES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {/* Строка 4: панель действий — растянутые крупные кнопки */}
+                              <div className="grid grid-cols-4 gap-1.5 pl-6">
                                 <button
                                   onClick={() => handleAttended(g, !g.attended)}
-                                  className={`h-8 w-8 rounded-md flex items-center justify-center transition-colors ${g.attended ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                                  className={`h-9 rounded-md flex flex-col items-center justify-center gap-0.5 transition-colors ${g.attended ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
                                   title={g.attended ? "Пришёл" : "Отметить пришёл"}
                                 >
-                                  <Icon name={g.attended ? "CheckCircle2" : "Circle"} size={14} />
+                                  <Icon name={g.attended ? "CheckCircle2" : "Circle"} size={16} />
                                 </button>
                                 <button
                                   onClick={() => { setSelected(new Set([g.signup_id])); setView("broadcast"); }}
-                                  className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
+                                  className="h-9 rounded-md bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center gap-1 text-xs font-medium"
                                   title="Написать лично"
                                 >
                                   <Icon name="Send" size={14} />
+                                  <span>Написать</span>
                                 </button>
-                                <button onClick={() => startEdit(g)} className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground" title="Редактировать">
-                                  <Icon name="Pencil" size={14} />
+                                <button onClick={() => startEdit(g)} className="h-9 rounded-md bg-muted text-muted-foreground hover:bg-muted/70 flex items-center justify-center" title="Редактировать">
+                                  <Icon name="Pencil" size={15} />
                                 </button>
-                                <button onClick={() => handleDelete(g)} className="h-8 w-8 rounded-md hover:bg-destructive/10 hover:text-destructive flex items-center justify-center text-muted-foreground" title="Удалить">
-                                  <Icon name="Trash2" size={14} />
+                                <button onClick={() => handleDelete(g)} className="h-9 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 flex items-center justify-center" title="Удалить">
+                                  <Icon name="Trash2" size={15} />
                                 </button>
                               </div>
-                            </div>
+                            </>
                           )}
                         </CardContent>
                       </Card>
