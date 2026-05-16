@@ -227,7 +227,7 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-        <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-auto p-3 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Icon name="Users" size={18} />
@@ -361,28 +361,29 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                     const isEditing = editingId === g.signup_id;
                     return (
                       <Card key={g.signup_id} className="border-0 shadow-sm">
-                        <CardContent className="p-2.5">
+                        <CardContent className="p-2.5 space-y-2">
+                          {/* Шапка: чекбокс + имя/контакты + статус */}
                           <div className="flex items-start gap-2">
-                            <Checkbox checked={selected.has(g.signup_id)} onCheckedChange={() => toggleSel(g.signup_id)} className="mt-1" />
+                            <Checkbox checked={selected.has(g.signup_id)} onCheckedChange={() => toggleSel(g.signup_id)} className="mt-1 shrink-0" />
                             <div className="flex-1 min-w-0">
                               {isEditing ? (
                                 <div className="space-y-1.5">
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                                    <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Имя" className="h-7 text-xs" />
-                                    <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Телефон" className="h-7 text-xs" />
-                                    <Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" className="h-7 text-xs" />
-                                    <Input value={editForm.telegram} onChange={(e) => setEditForm({ ...editForm, telegram: e.target.value })} placeholder="@tg" className="h-7 text-xs" />
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Имя" className="h-8 text-xs" />
+                                    <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Телефон" className="h-8 text-xs" />
+                                    <Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" className="h-8 text-xs" />
+                                    <Input value={editForm.telegram} onChange={(e) => setEditForm({ ...editForm, telegram: e.target.value })} placeholder="@tg" className="h-8 text-xs" />
                                   </div>
-                                  <Input value={editForm.comment} onChange={(e) => setEditForm({ ...editForm, comment: e.target.value })} placeholder="Комментарий" className="h-7 text-xs" />
+                                  <Input value={editForm.comment} onChange={(e) => setEditForm({ ...editForm, comment: e.target.value })} placeholder="Комментарий" className="h-8 text-xs" />
                                   <div className="flex gap-1.5">
-                                    <Button size="sm" onClick={saveEdit} disabled={savingId === g.signup_id} className="h-7 text-xs">Сохранить</Button>
-                                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-7 text-xs">Отмена</Button>
+                                    <Button size="sm" onClick={saveEdit} disabled={savingId === g.signup_id} className="h-8 text-xs flex-1">Сохранить</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-8 text-xs">Отмена</Button>
                                   </div>
                                 </div>
                               ) : (
                                 <>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <button onClick={() => setOpenCard(g.client_key)} className="font-medium text-sm hover:underline truncate">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <button onClick={() => setOpenCard(g.client_key)} className="font-medium text-sm hover:underline truncate text-left">
                                       {g.name || "Без имени"}
                                     </button>
                                     {g.tags.map((t) => (
@@ -391,26 +392,30 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                                       </Badge>
                                     ))}
                                   </div>
-                                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                                  <div className="flex items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground mt-0.5 flex-wrap">
                                     {g.phone && <span className="flex items-center gap-1"><Icon name="Phone" size={10} />{g.phone}</span>}
                                     {g.telegram && <span className="flex items-center gap-1"><Icon name="Send" size={10} />{g.telegram}</span>}
-                                    {g.email && <span className="flex items-center gap-1"><Icon name="Mail" size={10} />{g.email}</span>}
+                                    {g.email && <span className="flex items-center gap-1 truncate max-w-[180px]"><Icon name="Mail" size={10} />{g.email}</span>}
                                   </div>
                                   {g.comment && <div className="text-xs text-muted-foreground italic mt-1">«{g.comment}»</div>}
                                 </>
                               )}
                             </div>
-
-                            {/* Inline controls */}
-                            <div className="flex items-center gap-1.5 shrink-0">
+                            {!isEditing && (
                               <Select value={g.status} onValueChange={(v) => handleStatusChange(g, v)} disabled={savingId === g.signup_id}>
-                                <SelectTrigger className={`h-7 w-[120px] text-xs ${stMeta.color} border-0`}>
+                                <SelectTrigger className={`h-7 w-[112px] text-xs ${stMeta.color} border-0 shrink-0`}>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {STATUS_OPTIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                                 </SelectContent>
                               </Select>
+                            )}
+                          </div>
+
+                          {/* Контролы — отдельной строкой, на мобиле грид 2 кол + блок кнопок */}
+                          {!isEditing && (
+                            <div className="grid grid-cols-[1fr_1fr_auto] sm:grid-cols-[90px_120px_1fr] gap-1.5 items-center pl-6">
                               <Input
                                 type="number"
                                 value={g.payment_amount || ""}
@@ -419,38 +424,40 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                                   setGuests((prev) => prev.map((x) => (x.signup_id === g.signup_id ? { ...x, payment_amount: v } : x)));
                                 }}
                                 onBlur={(e) => handlePaymentChange(g, parseInt(e.target.value) || 0)}
-                                placeholder="₽"
-                                className="h-7 w-[70px] text-xs"
+                                placeholder="Сумма ₽"
+                                className="h-8 text-xs"
                                 title="Оплачено"
                               />
                               <Select value={g.payment_type || PAYMENT_NONE} onValueChange={(v) => handlePaymentType(g, v)}>
-                                <SelectTrigger className="h-7 w-[90px] text-xs"><SelectValue placeholder="Способ" /></SelectTrigger>
+                                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Способ" /></SelectTrigger>
                                 <SelectContent>
                                   {PAYMENT_TYPES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                                 </SelectContent>
                               </Select>
-                              <button
-                                onClick={() => handleAttended(g, !g.attended)}
-                                className={`h-7 px-2 rounded-md text-xs flex items-center gap-1 transition-colors ${g.attended ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-                                title={g.attended ? "Пришёл" : "Не отмечен"}
-                              >
-                                <Icon name={g.attended ? "CheckCircle2" : "Circle"} size={12} />
-                              </button>
-                              <button
-                                onClick={() => { setSelected(new Set([g.signup_id])); setView("broadcast"); }}
-                                className="h-7 w-7 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
-                                title="Написать лично"
-                              >
-                                <Icon name="Send" size={12} />
-                              </button>
-                              <button onClick={() => startEdit(g)} className="h-7 w-7 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground" title="Редактировать">
-                                <Icon name="Pencil" size={12} />
-                              </button>
-                              <button onClick={() => handleDelete(g)} className="h-7 w-7 rounded-md hover:bg-destructive/10 hover:text-destructive flex items-center justify-center text-muted-foreground" title="Удалить">
-                                <Icon name="Trash2" size={12} />
-                              </button>
+                              <div className="flex items-center gap-1 justify-end">
+                                <button
+                                  onClick={() => handleAttended(g, !g.attended)}
+                                  className={`h-8 w-8 rounded-md flex items-center justify-center transition-colors ${g.attended ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                                  title={g.attended ? "Пришёл" : "Отметить пришёл"}
+                                >
+                                  <Icon name={g.attended ? "CheckCircle2" : "Circle"} size={14} />
+                                </button>
+                                <button
+                                  onClick={() => { setSelected(new Set([g.signup_id])); setView("broadcast"); }}
+                                  className="h-8 w-8 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
+                                  title="Написать лично"
+                                >
+                                  <Icon name="Send" size={14} />
+                                </button>
+                                <button onClick={() => startEdit(g)} className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground" title="Редактировать">
+                                  <Icon name="Pencil" size={14} />
+                                </button>
+                                <button onClick={() => handleDelete(g)} className="h-8 w-8 rounded-md hover:bg-destructive/10 hover:text-destructive flex items-center justify-center text-muted-foreground" title="Удалить">
+                                  <Icon name="Trash2" size={14} />
+                                </button>
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </CardContent>
                       </Card>
                     );
