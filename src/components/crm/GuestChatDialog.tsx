@@ -93,11 +93,22 @@ export default function GuestChatDialog({
   }, [messages]);
 
   const handleSend = async () => {
-    if (!signupId || !text.trim() || sending) return;
+    console.log("[GuestChat] send click", { signupId, text, sending });
+    if (sending) return;
+    if (!signupId) {
+      toast.error("Не выбран гость (signup_id отсутствует)");
+      return;
+    }
     const body = text.trim();
+    if (!body) {
+      toast.error("Введите текст сообщения");
+      return;
+    }
     setSending(true);
     try {
+      console.log("[GuestChat] calling sendMessages", [signupId], body);
       const r = await organizerApi.sendMessages([signupId], body);
+      console.log("[GuestChat] response", r);
       const sent = r.sent?.[0];
       if (sent?.delivered) {
         toast.success(`Отправлено через ${CHANNEL_LABEL[sent.channel] || sent.channel}`);
@@ -109,6 +120,7 @@ export default function GuestChatDialog({
       setText("");
       await load();
     } catch (e) {
+      console.error("[GuestChat] send error", e);
       toast.error("Ошибка отправки: " + String(e));
     } finally {
       setSending(false);
