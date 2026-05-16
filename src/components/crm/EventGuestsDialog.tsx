@@ -11,6 +11,7 @@ import Icon from "@/components/ui/icon";
 import { crmApi, CrmEventGuest } from "@/lib/crm-api";
 import ClientCard from "./ClientCard";
 import NotifyModule from "@/components/notify/NotifyModule";
+import GuestChatDialog from "./GuestChatDialog";
 
 interface Props {
   open: boolean;
@@ -70,6 +71,9 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
   const [savingId, setSavingId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: "", phone: "", email: "", telegram: "", comment: "" });
+
+  // Личный чат с гостем
+  const [chatGuest, setChatGuest] = useState<CrmEventGuest | null>(null);
 
   // Add new
   const [adding, setAdding] = useState(false);
@@ -445,11 +449,11 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                                   <Icon name={g.attended ? "CheckCircle2" : "Circle"} size={16} />
                                 </button>
                                 <button
-                                  onClick={() => { setSelected(new Set([g.signup_id])); setView("broadcast"); }}
+                                  onClick={() => setChatGuest(g)}
                                   className="h-9 rounded-md bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center gap-1 text-xs font-medium"
-                                  title="Написать лично"
+                                  title="Открыть личный чат с гостем"
                                 >
-                                  <Icon name="Send" size={14} />
+                                  <Icon name="MessageSquare" size={14} />
                                   <span>Написать</span>
                                 </button>
                                 <button onClick={() => startEdit(g)} className="h-9 rounded-md bg-muted text-muted-foreground hover:bg-muted/70 flex items-center justify-center" title="Редактировать">
@@ -482,6 +486,17 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
         clientKey={openCard}
         onClose={() => setOpenCard(null)}
         onChanged={load}
+      />
+
+      <GuestChatDialog
+        open={!!chatGuest}
+        signupId={chatGuest?.signup_id ?? null}
+        guestName={chatGuest?.name || "Гость"}
+        guestChannel={chatGuest?.preferred_channel}
+        guestPhone={chatGuest?.phone}
+        guestTelegram={chatGuest?.telegram}
+        guestEmail={chatGuest?.email}
+        onClose={() => setChatGuest(null)}
       />
     </>
   );

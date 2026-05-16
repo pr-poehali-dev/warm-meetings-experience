@@ -153,6 +153,15 @@ export interface EventQuestionsResponse {
   unread: number;
 }
 
+export interface GuestMessage {
+  id: number;
+  direction: "in" | "out";
+  channel: string;
+  body: string;
+  delivered: boolean | null;
+  created_at: string;
+}
+
 export const organizerApi = {
   getDashboard: (): Promise<DashboardData> =>
     authenticatedRequest(`${BASE}/?resource=dashboard`),
