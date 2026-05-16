@@ -27,8 +27,9 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "Отменён", color: "bg-red-100 text-red-700" },
 ];
 
+const PAYMENT_NONE = "__none__";
 const PAYMENT_TYPES = [
-  { value: "", label: "Не указан" },
+  { value: PAYMENT_NONE, label: "Не указан" },
   { value: "cash", label: "Наличные" },
   { value: "card", label: "Карта" },
   { value: "transfer", label: "Перевод" },
@@ -139,10 +140,11 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
   };
 
   const handlePaymentType = async (g: CrmEventGuest, payment_type: string) => {
+    const realValue = payment_type === PAYMENT_NONE ? "" : payment_type;
     setSavingId(g.signup_id);
     try {
-      await crmApi.updateEventGuest(g.signup_id, { payment_type });
-      setGuests((prev) => prev.map((x) => (x.signup_id === g.signup_id ? { ...x, payment_type } : x)));
+      await crmApi.updateEventGuest(g.signup_id, { payment_type: realValue });
+      setGuests((prev) => prev.map((x) => (x.signup_id === g.signup_id ? { ...x, payment_type: realValue } : x)));
     } catch (e) {
       toast.error("Не сохранилось: " + String(e));
     } finally {
@@ -326,10 +328,13 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                           {STATUS_OPTIONS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                      <Select value={newForm.payment_type} onValueChange={(v) => setNewForm({ ...newForm, payment_type: v })}>
+                      <Select
+                        value={newForm.payment_type || PAYMENT_NONE}
+                        onValueChange={(v) => setNewForm({ ...newForm, payment_type: v === PAYMENT_NONE ? "" : v })}
+                      >
                         <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Способ оплаты" /></SelectTrigger>
                         <SelectContent>
-                          {PAYMENT_TYPES.map((p) => <SelectItem key={p.value || "none"} value={p.value}>{p.label}</SelectItem>)}
+                          {PAYMENT_TYPES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       <Input type="number" placeholder="Сумма ₽" value={newForm.payment_amount || ""} onChange={(e) => setNewForm({ ...newForm, payment_amount: parseInt(e.target.value) || 0 })} className="h-8 text-sm" />
@@ -418,10 +423,10 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                                 className="h-7 w-[70px] text-xs"
                                 title="Оплачено"
                               />
-                              <Select value={g.payment_type || ""} onValueChange={(v) => handlePaymentType(g, v)}>
+                              <Select value={g.payment_type || PAYMENT_NONE} onValueChange={(v) => handlePaymentType(g, v)}>
                                 <SelectTrigger className="h-7 w-[90px] text-xs"><SelectValue placeholder="Способ" /></SelectTrigger>
                                 <SelectContent>
-                                  {PAYMENT_TYPES.map((p) => <SelectItem key={p.value || "none"} value={p.value}>{p.label}</SelectItem>)}
+                                  {PAYMENT_TYPES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                               <button
@@ -430,6 +435,13 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                                 title={g.attended ? "Пришёл" : "Не отмечен"}
                               >
                                 <Icon name={g.attended ? "CheckCircle2" : "Circle"} size={12} />
+                              </button>
+                              <button
+                                onClick={() => { setSelected(new Set([g.signup_id])); setView("broadcast"); }}
+                                className="h-7 w-7 rounded-md hover:bg-primary/10 hover:text-primary flex items-center justify-center text-muted-foreground"
+                                title="Написать лично"
+                              >
+                                <Icon name="Send" size={12} />
                               </button>
                               <button onClick={() => startEdit(g)} className="h-7 w-7 rounded-md hover:bg-muted flex items-center justify-center text-muted-foreground" title="Редактировать">
                                 <Icon name="Pencil" size={12} />
