@@ -215,22 +215,50 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, admin, se
                 headers={'X-Session-Token': session_token, 'Content-Type': 'application/json'},
                 timeout=25,
             )
-            data = resp.json()
+            try:
+                data = resp.json()
+            except Exception:
+                data = {'raw': resp.text}
+            print(f"[guests-api send] notify status={resp.status_code} data={data}")
         except Exception as e:
+            print(f"[guests-api send] notify EXCEPTION: {e}")
             return respond(500, {'error': str(e)})
 
-        sent_list = []
-        for f in (data.get('failures') or []):
-            sent_list.append({'signup_id': f.get('signup_id'), 'channel': f.get('channel', 'auto'),
-                              'delivered': False, 'error': f.get('reason')})
-        by_ch = data.get('by_channel') or {}
-        for ch, count in by_ch.items():
-            for sid in signup_ids:
-                if count > 0:
-                    sent_list.append({'signup_id': sid, 'channel': ch, 'delivered': True, 'error': None})
-                    count -= 1
+        # notify-module вернул ошибку — пробрасываем в UI понятно
+        if resp.status_code >= 400 or (isinstance(data, dict) and 'error' in data):
+            err_text = (data or {}).get('error') if isinstance(data, dict) else f"HTTP {resp.status_code}"
+            return respond(200, {
+                'ok': False,
+                'sent': [{'signup_id': sid, 'channel': 'auto',
+                          'delivered': False, 'error': err_text or f"HTTP {resp.status_code}"}
+                         for sid in signup_ids],
+                'errors': [err_text or f"HTTP {resp.status_code}"],
+            })
 
-        return respond(200, {'ok': True, 'sent': sent_list, 'errors': []})
+        sent_list = []
+        failures = data.get('failures') or []
+        failed_ids = set()
+        for f in failures:
+            fsid = f.get('signup_id') or f.get('booking_id')
+            failed_ids.add(fsid)
+            sent_list.append({'signup_id': fsid, 'channel': f.get('channel', 'auto'),
+                              'delivered': False, 'error': f.get('reason')})
+
+        sent_count = int(data.get('sent') or 0)
+        if sent_count > 0:
+            by_ch = data.get('by_channel') or {}
+            actual_channel = next((ch for ch, c in by_ch.items() if c > 0), 'auto')
+            for sid in signup_ids:
+                if sid not in failed_ids:
+                    sent_list.append({'signup_id': sid, 'channel': actual_channel,
+                                      'delivered': True, 'error': None})
+
+        if not sent_list:
+            sent_list = [{'signup_id': sid, 'channel': 'auto', 'delivered': False,
+                          'error': 'notify-module не вернул результат: ' + str(data)[:200]}
+                         for sid in signup_ids]
+
+        return respond(200, {'ok': sent_count > 0, 'sent': sent_list, 'errors': []})
 
     conn.close()
     return respond(405, {'error': 'Method not allowed'})
