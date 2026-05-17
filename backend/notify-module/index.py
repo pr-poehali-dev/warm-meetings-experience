@@ -855,14 +855,18 @@ def handle_send(cur, conn, user_id, body, s):
         LEFT JOIN {s}.users org ON org.id = e.organizer_id
     """
     excluded = ",".join(f"'{x}'" for x in EXCLUDED_SIGNUP_STATUSES)
+    is_admin = user_has_role(cur, s, user_id, "admin")
     if signup_ids:
         # При выборочной отправке доступ проверяем по каждому event
         id_list = ",".join(str(int(i)) for i in signup_ids)
-        cur.execute(
-            base_select + f" WHERE es.id IN ({id_list}) "
-            f"AND (e.organizer_id = %s OR b.owner_id = %s)",
-            (user_id, user_id),
-        )
+        if is_admin:
+            cur.execute(base_select + f" WHERE es.id IN ({id_list})")
+        else:
+            cur.execute(
+                base_select + f" WHERE es.id IN ({id_list}) "
+                f"AND (e.organizer_id = %s OR b.owner_id = %s)",
+                (user_id, user_id),
+            )
     else:
         cur.execute(
             base_select + f" WHERE es.event_id = %s "
