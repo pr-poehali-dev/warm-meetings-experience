@@ -161,6 +161,8 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
     try {
       await crmApi.updateEventGuest(g.signup_id, { attended });
       setGuests((prev) => prev.map((x) => (x.signup_id === g.signup_id ? { ...x, attended } : x)));
+      setStats((s) => ({ ...s, attended: Math.max(0, s.attended + (attended ? 1 : -1)) }));
+      toast.success(attended ? `${g.name || "Гость"} отмечен как пришедший` : `Отметка снята`);
     } catch (e) {
       toast.error("Не сохранилось: " + String(e));
     } finally {
@@ -443,10 +445,18 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                               <div className="grid grid-cols-4 gap-1.5 pl-6">
                                 <button
                                   onClick={() => handleAttended(g, !g.attended)}
-                                  className={`h-9 rounded-md flex flex-col items-center justify-center gap-0.5 transition-colors ${g.attended ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-                                  title={g.attended ? "Пришёл" : "Отметить пришёл"}
+                                  disabled={savingId === g.signup_id}
+                                  className={`h-9 rounded-md flex items-center justify-center gap-1 text-xs font-medium transition-colors disabled:opacity-60 ${g.attended ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                                  title={g.attended ? "Пришёл — нажмите чтобы снять" : "Отметить, что пришёл"}
                                 >
-                                  <Icon name={g.attended ? "CheckCircle2" : "Circle"} size={16} />
+                                  {savingId === g.signup_id ? (
+                                    <Icon name="Loader2" size={14} className="animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Icon name={g.attended ? "CheckCircle2" : "Circle"} size={14} />
+                                      <span>{g.attended ? "Был" : "Пришёл?"}</span>
+                                    </>
+                                  )}
                                 </button>
                                 <button
                                   onClick={() => setChatGuest(g)}
