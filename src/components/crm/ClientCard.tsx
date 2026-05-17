@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { crmApi, CrmClientCard, CrmTag } from "@/lib/crm-api";
+import GuestChatDialog from "./GuestChatDialog";
 
 interface ClientCardProps {
   clientKey: string | null;
@@ -32,6 +33,15 @@ export default function ClientCard({ clientKey, onClose, onChanged }: ClientCard
   const [allTags, setAllTags] = useState<CrmTag[]>([]);
   const [newNote, setNewNote] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const [chatSignupId, setChatSignupId] = useState<number | null>(null);
+
+  const lastSignupId = useMemo(() => {
+    const items = data?.history || [];
+    for (const h of items) {
+      if (h.kind === "event" && typeof h.signup_id === "number") return h.signup_id;
+    }
+    return null;
+  }, [data]);
 
   const load = async () => {
     if (!clientKey) return;
@@ -87,7 +97,7 @@ export default function ClientCard({ clientKey, onClose, onChanged }: ClientCard
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon name="User" size={18} />
-            Карточка клиента
+            Карточка гостя
           </DialogTitle>
         </DialogHeader>
 
@@ -99,27 +109,41 @@ export default function ClientCard({ clientKey, onClose, onChanged }: ClientCard
           <div className="space-y-4">
             {/* Шапка */}
             <Card className="border-0 shadow-sm bg-muted/30">
-              <CardContent className="p-4 space-y-2">
-                <div className="font-semibold text-lg">{client?.name || "Без имени"}</div>
-                <div className="space-y-1 text-sm">
-                  {client?.phone && (
-                    <div className="flex items-center gap-2">
-                      <Icon name="Phone" size={13} className="text-muted-foreground" />
-                      <a href={`tel:${client.phone}`} className="hover:underline">{client.phone}</a>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-lg truncate">{client?.name || "Без имени"}</div>
+                    <div className="space-y-1 text-sm mt-2">
+                      {client?.phone && (
+                        <div className="flex items-center gap-2">
+                          <Icon name="Phone" size={13} className="text-muted-foreground" />
+                          <a href={`tel:${client.phone}`} className="hover:underline">{client.phone}</a>
+                        </div>
+                      )}
+                      {client?.email && (
+                        <div className="flex items-center gap-2">
+                          <Icon name="Mail" size={13} className="text-muted-foreground" />
+                          <a href={`mailto:${client.email}`} className="hover:underline">{client.email}</a>
+                        </div>
+                      )}
+                      {client?.telegram && (
+                        <div className="flex items-center gap-2">
+                          <Icon name="Send" size={13} className="text-muted-foreground" />
+                          <span>{client.telegram}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {client?.email && (
-                    <div className="flex items-center gap-2">
-                      <Icon name="Mail" size={13} className="text-muted-foreground" />
-                      <a href={`mailto:${client.email}`} className="hover:underline">{client.email}</a>
-                    </div>
-                  )}
-                  {client?.telegram && (
-                    <div className="flex items-center gap-2">
-                      <Icon name="Send" size={13} className="text-muted-foreground" />
-                      <span>{client.telegram}</span>
-                    </div>
-                  )}
+                  </div>
+                  <Button
+                    size="sm"
+                    className="gap-1.5 shrink-0"
+                    onClick={() => lastSignupId && setChatSignupId(lastSignupId)}
+                    disabled={!lastSignupId}
+                    title={lastSignupId ? "Открыть диалог" : "Нет записей гостя — диалог недоступен"}
+                  >
+                    <Icon name="MessageSquare" size={14} />
+                    Написать
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -247,6 +271,19 @@ export default function ClientCard({ clientKey, onClose, onChanged }: ClientCard
           </div>
         )}
       </DialogContent>
+
+      <GuestChatDialog
+        open={chatSignupId !== null}
+        signupId={chatSignupId}
+        guestName={client?.name || ""}
+        guestPhone={client?.phone || null}
+        guestEmail={client?.email || null}
+        guestTelegram={client?.telegram || null}
+        onClose={() => {
+          setChatSignupId(null);
+          load();
+        }}
+      />
     </Dialog>
   );
 }
