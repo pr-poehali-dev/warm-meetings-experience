@@ -531,7 +531,7 @@ def send_event_question_email(to_email, ev, guest_name, guest_contact, contact_t
     if not api_key or not sender_email:
         return
 
-    site_url = os.environ.get("SITE_URL", "https://warm-meetings-experience.poehali.dev").rstrip("/")
+    site_url = os.environ.get("SITE_URL", "https://sparcom.ru").rstrip("/")
     event_url = f"{site_url}/events/{ev['slug']}" if ev.get('slug') else f"{site_url}/events/{ev['id']}"
     event_title = ev.get('title') or 'Событие'
     event_date = str(ev.get('event_date', '') or '')

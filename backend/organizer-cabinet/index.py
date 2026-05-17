@@ -1521,7 +1521,7 @@ def send_question_answer_email(to_email, q, answer_text):
     if not api_key or not sender_email:
         raise RuntimeError("Unisender не настроен")
 
-    site_url = os.environ.get("SITE_URL", "https://warm-meetings-experience.poehali.dev").rstrip("/")
+    site_url = os.environ.get("SITE_URL", "https://sparcom.ru").rstrip("/")
     event_url = f"{site_url}/events/{q['event_slug']}" if q.get('event_slug') else f"{site_url}/events/{q['event_id']}"
     event_title = q.get('event_title') or 'Событие'
     event_date = str(q.get('event_date', '') or '')
