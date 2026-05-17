@@ -201,7 +201,7 @@ export default function WorkspaceSidebar({
           active={roleTab === "notify"}
           onClick={() => switchRoleTab("notify")}
           icon="Users"
-          label="Клиенты"
+          label="Гости"
           accent="text-rose-500"
         />
       </div>
