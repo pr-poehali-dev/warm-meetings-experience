@@ -100,6 +100,25 @@ def html_to_text(html):
     return text.strip()
 
 
+def vk_shorten_url(url):
+    """Превращает длинную ссылку в красивую vk.cc/... (без away.php).
+    Если не получилось — возвращает исходный URL."""
+    token = os.environ.get("VK_COMMUNITY_TOKEN", "")
+    if not token or not url:
+        return url
+    try:
+        r = requests.get(
+            f"{VK_API_URL}/utils.getShortLink",
+            params={"url": url, "private": 0, "access_token": token, "v": VK_API_VERSION},
+            timeout=5,
+        )
+        data = r.json()
+        short = (data.get("response") or {}).get("short_url")
+        return short or url
+    except Exception:
+        return url
+
+
 def send_vk_message(vk_user_id, message):
     """Отправка ЛС в VK от имени сообщества. Возвращает (ok, error)."""
     token = os.environ.get("VK_COMMUNITY_TOKEN", "")
@@ -114,6 +133,7 @@ def send_vk_message(vk_user_id, message):
                 "message": message,
                 "random_id": random.randint(1, 2**31),
                 "group_id": int(community_id) if community_id else 0,
+                "dont_parse_links": 0,
                 "access_token": token,
                 "v": VK_API_VERSION,
             },
@@ -946,8 +966,13 @@ def handle_send(cur, conn, user_id, body, s):
             plain_with_reply = plain
             html_with_reply = html
 
-        # Для ВК — добавляем подпись с реквизитами события и инструкцией ответа
-        vk_text = attach_vk_signature(plain_with_reply, event_data, sender_role="организатор")
+        # Для ВК — короткая ссылка vk.cc (без away.php) + подпись события
+        vk_reply_url = vk_shorten_url(reply_url) if reply_url else ""
+        if vk_reply_url:
+            vk_body = f"{plain}\n\n💬 Ответить организатору: {vk_reply_url}"
+        else:
+            vk_body = plain
+        vk_text = attach_vk_signature(vk_body, event_data, sender_role="организатор")
 
         if not actual:
             skipped += 1
