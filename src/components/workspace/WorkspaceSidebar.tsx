@@ -187,7 +187,7 @@ export default function WorkspaceSidebar({
           onClick={() => switchRoleTab("telegram")}
           icon="Send"
           label="Telegram-каналы"
-          badge={tgChannelsCount || undefined}
+          badge={tgChannelsCount ? `${tgChannelsCount} подкл.` : undefined}
           accent="text-sky-500"
         />
         <NavItem
