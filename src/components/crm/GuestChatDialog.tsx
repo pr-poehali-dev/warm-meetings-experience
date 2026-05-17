@@ -61,6 +61,9 @@ export default function GuestChatDialog({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputBarRef = useRef<HTMLDivElement>(null);
+  const [kbOffset, setKbOffset] = useState(0);
 
   const preferred = (guestChannel || "auto").toLowerCase();
   const channelLabel = CHANNEL_LABEL[preferred] || preferred;
@@ -91,6 +94,31 @@ export default function GuestChatDialog({
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Подстройка под экранную клавиатуру на мобильных (visualViewport)
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const diff = window.innerHeight - vv.height - vv.offsetTop;
+      setKbOffset(diff > 80 ? diff : 0);
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      setKbOffset(0);
+    };
+  }, [open]);
+
+  const handleFocus = () => {
+    setTimeout(() => {
+      inputBarRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    }, 300);
+  };
 
   const handleSend = async () => {
     console.log("[GuestChat] send click", { signupId, text, sending });
@@ -129,7 +157,10 @@ export default function GuestChatDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg w-[calc(100vw-1rem)] sm:w-auto p-0 max-h-[90vh] flex flex-col">
+      <DialogContent
+        className="max-w-lg w-[calc(100vw-1rem)] sm:w-auto p-0 flex flex-col"
+        style={{ maxHeight: kbOffset > 0 ? `calc(100vh - ${kbOffset}px - 1rem)` : "90vh" }}
+      >
         <DialogHeader className="px-4 pt-4 pb-3 border-b shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-sm">
@@ -189,10 +220,15 @@ export default function GuestChatDialog({
         </div>
 
         {/* Поле ввода */}
-        <div className="border-t p-3 space-y-2 bg-background shrink-0">
+        <div
+          ref={inputBarRef}
+          className="border-t p-3 space-y-2 bg-background shrink-0"
+        >
           <Textarea
+            ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onFocus={handleFocus}
             placeholder={`Напишите сообщение — гость получит его в ${channelLabel.toLowerCase()} со ссылкой для ответа`}
             rows={2}
             className="resize-none text-sm"
