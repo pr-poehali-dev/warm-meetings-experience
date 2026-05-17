@@ -28,7 +28,7 @@ VK_API_VERSION = "5.131"
 TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
 
 # Базовый URL фронтенда — для построения ссылок в уведомлениях
-SITE_URL = os.environ.get("SITE_URL", "https://warm-meetings-experience.poehali.dev").rstrip("/")
+SITE_URL = os.environ.get("SITE_URL", "https://sparcom.ru").rstrip("/")
 VERSION = "2026-05-14-b"  # форматирование даты: 20 мая в 18:00
 
 
