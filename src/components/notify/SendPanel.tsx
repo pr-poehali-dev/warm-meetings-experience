@@ -245,7 +245,7 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${partnerSource === "rituals" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
             >
               <Icon name="Flame" size={13} />
-              Клиентам бронирований
+              Гостям бронирований
             </button>
           </div>
         </div>
@@ -268,10 +268,10 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-xs">
-            {isMaster || (isPartner && partnerSource === "rituals") ? "Клиенты" : "Получатели"}
+            {isMaster || (isPartner && partnerSource === "rituals") ? "Гости" : "Получатели"}
             {(eventId || isMaster || (isPartner && partnerSource === "rituals")) && !loadingRec && (
               <span className="ml-2 text-muted-foreground">
-                ({recipients.length} {isMaster || (isPartner && partnerSource === "rituals") ? "клиентов" : "участников"}, доступно: {recipients.filter((r) => !!recipientChannel(r)).length})
+                ({recipients.length} {isMaster || (isPartner && partnerSource === "rituals") ? "гостей" : "участников"}, доступно: {recipients.filter((r) => !!recipientChannel(r)).length})
               </span>
             )}
           </Label>

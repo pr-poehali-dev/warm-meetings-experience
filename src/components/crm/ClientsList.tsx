@@ -73,7 +73,7 @@ export default function ClientsList({ onOpenClient, onAddExternal, onImportCsv }
         </Button>
         <Button size="sm" onClick={onAddExternal} className="gap-1.5">
           <Icon name="UserPlus" size={14} />
-          Добавить клиента
+          Добавить гостя
         </Button>
       </div>
 
@@ -87,9 +87,9 @@ export default function ClientsList({ onOpenClient, onAddExternal, onImportCsv }
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
               <Icon name="Users" size={24} className="text-primary" />
             </div>
-            <h3 className="font-semibold mb-1">Пока нет клиентов</h3>
+            <h3 className="font-semibold mb-1">Пока нет гостей</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Клиенты появятся автоматически, когда они запишутся на ваше событие
+              Гости появятся автоматически, когда они запишутся на ваше событие
             </p>
             <Button size="sm" onClick={onAddExternal} className="gap-1.5">
               <Icon name="UserPlus" size={14} />
@@ -165,7 +165,7 @@ export default function ClientsList({ onOpenClient, onAddExternal, onImportCsv }
       )}
 
       <div className="text-xs text-muted-foreground px-1">
-        Всего клиентов: <span className="font-medium text-foreground">{clients.length}</span>
+        Всего гостей: <span className="font-medium text-foreground">{clients.length}</span>
       </div>
     </div>
   );

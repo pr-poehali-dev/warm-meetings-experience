@@ -39,15 +39,15 @@ export default function CrmModule({ role }: CrmModuleProps) {
       <div>
         <h2 className="text-xl font-bold flex items-center gap-2">
           <Icon name="Users" size={20} className="text-primary" />
-          Клиенты
+          Гости
         </h2>
         <p className="text-sm text-muted-foreground">
-          Единая база всех ваших клиентов: история, заметки, теги и рассылки.
+          Единая база всех ваших гостей: история, заметки, теги и рассылки.
         </p>
       </div>
 
       <div className="flex gap-1.5 flex-wrap">
-        <TabBtn id="clients" icon="Users" label="Список клиентов" />
+        <TabBtn id="clients" icon="Users" label="Список гостей" />
         <TabBtn id="tags" icon="Tags" label="Теги" />
         <TabBtn id="broadcasts" icon="Send" label="Рассылки" />
       </div>
