@@ -847,7 +847,8 @@ def handle_send(cur, conn, user_id, body, s):
                e.id as eid, e.title, e.event_date, e.start_time, e.price_amount,
                COALESCE(b.name, e.bath_name) as bath_name,
                e.slug as event_slug,
-               COALESCE(org.name, org.email, '') as organizer_name
+               COALESCE(org.name, org.email, '') as organizer_name,
+               es.reply_token
         FROM {s}.event_signups es
         LEFT JOIN {s}.users u ON u.id = es.user_id
         JOIN {s}.events e ON e.id = es.event_id
@@ -905,7 +906,7 @@ def handle_send(cur, conn, user_id, body, s):
         (sid, name, email, status, pref, user_id_v,
          vk_id, vk_allowed, tg_chat_id, tg_allowed,
          eid, title, edate, etime, price, bath_name,
-         event_slug, organizer_name) = row
+         event_slug, organizer_name, reply_token) = row
 
         has_vk = bool(vk_id and vk_allowed)
         has_tg = bool(tg_chat_id and tg_allowed)
@@ -929,8 +930,24 @@ def handle_send(cur, conn, user_id, body, s):
         subj = render_template(subject_tpl, vars_) if subject_tpl else ""
         html = render_template(body_html_tpl, vars_)
         plain = html_to_text(html)
+
+        # Ссылка для ответа гостя
+        reply_url = f"{SITE_URL}/g/{reply_token}" if reply_token else ""
+        if reply_url:
+            plain_with_reply = f"{plain}\n\n💬 Ответить организатору: {reply_url}"
+            html_with_reply = (
+                f"{html}"
+                f"<p style=\"margin-top:24px;padding:12px;background:#f3f4f6;border-radius:8px;font-size:14px;\">"
+                f"💬 Чтобы ответить организатору, перейдите по ссылке:<br>"
+                f"<a href=\"{reply_url}\" style=\"color:#2563eb;\">{reply_url}</a>"
+                f"</p>"
+            )
+        else:
+            plain_with_reply = plain
+            html_with_reply = html
+
         # Для ВК — добавляем подпись с реквизитами события и инструкцией ответа
-        vk_text = attach_vk_signature(plain, event_data, sender_role="организатор")
+        vk_text = attach_vk_signature(plain_with_reply, event_data, sender_role="организатор")
 
         if not actual:
             skipped += 1
@@ -943,10 +960,10 @@ def handle_send(cur, conn, user_id, body, s):
         if actual == "vk":
             ok_send, err_msg = send_vk_message(vk_id, vk_text)
         elif actual == "telegram":
-            ok_send, err_msg = send_telegram_message(tg_chat_id, plain)
+            ok_send, err_msg = send_telegram_message(tg_chat_id, plain_with_reply)
         elif actual == "email":
             try:
-                send_email_via_unisender(email, name, subj or title or "Уведомление", html)
+                send_email_via_unisender(email, name, subj or title or "Уведомление", html_with_reply)
                 ok_send = True
             except Exception as e:
                 err_msg = str(e)

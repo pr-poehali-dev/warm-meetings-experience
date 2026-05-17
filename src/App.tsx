@@ -39,6 +39,7 @@ import PastEvents from "./pages/PastEvents";
 import VkCallback from "./pages/VkCallback";
 import YandexCallback from "./pages/YandexCallback";
 import EventShortLink from "./pages/EventShortLink";
+import GuestChat from "./pages/GuestChat";
 import VerifyEmail from "./pages/VerifyEmail";
 import Functional from "./pages/Functional";
 import AccountDemo from "./pages/AccountDemo";
@@ -64,6 +65,7 @@ const AppContent = () => {
         <Route path="/events/past" element={<PastEvents />} />
         <Route path="/events/:slug" element={<EventDetail />} />
         <Route path="/e/:code" element={<EventShortLink />} />
+        <Route path="/g/:token" element={<GuestChat />} />
         <Route path="/login" element={<Login />} />
         <Route path="/auth/vk/callback" element={<VkCallback />} />
         <Route path="/auth/yandex/callback" element={<YandexCallback />} />
