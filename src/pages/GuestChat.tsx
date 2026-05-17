@@ -22,7 +22,7 @@ interface ChatData {
   messages: ChatMessage[];
 }
 
-const API_URL = (func2url as Record<string, string>)["guest-chat-public"] || "";
+const API_URL = (func2url as Record<string, string>)["guests-api"] || "";
 
 function fmtTime(iso: string) {
   try {
@@ -62,7 +62,7 @@ export default function GuestChat() {
   const load = useCallback(async () => {
     if (!token) return;
     try {
-      const r = await fetch(`${API_URL}/?token=${encodeURIComponent(token)}`);
+      const r = await fetch(`${API_URL}/?resource=public_chat&token=${encodeURIComponent(token)}`);
       if (r.status === 404) {
         setError("Ссылка недействительна или устарела");
         return;
@@ -112,7 +112,7 @@ export default function GuestChat() {
     if (!body) return;
     setSending(true);
     try {
-      const r = await fetch(`${API_URL}/`, {
+      const r = await fetch(`${API_URL}/?resource=public_chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, message: body }),

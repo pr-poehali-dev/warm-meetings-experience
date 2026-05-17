@@ -60,6 +60,19 @@ def handler(event: dict, context) -> dict:
     method = event.get('httpMethod', 'GET')
     resource = params.get('resource', '')
 
+    # Публичный ресурс — диалог гостя по reply_token, без авторизации
+    if resource == 'public_chat':
+        conn = get_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        schema = get_schema()
+        try:
+            return handle_public_chat(event, method, params, cur, conn, schema)
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
     token = (event.get('headers') or {}).get('X-Session-Token') or \
             (event.get('headers') or {}).get('x-session-token') or \
             (event.get('headers') or {}).get('X-Authorization', '').replace('Bearer ', '') or \
@@ -262,3 +275,93 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, admin, se
 
     conn.close()
     return respond(405, {'error': 'Method not allowed'})
+
+
+def handle_public_chat(event, method, params, cur, conn, schema):
+    """Публичный чат гостя по reply_token (без авторизации).
+
+    GET  ?resource=public_chat&token=...      — переписка + контекст события
+    POST ?resource=public_chat  body: {token, message} — отправить ответ организатору
+    """
+    token = (params.get('token') or '').strip()
+    body_json = {}
+    if method == 'POST':
+        try:
+            body_json = json.loads(event.get('body') or '{}')
+        except Exception:
+            body_json = {}
+        token = (body_json.get('token') or token).strip()
+
+    if not token or len(token) > 64 or not all(c.isalnum() for c in token):
+        return respond(400, {'error': 'invalid token'})
+
+    t = token.replace("'", "''")
+    cur.execute(f"""
+        SELECT s.id AS signup_id, s.event_id, s.name AS guest_name,
+               e.title AS event_title, e.event_date, e.start_time,
+               u.name AS organizer_name
+        FROM {schema}.event_signups s
+        JOIN {schema}.events e ON e.id = s.event_id
+        LEFT JOIN {schema}.users u ON u.id = e.organizer_id
+        WHERE s.reply_token = '{t}'
+        LIMIT 1
+    """)
+    row = cur.fetchone()
+    if not row:
+        return respond(404, {'error': 'not found'})
+
+    signup_id = int(row['signup_id'])
+    event_id = int(row['event_id'])
+
+    if method == 'POST':
+        text = (body_json.get('message') or '').strip()
+        if not text:
+            return respond(400, {'error': 'message required'})
+        if len(text) > 5000:
+            text = text[:5000]
+        t_esc = text.replace("'", "''")
+        cur.execute(f"""
+            INSERT INTO {schema}.guest_messages (event_id, signup_id, direction, channel, body, delivered)
+            VALUES ({event_id}, {signup_id}, 'in', 'site', '{t_esc}', true)
+            RETURNING id, direction, channel, body, delivered, created_at
+        """)
+        new_msg = cur.fetchone()
+        cur.execute(f"""
+            UPDATE {schema}.event_signups
+            SET wrote_at = COALESCE(wrote_at, NOW()),
+                status = CASE WHEN status IN ('new', 'новая') THEN 'wrote' ELSE status END
+            WHERE id = {signup_id}
+        """)
+        conn.commit()
+        return respond(200, {'ok': True, 'message': dict(new_msg)})
+
+    # GET
+    cur.execute(f"""
+        SELECT id, direction, channel, body, delivered, created_at
+        FROM {schema}.guest_messages
+        WHERE signup_id = {signup_id}
+        ORDER BY created_at ASC
+        LIMIT 500
+    """)
+    messages = [dict(m) for m in cur.fetchall()]
+
+    cur.execute(f"""
+        UPDATE {schema}.guest_messages
+        SET read_at = NOW()
+        WHERE signup_id = {signup_id} AND direction = 'out' AND read_at IS NULL
+    """)
+    conn.commit()
+
+    event_date = row.get('event_date')
+    start_time = row.get('start_time')
+    return respond(200, {
+        'guest_name': row.get('guest_name'),
+        'event': {
+            'id': event_id,
+            'title': row.get('event_title'),
+            'date': str(event_date) if event_date else None,
+            'start_time': str(start_time) if start_time else None,
+        },
+        'organizer_name': row.get('organizer_name'),
+        'messages': messages,
+    })
