@@ -219,7 +219,7 @@ export default function ClientCard({ clientKey, onClose, onChanged }: ClientCard
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Icon name="StickyNote" size={14} className="text-muted-foreground" />
-                <span className="text-sm font-medium">Заметки</span>
+                <span className="text-sm font-medium">Заметки (видно только вам)</span>
               </div>
               <div className="space-y-2">
                 {data.notes.map((n) => (
