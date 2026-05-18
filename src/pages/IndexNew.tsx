@@ -6,6 +6,7 @@ import { EventItem, mapApiEvent } from "@/data/events";
 import { format, parseISO, startOfDay } from "date-fns";
 import { ru } from "date-fns/locale";
 import { TELEGRAM_URL, ORGANIZER_URL } from "@/lib/constants";
+import EventCalendar from "@/components/events/EventCalendar";
 
 // ─── Палитра логотипа ───────────────────────────────────────────────────────
 // Терракота: #C8834A  |  Шалфей: #8FA89A  |  Кремовый: #EDE0CC  |  Лёд: #D9EDE8
@@ -378,7 +379,8 @@ export default function IndexNew() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState("all");
-  const [view, setView] = useState<"grid" | "list">("grid");
+  const [view, setView] = useState<"grid" | "list" | "calendar">("grid");
+  const [calendarDate, setCalendarDate] = useState<Date | undefined>(undefined);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
 
@@ -549,6 +551,16 @@ export default function IndexNew() {
                 >
                   <Icon name="List" size={16} />
                 </button>
+                <button
+                  onClick={() => setView("calendar")}
+                  className="p-2 rounded-lg transition-all duration-200"
+                  style={view === "calendar"
+                    ? { background: "rgba(200,131,74,0.3)", color: "#C8834A" }
+                    : { color: "var(--toggle-idle)" }
+                  }
+                >
+                  <Icon name="CalendarDays" size={16} />
+                </button>
               </div>
             </div>
 
@@ -563,6 +575,13 @@ export default function IndexNew() {
                 <p className="text-lg mb-2">Встреч не найдено</p>
                 <button onClick={() => setSelectedType("all")} className="text-sm underline underline-offset-4" style={{ color: "var(--c-terra)" }}>Сбросить</button>
               </div>
+            ) : view === "calendar" ? (
+              <EventCalendar
+                events={events}
+                selectedDate={calendarDate}
+                onDateSelect={setCalendarDate}
+                filterType={selectedType}
+              />
             ) : view === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.map((e) => <NetflixGridCard key={e.slug} event={e} />)}
