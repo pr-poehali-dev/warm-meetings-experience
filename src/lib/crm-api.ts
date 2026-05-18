@@ -129,6 +129,17 @@ export const crmApi = {
       method: "DELETE",
     }),
 
+  sendGuestInvite: (data: {
+    signup_id?: number;
+    email: string;
+    name?: string;
+  }): Promise<{ ok: boolean; sent_to: string; referral_link: string }> =>
+    authenticatedRequest(`${BASE}/?resource=guest_invite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...data, origin: window.location.origin }),
+    }),
+
   getClient: (key: string): Promise<CrmClientCard> =>
     authenticatedRequest(`${BASE}/?resource=client&key=${encodeURIComponent(key)}`),
 

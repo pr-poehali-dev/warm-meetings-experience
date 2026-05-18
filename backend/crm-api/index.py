@@ -1,5 +1,7 @@
 import json
 import os
+import secrets as _secrets
+import urllib.request
 import psycopg2
 import psycopg2.extras
 
@@ -122,6 +124,8 @@ def handler(event: dict, context) -> dict:
                 return add_event_guest(cur, conn, user_id, schema, event)
             if method == 'DELETE':
                 return delete_event_guest(cur, conn, user_id, schema, params)
+        if resource == 'guest_invite' and method == 'POST':
+            return send_guest_invite(cur, conn, user_id, user, schema, event)
     finally:
         try:
             conn.close()
@@ -908,3 +912,120 @@ def import_csv(cur, conn, user_id, schema, event):
         'skipped_duplicates': skipped,
         'errors': errors,
     })
+
+
+def _send_email(to_email, subject, body_html, to_name=None):
+    """Отправка письма через Unisender Go. Не падает при ошибках."""
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
+    if not api_key or not sender_email or not to_email:
+        return False
+    recipient = {'email': to_email}
+    if to_name:
+        recipient['name'] = to_name
+    payload = {
+        'message': {
+            'recipients': [recipient],
+            'sender_email': sender_email,
+            'sender_name': sender_name,
+            'subject': subject,
+            'body': {'html': body_html},
+            'track_links': 1,
+            'track_read': 1,
+        }
+    }
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(
+        'https://go2.unisender.ru/ru/transactional/api/v1/email/send.json',
+        data=data,
+        headers={'X-API-KEY': api_key, 'Content-Type': 'application/json'},
+    )
+    try:
+        urllib.request.urlopen(req, timeout=10)
+        return True
+    except Exception:
+        return False
+
+
+def _get_or_create_referral_code(cur, conn, schema, user_id):
+    cur.execute(f"SELECT referral_code FROM {schema}.users WHERE id = {user_id}")
+    row = cur.fetchone()
+    code = row['referral_code'] if row else None
+    if not code:
+        code = _secrets.token_urlsafe(8).upper()[:12]
+        safe = code.replace("'", "''")
+        cur.execute(f"UPDATE {schema}.users SET referral_code = '{safe}' WHERE id = {user_id}")
+        conn.commit()
+    return code
+
+
+def send_guest_invite(cur, conn, user_id, user, schema, event):
+    """Отправляет email-приглашение гостю с реферальной ссылкой организатора."""
+    try:
+        body = json.loads(event.get('body') or '{}')
+    except Exception:
+        body = {}
+
+    signup_id = body.get('signup_id')
+    email = (body.get('email') or '').strip()
+    if not email or '@' not in email:
+        return respond(400, {'error': 'Укажите корректный email'})
+
+    # Если указан signup_id — проверяем что гость принадлежит событию организатора и обновляем email при необходимости
+    guest_name = body.get('name') or ''
+    event_title = ''
+    if signup_id and str(signup_id).isdigit():
+        cur.execute(f"""
+            SELECT s.id, s.name, s.email, e.title, e.organizer_id
+            FROM {schema}.event_signups s
+            JOIN {schema}.events e ON e.id = s.event_id
+            WHERE s.id = {int(signup_id)}
+        """)
+        row = cur.fetchone()
+        if not row:
+            return respond(404, {'error': 'Гость не найден'})
+        if row['organizer_id'] != user_id:
+            return respond(403, {'error': 'Forbidden'})
+        guest_name = guest_name or row['name'] or ''
+        event_title = row['title'] or ''
+        # Сохраняем email на signup, если его не было
+        if not row['email']:
+            safe_email = email.replace("'", "''")
+            cur.execute(f"UPDATE {schema}.event_signups SET email = '{safe_email}' WHERE id = {int(signup_id)}")
+            conn.commit()
+
+    ref_code = _get_or_create_referral_code(cur, conn, schema, user_id)
+    origin = (body.get('origin') or 'https://sparcom.club').rstrip('/')
+    link = f"{origin}/register?ref={ref_code}"
+
+    organizer_name = (user.get('name') if isinstance(user, dict) else None) or 'Организатор'
+    name_html = (guest_name or 'Здравствуйте').replace('<', '').replace('>', '')
+    org_html = organizer_name.replace('<', '').replace('>', '')
+    event_html = event_title.replace('<', '').replace('>', '')
+    event_block = f'<p style="margin:0 0 12px;">Событие: <b>{event_html}</b></p>' if event_html else ''
+
+    subject = f'Приглашение от {organizer_name}'
+    html = f"""
+    <div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111;">
+      <h2 style="margin:0 0 12px;">{name_html}, вас приглашают в Sparcom</h2>
+      <p style="margin:0 0 12px;line-height:1.5;">
+        <b>{org_html}</b> пригласил(а) вас присоединиться. Чтобы получать уведомления и общаться,
+        зарегистрируйтесь по ссылке ниже:
+      </p>
+      {event_block}
+      <p style="margin:20px 0;">
+        <a href="{link}" style="background:#2563eb;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none;display:inline-block;">
+          Принять приглашение
+        </a>
+      </p>
+      <p style="margin:12px 0 0;font-size:12px;color:#666;">
+        Или скопируйте ссылку: <span style="word-break:break-all;">{link}</span>
+      </p>
+    </div>
+    """
+
+    ok = _send_email(email, subject, html, to_name=guest_name or None)
+    if not ok:
+        return respond(500, {'error': 'Не удалось отправить письмо. Проверьте настройки почты.'})
+    return respond(200, {'ok': True, 'sent_to': email, 'referral_link': link})

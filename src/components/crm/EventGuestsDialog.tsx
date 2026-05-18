@@ -201,6 +201,29 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
     }
   };
 
+  const handleSendInvite = async (g: CrmEventGuest) => {
+    let email = (editForm.email || g.email || "").trim();
+    if (!email) {
+      const ask = window.prompt("Введите email гостя для отправки приглашения:");
+      if (!ask) return;
+      email = ask.trim();
+      setEditForm((f) => ({ ...f, email }));
+    }
+    if (!email.includes("@")) {
+      toast.error("Некорректный email");
+      return;
+    }
+    setSavingId(g.signup_id);
+    try {
+      await crmApi.sendGuestInvite({ signup_id: g.signup_id, email, name: editForm.name || g.name });
+      toast.success(`Приглашение отправлено на ${email}`);
+    } catch (e) {
+      toast.error("Не удалось отправить: " + String(e));
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   const handleDelete = async (g: CrmEventGuest) => {
     if (!confirm(`Удалить гостя «${g.name}» из события?`)) return;
     try {
@@ -388,33 +411,21 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                                     <span>Гость добавлен вручную и ещё не подтвердил данные — их можно править.</span>
                                   </div>
                                   <div className="flex items-start gap-1.5 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-1.5 text-[11px] text-emerald-800">
-                                    <Icon name="Link" size={12} className="mt-0.5 shrink-0" />
+                                    <Icon name="Mail" size={12} className="mt-0.5 shrink-0" />
                                     <div className="flex-1 min-w-0">
-                                      <div className="mb-1">
-                                        Чтобы получать сообщения и уведомления, гостю нужно присоединиться по ссылке-приглашению:
+                                      <div className="mb-2">
+                                        Чтобы общаться и получать уведомления — пригласите гостя присоединиться. Письмо уйдёт на email с вашей реферальной ссылкой.
                                       </div>
-                                      <div className="flex items-center gap-1">
-                                        <Input
-                                          readOnly
-                                          value={`${window.location.origin}/invite?event_id=${eventId}`}
-                                          className="h-7 text-[11px] bg-white"
-                                          onFocus={(e) => e.currentTarget.select()}
-                                        />
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="h-7 px-2 text-[11px] shrink-0"
-                                          onClick={() => {
-                                            const url = `${window.location.origin}/invite?event_id=${eventId}`;
-                                            navigator.clipboard.writeText(url).then(
-                                              () => toast.success("Ссылка скопирована"),
-                                              () => toast.error("Не удалось скопировать"),
-                                            );
-                                          }}
-                                        >
-                                          <Icon name="Copy" size={11} />
-                                        </Button>
-                                      </div>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 px-2 text-[11px] gap-1 bg-white"
+                                        onClick={() => handleSendInvite(g)}
+                                        disabled={savingId === g.signup_id}
+                                      >
+                                        <Icon name="Send" size={11} />
+                                        Отправить приглашение на email
+                                      </Button>
                                     </div>
                                   </div>
                                 </div>

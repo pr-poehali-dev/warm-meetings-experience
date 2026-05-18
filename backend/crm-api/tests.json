@@ -29,6 +29,15 @@
       "expectedStatus": 401,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Guest invite unauthorized",
+      "method": "POST",
+      "path": "/?resource=guest_invite",
+      "body": {"email": "test@example.com"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }
