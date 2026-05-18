@@ -129,7 +129,7 @@ export default function EventCalendar({
                 onClick={() => setMode(m)}
                 className="px-3 py-1 rounded-full text-xs font-medium transition-all duration-200"
                 style={mode === m
-                  ? { background: "rgba(200,131,74,0.3)", color: "#C8834A" }
+                  ? { background: "rgba(200,131,74,0.3)", color: "var(--c-terra)" }
                   : { color: "var(--toggle-idle)" }
                 }
               >
@@ -148,9 +148,9 @@ export default function EventCalendar({
             </div>
           ))}
           <div className="flex items-center gap-1.5 ml-auto">
-            <span className="w-2 h-2 rounded-full bg-green-500" /> Есть места
-            <span className="w-2 h-2 rounded-full bg-yellow-400 ml-2" /> Мало
-            <span className="w-2 h-2 rounded-full bg-red-500 ml-2" /> Нет мест
+            <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400" /> Есть места
+            <span className="w-2 h-2 rounded-full bg-yellow-500 dark:bg-yellow-400 ml-2" /> Мало
+            <span className="w-2 h-2 rounded-full bg-red-500 dark:bg-red-400 ml-2" /> Нет мест
           </div>
         </div>
 

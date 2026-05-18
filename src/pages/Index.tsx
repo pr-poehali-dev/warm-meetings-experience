@@ -227,7 +227,7 @@ function NetflixGridCard({ event }: { event: EventItem }) {
           <div className="absolute top-3 left-3 bg-yellow-400 text-black text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">ТОП</div>
         )}
         <div className="absolute top-3 right-3">
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(200,131,74,0.85)", color: "#fff" }}>{event.type}</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--c-terra)", color: "#fff" }}>{event.type}</span>
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 p-4">
@@ -240,7 +240,7 @@ function NetflixGridCard({ event }: { event: EventItem }) {
             <span className="text-white/50 text-xs flex items-center gap-1">
               <Icon name="MapPin" size={11} />{event.bathName ?? "—"}
             </span>
-            <span className="font-bold text-sm" style={{ color: "#C8834A" }}>{event.priceLabel}</span>
+            <span className="font-bold text-sm" style={{ color: "var(--c-terra)" }}>{event.priceLabel}</span>
           </div>
         </div>
       </div>
@@ -249,11 +249,11 @@ function NetflixGridCard({ event }: { event: EventItem }) {
         className="absolute inset-0 flex flex-col items-center justify-center gap-3 transition-opacity duration-200 rounded-2xl"
         style={{ background: "rgba(0,0,0,0.7)", opacity: hovered ? 1 : 0 }}
       >
-        <span className="text-white font-bold rounded-full px-6 py-2 text-sm" style={{ background: sold ? "rgba(255,255,255,0.15)" : "linear-gradient(90deg,#C8834A,#8FA89A)" }}>
+        <span className="text-white font-bold rounded-full px-6 py-2 text-sm" style={{ background: sold ? "rgba(255,255,255,0.15)" : "linear-gradient(90deg,var(--c-terra),var(--c-sage))" }}>
           {sold ? "Мест нет" : "Подробнее →"}
         </span>
         {event.priceLabel && !sold && (
-          <span className="font-bold text-lg" style={{ color: "#C8834A" }}>{event.priceLabel}</span>
+          <span className="font-bold text-lg" style={{ color: "var(--c-terra)" }}>{event.priceLabel}</span>
         )}
       </div>
 
@@ -316,7 +316,7 @@ function NetflixListCard({ event }: { event: EventItem }) {
             <span
               className="text-xs font-semibold px-3 py-1 rounded-full transition-all duration-200"
               style={hovered && !sold
-                ? { background: "linear-gradient(90deg,#C8834A,#8FA89A)", color: "#fff" }
+                ? { background: "linear-gradient(90deg,var(--c-terra),var(--c-sage))", color: "#fff" }
                 : { background: "var(--toggle-bg)", color: "var(--toggle-idle)" }
               }
             >

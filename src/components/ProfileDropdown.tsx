@@ -28,8 +28,8 @@ function buildCabinets(hasRole: (slug: string) => boolean): Cabinet[] {
       description: "События, избранное, профиль",
       to: "/account",
       icon: "User",
-      color: "text-blue-600",
-      bgColor: "bg-blue-50 group-hover:bg-blue-100",
+      color: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-500/10 group-hover:bg-blue-500/20",
     },
   ];
 
@@ -42,8 +42,8 @@ function buildCabinets(hasRole: (slug: string) => boolean): Cabinet[] {
       description: getBusinessDescription(isMaster, isOrganizer, isPartner),
       to: "/workspace",
       icon: "Briefcase",
-      color: "text-orange-600",
-      bgColor: "bg-orange-50 group-hover:bg-orange-100",
+      color: "text-orange-600 dark:text-orange-400",
+      bgColor: "bg-orange-500/10 group-hover:bg-orange-500/20",
     });
   }
 
@@ -204,8 +204,8 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
                 to="/admin"
                 className="group flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/60 transition-colors"
               >
-                <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-slate-100 flex items-center justify-center flex-shrink-0 transition-colors">
-                  <Icon name="ShieldCheck" size={16} className="text-slate-600" />
+                <div className="w-8 h-8 rounded-lg bg-muted group-hover:bg-muted/80 flex items-center justify-center flex-shrink-0 transition-colors">
+                  <Icon name="ShieldCheck" size={16} className="text-muted-foreground" />
                 </div>
                 <div className="min-w-0">
                   <div className="text-sm font-medium text-foreground">Администратор</div>

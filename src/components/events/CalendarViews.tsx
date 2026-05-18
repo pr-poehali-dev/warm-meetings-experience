@@ -91,7 +91,7 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect, the
                         className="text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full"
                         style={
                           isTodayDay
-                            ? { background: "#C8834A", color: "#fff" }
+                            ? { background: "var(--c-terra)", color: "#fff" }
                             : isOtherMonth
                             ? { color: "var(--c-faint)" }
                             : { color: "var(--c-cream)" }

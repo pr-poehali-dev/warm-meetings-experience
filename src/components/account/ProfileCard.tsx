@@ -130,7 +130,7 @@ export default function ProfileCard({
               {user.email_verified && (
                 <span
                   title="Email подтверждён"
-                  className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center"
+                  className="w-6 h-6 rounded-full bg-green-500/20 text-green-600 dark:text-green-400 flex items-center justify-center"
                 >
                   <Icon name="Mail" size={12} />
                 </span>
@@ -138,7 +138,7 @@ export default function ProfileCard({
               {user.vk_id && (
                 <span
                   title="ВКонтакте привязан"
-                  className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-bold"
+                  className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-bold"
                 >
                   VK
                 </span>
@@ -146,7 +146,7 @@ export default function ProfileCard({
               {user.yandex_id && (
                 <span
                   title="Яндекс привязан"
-                  className="w-6 h-6 rounded-full bg-yellow-500 text-white flex items-center justify-center text-[11px] font-bold"
+                  className="w-6 h-6 rounded-full bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 flex items-center justify-center text-[11px] font-bold"
                 >
                   Я
                 </span>

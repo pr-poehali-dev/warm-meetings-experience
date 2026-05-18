@@ -156,20 +156,20 @@ export default function Header({ transparent = false }: HeaderProps) {
 
       {mobileOpen && (
         <div
-          className="md:hidden fixed inset-0 z-[200] bg-[#1a1410]/95 backdrop-blur-md flex flex-col px-4 pb-8"
+          className="md:hidden fixed inset-0 z-[200] bg-background/97 backdrop-blur-xl flex flex-col px-4 pb-8"
           style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
         >
           <div className="flex items-center justify-between h-16 flex-shrink-0">
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
               <img
-                src={LOGO_ON_DARK}
+                src={isDarkTheme ? LOGO_ON_DARK : LOGO_ON_LIGHT}
                 alt="Спарком"
                 className="h-7 w-auto object-contain object-left"
               />
             </Link>
             <button
               onClick={() => setMobileOpen(false)}
-              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              className="p-2 rounded-full bg-muted hover:bg-muted/80 text-foreground transition-colors"
             >
               <Icon name="X" size={22} />
             </button>
@@ -181,23 +181,23 @@ export default function Header({ transparent = false }: HeaderProps) {
                 to={link.to}
                 className={`px-4 py-3.5 rounded-xl text-base font-medium transition-colors ${
                   isActive(link.to)
-                    ? "bg-white/25 text-white"
-                    : "text-white/90 hover:bg-white/15 hover:text-white"
+                    ? "bg-primary/15 text-primary"
+                    : "text-foreground hover:bg-muted"
                 }`}
               >
                 {link.label}
               </Link>
             ))}
           </nav>
-          <div className="px-4 py-3 flex items-center justify-between border-t border-white/20">
-            <span className="text-xs text-white/50 font-medium">Тема оформления</span>
+          <div className="px-4 py-3 flex items-center justify-between border-t border-border">
+            <span className="text-xs text-muted-foreground font-medium">Тема оформления</span>
             <ThemeToggle />
           </div>
-          <div className="mt-auto pt-2 border-t border-white/20 space-y-1">
+          <div className="mt-auto pt-2 border-t border-border space-y-1">
             {user ? (
               <>
                 <div className="px-4 py-2">
-                  <div className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Мои кабинеты</div>
+                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Мои кабинеты</div>
                   <div className="space-y-0.5">
                     {MOBILE_CABINETS.filter((c) => {
                       if (c.roleSlugAny) return c.roleSlugAny.some((r) => hasRole(r));
@@ -209,8 +209,8 @@ export default function Header({ transparent = false }: HeaderProps) {
                         to={c.to}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                           location.pathname === c.to
-                            ? "bg-white/25 text-white"
-                            : "text-white/80 hover:bg-white/15 hover:text-white"
+                            ? "bg-primary/15 text-primary"
+                            : "text-foreground hover:bg-muted"
                         }`}
                       >
                         <Icon name={c.icon} size={16} />
@@ -219,10 +219,10 @@ export default function Header({ transparent = false }: HeaderProps) {
                     ))}
                   </div>
                 </div>
-                <div className="border-t border-white/20 pt-2 px-4 pb-2">
+                <div className="border-t border-border pt-2 px-4 pb-2">
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-white/60 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground rounded-xl transition-colors"
                   >
                     <Icon name="LogOut" size={16} />
                     Выйти
@@ -233,7 +233,7 @@ export default function Header({ transparent = false }: HeaderProps) {
               <div className="px-4 pb-4">
                 <Link
                   to="/login"
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-white/20 hover:bg-white/30 text-white rounded-xl text-sm font-medium transition-colors"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-medium transition-colors"
                 >
                   <Icon name="LogIn" size={16} />
                   Войти

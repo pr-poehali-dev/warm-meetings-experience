@@ -55,19 +55,19 @@ export default function CalcResultPanel({
               </span>
               <span>{Math.max(params.participants, breakeven) + 5} чел</span>
             </div>
-            <div className="h-3 bg-white/60 rounded-full overflow-hidden">
+            <div className="h-3 bg-border rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-300"
                 style={{
                   width: `${Math.min(100, (params.participants / breakeven) * 100)}%`,
-                  backgroundColor: params.participants >= breakeven ? "#22c55e" : "#f59e0b"
+                  backgroundColor: params.participants >= breakeven ? "hsl(var(--ring))" : "#f59e0b"
                 }}
               />
             </div>
           </div>
         )}
         {breakeven === null && (
-          <div className="mt-3 text-xs text-red-600 font-medium">
+          <div className="mt-3 text-xs text-red-600 dark:text-red-400 font-medium">
             При текущей цене безубыточность недостижима
           </div>
         )}
@@ -81,7 +81,7 @@ export default function CalcResultPanel({
             <div className="text-xs text-muted-foreground">Зависимость от числа участников</div>
           </div>
           {breakeven && (
-            <div className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-lg font-medium">
+            <div className="text-xs bg-green-500/15 text-green-600 dark:text-green-400 px-2 py-1 rounded-lg font-medium">
               Точка ноля: {breakeven} чел
             </div>
           )}
@@ -101,7 +101,7 @@ export default function CalcResultPanel({
               <Tooltip content={<ChartTooltip />} />
               <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={2} strokeDasharray="4 2" />
               {breakeven && (
-                <ReferenceLine x={breakeven} stroke="#22c55e" strokeWidth={2} strokeDasharray="4 2" />
+                <ReferenceLine x={breakeven} stroke="hsl(142 71% 45%)" strokeWidth={2} strokeDasharray="4 2" />
               )}
               <ReferenceLine x={params.participants} stroke={statusColor} strokeWidth={2} />
               <Area
@@ -117,7 +117,7 @@ export default function CalcResultPanel({
           </ResponsiveContainer>
         </div>
         <div className="flex gap-4 mt-2 text-[10px] text-muted-foreground">
-          <span className="flex items-center gap-1"><span className="inline-block w-4 h-0.5 bg-green-500" /> точка ноля</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-4 h-0.5 bg-green-500 dark:bg-green-400" /> точка ноля</span>
           <span className="flex items-center gap-1"><span className="inline-block w-4 h-0.5" style={{ backgroundColor: statusColor }} /> текущий прогноз</span>
         </div>
       </div>
@@ -137,30 +137,30 @@ export default function CalcResultPanel({
           return (
             <div className="space-y-3">
               <div className="h-5 rounded-full overflow-hidden flex">
-                <div className="bg-red-400 transition-all h-full" style={{ width: `${pctCosts}%` }} title={`Расходы: ${pctCosts}%`} />
-                <div className="bg-amber-400 transition-all h-full" style={{ width: `${pctPlatform}%` }} title={`Платформа: ${pctPlatform}%`} />
-                <div className="bg-green-400 transition-all h-full" style={{ width: `${pctProfit}%` }} title={`Прибыль: ${pctProfit}%`} />
+                <div className="bg-red-500 dark:bg-red-400 transition-all h-full" style={{ width: `${pctCosts}%` }} title={`Расходы: ${pctCosts}%`} />
+                <div className="bg-amber-500 dark:bg-amber-400 transition-all h-full" style={{ width: `${pctPlatform}%` }} title={`Платформа: ${pctPlatform}%`} />
+                <div className="bg-green-500 dark:bg-green-400 transition-all h-full" style={{ width: `${pctProfit}%` }} title={`Прибыль: ${pctProfit}%`} />
               </div>
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
                 <div>
                   <div className="flex items-center justify-center gap-1 text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />Расходы
+                    <span className="w-2 h-2 rounded-full bg-red-500 dark:bg-red-400 shrink-0" />Расходы
                   </div>
                   <div className="font-bold text-sm mt-0.5">{fmt(orgCosts)} ₽</div>
                   <div className="text-muted-foreground">{pctCosts}%</div>
                 </div>
                 <div>
                   <div className="flex items-center justify-center gap-1 text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />Платформа
+                    <span className="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400 shrink-0" />Платформа
                   </div>
                   <div className="font-bold text-sm mt-0.5">{fmt(platform)} ₽</div>
                   <div className="text-muted-foreground">{pctPlatform}%</div>
                 </div>
                 <div>
                   <div className="flex items-center justify-center gap-1 text-muted-foreground">
-                    <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />Вам
+                    <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-green-400 shrink-0" />Вам
                   </div>
-                  <div className={`font-bold text-sm mt-0.5 ${isLoss ? "text-red-600" : "text-green-600"}`}>{isLoss ? "−" : "+"}{fmt(Math.abs(r.profit))} ₽</div>
+                  <div className={`font-bold text-sm mt-0.5 ${isLoss ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>{isLoss ? "−" : "+"}{fmt(Math.abs(r.profit))} ₽</div>
                   <div className="text-muted-foreground">{isLoss ? "убыток" : `${pctProfit}%`}</div>
                 </div>
               </div>
