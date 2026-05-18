@@ -190,7 +190,7 @@ export default function TgPublishButton({
           />
           {/* Sheet */}
           <div
-            className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl flex flex-col overflow-hidden"
+            className="relative bg-background w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl flex flex-col overflow-hidden"
             style={{
               maxHeight: "calc(100dvh - 48px)",
               paddingBottom: "env(safe-area-inset-bottom)",
