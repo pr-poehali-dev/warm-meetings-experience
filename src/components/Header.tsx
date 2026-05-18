@@ -156,7 +156,7 @@ export default function Header({ transparent = false }: HeaderProps) {
 
       {mobileOpen && (
         <div
-          className="md:hidden fixed inset-0 z-[200] bg-foreground/80 backdrop-blur-md flex flex-col px-4 pb-8"
+          className="md:hidden fixed inset-0 z-[200] bg-[#1a1410]/95 backdrop-blur-md flex flex-col px-4 pb-8"
           style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
         >
           <div className="flex items-center justify-between h-16 flex-shrink-0">
