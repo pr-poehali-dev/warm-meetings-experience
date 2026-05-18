@@ -183,10 +183,16 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
 
   const saveEdit = async () => {
     if (!editingId) return;
+    const guest = guests.find((x) => x.signup_id === editingId);
+    if (!guest) return;
+    const isRegistered = guest.user_id !== null;
+    const payload = isRegistered
+      ? { comment: editForm.comment }
+      : editForm;
     setSavingId(editingId);
     try {
-      await crmApi.updateEventGuest(editingId, editForm);
-      setGuests((prev) => prev.map((x) => (x.signup_id === editingId ? { ...x, ...editForm } : x)));
+      await crmApi.updateEventGuest(editingId, payload);
+      setGuests((prev) => prev.map((x) => (x.signup_id === editingId ? { ...x, ...payload } : x)));
       setEditingId(null);
     } catch (e) {
       toast.error("Не сохранилось: " + String(e));
@@ -370,13 +376,24 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                         <CardContent className="p-3 space-y-2.5">
                           {isEditing ? (
                             <div className="space-y-1.5">
+                              {g.user_id !== null ? (
+                                <div className="flex items-start gap-1.5 rounded-md bg-amber-50 border border-amber-200 px-2 py-1.5 text-[11px] text-amber-800">
+                                  <Icon name="Lock" size={12} className="mt-0.5 shrink-0" />
+                                  <span>Личные данные может менять только сам гость. Вам доступна только заметка.</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-start gap-1.5 rounded-md bg-blue-50 border border-blue-200 px-2 py-1.5 text-[11px] text-blue-800">
+                                  <Icon name="Info" size={12} className="mt-0.5 shrink-0" />
+                                  <span>Гость добавлен вручную и ещё не подтвердил данные — их можно править.</span>
+                                </div>
+                              )}
                               <div className="grid grid-cols-2 gap-1.5">
-                                <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Имя" className="h-9 text-sm" />
-                                <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Телефон" className="h-9 text-sm" />
-                                <Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" className="h-9 text-sm" />
-                                <Input value={editForm.telegram} onChange={(e) => setEditForm({ ...editForm, telegram: e.target.value })} placeholder="@tg" className="h-9 text-sm" />
+                                <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} placeholder="Имя" className="h-9 text-sm" disabled={g.user_id !== null} />
+                                <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Телефон" className="h-9 text-sm" disabled={g.user_id !== null} />
+                                <Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" className="h-9 text-sm" disabled={g.user_id !== null} />
+                                <Input value={editForm.telegram} onChange={(e) => setEditForm({ ...editForm, telegram: e.target.value })} placeholder="@tg" className="h-9 text-sm" disabled={g.user_id !== null} />
                               </div>
-                              <Input value={editForm.comment} onChange={(e) => setEditForm({ ...editForm, comment: e.target.value })} placeholder="Комментарий" className="h-9 text-sm" />
+                              <Input value={editForm.comment} onChange={(e) => setEditForm({ ...editForm, comment: e.target.value })} placeholder="Заметка по гостю (видна только вам)" className="h-9 text-sm" />
                               <div className="flex gap-1.5">
                                 <Button size="sm" onClick={saveEdit} disabled={savingId === g.signup_id} className="h-9 text-sm flex-1">Сохранить</Button>
                                 <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-9 text-sm">Отмена</Button>
