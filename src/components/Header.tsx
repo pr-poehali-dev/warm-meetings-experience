@@ -42,7 +42,9 @@ export default function Header({ transparent = false }: HeaderProps) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [heroVisible, setHeroVisible] = useState(true);
-  const isDarkTheme = resolvedTheme === "dark";
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDarkTheme = mounted ? resolvedTheme === "dark" : document.documentElement.classList.contains("dark");
 
   useEffect(() => {
     setMobileOpen(false);
