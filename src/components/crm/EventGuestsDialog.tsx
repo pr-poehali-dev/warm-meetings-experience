@@ -382,9 +382,41 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                                   <span>Личные данные может менять только сам гость. Вам доступна только заметка.</span>
                                 </div>
                               ) : (
-                                <div className="flex items-start gap-1.5 rounded-md bg-blue-50 border border-blue-200 px-2 py-1.5 text-[11px] text-blue-800">
-                                  <Icon name="Info" size={12} className="mt-0.5 shrink-0" />
-                                  <span>Гость добавлен вручную и ещё не подтвердил данные — их можно править.</span>
+                                <div className="space-y-1.5">
+                                  <div className="flex items-start gap-1.5 rounded-md bg-blue-50 border border-blue-200 px-2 py-1.5 text-[11px] text-blue-800">
+                                    <Icon name="Info" size={12} className="mt-0.5 shrink-0" />
+                                    <span>Гость добавлен вручную и ещё не подтвердил данные — их можно править.</span>
+                                  </div>
+                                  <div className="flex items-start gap-1.5 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-1.5 text-[11px] text-emerald-800">
+                                    <Icon name="Link" size={12} className="mt-0.5 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="mb-1">
+                                        Чтобы получать сообщения и уведомления, гостю нужно присоединиться по ссылке-приглашению:
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Input
+                                          readOnly
+                                          value={`${window.location.origin}/invite?event_id=${eventId}`}
+                                          className="h-7 text-[11px] bg-white"
+                                          onFocus={(e) => e.currentTarget.select()}
+                                        />
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 px-2 text-[11px] shrink-0"
+                                          onClick={() => {
+                                            const url = `${window.location.origin}/invite?event_id=${eventId}`;
+                                            navigator.clipboard.writeText(url).then(
+                                              () => toast.success("Ссылка скопирована"),
+                                              () => toast.error("Не удалось скопировать"),
+                                            );
+                                          }}
+                                        >
+                                          <Icon name="Copy" size={11} />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
                               )}
                               <div className="grid grid-cols-2 gap-1.5">
