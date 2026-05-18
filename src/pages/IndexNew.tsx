@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useTheme } from "next-themes";
 import Icon from "@/components/ui/icon";
 import { eventsApi } from "@/lib/api";
 import { EventItem, mapApiEvent } from "@/data/events";
@@ -7,6 +8,7 @@ import { format, parseISO, startOfDay } from "date-fns";
 import { ru } from "date-fns/locale";
 import { TELEGRAM_URL, ORGANIZER_URL } from "@/lib/constants";
 import EventCalendar from "@/components/events/EventCalendar";
+import ThemeToggle from "@/components/ThemeToggle";
 
 // ─── Палитра логотипа ───────────────────────────────────────────────────────
 // Терракота: #C8834A  |  Шалфей: #8FA89A  |  Кремовый: #EDE0CC  |  Лёд: #D9EDE8
@@ -356,35 +358,19 @@ function NetflixListCard({ event }: { event: EventItem }) {
   );
 }
 
-// ─── Переключатель темы ───────────────────────────────────────────────────────
-function ThemeToggle({ isDark, onToggle }: { isDark: boolean; onToggle: () => void }) {
-  return (
-    <button
-      onClick={onToggle}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300 hover:scale-105 flex-shrink-0"
-      style={{
-        background: "var(--glass-bg)",
-        border: "1px solid var(--glass-border)",
-        color: "var(--c-cream)",
-        backdropFilter: "blur(12px)",
-      }}
-      title={isDark ? "Светлая тема" : "Тёмная тема"}
-    >
-      <span className="text-sm leading-none">{isDark ? "☀️" : "🌙"}</span>
-      <span className="hidden sm:inline">{isDark ? "Светлая" : "Тёмная"}</span>
-    </button>
-  );
-}
+
 
 // ─── Главная страница ─────────────────────────────────────────────────────────
 export default function IndexNew() {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== "light";
+
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState("all");
   const [view, setView] = useState<"grid" | "list" | "calendar">("grid");
   const [calendarDate, setCalendarDate] = useState<Date | undefined>(undefined);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
     eventsApi.getAll(true).then((data) => {
@@ -438,12 +424,12 @@ export default function IndexNew() {
             </nav>
 
             <div className="hidden md:flex items-center gap-2 flex-shrink-0">
-              <ThemeToggle isDark={isDark} onToggle={() => setIsDark(!isDark)} />
+              <ThemeToggle />
               <Link to="/login" className="text-sm px-4 py-1.5 rounded-full transition-all hover:brightness-110" style={{ color: "var(--c-cream)", border: "1px solid var(--login-btn-border)", background: "var(--login-btn-bg)" }}>Войти</Link>
             </div>
 
             <div className="md:hidden flex items-center gap-2 ml-auto">
-              <ThemeToggle isDark={isDark} onToggle={() => setIsDark(!isDark)} />
+              <ThemeToggle compact />
               <button className="flex-shrink-0 p-2" style={{ color: "var(--c-cream)" }} onClick={() => setMenuOpen(!menuOpen)}>
                 <Icon name={menuOpen ? "X" : "Menu"} size={20} />
               </button>

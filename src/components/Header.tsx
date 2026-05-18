@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileDropdown from "@/components/ProfileDropdown";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const MOBILE_CABINETS = [
   { label: "Личный кабинет", to: "/account", icon: "User" },
@@ -113,6 +114,10 @@ export default function Header({ transparent = false }: HeaderProps) {
             </nav>
 
             <div className="flex items-center gap-1.5 shrink-0 min-w-0 overflow-hidden">
+              <div className={`hidden md:block ${onHero ? "opacity-70 hover:opacity-100" : ""} transition-opacity`}>
+                <ThemeToggle compact />
+              </div>
+
               {user ? (
                 <ProfileDropdown variant={onHero ? "transparent" : "default"} />
               ) : (
@@ -175,7 +180,11 @@ export default function Header({ transparent = false }: HeaderProps) {
               </Link>
             ))}
           </nav>
-          <div className="mt-auto pt-4 border-t border-white/20 space-y-1">
+          <div className="px-4 py-3 flex items-center justify-between border-t border-white/20">
+            <span className="text-xs text-white/50 font-medium">Тема оформления</span>
+            <ThemeToggle />
+          </div>
+          <div className="mt-auto pt-2 border-t border-white/20 space-y-1">
             {user ? (
               <>
                 <div className="px-4 py-2">
