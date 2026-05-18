@@ -158,9 +158,13 @@ export default function Header({ transparent = false }: HeaderProps) {
           style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
         >
           <div className="flex items-center justify-between h-16 flex-shrink-0">
-            <span className="font-bold text-lg text-white tracking-wide">
-              СПАРКОМ
-            </span>
+            <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+              <img
+                src={LOGO_LIGHT}
+                alt="Спарком"
+                className="h-7 w-auto object-contain object-left"
+              />
+            </Link>
             <button
               onClick={() => setMobileOpen(false)}
               className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
