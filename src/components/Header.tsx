@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTheme } from "next-themes";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import ThemeToggle from "@/components/ThemeToggle";
+
+const LOGO_LIGHT = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/760cbfd5-821a-4526-9e92-8807a4ff87f6.png";
+const LOGO_DARK = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/d2735e2c-6a4d-4538-b086-6156be8bd33a.png";
 
 const MOBILE_CABINETS = [
   { label: "Личный кабинет", to: "/account", icon: "User" },
@@ -31,10 +35,12 @@ interface HeaderProps {
 
 export default function Header({ transparent = false }: HeaderProps) {
   const { user, logout, hasRole } = useAuth();
+  const { resolvedTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [heroVisible, setHeroVisible] = useState(true);
+  const isDarkTheme = resolvedTheme === "dark";
 
   useEffect(() => {
     setMobileOpen(false);
@@ -84,10 +90,7 @@ export default function Header({ transparent = false }: HeaderProps) {
           <div className="flex items-center justify-between gap-2 sm:gap-3 h-16 min-w-0">
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity duration-300 shrink min-w-0 overflow-hidden">
               <img
-                src={onHero
-                  ? "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/760cbfd5-821a-4526-9e92-8807a4ff87f6.png"
-                  : "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/d2735e2c-6a4d-4538-b086-6156be8bd33a.png"
-                }
+                src={onHero || isDarkTheme ? LOGO_LIGHT : LOGO_DARK}
                 alt="Спарком"
                 className="h-6 sm:h-7 w-auto max-w-full object-contain object-left"
               />
