@@ -47,6 +47,7 @@ const THEME_STYLES = `
     --footer-border: rgba(237,224,204,0.07);
     --footer-text:   rgba(217,237,232,0.22);
     --footer-link:   rgba(217,237,232,0.4);
+    --hero-text-from:  #EDE0CC;
     --hero-overlay1: linear-gradient(to bottom, rgba(26,20,16,0.2) 0%, rgba(26,20,16,0.5) 45%, #1a1410 80%);
     --hero-img-opacity: 0.22;
     --login-btn-bg:  rgba(237,224,204,0.05);
@@ -96,6 +97,7 @@ const THEME_STYLES = `
     --footer-border: rgba(45,35,24,0.1);
     --footer-text:   rgba(45,35,24,0.35);
     --footer-link:   rgba(45,35,24,0.55);
+    --hero-text-from:  #2d2318;
     --hero-overlay1: linear-gradient(to bottom, rgba(253,247,240,0.1) 0%, rgba(253,247,240,0.45) 45%, #fdf7f0 80%);
     --hero-img-opacity: 0.18;
     --login-btn-bg:  rgba(45,35,24,0.05);
@@ -479,7 +481,7 @@ export default function IndexNew() {
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.08] tracking-tight mb-4">
-              <span style={{ background: "linear-gradient(135deg, #EDE0CC 15%, #C8834A 55%, #8FA89A 90%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              <span style={{ background: "linear-gradient(135deg, var(--hero-text-from) 15%, #C8834A 55%, #8FA89A 90%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                 В баню можно идти одному.
               </span>
             </h1>
