@@ -26,7 +26,85 @@ def handler(event, context):
     if resource == 'question':
         return handle_question(event, method, params, schema, headers)
 
+    if resource == 'event_types':
+        return handle_event_types(event, method, params, schema, headers)
+
     return handle_events(event, method, params, schema, headers)
+
+
+def handle_event_types(event, method, params, schema, headers):
+    """CRUD для пользовательских типов событий (таблица event_custom_types)."""
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    def _resp(status, body):
+        conn.close()
+        return {'statusCode': status, 'headers': headers, 'body': json.dumps(body, default=str, ensure_ascii=False)}
+
+    if method == 'GET':
+        cur.execute(f"SELECT id, value, label, icon, sort_order FROM {schema}.event_custom_types ORDER BY sort_order, id")
+        rows = [dict(r) for r in cur.fetchall()]
+        return _resp(200, rows)
+
+    if method == 'POST':
+        body = json.loads(event.get('body') or '{}')
+        value = (body.get('value') or '').strip()
+        label = (body.get('label') or '').strip()
+        icon = (body.get('icon') or 'Circle').strip()
+        try:
+            sort_order = int(body.get('sort_order') or 0)
+        except (TypeError, ValueError):
+            sort_order = 0
+        if not value or not label:
+            return _resp(400, {'error': 'value and label are required'})
+        v = value.replace("'", "''")
+        l = label.replace("'", "''")
+        i = icon.replace("'", "''")
+        cur.execute(f"""
+            INSERT INTO {schema}.event_custom_types (value, label, icon, sort_order)
+            VALUES ('{v}', '{l}', '{i}', {sort_order})
+            RETURNING id, value, label, icon, sort_order
+        """)
+        row = dict(cur.fetchone())
+        conn.commit()
+        return _resp(201, row)
+
+    if method == 'PUT':
+        type_id = params.get('id')
+        if not type_id or not str(type_id).isdigit():
+            return _resp(400, {'error': 'id is required'})
+        body = json.loads(event.get('body') or '{}')
+        label = (body.get('label') or '').strip()
+        icon = (body.get('icon') or 'Circle').strip()
+        try:
+            sort_order = int(body.get('sort_order') or 0)
+        except (TypeError, ValueError):
+            sort_order = 0
+        if not label:
+            return _resp(400, {'error': 'label is required'})
+        l = label.replace("'", "''")
+        i = icon.replace("'", "''")
+        cur.execute(f"""
+            UPDATE {schema}.event_custom_types
+            SET label='{l}', icon='{i}', sort_order={sort_order}
+            WHERE id={int(type_id)}
+            RETURNING id, value, label, icon, sort_order
+        """)
+        row = cur.fetchone()
+        conn.commit()
+        if not row:
+            return _resp(404, {'error': 'Not found'})
+        return _resp(200, dict(row))
+
+    if method == 'DELETE':
+        type_id = params.get('id')
+        if not type_id or not str(type_id).isdigit():
+            return _resp(400, {'error': 'id is required'})
+        cur.execute(f"DELETE FROM {schema}.event_custom_types WHERE id={int(type_id)}")
+        conn.commit()
+        return _resp(200, {'deleted': True})
+
+    return _resp(405, {'error': 'Method not allowed'})
 
 
 def handle_events(event, method, params, schema, headers):

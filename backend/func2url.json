@@ -3,7 +3,6 @@
   "guests-api": "https://functions.poehali.dev/7faf1d56-662a-4864-b752-0e8cabfcb78c",
   "robokassa-robokassa-webhook": "https://functions.poehali.dev/3f95bff8-6115-4233-8db9-14aeb3f59653",
   "robokassa-robokassa": "https://functions.poehali.dev/0330b6c2-df84-4726-bde5-3c83f007ccdd",
-  "event-types": "https://functions.poehali.dev/bedd9307-0f03-4eb0-99d0-4eb32f523a8a",
   "crowdfund-freezer": "https://functions.poehali.dev/edde4eed-3a61-4681-9daa-9ce1e9ed5620",
   "audit-log": "https://functions.poehali.dev/b0f875d7-7795-4fec-b376-4d479d4204c5",
   "support": "https://functions.poehali.dev/a0a86024-792f-4be0-8a06-30173c46b07a",

@@ -9,7 +9,8 @@ export interface EventType {
   sort_order: number;
 }
 
-const EVENT_TYPES_URL = func2url['event-types'];
+const EVENTS_API_URL = func2url['events-api'];
+const EVENT_TYPES_URL = `${EVENTS_API_URL}?resource=event_types`;
 
 export function useEventTypes() {
   const [types, setTypes] = useState<EventType[]>([]);
@@ -42,7 +43,7 @@ export async function createEventType(payload: { value: string; label: string; i
 }
 
 export async function updateEventType(id: number, payload: { label: string; icon: string; sort_order?: number }, adminToken: string) {
-  const res = await fetch(`${EVENT_TYPES_URL}?id=${id}`, {
+  const res = await fetch(`${EVENTS_API_URL}?resource=event_types&id=${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: adminToken },
     body: JSON.stringify(payload),
@@ -51,7 +52,7 @@ export async function updateEventType(id: number, payload: { label: string; icon
 }
 
 export async function deleteEventType(id: number, adminToken: string) {
-  const res = await fetch(`${EVENT_TYPES_URL}?id=${id}`, {
+  const res = await fetch(`${EVENTS_API_URL}?resource=event_types&id=${id}`, {
     method: 'DELETE',
     headers: { Authorization: adminToken },
   });
