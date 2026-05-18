@@ -244,7 +244,7 @@ export default function TgPublishButton({
               ) : (
                 <>
                   {/* Telegram-like preview */}
-                  <div className="bg-[#efede8] rounded-xl p-3 space-y-2">
+                  <div className="bg-muted rounded-xl p-3 space-y-2">
                     <div className="flex items-center gap-2 mb-1">
                       <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center">
                         <Icon name="Send" size={13} className="text-primary-foreground" />
@@ -423,8 +423,8 @@ export default function TgPublishButton({
             <div className="px-5 py-8 flex flex-col items-center gap-3 text-center">
               {result.published > 0 ? (
                 <>
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${scheduleMode ? "bg-blue-100" : "bg-green-100"}`}>
-                    <Icon name={scheduleMode ? "Clock" : "Check"} size={24} className={scheduleMode ? "text-blue-600" : "text-green-600"} />
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${scheduleMode ? "bg-blue-500/15" : "bg-green-500/15"}`}>
+                    <Icon name={scheduleMode ? "Clock" : "Check"} size={24} className={scheduleMode ? "text-blue-600 dark:text-blue-400" : "text-green-600 dark:text-green-400"} />
                   </div>
                   <p className="font-semibold text-sm">
                     {scheduleMode
