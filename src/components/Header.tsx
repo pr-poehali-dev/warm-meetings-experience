@@ -6,8 +6,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import ThemeToggle from "@/components/ThemeToggle";
 
-const LOGO_LIGHT = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/760cbfd5-821a-4526-9e92-8807a4ff87f6.png";
-const LOGO_DARK = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/d2735e2c-6a4d-4538-b086-6156be8bd33a.png";
+// LOGO_ON_DARK — светлый логотип для тёмных поверхностей (тёмная тема, hero)
+// LOGO_ON_LIGHT — тёмный логотип для светлых поверхностей (светлая тема)
+const LOGO_ON_DARK = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/760cbfd5-821a-4526-9e92-8807a4ff87f6.png";
+const LOGO_ON_LIGHT = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/d2735e2c-6a4d-4538-b086-6156be8bd33a.png";
 
 const MOBILE_CABINETS = [
   { label: "Личный кабинет", to: "/account", icon: "User" },
@@ -90,7 +92,7 @@ export default function Header({ transparent = false }: HeaderProps) {
           <div className="flex items-center justify-between gap-2 sm:gap-3 h-16 min-w-0">
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity duration-300 shrink min-w-0 overflow-hidden">
               <img
-                src={onHero || isDarkTheme ? LOGO_LIGHT : LOGO_DARK}
+                src={onHero || isDarkTheme ? LOGO_ON_DARK : LOGO_ON_LIGHT}
                 alt="Спарком"
                 className="h-6 sm:h-7 w-auto max-w-full object-contain object-left"
               />
@@ -160,7 +162,7 @@ export default function Header({ transparent = false }: HeaderProps) {
           <div className="flex items-center justify-between h-16 flex-shrink-0">
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
               <img
-                src={LOGO_LIGHT}
+                src={LOGO_ON_DARK}
                 alt="Спарком"
                 className="h-7 w-auto object-contain object-left"
               />
