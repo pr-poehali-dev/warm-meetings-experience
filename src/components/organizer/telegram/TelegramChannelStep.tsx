@@ -26,9 +26,9 @@ export default function TelegramChannelStep({ checking, copied, onCheck, onCopy 
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-sm text-blue-800">
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-sm text-blue-800 dark:text-blue-300">
           <div className="flex gap-2">
-            <Icon name="Info" size={15} className="flex-shrink-0 mt-0.5 text-blue-500" />
+            <Icon name="Info" size={15} className="flex-shrink-0 mt-0.5 text-blue-500 dark:text-blue-400" />
             <p>Бот должен быть администратором вашего канала — иначе он не сможет туда писать. Не переживайте, это стандартная процедура для всех Telegram-ботов.</p>
           </div>
         </div>
@@ -88,8 +88,8 @@ export default function TelegramChannelStep({ checking, copied, onCheck, onCopy 
               <p className="text-sm text-muted-foreground">
                 Бот поймёт, какой это канал, и сразу пришлёт туда тестовое сообщение для проверки.
               </p>
-              <div className="bg-amber-50 border border-amber-100 rounded-lg p-2.5 text-xs text-amber-800 flex gap-2">
-                <Icon name="AlertCircle" size={13} className="flex-shrink-0 mt-0.5 text-amber-500" />
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 text-xs text-amber-800 dark:text-amber-300 flex gap-2">
+                <Icon name="AlertCircle" size={13} className="flex-shrink-0 mt-0.5 text-amber-500 dark:text-amber-400" />
                 <span>Если в канале ещё нет сообщений — сначала напишите там хоть что-нибудь, потом перешлите боту.</span>
               </div>
             </div>

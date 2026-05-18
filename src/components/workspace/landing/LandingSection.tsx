@@ -28,7 +28,7 @@ export default function LandingSection() {
     return (
       <Card>
         <CardContent className="p-8 text-center space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center mx-auto">
+          <div className="w-14 h-14 rounded-2xl bg-orange-500/15 flex items-center justify-center mx-auto">
             <Icon name="Globe" size={28} className="text-orange-500" />
           </div>
           <h3 className="font-semibold text-lg">Визитка для управляющих</h3>
@@ -90,7 +90,7 @@ export default function LandingSection() {
                 <div className="border-2 border-orange-500 rounded-xl p-4 cursor-pointer">
                   <div className="h-16 rounded-lg bg-gradient-to-br from-orange-100 to-rose-100 mb-2"></div>
                   <div className="text-sm font-medium">Терракота</div>
-                  <div className="text-xs text-orange-600 mt-0.5">Активна</div>
+                  <div className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">Активна</div>
                 </div>
                 <div className="border-2 border-dashed border-muted rounded-xl p-4 opacity-50">
                   <div className="h-16 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 mb-2"></div>

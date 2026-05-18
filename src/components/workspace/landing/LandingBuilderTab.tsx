@@ -121,7 +121,7 @@ export default function LandingBuilderTab({ landing, onSaved }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-900 flex gap-2">
+      <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3 text-xs text-blue-800 dark:text-blue-300 flex gap-2">
         <Icon name="Info" size={14} className="shrink-0 mt-0.5" />
         <span>Перетаскивайте блоки за <Icon name="GripVertical" size={11} className="inline" /> чтобы менять порядок. Отключайте ненужные тумблером.</span>
       </div>
@@ -198,8 +198,8 @@ function SortableBlock({ id, hidden, onToggle, data, updateField, onAvatarUpload
           >
             <Icon name="GripVertical" size={16} />
           </button>
-          <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
-            <Icon name={meta.icon} size={16} className="text-orange-700" />
+          <div className="w-9 h-9 rounded-lg bg-orange-500/15 flex items-center justify-center shrink-0">
+            <Icon name={meta.icon} size={16} className="text-orange-600 dark:text-orange-400" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-medium text-sm">{meta.label}</div>

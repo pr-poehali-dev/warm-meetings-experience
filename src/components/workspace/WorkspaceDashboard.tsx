@@ -110,9 +110,9 @@ export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: "Предстоящих записей", value: masterData.stats.upcoming_sessions, icon: "CalendarCheck", color: "text-primary", bg: "bg-primary/10" },
-              { label: "Проведено сеансов", value: masterData.stats.completed_sessions, icon: "CheckCircle2", color: "text-emerald-600", bg: "bg-emerald-50" },
-              { label: "Доход за месяц", value: `${masterData.stats.total_revenue.toLocaleString("ru-RU")} ₽`, icon: "TrendingUp", color: "text-green-600", bg: "bg-green-50" },
-              { label: "Загруженность", value: `${masterData.stats.occupancy_percent}%`, icon: "BarChart2", color: "text-amber-600", bg: "bg-amber-50" },
+              { label: "Проведено сеансов", value: masterData.stats.completed_sessions, icon: "CheckCircle2", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/15" },
+              { label: "Доход за месяц", value: `${masterData.stats.total_revenue.toLocaleString("ru-RU")} ₽`, icon: "TrendingUp", color: "text-green-600 dark:text-green-400", bg: "bg-green-500/15" },
+              { label: "Загруженность", value: `${masterData.stats.occupancy_percent}%`, icon: "BarChart2", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/15" },
             ].map((m) => (
               <Card key={m.label} className="border-0 shadow-sm">
                 <CardContent className="p-4">
@@ -139,7 +139,7 @@ export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster
             <div className="space-y-2">
               {masterData.upcoming.map((b) => (
                 <div key={b.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
-                  <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0 text-sm font-bold text-orange-600">
+                  <div className="w-8 h-8 rounded-full bg-orange-500/15 flex items-center justify-center flex-shrink-0 text-sm font-bold text-orange-600 dark:text-orange-400">
                     {b.client_name[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -171,10 +171,10 @@ export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { label: "Предстоящих событий", value: upcomingEvents.length, icon: "CalendarDays", color: "text-emerald-600", bg: "bg-emerald-50" },
-              { label: "Всего событий", value: orgData.stats.total_events ?? 0, icon: "Layers", color: "text-blue-600", bg: "bg-blue-50" },
-              { label: "Участников всего", value: orgData.stats.total_participants ?? 0, icon: "Users", color: "text-violet-600", bg: "bg-violet-50" },
-              { label: "Черновики", value: orgData.stats.drafts ?? 0, icon: "FileEdit", color: "text-amber-600", bg: "bg-amber-50" },
+              { label: "Предстоящих событий", value: upcomingEvents.length, icon: "CalendarDays", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/15" },
+              { label: "Всего событий", value: orgData.stats.total_events ?? 0, icon: "Layers", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/15" },
+              { label: "Участников всего", value: orgData.stats.total_participants ?? 0, icon: "Users", color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-500/15" },
+              { label: "Черновики", value: orgData.stats.drafts ?? 0, icon: "FileEdit", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/15" },
             ].map((m) => (
               <Card key={m.label} className="border-0 shadow-sm">
                 <CardContent className="p-4">
@@ -201,8 +201,8 @@ export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster
             <div className="space-y-2">
               {upcomingEvents.slice(0, 5).map((ev) => (
                 <div key={ev.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
-                    <Icon name="Calendar" size={14} className="text-emerald-600" />
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
+                    <Icon name="Calendar" size={14} className="text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{ev.title}</p>

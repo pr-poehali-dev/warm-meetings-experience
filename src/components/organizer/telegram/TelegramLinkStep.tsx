@@ -40,9 +40,9 @@ export default function TelegramLinkStep({ code, loading, copied, checking, onGe
           </div>
         </div>
 
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-sm text-blue-800">
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-sm text-blue-800 dark:text-blue-300">
           <div className="flex gap-2">
-            <Icon name="Info" size={15} className="flex-shrink-0 mt-0.5 text-blue-500" />
+            <Icon name="Info" size={15} className="flex-shrink-0 mt-0.5 text-blue-500 dark:text-blue-400" />
             <p>Привязка нужна, чтобы бот знал — уведомления о новых записях отправлять именно вам, а не кому-то другому.</p>
           </div>
         </div>
@@ -67,7 +67,7 @@ export default function TelegramLinkStep({ code, loading, copied, checking, onGe
             <div className="text-center p-5 bg-muted rounded-2xl border-2 border-dashed">
               <div className="text-xs text-muted-foreground mb-2 uppercase tracking-wider font-medium">Ваш код привязки</div>
               <div className="text-4xl font-mono font-bold tracking-[0.2em] text-foreground mb-2">{code}</div>
-              <div className="flex items-center justify-center gap-1.5 text-xs text-amber-600">
+              <div className="flex items-center justify-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                 <Icon name="Clock" size={12} />
                 Действителен 10 минут
               </div>

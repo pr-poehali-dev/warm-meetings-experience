@@ -105,8 +105,8 @@ export default function LandingSlugTab({ landing, onSaved }: Props) {
             <div className="mt-2 min-h-[20px] text-xs">
               {checking && <span className="text-muted-foreground inline-flex items-center gap-1.5"><Icon name="Loader2" size={12} className="animate-spin" /> Проверяем…</span>}
               {!checking && slug && slug === landing?.slug && <span className="text-muted-foreground">Текущий адрес</span>}
-              {!checking && available === true && <span className="text-green-600 inline-flex items-center gap-1"><Icon name="Check" size={12} /> Адрес свободен</span>}
-              {!checking && (available === false || errorText) && <span className="text-red-600 inline-flex items-center gap-1"><Icon name="X" size={12} /> {errorText || "Адрес занят"}</span>}
+              {!checking && available === true && <span className="text-green-600 dark:text-green-400 inline-flex items-center gap-1"><Icon name="Check" size={12} /> Адрес свободен</span>}
+              {!checking && (available === false || errorText) && <span className="text-red-600 dark:text-red-400 inline-flex items-center gap-1"><Icon name="X" size={12} /> {errorText || "Адрес занят"}</span>}
             </div>
           </div>
 
@@ -116,7 +116,7 @@ export default function LandingSlugTab({ landing, onSaved }: Props) {
           </div>
 
           {landing?.slug && slug !== landing.slug && (
-            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 flex gap-2">
+            <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3 text-xs text-amber-800 dark:text-amber-300 flex gap-2">
               <Icon name="AlertTriangle" size={14} className="shrink-0 mt-0.5" />
               <span>Старый адрес <b>{landing.slug}</b> перестанет работать после смены.</span>
             </div>

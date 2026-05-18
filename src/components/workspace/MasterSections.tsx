@@ -383,7 +383,7 @@ export function MasterReviewsSection({ masterId }: { masterId: number }) {
   return (
     <div className="space-y-5">
       <h2 className="text-xl font-bold">Отзывы обо мне</h2>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-card border rounded-2xl p-4 flex items-center gap-3">
           <div className="text-3xl font-bold text-primary">{avgRating.toFixed(1)}</div>
           <div className="flex flex-col gap-0.5">
@@ -392,7 +392,7 @@ export function MasterReviewsSection({ masterId }: { masterId: number }) {
           </div>
         </div>
         <div className="bg-card border rounded-2xl p-4"><div className="text-3xl font-bold">{reviews.length}</div><div className="text-xs text-muted-foreground">Всего</div></div>
-        <div className="bg-card border rounded-2xl p-4"><div className="text-3xl font-bold text-green-600">{reviews.filter((r) => r.rating >= 4).length}</div><div className="text-xs text-muted-foreground">Позитивных</div></div>
+        <div className="bg-card border rounded-2xl p-4"><div className="text-3xl font-bold text-green-600 dark:text-green-400">{reviews.filter((r) => r.rating >= 4).length}</div><div className="text-xs text-muted-foreground">Позитивных</div></div>
       </div>
       <div className="flex gap-2 flex-wrap">
         {[null, 5, 4, 3, 2, 1].map((r) => (
@@ -435,9 +435,9 @@ export function MasterFinancesSection({ masterId }: { masterId: number }) {
       <h2 className="text-xl font-bold">Финансы</h2>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { label: "Доход за месяц", value: `${(stats?.total_revenue ?? 0).toLocaleString("ru-RU")} ₽`, icon: "TrendingUp", color: "text-emerald-600" },
+          { label: "Доход за месяц", value: `${(stats?.total_revenue ?? 0).toLocaleString("ru-RU")} ₽`, icon: "TrendingUp", color: "text-emerald-600 dark:text-emerald-400" },
           { label: "Ожидаемый доход", value: `${(stats?.expected_revenue ?? 0).toLocaleString("ru-RU")} ₽`, icon: "Clock", color: "text-primary" },
-          { label: "Завершённых сеансов", value: stats?.completed_sessions ?? 0, icon: "CheckCircle2", color: "text-green-600" },
+          { label: "Завершённых сеансов", value: stats?.completed_sessions ?? 0, icon: "CheckCircle2", color: "text-green-600 dark:text-green-400" },
         ].map((m) => (
           <div key={m.label} className="bg-card border rounded-2xl p-4">
             <div className="w-8 h-8 bg-muted rounded-xl flex items-center justify-center mb-2"><Icon name={m.icon} size={16} className={m.color} /></div>
