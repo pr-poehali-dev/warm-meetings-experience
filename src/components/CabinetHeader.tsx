@@ -1,6 +1,11 @@
 import { Link } from "react-router-dom";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import ProfileDropdown from "@/components/ProfileDropdown";
+
+const LOGO_ON_DARK = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/760cbfd5-821a-4526-9e92-8807a4ff87f6.png";
+const LOGO_ON_LIGHT = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/d2735e2c-6a4d-4538-b086-6156be8bd33a.png";
 
 interface CabinetHeaderProps {
   icon: string;
@@ -25,6 +30,11 @@ export default function CabinetHeader({
   actions,
   onLogout,
 }: CabinetHeaderProps) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted ? resolvedTheme === "dark" : document.documentElement.classList.contains("dark");
+
   return (
     <header className="border-b bg-card/95 backdrop-blur sticky top-0 z-40">
       <div className="flex items-center gap-3 px-4 h-14">
@@ -39,7 +49,7 @@ export default function CabinetHeader({
 
         <Link to="/" className="flex items-center hover:opacity-80 transition shrink-0">
           <img
-            src="https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/e7f1ef5a-7323-4d3a-9a22-3a19e538df7d.png"
+            src={isDark ? LOGO_ON_DARK : LOGO_ON_LIGHT}
             alt="Спарком"
             className="h-7 w-auto"
           />
