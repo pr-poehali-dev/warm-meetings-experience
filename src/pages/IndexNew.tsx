@@ -361,33 +361,17 @@ function ThemeToggle({ isDark, onToggle }: { isDark: boolean; onToggle: () => vo
   return (
     <button
       onClick={onToggle}
-      title={isDark ? "Светлая тема" : "Тёмная тема"}
-      className="relative flex-shrink-0 transition-all duration-300 hover:scale-105"
+      className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300 hover:scale-105 flex-shrink-0"
       style={{
-        width: 44,
-        height: 24,
-        borderRadius: 12,
-        background: isDark ? "rgba(200,131,74,0.2)" : "rgba(45,35,24,0.12)",
+        background: "var(--glass-bg)",
         border: "1px solid var(--glass-border)",
+        color: "var(--c-cream)",
         backdropFilter: "blur(12px)",
       }}
+      title={isDark ? "Светлая тема" : "Тёмная тема"}
     >
-      {/* Трек с иконками */}
-      <span className="absolute inset-0 flex items-center justify-between px-1 pointer-events-none">
-        <Icon name="Sun" size={12} style={{ color: isDark ? "rgba(200,131,74,0.4)" : "#C8834A", transition: "color 0.3s" } as React.CSSProperties} />
-        <Icon name="Moon" size={12} style={{ color: isDark ? "#8FA89A" : "rgba(45,35,24,0.25)", transition: "color 0.3s" } as React.CSSProperties} />
-      </span>
-      {/* Ползунок */}
-      <span
-        className="absolute top-0.5 flex items-center justify-center rounded-full transition-all duration-300"
-        style={{
-          width: 20,
-          height: 20,
-          left: isDark ? 22 : 2,
-          background: isDark ? "linear-gradient(135deg,#8FA89A,#5a7a6a)" : "linear-gradient(135deg,#C8834A,#e8a06a)",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
-        }}
-      />
+      <span className="text-sm leading-none">{isDark ? "☀️" : "🌙"}</span>
+      <span className="hidden sm:inline">{isDark ? "Светлая" : "Тёмная"}</span>
     </button>
   );
 }
