@@ -19,6 +19,7 @@ interface EventCalendarProps {
   filterType?: string;
   filterBath?: string;
   filterAvailability?: string;
+  themed?: boolean;
 }
 
 export default function EventCalendar({
@@ -28,6 +29,7 @@ export default function EventCalendar({
   filterType = "all",
   filterBath = "all",
   filterAvailability = "all",
+  themed = false,
 }: EventCalendarProps) {
   const [mode, setMode] = useState<CalendarMode>(() =>
     window.innerWidth < 640 ? "day" : "month"
@@ -83,6 +85,81 @@ export default function EventCalendar({
     }
     return format(currentDate, "EEEE, d MMMM yyyy", { locale: ru });
   }, [mode, currentDate]);
+
+  if (themed) {
+    return (
+      <div ref={containerRef} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        {/* ── шапка навигации (themed) ─────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="flex items-center gap-1">
+            <button
+              className="h-8 w-8 rounded-full flex items-center justify-center transition-all hover:brightness-110"
+              style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", color: "var(--c-cream)" }}
+              onClick={goPrev}
+            >
+              <Icon name="ChevronLeft" size={16} />
+            </button>
+            <span
+              className="text-sm font-semibold min-w-[180px] text-center capitalize"
+              style={{ color: "var(--c-cream)" }}
+            >
+              {navLabel}
+            </span>
+            <button
+              className="h-8 w-8 rounded-full flex items-center justify-center transition-all hover:brightness-110"
+              style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", color: "var(--c-cream)" }}
+              onClick={goNext}
+            >
+              <Icon name="ChevronRight" size={16} />
+            </button>
+          </div>
+
+          <button
+            className="h-8 px-4 rounded-full text-xs font-medium transition-all hover:brightness-110"
+            style={{ background: "var(--glass-bg)", border: "1px solid var(--glass-border)", color: "var(--c-terra)" }}
+            onClick={goToday}
+          >
+            Сегодня
+          </button>
+
+          <div className="ml-auto flex gap-1 rounded-full p-1" style={{ background: "var(--toggle-bg)" }}>
+            {(["month", "week", "day"] as CalendarMode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className="px-3 py-1 rounded-full text-xs font-medium transition-all duration-200"
+                style={mode === m
+                  ? { background: "rgba(200,131,74,0.3)", color: "#C8834A" }
+                  : { color: "var(--toggle-idle)" }
+                }
+              >
+                {m === "month" ? "Месяц" : m === "week" ? "Неделя" : "День"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── легенда (themed) ────────────────────────────────────────── */}
+        <div className="flex flex-wrap gap-3 mb-4 text-xs" style={{ color: "var(--c-muted)" }}>
+          {LEGEND.map((l) => (
+            <div key={l.label} className="flex items-center gap-1.5">
+              <span className={`w-2.5 h-2.5 rounded-full ${l.dot}`} />
+              {l.label}
+            </div>
+          ))}
+          <div className="flex items-center gap-1.5 ml-auto">
+            <span className="w-2 h-2 rounded-full bg-green-500" /> Есть места
+            <span className="w-2 h-2 rounded-full bg-yellow-400 ml-2" /> Мало
+            <span className="w-2 h-2 rounded-full bg-red-500 ml-2" /> Нет мест
+          </div>
+        </div>
+
+        {mode === "month" && <MonthView events={filteredEvents} currentDate={currentDate} selectedDate={selectedDate} onDateSelect={handleDateSelect} themed />}
+        {mode === "week" && <WeekView events={filteredEvents} currentDate={currentDate} onDateSelect={handleDateSelect} themed />}
+        {mode === "day" && <DayView events={filteredEvents} currentDate={currentDate} themed />}
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>

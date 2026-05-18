@@ -15,11 +15,12 @@ import { SpotDot, EventTooltip } from "./CalendarShared";
 // ═══════════════════════════════════════════════════════════════════════════════
 // РЕЖИМ: МЕСЯЦ
 // ═══════════════════════════════════════════════════════════════════════════════
-export function MonthView({ events, currentDate, selectedDate, onDateSelect }: {
+export function MonthView({ events, currentDate, selectedDate, onDateSelect, themed = false }: {
   events: EventItem[];
   currentDate: Date;
   selectedDate: Date | undefined;
   onDateSelect: (d: Date) => void;
+  themed?: boolean;
 }) {
   const [tooltipEvent, setTooltipEvent] = useState<{ event: EventItem; key: string } | null>(null);
 
@@ -45,6 +46,99 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect }: {
   }, [events]);
 
   const DOW = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+  if (themed) {
+    return (
+      <div className="select-none">
+        <div className="grid grid-cols-7 mb-1">
+          {DOW.map((d) => (
+            <div key={d} className="text-center text-xs font-medium py-2" style={{ color: "var(--c-muted)" }}>{d}</div>
+          ))}
+        </div>
+        <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--glass-border)" }}>
+          {weeks.map((week, wi) => (
+            <div
+              key={wi}
+              className="grid grid-cols-7"
+              style={wi < weeks.length - 1 ? { borderBottom: "1px solid var(--glass-border)" } : {}}
+            >
+              {week.map((day, di) => {
+                const key = format(day, "yyyy-MM-dd");
+                const dayEvents = eventsByDate.get(key) || [];
+                const isOtherMonth = !isSameMonth(day, currentDate);
+                const isSelected = selectedDate && isSameDay(day, selectedDate);
+                const isTodayDay = isToday(day);
+                const MAX_SHOW = 2;
+
+                return (
+                  <div
+                    key={di}
+                    className="relative min-h-[80px] p-1.5 cursor-pointer transition-all duration-150"
+                    style={{
+                      background: isSelected
+                        ? "rgba(200,131,74,0.12)"
+                        : isOtherMonth
+                        ? "rgba(255,255,255,0.02)"
+                        : "var(--glass-bg)",
+                      borderRight: di < 6 ? "1px solid var(--glass-border)" : undefined,
+                      outline: isSelected ? "2px solid rgba(200,131,74,0.5)" : undefined,
+                      outlineOffset: "-2px",
+                    }}
+                    onClick={() => onDateSelect(day)}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span
+                        className="text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full"
+                        style={
+                          isTodayDay
+                            ? { background: "#C8834A", color: "#fff" }
+                            : isOtherMonth
+                            ? { color: "var(--c-faint)" }
+                            : { color: "var(--c-cream)" }
+                        }
+                      >
+                        {format(day, "d")}
+                      </span>
+                      {dayEvents.length > MAX_SHOW && (
+                        <span className="text-[10px] font-medium" style={{ color: "var(--c-muted)" }}>+{dayEvents.length - MAX_SHOW}</span>
+                      )}
+                    </div>
+
+                    <div className="space-y-0.5">
+                      {dayEvents.slice(0, MAX_SHOW).map((ev) => {
+                        const meta = getTypeMeta(ev.type);
+                        const tooltipKey = `${key}-${ev.slug}`;
+                        return (
+                          <div
+                            key={ev.slug}
+                            className="relative flex items-center gap-1 text-[10px] rounded px-1 py-0.5 cursor-pointer transition-all"
+                            style={{ background: "rgba(200,131,74,0.08)" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTooltipEvent(tooltipEvent?.key === tooltipKey ? null : { event: ev, key: tooltipKey });
+                            }}
+                          >
+                            <SpotDot event={ev} />
+                            <span className={`w-1.5 h-1.5 rounded-full ${meta.dot} shrink-0`} />
+                            <span className="truncate" style={{ color: "var(--c-text)" }}>{ev.timeStart}</span>
+                            <span className="font-medium" style={{ color: "var(--c-terra)" }}>{meta.short}</span>
+
+                            {tooltipEvent?.key === tooltipKey && (
+                              <EventTooltip event={ev} onClose={() => setTooltipEvent(null)} />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="select-none">
@@ -122,10 +216,11 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect }: {
 // ═══════════════════════════════════════════════════════════════════════════════
 // РЕЖИМ: НЕДЕЛЯ (мобиль — список по дням)
 // ═══════════════════════════════════════════════════════════════════════════════
-function MobileWeekView({ events, currentDate, onDateSelect }: {
+function MobileWeekView({ events, currentDate, onDateSelect, themed = false }: {
   events: EventItem[];
   currentDate: Date;
   onDateSelect: (d: Date) => void;
+  themed?: boolean;
 }) {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -140,6 +235,82 @@ function MobileWeekView({ events, currentDate, onDateSelect }: {
     return map;
   }, [events]);
 
+  const renderEventCard = (ev: EventItem, past: boolean) => {
+    const meta = getTypeMeta(ev.type);
+    const pct = ev.totalSpots > 0 ? ev.spotsLeft / ev.totalSpots : 1;
+    const spotsText = ev.totalSpots === 0 ? null : ev.spotsLeft === 0 ? "Нет мест" : `${ev.spotsLeft} мест`;
+    const spotsColor = pct === 0 ? "text-red-400" : pct <= 0.3 ? "text-yellow-400" : "text-emerald-400";
+
+    if (themed) {
+      return (
+        <div
+          key={ev.slug}
+          className={past ? "opacity-50" : ""}
+          style={{
+            borderRadius: 14,
+            border: "1px solid var(--glass-border)",
+            background: "var(--glass-bg)",
+            backdropFilter: "blur(12px)",
+            padding: "12px",
+          }}
+        >
+          <div className="flex items-start gap-2">
+            <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.dot}`} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                <span className="text-xs font-bold" style={{ color: "var(--c-cream)" }}>{ev.timeStart}</span>
+                <span className="text-xs" style={{ color: "var(--c-muted)" }}>— {ev.timeEnd}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "rgba(200,131,74,0.15)", color: "var(--c-terra)" }}>{meta.short}</span>
+              </div>
+              <p className="text-sm font-semibold line-clamp-1" style={{ color: "var(--c-cream)" }}>{ev.title}</p>
+              <div className="flex items-center justify-between mt-1.5 gap-2">
+                <div className="flex items-center gap-2 text-xs">
+                  {ev.priceLabel && <span className="font-semibold" style={{ color: "var(--c-terra)" }}>{ev.priceLabel}</span>}
+                  {spotsText && <span className={`font-medium ${spotsColor}`}>{spotsText}</span>}
+                </div>
+                <Link
+                  to={`/events/${ev.slug}`}
+                  className="text-[10px] font-semibold px-3 py-1 rounded-full transition-all hover:brightness-110 shrink-0"
+                  style={ev.spotsLeft === 0
+                    ? { background: "rgba(255,255,255,0.06)", color: "var(--c-muted)", border: "1px solid var(--glass-border)" }
+                    : { background: "linear-gradient(90deg,#C8834A,#8FA89A)", color: "#fff" }
+                  }
+                >
+                  {ev.spotsLeft === 0 ? "Нет мест" : "Записаться"}
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div key={ev.slug} className={`rounded-xl border border-border bg-card p-3 ${past ? "opacity-60" : ""}`}>
+        <div className="flex items-start gap-2">
+          <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.dot}`} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+              <span className="text-xs font-bold">{ev.timeStart}</span>
+              <span className="text-xs text-muted-foreground">— {ev.timeEnd}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{meta.short}</span>
+            </div>
+            <p className="text-sm font-semibold line-clamp-1">{ev.title}</p>
+            <div className="flex items-center justify-between mt-1.5 gap-2">
+              <div className="flex items-center gap-2 text-xs">
+                {ev.priceLabel && <span className="font-semibold">{ev.priceLabel}</span>}
+                {spotsText && <span className={`font-medium ${spotsColor}`}>{spotsText}</span>}
+              </div>
+              <Button asChild size="sm" variant={ev.spotsLeft === 0 ? "outline" : "default"} className="rounded-full h-6 text-[10px] px-2.5 shrink-0" disabled={ev.spotsLeft === 0}>
+                <Link to={`/events/${ev.slug}`}>{ev.spotsLeft === 0 ? "Нет мест" : "Записаться"}</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-3">
       {days.map((day) => {
@@ -152,54 +323,45 @@ function MobileWeekView({ events, currentDate, onDateSelect }: {
           <div key={key}>
             <button
               onClick={() => onDateSelect(day)}
-              className={`flex items-center gap-2 mb-2 w-full text-left`}
+              className="flex items-center gap-2 mb-2 w-full text-left"
             >
-              <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold flex-shrink-0
-                ${isTodayDay ? "bg-primary text-primary-foreground" : "text-foreground"}`}>
+              <span
+                className="w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold flex-shrink-0"
+                style={isTodayDay
+                  ? { background: "#C8834A", color: "#fff" }
+                  : themed
+                  ? { color: "var(--c-cream)" }
+                  : undefined
+                }
+              >
                 {format(day, "d")}
               </span>
-              <span className={`text-sm font-medium capitalize ${isTodayDay ? "text-primary" : past ? "text-muted-foreground" : "text-foreground"}`}>
+              <span
+                className={`text-sm font-medium capitalize`}
+                style={themed
+                  ? { color: isTodayDay ? "#C8834A" : past ? "var(--c-faint)" : "var(--c-cream)" }
+                  : undefined
+                }
+              >
                 {format(day, "EEEE", { locale: ru })}
               </span>
               {dayEvents.length > 0 && (
-                <span className="ml-auto text-xs text-muted-foreground">{dayEvents.length} {dayEvents.length === 1 ? "встреча" : dayEvents.length < 5 ? "встречи" : "встреч"}</span>
+                <span className="ml-auto text-xs" style={themed ? { color: "var(--c-muted)" } : { color: "inherit" }}>
+                  {dayEvents.length} {dayEvents.length === 1 ? "встреча" : dayEvents.length < 5 ? "встречи" : "встреч"}
+                </span>
               )}
             </button>
 
             {dayEvents.length === 0 ? (
-              <div className={`text-xs text-muted-foreground/50 pl-9 pb-2 ${past ? "line-through" : ""}`}>Встреч нет</div>
+              <div
+                className={`text-xs pl-9 pb-2 ${past ? "line-through" : ""}`}
+                style={themed ? { color: "var(--c-faint)" } : { color: "inherit", opacity: 0.4 }}
+              >
+                Встреч нет
+              </div>
             ) : (
               <div className="space-y-2 pl-9">
-                {dayEvents.map((ev) => {
-                  const meta = getTypeMeta(ev.type);
-                  const pct = ev.totalSpots > 0 ? ev.spotsLeft / ev.totalSpots : 1;
-                  const spotsText = ev.totalSpots === 0 ? null : ev.spotsLeft === 0 ? "Нет мест" : `${ev.spotsLeft} мест`;
-                  const spotsColor = pct === 0 ? "text-red-600" : pct <= 0.3 ? "text-yellow-600" : "text-green-600";
-                  return (
-                    <div key={ev.slug} className={`rounded-xl border border-border bg-card p-3 ${past ? "opacity-60" : ""}`}>
-                      <div className="flex items-start gap-2">
-                        <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.dot}`} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                            <span className="text-xs font-bold">{ev.timeStart}</span>
-                            <span className="text-xs text-muted-foreground">— {ev.timeEnd}</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{meta.short}</span>
-                          </div>
-                          <p className="text-sm font-semibold line-clamp-1">{ev.title}</p>
-                          <div className="flex items-center justify-between mt-1.5 gap-2">
-                            <div className="flex items-center gap-2 text-xs">
-                              {ev.priceLabel && <span className="font-semibold">{ev.priceLabel}</span>}
-                              {spotsText && <span className={`font-medium ${spotsColor}`}>{spotsText}</span>}
-                            </div>
-                            <Button asChild size="sm" variant={ev.spotsLeft === 0 ? "outline" : "default"} className="rounded-full h-6 text-[10px] px-2.5 shrink-0" disabled={ev.spotsLeft === 0}>
-                              <Link to={`/events/${ev.slug}`}>{ev.spotsLeft === 0 ? "Нет мест" : "Записаться"}</Link>
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {dayEvents.map((ev) => renderEventCard(ev, past))}
               </div>
             )}
           </div>
@@ -212,10 +374,11 @@ function MobileWeekView({ events, currentDate, onDateSelect }: {
 // ═══════════════════════════════════════════════════════════════════════════════
 // РЕЖИМ: НЕДЕЛЯ
 // ═══════════════════════════════════════════════════════════════════════════════
-export function WeekView({ events, currentDate, onDateSelect }: {
+export function WeekView({ events, currentDate, onDateSelect, themed = false }: {
   events: EventItem[];
   currentDate: Date;
   onDateSelect: (d: Date) => void;
+  themed?: boolean;
 }) {
   const [tooltipEvent, setTooltipEvent] = useState<{ event: EventItem; key: string } | null>(null);
   const [isMobile] = useState(() => window.innerWidth < 640);
@@ -238,7 +401,86 @@ export function WeekView({ events, currentDate, onDateSelect }: {
   }, [events]);
 
   if (isMobile) {
-    return <MobileWeekView events={events} currentDate={currentDate} onDateSelect={onDateSelect} />;
+    return <MobileWeekView events={events} currentDate={currentDate} onDateSelect={onDateSelect} themed={themed} />;
+  }
+
+  if (themed) {
+    return (
+      <div className="overflow-x-auto">
+        <div style={{ minWidth: 560 }}>
+          <div className="grid rounded-t-xl overflow-hidden" style={{ gridTemplateColumns: "48px repeat(7, 1fr)", border: "1px solid var(--glass-border)" }}>
+            <div style={{ background: "rgba(255,255,255,0.03)" }} />
+            {days.map((d, i) => (
+              <div
+                key={i}
+                className="text-center py-2 text-xs font-medium cursor-pointer transition-all"
+                style={{
+                  borderLeft: "1px solid var(--glass-border)",
+                  background: isToday(d) ? "rgba(200,131,74,0.12)" : "rgba(255,255,255,0.03)",
+                  color: isToday(d) ? "#C8834A" : "var(--c-muted)",
+                }}
+                onClick={() => onDateSelect(d)}
+              >
+                <div>{format(d, "EEE", { locale: ru })}</div>
+                <div className="text-base font-bold" style={{ color: isToday(d) ? "#C8834A" : "var(--c-cream)" }}>{format(d, "d")}</div>
+              </div>
+            ))}
+          </div>
+
+          <div
+            className="relative rounded-b-xl overflow-hidden"
+            style={{ height: TOTAL_HOURS * HOUR_HEIGHT, borderLeft: "1px solid var(--glass-border)", borderRight: "1px solid var(--glass-border)", borderBottom: "1px solid var(--glass-border)" }}
+          >
+            <div className="absolute inset-0" style={{ display: "grid", gridTemplateColumns: "48px repeat(7, 1fr)" }}>
+              <div style={{ borderRight: "1px solid var(--glass-border)" }}>
+                {Array.from({ length: TOTAL_HOURS }, (_, i) => (
+                  <div key={i} className="flex items-start justify-end pr-2 text-[10px]" style={{ height: HOUR_HEIGHT, color: "var(--c-faint)" }}>
+                    <span className="-translate-y-2">{String(START_HOUR + i).padStart(2, "0")}:00</span>
+                  </div>
+                ))}
+              </div>
+
+              {days.map((d, di) => {
+                const key = format(d, "yyyy-MM-dd");
+                const dayEvents = eventsByDate.get(key) || [];
+                return (
+                  <div key={di} className="relative" style={{ borderLeft: "1px solid var(--glass-border)" }}>
+                    {Array.from({ length: TOTAL_HOURS }, (_, i) => (
+                      <div key={i} style={{ height: HOUR_HEIGHT, borderBottom: "1px solid rgba(237,224,204,0.04)" }} />
+                    ))}
+                    {dayEvents.map((ev) => {
+                      const [sh, sm] = (ev.timeStart || "19:00").split(":").map(Number);
+                      const [eh, em] = (ev.timeEnd || "23:00").split(":").map(Number);
+                      const top = ((sh - START_HOUR) + sm / 60) * HOUR_HEIGHT;
+                      const height = Math.max(((eh - sh) + (em - sm) / 60) * HOUR_HEIGHT, 24);
+                      const meta = getTypeMeta(ev.type);
+                      const tooltipKey = `week-${key}-${ev.slug}`;
+                      return (
+                        <div
+                          key={ev.slug}
+                          className="absolute left-0.5 right-0.5 rounded-md px-1.5 py-1 text-[10px] font-medium cursor-pointer overflow-hidden transition-opacity hover:opacity-100"
+                          style={{ top, height: height - 2, background: meta.dot.replace("bg-[", "").replace("]", ""), opacity: 0.85, color: "#fff" }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTooltipEvent(tooltipEvent?.key === tooltipKey ? null : { event: ev, key: tooltipKey });
+                          }}
+                        >
+                          <div className="truncate">{ev.timeStart} {meta.short}</div>
+                          <div className="truncate opacity-80">{ev.title}</div>
+                          {tooltipEvent?.key === tooltipKey && (
+                            <EventTooltip event={ev} onClose={() => setTooltipEvent(null)} />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -325,7 +567,7 @@ export function WeekView({ events, currentDate, onDateSelect }: {
 // ═══════════════════════════════════════════════════════════════════════════════
 // РЕЖИМ: ДЕНЬ
 // ═══════════════════════════════════════════════════════════════════════════════
-export function DayView({ events, currentDate }: { events: EventItem[]; currentDate: Date }) {
+export function DayView({ events, currentDate, themed = false }: { events: EventItem[]; currentDate: Date; themed?: boolean }) {
   const dayEvents = useMemo(
     () => events.filter((e) => isSameDay(parseISO(e.date), currentDate))
       .sort((a, b) => a.timeStart.localeCompare(b.timeStart)),
@@ -334,7 +576,7 @@ export function DayView({ events, currentDate }: { events: EventItem[]; currentD
 
   if (dayEvents.length === 0) {
     return (
-      <div className="text-center py-16 text-muted-foreground">
+      <div className="text-center py-16" style={themed ? { color: "var(--c-muted)" } : { color: "inherit" }}>
         <Icon name="CalendarX" size={40} className="mx-auto mb-3 opacity-30" />
         <p>Нет встреч на этот день</p>
       </div>
@@ -350,8 +592,54 @@ export function DayView({ events, currentDate }: { events: EventItem[]; currentD
           ev.totalSpots === 0 ? null :
           ev.spotsLeft === 0 ? "Мест нет" :
           `Свободно: ${ev.spotsLeft} ${ev.spotsLeft === 1 ? "место" : ev.spotsLeft < 5 ? "места" : "мест"}`;
-        const spotsColor = pct === 0 ? "text-red-600" : pct <= 0.3 ? "text-yellow-600" : "text-green-600";
+        const spotsColor = pct === 0 ? (themed ? "text-red-400" : "text-red-600") : pct <= 0.3 ? (themed ? "text-yellow-400" : "text-yellow-600") : (themed ? "text-emerald-400" : "text-green-600");
         const past = isBefore(parseISO(ev.date), startOfDay(new Date()));
+
+        if (themed) {
+          return (
+            <div
+              key={ev.slug}
+              className={past ? "opacity-50" : ""}
+              style={{ borderRadius: 16, border: "1px solid var(--glass-border)", background: "var(--glass-bg)", backdropFilter: "blur(16px)", padding: "16px" }}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.dot}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="text-sm font-bold" style={{ color: "var(--c-cream)" }}>{ev.timeStart}</span>
+                    <span className="text-xs" style={{ color: "var(--c-muted)" }}>— {ev.timeEnd}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(200,131,74,0.15)", color: "#C8834A" }}>
+                      {ev.type}
+                    </span>
+                  </div>
+                  <h4 className="font-semibold text-base mb-1 line-clamp-1" style={{ color: "var(--c-cream)" }}>{ev.title}</h4>
+                  {ev.bathName && (
+                    <div className="flex items-center gap-1 text-xs mb-2" style={{ color: "var(--c-muted)" }}>
+                      <Icon name="MapPin" size={11} />
+                      {ev.bathName}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 text-xs">
+                      {ev.priceLabel && <span className="font-semibold" style={{ color: "var(--c-terra)" }}>{ev.priceLabel}</span>}
+                      {spotsText && <span className={`font-medium ${spotsColor}`}>{spotsText}</span>}
+                    </div>
+                    <Link
+                      to={`/events/${ev.slug}`}
+                      className="text-xs font-semibold px-4 py-1.5 rounded-full transition-all hover:brightness-110 shrink-0"
+                      style={ev.spotsLeft === 0
+                        ? { background: "rgba(255,255,255,0.06)", color: "var(--c-muted)", border: "1px solid var(--glass-border)" }
+                        : { background: "linear-gradient(90deg,#C8834A,#8FA89A)", color: "#fff" }
+                      }
+                    >
+                      {ev.spotsLeft === 0 ? "Нет мест" : "Записаться"}
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
 
         return (
           <div key={ev.slug} className={`rounded-xl border border-border bg-card p-4 ${past ? "opacity-60" : ""}`}>
