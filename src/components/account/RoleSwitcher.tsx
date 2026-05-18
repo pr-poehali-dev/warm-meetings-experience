@@ -43,7 +43,7 @@ export default function RoleSwitcher({ roles, activeRole, onSwitch }: RoleSwitch
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 mt-1 z-50 bg-card border rounded-lg shadow-lg min-w-[200px] py-1">
+          <div className="absolute top-full left-0 mt-1 z-50 bg-card border rounded-lg shadow-lg min-w-[200px] max-w-[90vw] py-1">
             {activeRoles.map((role) => (
               <button
                 key={role.slug}

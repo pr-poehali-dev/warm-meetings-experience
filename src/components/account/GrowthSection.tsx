@@ -107,7 +107,7 @@ export default function GrowthSection({ rolesOnly = false }: GrowthSectionProps)
                 </div>
                 <div className="flex-shrink-0">
                   {hasPendingApp ? (
-                    <span className="text-xs px-2.5 py-1.5 bg-amber-50 text-amber-700 rounded-full font-medium whitespace-nowrap block">
+                    <span className="text-xs px-2.5 py-1.5 bg-amber-500/15 text-amber-700 dark:text-amber-400 rounded-full font-medium whitespace-nowrap block">
                       На рассмотрении
                     </span>
                   ) : (

@@ -208,7 +208,7 @@ export default function InboxSection() {
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm truncate">{t.organizer_name}</span>
                         {t.kind === "question" && (
-                          <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">Ответ на вопрос</span>
+                          <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400">Ответ на вопрос</span>
                         )}
                         {t.unread > 0 && (
                           <span className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-full font-semibold">

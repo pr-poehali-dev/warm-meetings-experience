@@ -17,10 +17,10 @@ import AttachmentPicker from "@/components/support/AttachmentPicker";
 import { toast } from "sonner";
 
 const STATUS_META: Record<TicketStatus, { label: string; cls: string }> = {
-  open: { label: "Открыт", cls: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" },
-  in_progress: { label: "В работе", cls: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" },
-  awaiting_reply: { label: "Ждём вас", cls: "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" },
-  closed: { label: "Закрыт", cls: "bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300" },
+  open: { label: "Открыт", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
+  in_progress: { label: "В работе", cls: "bg-blue-500/15 text-blue-700 dark:text-blue-400" },
+  awaiting_reply: { label: "Ждём вас", cls: "bg-violet-500/15 text-violet-700 dark:text-violet-400" },
+  closed: { label: "Закрыт", cls: "bg-muted text-muted-foreground" },
 };
 
 const CATEGORIES = [

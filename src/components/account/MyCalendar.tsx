@@ -79,12 +79,12 @@ const MyCalendar = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-1 overflow-x-auto pb-1">
+      <div className="flex gap-1 overflow-x-auto pb-2 -mx-1 px-1">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-2.5 sm:px-4 rounded-lg text-sm font-medium whitespace-nowrap transition-colors min-h-[44px] ${
               tab === t.id
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:bg-muted"

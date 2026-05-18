@@ -103,11 +103,11 @@ export default function RefundsSection() {
       </h3>
 
       {pending.map((r) => (
-        <Card key={r.id} className="border-red-200 bg-red-50/40">
+        <Card key={r.id} className="border-red-500/30 bg-red-500/5 dark:bg-red-500/10">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-red-700 mb-1">
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-red-700 dark:text-red-400 mb-1">
                   <Icon name="XCircle" size={11} />
                   Событие отменено
                 </div>
@@ -185,10 +185,10 @@ export default function RefundsSection() {
       ))}
 
       {inProgress.map((r) => (
-        <Card key={r.id} className="border-amber-200 bg-amber-50/40">
+        <Card key={r.id} className="border-amber-500/30 bg-amber-500/5 dark:bg-amber-500/10">
           <CardContent className="p-3 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-xs text-amber-800 font-semibold">Возврат на карту обрабатывается</div>
+              <div className="text-xs text-amber-700 dark:text-amber-400 font-semibold">Возврат на карту обрабатывается</div>
               <div className="text-sm font-medium truncate">{r.event_title}</div>
             </div>
             <div className="text-sm font-bold shrink-0">{fmt(r.amount)} ₽</div>

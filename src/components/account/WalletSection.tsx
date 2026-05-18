@@ -51,8 +51,8 @@ export default function WalletSection() {
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <Icon name="Wallet" size={16} className="text-emerald-600" />
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                <Icon name="Wallet" size={16} className="text-emerald-600 dark:text-emerald-400" />
               </div>
               <span className="text-xs text-muted-foreground font-medium">Кошелёк</span>
             </div>
@@ -62,8 +62,8 @@ export default function WalletSection() {
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
-                <Icon name="Gift" size={16} className="text-violet-600" />
+              <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
+                <Icon name="Gift" size={16} className="text-violet-600 dark:text-violet-400" />
               </div>
               <span className="text-xs text-muted-foreground font-medium">Бонусы</span>
             </div>

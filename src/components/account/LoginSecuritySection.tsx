@@ -111,7 +111,7 @@ export default function LoginSecuritySection() {
           <Icon name="ShieldCheck" size={18} className="text-primary" />
           Двухфакторная защита входа
           {isOn && (
-            <span className="ml-auto text-xs px-2.5 py-1 rounded-full font-medium bg-green-50 text-green-700">
+            <span className="ml-auto text-xs px-2.5 py-1 rounded-full font-medium bg-green-500/15 text-green-700 dark:text-green-400">
               Включена
             </span>
           )}
@@ -119,9 +119,9 @@ export default function LoginSecuritySection() {
       </CardHeader>
       <CardContent className="space-y-4">
         {status.mandatory && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2 text-sm">
-            <Icon name="Info" size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
-            <span className="text-blue-800">
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex items-start gap-2 text-sm">
+            <Icon name="Info" size={16} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <span className="text-blue-800 dark:text-blue-300">
               Для вашей роли двухфакторная аутентификация обязательна и не может быть отключена. Можно выбрать удобный способ подтверждения.
             </span>
           </div>

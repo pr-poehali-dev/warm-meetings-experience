@@ -51,8 +51,8 @@ export default function ReferralsSection() {
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-              <Icon name="Users" size={16} className="text-blue-600" />
+            <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
+              <Icon name="Users" size={16} className="text-blue-600 dark:text-blue-400" />
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">Пригласите друзей</p>
@@ -115,7 +115,7 @@ export default function ReferralsSection() {
                     </p>
                   </div>
                   {person.bonus_paid && (
-                    <div className="flex items-center gap-1 text-xs text-violet-600 bg-violet-50 rounded-full px-2 py-0.5 flex-shrink-0">
+                    <div className="flex items-center gap-1 text-xs text-violet-600 dark:text-violet-400 bg-violet-500/15 rounded-full px-2 py-0.5 flex-shrink-0">
                       <Icon name="Gift" size={11} />
                       Бонус
                     </div>

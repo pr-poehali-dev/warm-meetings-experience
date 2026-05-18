@@ -7,9 +7,9 @@ import { getCategoryBySlug } from "@/lib/blog-data";
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   draft:     { label: "Черновик",        color: "text-muted-foreground bg-muted" },
-  pending:   { label: "На модерации",    color: "text-amber-700 bg-amber-100" },
-  published: { label: "Опубликовано",    color: "text-green-700 bg-green-100" },
-  rejected:  { label: "Отклонено",       color: "text-red-700 bg-red-100" },
+  pending:   { label: "На модерации",    color: "text-amber-700 dark:text-amber-400 bg-amber-500/15" },
+  published: { label: "Опубликовано",    color: "text-green-700 dark:text-green-400 bg-green-500/15" },
+  rejected:  { label: "Отклонено",       color: "text-red-700 dark:text-red-400 bg-red-500/15" },
 };
 
 export default function MyArticles() {

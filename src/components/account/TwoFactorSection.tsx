@@ -95,7 +95,7 @@ export default function TwoFactorSection({ totpEnabled, hasPassword, onToggled }
             Двухфакторная аутентификация
           </CardTitle>
           {totpEnabled && (
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+            <span className="text-xs bg-green-500/15 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full font-medium">
               Включена
             </span>
           )}
@@ -138,7 +138,7 @@ export default function TwoFactorSection({ totpEnabled, hasPassword, onToggled }
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(provisioningUri)}`}
                 alt="QR Code"
-                className="w-48 h-48"
+                className="w-36 h-36 sm:w-48 sm:h-48"
               />
             </div>
             <div className="bg-muted rounded-lg p-3">
