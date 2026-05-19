@@ -143,33 +143,95 @@ function MasterCard({ master, specializations }: { master: Master; specializatio
       </div>
 
       <div className="p-4">
-        <h3 className="font-bold text-base mb-1" style={{ color: "var(--c-cream)" }}>{master.name}</h3>
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <h3 className="font-bold text-base leading-tight" style={{ color: "var(--c-cream)" }}>{master.name}</h3>
+          {master.rating > 0 && (
+            <div className="flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-full" style={{ background: "rgba(245,158,11,0.15)" }}>
+              <Icon name="Star" size={11} style={{ color: "#F59E0B", fill: "#F59E0B" } as React.CSSProperties} />
+              <span className="text-xs font-bold" style={{ color: "#F59E0B" }}>{master.rating.toFixed(1)}</span>
+            </div>
+          )}
+        </div>
+
         {master.tagline && (
-          <p className="text-sm mb-2 line-clamp-2" style={{ color: "var(--c-text)" }}>{master.tagline}</p>
+          <p className="text-sm mb-3 line-clamp-2 italic" style={{ color: "var(--c-text)" }}>«{master.tagline}»</p>
         )}
-        <div className="flex items-center gap-3 text-xs mb-3" style={{ color: "var(--c-muted)" }}>
+
+        {/* Все специализации */}
+        {masterSpecs.length > 1 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {masterSpecs.slice(1, 4).map((s) => (
+              <span key={s.id} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(143,168,154,0.15)", color: "var(--c-sage)" }}>
+                {s.name}
+              </span>
+            ))}
+            {masterSpecs.length > 4 && (
+              <span className="text-xs px-1" style={{ color: "var(--c-muted)" }}>+{masterSpecs.length - 4}</span>
+            )}
+          </div>
+        )}
+
+        {/* Краткое био */}
+        {master.bio && (
+          <p className="text-xs mb-3 line-clamp-2 leading-relaxed" style={{ color: "var(--c-text)" }}>{master.bio}</p>
+        )}
+
+        {/* Метрики */}
+        <div className="flex items-center gap-3 text-xs mb-3 flex-wrap" style={{ color: "var(--c-muted)" }}>
           {master.experience_years > 0 && (
             <span className="flex items-center gap-1">
-              <Icon name="Clock" size={11} />
-              {master.experience_years} {getYearWord(master.experience_years)} опыта
+              <Icon name="Award" size={11} style={{ color: "var(--c-terra)" } as React.CSSProperties} />
+              <span style={{ color: "var(--c-cream)" }}>{master.experience_years}</span>
+              {getYearWord(master.experience_years)} опыта
             </span>
           )}
           <span className="flex items-center gap-1">
             <Icon name="MapPin" size={11} />
             {master.city}
           </span>
+          {master.portfolio && master.portfolio.length > 0 && (
+            <span className="flex items-center gap-1">
+              <Icon name="Image" size={11} />
+              {master.portfolio.length} фото
+            </span>
+          )}
         </div>
-        {master.rating > 0 && (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <Icon key={s} name="Star" size={12} style={{ color: s <= Math.round(master.rating) ? "#F59E0B" : "rgba(217,237,232,0.2)" }} />
-              ))}
-              <span className="text-xs ml-1 font-semibold" style={{ color: "var(--c-terra)" }}>{master.rating.toFixed(1)}</span>
-            </div>
-            <span className="text-xs" style={{ color: "var(--c-muted)" }}>{master.reviews_count} отзывов</span>
+
+        {/* Площадки где работает */}
+        {master.baths && master.baths.length > 0 && (
+          <div className="flex items-start gap-1.5 text-xs mb-3 pb-3" style={{ color: "var(--c-muted)", borderBottom: "1px solid var(--card-border)" }}>
+            <Icon name="Building2" size={11} className="mt-0.5 shrink-0" style={{ color: "var(--c-sage)" } as React.CSSProperties} />
+            <span className="line-clamp-1">
+              {master.baths.slice(0, 2).map((b) => b.name).join(", ")}
+              {master.baths.length > 2 && ` +${master.baths.length - 2}`}
+            </span>
           </div>
         )}
+
+        {/* Нижний ряд: отзывы + контакты */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs" style={{ color: "var(--c-muted)" }}>
+            <Icon name="MessageSquare" size={11} />
+            <span>{master.reviews_count || 0} отзывов</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {master.telegram && (
+              <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(34,158,217,0.15)", color: "#229ED9" }}>
+                <Icon name="Send" size={11} />
+              </span>
+            )}
+            {master.instagram && (
+              <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(225,48,108,0.15)", color: "#E1306C" }}>
+                <Icon name="Instagram" size={11} />
+              </span>
+            )}
+            {master.phone && (
+              <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(143,168,154,0.15)", color: "var(--c-sage)" }}>
+                <Icon name="Phone" size={11} />
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </Link>
   );
