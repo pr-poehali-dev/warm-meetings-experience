@@ -50,6 +50,47 @@ export function getTypeColors(type: string) {
   return EVENT_TYPE_COLORS[type.toLowerCase()] || DEFAULT_TYPE_COLORS;
 }
 
+function formatRub(n: number): string {
+  return `${n.toLocaleString("ru-RU")} ₽`;
+}
+
+function buildPriceLabel(e: EventFromAPI): string {
+  // Если организатор уже задал отображаемую цену — используем её
+  if (e.price_label && String(e.price_label).trim()) return String(e.price_label).trim();
+  if (e.price && String(e.price).trim()) return String(e.price).trim();
+
+  // Складчина: используем вычисленные cf-поля, либо плоские cf_*-поля
+  if (e.pricing_mode === "crowdfund") {
+    const cfAny = (e as unknown as Record<string, unknown>);
+    const priceAtMax = Number(e.cf?.price_at_max || 0);
+    const target = Number(e.cf?.target_amount || cfAny.cf_target_amount || 0);
+    const maxP = Number(e.cf?.max_participants || cfAny.cf_max_participants || 0);
+    const minP = Number(e.cf?.min_participants || cfAny.cf_min_participants || 0);
+    if (priceAtMax > 0) return `от ${formatRub(priceAtMax)}`;
+    if (target > 0 && maxP > 0) return `от ${formatRub(Math.ceil(target / maxP))}`;
+    if (target > 0 && minP > 0) return `до ${formatRub(Math.ceil(target / minP))}`;
+    if (target > 0) return `цель ${formatRub(target)}`;
+    return "в складчину";
+  }
+
+  // Динамические ступени: минимальная цена среди тиров
+  if (e.pricing_type === "dynamic" && Array.isArray(e.pricing_tiers) && e.pricing_tiers.length > 0) {
+    const prices = e.pricing_tiers
+      .map((t) => Number(t.price_amount || 0))
+      .filter((p) => p > 0);
+    if (prices.length > 0) {
+      const min = Math.min(...prices);
+      return `от ${formatRub(min)}`;
+    }
+  }
+
+  // Фикс: просто число
+  const amount = Number(e.price_amount || 0);
+  if (amount > 0) return formatRub(amount);
+
+  return "";
+}
+
 export function mapApiEvent(e: EventFromAPI): EventItem {
   return {
     id: e.id,
@@ -71,7 +112,7 @@ export function mapApiEvent(e: EventFromAPI): EventItem {
     pricingType: e.pricing_type || 'fixed',
     pricingTiers: e.pricing_tiers || [],
     price: e.price_amount || 0,
-    priceLabel: e.price_label || e.price || "",
+    priceLabel: buildPriceLabel(e),
     totalSpots: e.total_spots || 0,
     spotsLeft: e.spots_left || 0,
     featured: e.featured || false,
