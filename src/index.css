@@ -51,6 +51,12 @@
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --header-nav-color: #2d2318;
+    --header-nav-active: #1a1008;
+    --header-nav-hover-bg: rgba(0, 0, 0, 0.06);
+    --header-login-bg: rgba(0, 0, 0, 0.06);
+    --header-login-border: rgba(0, 0, 0, 0.15);
   }
 
   .dark {
@@ -89,6 +95,28 @@
     --sidebar-accent-foreground: 36 25% 80%;
     --sidebar-border: 22 12% 18%;
     --sidebar-ring: 22 72% 45%;
+
+    --header-nav-color: rgba(237, 224, 204, 0.85);
+    --header-nav-active: #ede0cc;
+    --header-nav-hover-bg: rgba(255, 255, 255, 0.1);
+    --header-login-bg: rgba(255, 255, 255, 0.1);
+    --header-login-border: rgba(255, 255, 255, 0.2);
+  }
+
+  [data-sparcom-theme="light"] {
+    --header-nav-color: #2d2318;
+    --header-nav-active: #1a1008;
+    --header-nav-hover-bg: rgba(0, 0, 0, 0.06);
+    --header-login-bg: rgba(0, 0, 0, 0.06);
+    --header-login-border: rgba(0, 0, 0, 0.15);
+  }
+
+  [data-sparcom-theme="dark"] {
+    --header-nav-color: rgba(237, 224, 204, 0.85);
+    --header-nav-active: #ede0cc;
+    --header-nav-hover-bg: rgba(255, 255, 255, 0.1);
+    --header-login-bg: rgba(255, 255, 255, 0.1);
+    --header-login-border: rgba(255, 255, 255, 0.2);
   }
 }
 

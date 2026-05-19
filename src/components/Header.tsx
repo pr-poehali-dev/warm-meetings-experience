@@ -106,13 +106,9 @@ export default function Header({ transparent = false }: HeaderProps) {
                   key={link.to}
                   to={link.to}
                   className="px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300"
-                  style={onHero
-                    ? isActive(link.to)
-                      ? { background: "rgba(255,255,255,0.2)", color: "var(--header-nav-active, #2d2318)" }
-                      : { color: "var(--header-nav-color, #2d2318)" }
-                    : isActive(link.to)
-                      ? { background: "rgba(0,0,0,0.06)", color: "var(--header-nav-active, #2d2318)" }
-                      : { color: "var(--header-nav-color, #2d2318)" }
+                  style={isActive(link.to)
+                    ? { background: "var(--header-nav-hover-bg)", color: "var(--header-nav-active)" }
+                    : { color: "var(--header-nav-color)" }
                   }
                 >
                   {link.label}
@@ -131,10 +127,11 @@ export default function Header({ transparent = false }: HeaderProps) {
                 <Link
                   to="/login"
                   className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-300"
-                  style={onHero
-                    ? { background: "rgba(0,0,0,0.08)", border: "1px solid rgba(0,0,0,0.15)", color: "var(--header-nav-color, #2d2318)" }
-                    : undefined
-                  }
+                  style={{
+                    background: "var(--header-login-bg)",
+                    border: "1px solid var(--header-login-border)",
+                    color: "var(--header-nav-color)",
+                  }}
                 >
                   <Icon name="LogIn" size={16} />
                   <span className="hidden sm:inline">Войти</span>
