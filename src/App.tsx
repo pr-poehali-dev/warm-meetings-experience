@@ -52,10 +52,12 @@ import FunctionalDescription from "./pages/FunctionalDescription";
 import CookieConsent from "./components/CookieConsent";
 import MetrikaTracker from "./components/MetrikaTracker";
 import SupportWidget from "./components/support/SupportWidget";
+import { useKeyboardAwareInputs } from "./hooks/useKeyboardAwareInputs";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
+  useKeyboardAwareInputs();
   return (
     <>
       <ScrollToTop />

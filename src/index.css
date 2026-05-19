@@ -110,4 +110,23 @@
   h3 {
     font-family: "Playfair Display", serif;
   }
+
+  :root {
+    --kb-offset: 0px;
+  }
+
+  @media (max-width: 900px) {
+    input:focus,
+    textarea:focus,
+    [contenteditable="true"]:focus {
+      scroll-margin-top: 96px;
+      scroll-margin-bottom: calc(var(--kb-offset, 0px) + 96px);
+    }
+
+    [data-radix-popper-content-wrapper],
+    [role="dialog"] {
+      transform: translateY(calc(var(--kb-offset, 0px) * -0.5));
+      transition: transform 0.2s ease;
+    }
+  }
 }
