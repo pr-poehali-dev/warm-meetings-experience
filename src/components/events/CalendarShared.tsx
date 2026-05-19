@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { Link } from "react-router-dom";
@@ -20,7 +21,8 @@ export function SpotDot({ event }: { event: EventItem }) {
 // ── мини-тултип (popup) при клике/hover ────────────────────────────────────────
 export function EventTooltip({ event, onClose }: { event: EventItem; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [offsetX, setOffsetX] = useState(0);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
@@ -31,16 +33,27 @@ export function EventTooltip({ event, onClose }: { event: EventItem; onClose: ()
 
   useLayoutEffect(() => {
     if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
+    const parent = ref.current.parentElement;
+    if (!parent) return;
+    const trigger = parent.getBoundingClientRect();
+    const tip = ref.current.getBoundingClientRect();
     const margin = 8;
-    let shift = 0;
-    if (rect.right > window.innerWidth - margin) {
-      shift = window.innerWidth - margin - rect.right;
+    const width = tip.width || 256;
+    const height = tip.height || 200;
+
+    let left = trigger.left;
+    if (left + width > window.innerWidth - margin) {
+      left = window.innerWidth - margin - width;
     }
-    if (rect.left + shift < margin) {
-      shift = margin - rect.left;
+    if (left < margin) left = margin;
+
+    let top = trigger.bottom + 4;
+    if (top + height > window.innerHeight - margin) {
+      const above = trigger.top - 4 - height;
+      if (above >= margin) top = above;
+      else top = Math.max(margin, window.innerHeight - margin - height);
     }
-    setOffsetX(shift);
+    setPos({ top, left });
   }, []);
 
   const meta = getTypeMeta(event.type);
@@ -51,11 +64,16 @@ export function EventTooltip({ event, onClose }: { event: EventItem; onClose: ()
     `${event.spotsLeft} ${event.spotsLeft === 1 ? "место" : event.spotsLeft < 5 ? "места" : "мест"}`;
   const spotsColor = pct === 0 ? "text-red-600" : pct <= 0.3 ? "text-yellow-600" : "text-green-600";
 
-  return (
+  const node = (
     <div
       ref={ref}
-      className="absolute z-50 left-0 top-full mt-1 w-64 max-w-[calc(100vw-16px)] bg-card border border-border rounded-xl shadow-xl p-4 text-sm"
-      style={{ transform: `translateX(${offsetX}px)` }}
+      className="z-[100] w-64 max-w-[calc(100vw-16px)] bg-card border border-border rounded-xl shadow-xl p-4 text-sm"
+      style={{
+        position: "fixed",
+        top: pos?.top ?? -9999,
+        left: pos?.left ?? -9999,
+        visibility: pos ? "visible" : "hidden",
+      }}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center gap-2 mb-2">
@@ -95,4 +113,7 @@ export function EventTooltip({ event, onClose }: { event: EventItem; onClose: ()
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") return node;
+  return createPortal(node, document.body);
 }
