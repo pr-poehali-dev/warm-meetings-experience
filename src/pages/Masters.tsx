@@ -1,96 +1,69 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useTheme } from "next-themes";
 import Icon from "@/components/ui/icon";
+import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import PageHero from "@/components/ui/PageHero";
 import { mastersApi, Master, Specialization } from "@/lib/masters-api";
-import EventTypeFilter from "@/components/ui/EventTypeFilter";
 
-const CITIES = ["Москва", "Санкт-Петербург"];
+const HERO_IMG = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/72d028d8-3078-4526-a1a8-54f4ac23a26e.jpg";
 
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <div className="flex items-center gap-1">
-      {[1, 2, 3, 4, 5].map((s) => (
-        <Icon
-          key={s}
-          name="Star"
-          size={12}
-          className={s <= Math.round(rating) ? "text-amber-400 fill-amber-400" : "text-muted-foreground/30"}
-        />
-      ))}
-      <span className="text-xs text-muted-foreground ml-1">{rating.toFixed(1)}</span>
-    </div>
-  );
-}
+const THEME_STYLES = `
+  [data-masters-theme="dark"] {
+    --bg-page: linear-gradient(160deg, #1a1410 0%, #1c2018 35%, #14201c 65%, #101818 100%);
+    --c-cream: #EDE0CC;
+    --c-terra: #C8834A;
+    --c-sage:  #8FA89A;
+    --c-text:  rgba(217,237,232,0.6);
+    --c-muted: rgba(217,237,232,0.45);
+    --glass-bg: rgba(237,224,204,0.06);
+    --glass-border: rgba(237,224,204,0.13);
+    --hero-overlay: linear-gradient(to bottom, rgba(26,20,16,0.3) 0%, rgba(26,20,16,0.55) 50%, #1a1410 90%);
+    --hero-img-opacity: 0.22;
+    --filter-active-bg: white;
+    --filter-active-text: #0f0f0f;
+    --filter-idle-bg: rgba(255,255,255,0.08);
+    --filter-idle-text: rgba(255,255,255,0.65);
+    --filter-idle-border: rgba(255,255,255,0.1);
+    --card-bg: rgba(237,224,204,0.05);
+    --card-border: rgba(237,224,204,0.1);
+    --input-bg: rgba(255,255,255,0.06);
+    --input-border: rgba(255,255,255,0.12);
+    --input-text: rgba(217,237,232,0.8);
+    --badge-bg: rgba(200,131,74,0.15);
+    --badge-border: rgba(200,131,74,0.3);
+  }
+  [data-masters-theme="light"] {
+    --bg-page: linear-gradient(160deg, #fdf7f0 0%, #f4f8f5 35%, #eef6f4 65%, #eaf4f2 100%);
+    --c-cream: #2d2318;
+    --c-terra: #b56b2e;
+    --c-sage:  #4a7a6a;
+    --c-text:  rgba(35,40,38,0.68);
+    --c-muted: rgba(35,40,38,0.5);
+    --glass-bg: rgba(255,255,255,0.7);
+    --glass-border: rgba(200,131,74,0.15);
+    --hero-overlay: linear-gradient(to bottom, rgba(253,247,240,0.15) 0%, rgba(253,247,240,0.5) 50%, #fdf7f0 90%);
+    --hero-img-opacity: 0.18;
+    --filter-active-bg: #2d2318;
+    --filter-active-text: #fff;
+    --filter-idle-bg: rgba(45,35,24,0.06);
+    --filter-idle-text: rgba(45,35,24,0.65);
+    --filter-idle-border: rgba(45,35,24,0.12);
+    --card-bg: rgba(255,255,255,0.8);
+    --card-border: rgba(200,131,74,0.15);
+    --input-bg: rgba(255,255,255,0.9);
+    --input-border: rgba(45,35,24,0.15);
+    --input-text: #2d2318;
+    --badge-bg: rgba(181,107,46,0.12);
+    --badge-border: rgba(181,107,46,0.25);
+  }
+`;
 
-function MasterCard({ master, specializations }: { master: Master; specializations: Specialization[] }) {
-  const placeholder = `https://placehold.co/400x400/e8dac0/8b7355?text=${encodeURIComponent(master.name[0])}`;
-  const avatar = master.avatar || placeholder;
-
-  const masterSpecs = specializations.filter((s) =>
-    (master.specialization_ids || []).includes(s.id)
-  );
-
-  return (
-    <Link
-      to={`/masters/${master.slug}`}
-      className="group block bg-card rounded-2xl overflow-hidden border border-border hover:shadow-lg transition-all hover:-translate-y-0.5"
-    >
-      <div className="relative h-52 overflow-hidden bg-muted">
-        <img
-          src={avatar}
-          alt={master.name}
-          className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
-        />
-        {master.is_verified && (
-          <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
-            <Icon name="BadgeCheck" size={12} />
-            Проверен
-          </div>
-        )}
-        {master.price_from > 0 && (
-          <div className="absolute bottom-3 right-3 bg-background/90 backdrop-blur-sm text-foreground text-sm font-semibold px-3 py-1 rounded-full">
-            от {master.price_from.toLocaleString("ru-RU")} ₽
-          </div>
-        )}
-      </div>
-      <div className="p-4">
-        <div className="flex flex-wrap gap-1 mb-2">
-          {masterSpecs.slice(0, 2).map((s) => (
-            <span key={s.id} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-              {s.name}
-            </span>
-          ))}
-        </div>
-        <h3 className="font-semibold text-base mb-1 group-hover:text-primary transition-colors">
-          {master.name}
-        </h3>
-        {master.tagline && (
-          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{master.tagline}</p>
-        )}
-        <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
-          {master.experience_years > 0 && (
-            <div className="flex items-center gap-1">
-              <Icon name="Clock" size={12} />
-              <span>{master.experience_years} {getYearWord(master.experience_years)} опыта</span>
-            </div>
-          )}
-          <div className="flex items-center gap-1">
-            <Icon name="MapPin" size={12} />
-            <span>{master.city}</span>
-          </div>
-        </div>
-        {master.rating > 0 && (
-          <div className="flex items-center justify-between">
-            <StarRating rating={master.rating} />
-            <span className="text-xs text-muted-foreground">{master.reviews_count} отзывов</span>
-          </div>
-        )}
-      </div>
-    </Link>
-  );
-}
+const glassCard: React.CSSProperties = {
+  background: "var(--card-bg)",
+  border: "1px solid var(--card-border)",
+  backdropFilter: "blur(16px)",
+};
 
 function getYearWord(n: number) {
   if (n % 10 === 1 && n % 100 !== 11) return "год";
@@ -98,183 +71,277 @@ function getYearWord(n: number) {
   return "лет";
 }
 
+function SectionBadge({ icon, children }: { icon: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-4"
+      style={{ background: "var(--badge-bg)", border: "1px solid var(--badge-border)", color: "var(--c-terra)" }}
+    >
+      <Icon name={icon as "Flame"} size={13} />
+      {children}
+    </div>
+  );
+}
+
+function MasterCard({ master, specializations }: { master: Master; specializations: Specialization[] }) {
+  const [hovered, setHovered] = useState(false);
+  const placeholder = `https://placehold.co/400x500/2d1f14/8b7355?text=${encodeURIComponent(master.name[0])}`;
+  const avatar = master.avatar || placeholder;
+  const masterSpecs = specializations.filter((s) => (master.specialization_ids || []).includes(s.id));
+
+  return (
+    <Link
+      to={`/masters/${master.slug}`}
+      className="group block rounded-2xl overflow-hidden transition-all duration-300"
+      style={{
+        ...glassCard,
+        transform: hovered ? "translateY(-4px)" : "translateY(0)",
+        boxShadow: hovered ? "0 20px 40px rgba(0,0,0,0.25)" : "none",
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className="relative h-56 overflow-hidden">
+        <img
+          src={avatar}
+          alt={master.name}
+          className="w-full h-full object-cover object-top transition-transform duration-500"
+          style={{ transform: hovered ? "scale(1.06)" : "scale(1)" }}
+        />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 55%)" }} />
+
+        {master.is_verified && (
+          <div
+            className="absolute top-3 right-3 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"
+            style={{ background: "rgba(200,131,74,0.9)", color: "#fff", backdropFilter: "blur(4px)" }}
+          >
+            <Icon name="BadgeCheck" size={12} />
+            Проверен
+          </div>
+        )}
+
+        {master.price_from > 0 && (
+          <div
+            className="absolute bottom-3 right-3 text-sm font-bold px-3 py-1 rounded-full"
+            style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", color: "#FF6B1A" }}
+          >
+            от {master.price_from.toLocaleString("ru-RU")} ₽
+          </div>
+        )}
+
+        <div className="absolute top-3 left-3 flex flex-wrap gap-1">
+          {masterSpecs.slice(0, 1).map((s) => (
+            <span
+              key={s.id}
+              className="text-xs font-medium px-2 py-0.5 rounded-full"
+              style={{ background: "rgba(143,168,154,0.75)", backdropFilter: "blur(4px)", color: "#fff" }}
+            >
+              {s.name}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="p-4">
+        <h3 className="font-bold text-base mb-1" style={{ color: "var(--c-cream)" }}>{master.name}</h3>
+        {master.tagline && (
+          <p className="text-sm mb-2 line-clamp-2" style={{ color: "var(--c-text)" }}>{master.tagline}</p>
+        )}
+        <div className="flex items-center gap-3 text-xs mb-3" style={{ color: "var(--c-muted)" }}>
+          {master.experience_years > 0 && (
+            <span className="flex items-center gap-1">
+              <Icon name="Clock" size={11} />
+              {master.experience_years} {getYearWord(master.experience_years)} опыта
+            </span>
+          )}
+          <span className="flex items-center gap-1">
+            <Icon name="MapPin" size={11} />
+            {master.city}
+          </span>
+        </div>
+        {master.rating > 0 && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Icon key={s} name="Star" size={12} style={{ color: s <= Math.round(master.rating) ? "#F59E0B" : "rgba(217,237,232,0.2)" }} />
+              ))}
+              <span className="text-xs ml-1 font-semibold" style={{ color: "var(--c-terra)" }}>{master.rating.toFixed(1)}</span>
+            </div>
+            <span className="text-xs" style={{ color: "var(--c-muted)" }}>{master.reviews_count} отзывов</span>
+          </div>
+        )}
+      </div>
+    </Link>
+  );
+}
+
 export default function Masters() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted ? resolvedTheme === "dark" : true;
+
   const [masters, setMasters] = useState<Master[]>([]);
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedSpec, setSelectedSpec] = useState("");
-  const [selectedCity, setSelectedCity] = useState("");
-  const [selectedEventType, setSelectedEventType] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([mastersApi.getAll(), mastersApi.getSpecializations()])
-      .then(([m, s]) => {
-        setMasters(m);
-        setSpecializations(s);
-      })
+      .then(([m, s]) => { setMasters(m); setSpecializations(s); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   const filtered = useMemo(() => {
     return masters.filter((m) => {
-      if (
-        search &&
+      if (search &&
         !m.name.toLowerCase().includes(search.toLowerCase()) &&
         !(m.bio || "").toLowerCase().includes(search.toLowerCase()) &&
-        !(m.tagline || "").toLowerCase().includes(search.toLowerCase())
-      )
-        return false;
+        !(m.tagline || "").toLowerCase().includes(search.toLowerCase())) return false;
       if (selectedSpec) {
         const spec = specializations.find((s) => s.slug === selectedSpec);
         if (spec && !(m.specialization_ids || []).includes(spec.id)) return false;
       }
-      if (selectedCity && m.city !== selectedCity) return false;
-      if (selectedEventType) {
-        const matchedSpec = specializations.find(
-          (s) => s.name.toLowerCase() === selectedEventType.toLowerCase()
-        );
-        if (matchedSpec) {
-          if (!(m.specialization_ids || []).includes(matchedSpec.id)) return false;
-        }
-      }
       return true;
     });
-  }, [masters, search, selectedSpec, selectedCity, selectedEventType, specializations]);
+  }, [masters, search, selectedSpec, specializations]);
 
-  const hasFilters = search || selectedSpec || selectedCity || selectedEventType;
-
-  const resetFilters = () => {
-    setSearch("");
-    setSelectedSpec("");
-    setSelectedCity("");
-    setSelectedEventType("");
-  };
+  const hasFilters = search || selectedSpec;
+  const resetFilters = () => { setSearch(""); setSelectedSpec(""); };
 
   return (
-    <div className="min-h-screen bg-background">
-      <PageHero
-        label="Сообщество"
-        title="Мастера пара"
-        subtitle="Опытные банные мастера и специалисты СПАРКОМ. Выберите по специализации, опыту и городу."
-        minHeight="min-h-[280px] md:min-h-[320px]"
-      />
+    <div
+      data-masters-theme={isDark ? "dark" : "light"}
+      className="min-h-screen relative overflow-x-hidden transition-colors duration-500"
+      style={{ background: "var(--bg-page)" }}
+    >
+      <style dangerouslySetInnerHTML={{ __html: THEME_STYLES }} />
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <EventTypeFilter value={selectedEventType} onChange={setSelectedEventType} />
-        <div className="flex gap-3 mb-6">
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute top-[-15%] right-[-10%] w-[55vw] h-[55vw] rounded-full blur-[120px]" style={{ background: "radial-gradient(circle, rgba(200,131,74,0.08) 0%, transparent 70%)" }} />
+        <div className="absolute bottom-[10%] left-[-10%] w-[45vw] h-[45vw] rounded-full blur-[100px]" style={{ background: "radial-gradient(circle, rgba(143,168,154,0.07) 0%, transparent 70%)" }} />
+      </div>
+
+      <Header transparent />
+
+      {/* Hero */}
+      <section data-hero className="relative overflow-hidden" style={{ minHeight: "60vh" }}>
+        <div className="absolute inset-0">
+          <img src={HERO_IMG} alt="" className="w-full h-full object-cover" style={{ opacity: "var(--hero-img-opacity)" as unknown as number }} />
+          <div className="absolute inset-0" style={{ background: "var(--hero-overlay)" }} />
+        </div>
+        <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 pt-32 pb-16">
+          <SectionBadge icon="Users">Сообщество СПАРКОМ</SectionBadge>
+          <h1
+            className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight mb-4"
+            style={{ background: "linear-gradient(135deg, var(--c-cream) 20%, #C8834A 60%, #8FA89A 90%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+          >
+            Мастера пара
+          </h1>
+          <p className="text-base sm:text-lg max-w-xl mx-auto mb-8 leading-relaxed" style={{ color: "var(--c-text)" }}>
+            Опытные банщики, парильщики и специалисты. Каждый прошёл проверку и разделяет ценности СПАРКОМ.
+          </p>
+          <div className="flex flex-wrap justify-center gap-8">
+            {[
+              { val: `${masters.length || "—"}`, label: "мастеров" },
+              { val: "4.9", label: "средний рейтинг" },
+              { val: `${specializations.length || "5"}+`, label: "специализаций" },
+            ].map(({ val, label }) => (
+              <div key={label} className="text-center">
+                <div className="text-2xl font-bold" style={{ background: "linear-gradient(135deg,#C8834A,#8FA89A)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{val}</div>
+                <div className="text-xs" style={{ color: "var(--c-muted)" }}>{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Content */}
+      <section className="relative z-10 px-4 sm:px-6 max-w-6xl mx-auto pb-20 pt-10">
+        {/* Search + filters */}
+        <div className="flex gap-3 mb-5">
           <div className="relative flex-1">
-            <Icon name="Search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--c-muted)" } as React.CSSProperties} />
             <input
               type="text"
               placeholder="Поиск по имени, описанию..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
+              style={{ background: "var(--input-bg)", border: "1px solid var(--input-border)", color: "var(--input-text)" }}
             />
           </div>
-          <button
-            onClick={() => setFiltersOpen((v) => !v)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
-              filtersOpen || selectedSpec || selectedCity
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background border-border hover:bg-muted"
-            }`}
-          >
-            <Icon name="SlidersHorizontal" size={16} />
-            Фильтры
-            {(selectedSpec || selectedCity) && (
-              <span className="w-5 h-5 rounded-full bg-primary-foreground text-primary text-xs flex items-center justify-center font-bold">
-                {[selectedSpec, selectedCity].filter(Boolean).length}
-              </span>
-            )}
-          </button>
+          {specializations.length > 0 && (
+            <button
+              onClick={() => setFiltersOpen((v) => !v)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+              style={filtersOpen || selectedSpec
+                ? { background: "var(--filter-active-bg)", color: "var(--filter-active-text)" }
+                : { background: "var(--filter-idle-bg)", color: "var(--filter-idle-text)", border: "1px solid var(--filter-idle-border)" }
+              }
+            >
+              <Icon name="SlidersHorizontal" size={15} />
+              Фильтры
+              {selectedSpec && (
+                <span className="w-5 h-5 rounded-full text-xs flex items-center justify-center font-bold" style={{ background: "var(--c-terra)", color: "#fff" }}>1</span>
+              )}
+            </button>
+          )}
+          {hasFilters && (
+            <button onClick={resetFilters} className="px-3 py-2.5 rounded-xl text-sm transition-all" style={{ color: "var(--c-terra)", background: "rgba(200,131,74,0.1)" }}>
+              <Icon name="X" size={15} />
+            </button>
+          )}
         </div>
 
-        {filtersOpen && (
-          <div className="bg-card border border-border rounded-2xl p-5 mb-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Специализация</label>
-                <select
-                  value={selectedSpec}
-                  onChange={(e) => setSelectedSpec(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        {filtersOpen && specializations.length > 0 && (
+          <div className="rounded-2xl p-5 mb-5" style={glassCard}>
+            <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--c-muted)" }}>Специализация</div>
+            <div className="flex flex-wrap gap-2">
+              {specializations.map((s) => (
+                <button
+                  key={s.slug}
+                  onClick={() => setSelectedSpec(selectedSpec === s.slug ? "" : s.slug)}
+                  className="px-3 py-1.5 rounded-full text-sm transition-all"
+                  style={selectedSpec === s.slug
+                    ? { background: "var(--filter-active-bg)", color: "var(--filter-active-text)" }
+                    : { background: "var(--filter-idle-bg)", color: "var(--filter-idle-text)", border: "1px solid var(--filter-idle-border)" }
+                  }
                 >
-                  <option value="">Все специализации</option>
-                  {specializations.map((s) => (
-                    <option key={s.slug} value={s.slug}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Город</label>
-                <select
-                  value={selectedCity}
-                  onChange={(e) => setSelectedCity(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-border rounded-xl bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  <option value="">Все города</option>
-                  {CITIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
+                  {s.name}
+                </button>
+              ))}
             </div>
-            {hasFilters && (
-              <button
-                onClick={resetFilters}
-                className="mt-3 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-              >
-                <Icon name="X" size={14} />
-                Сбросить фильтры
-              </button>
-            )}
           </div>
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-24">
-            <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" />
+          <div className="flex items-center justify-center py-24" style={{ color: "var(--c-muted)" }}>
+            <Icon name="Loader2" size={32} className="animate-spin mr-3" />
+            Загрузка мастеров...
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-              <Icon name="Users" size={24} className="text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-semibold mb-2">Мастера не найдены</h3>
-            <p className="text-muted-foreground text-sm mb-4">
-              {hasFilters ? "Попробуйте изменить фильтры" : "Мастера появятся здесь"}
-            </p>
-            {hasFilters && (
-              <button onClick={resetFilters} className="text-sm text-primary hover:underline">
-                Сбросить фильтры
-              </button>
-            )}
+          <div className="text-center py-20" style={{ color: "var(--c-muted)" }}>
+            <Icon name="SearchX" size={48} className="mx-auto mb-4 opacity-30" />
+            <p className="text-lg mb-2">Никого не найдено</p>
+            <button onClick={resetFilters} className="text-sm underline underline-offset-4" style={{ color: "var(--c-terra)" }}>Сбросить фильтры</button>
           </div>
         ) : (
           <>
-            <div className="text-sm text-muted-foreground mb-4">
-              {filtered.length} {getMasterWord(filtered.length)}
+            <div className="text-sm mb-5" style={{ color: "var(--c-muted)" }}>
+              {filtered.length === masters.length ? `${masters.length} мастеров` : `${filtered.length} из ${masters.length}`}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {filtered.map((m) => (
-                <MasterCard key={m.id} master={m} specializations={specializations} />
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filtered.map((m) => <MasterCard key={m.slug} master={m} specializations={specializations} />)}
             </div>
           </>
         )}
-      </div>
+      </section>
 
       <Footer />
     </div>
   );
-}
-
-function getMasterWord(n: number) {
-  if (n % 10 === 1 && n % 100 !== 11) return "мастер";
-  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return "мастера";
-  return "мастеров";
 }
