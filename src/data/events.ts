@@ -73,9 +73,15 @@ function buildPriceLabel(e: EventFromAPI): string {
     return "в складчину";
   }
 
-  // Динамические ступени: минимальная цена среди тиров
+  // Динамические ступени: показываем актуальный (активный) тариф
   if (e.pricing_type === "dynamic" && Array.isArray(e.pricing_tiers) && e.pricing_tiers.length > 0) {
-    const prices = e.pricing_tiers
+    const today = new Date().toISOString().split("T")[0];
+    const tiers = e.pricing_tiers;
+    const activeTier = tiers.find((t) => !t.valid_until || t.valid_until >= today);
+    if (activeTier && Number(activeTier.price_amount) > 0) {
+      return formatRub(Number(activeTier.price_amount));
+    }
+    const prices = tiers
       .map((t) => Number(t.price_amount || 0))
       .filter((p) => p > 0);
     if (prices.length > 0) {
