@@ -135,7 +135,7 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect, the
                             <SpotDot event={ev} />
                             <span className={`w-1.5 h-1.5 rounded-full ${meta.dot} shrink-0`} />
                             <span className="shrink-0" style={{ color: "var(--c-text)" }}>{ev.timeStart}</span>
-                            <span className="font-medium truncate min-w-0" style={{ color: "var(--c-terra)" }}>{meta.label}</span>
+                            <span className="font-medium truncate min-w-0 capitalize" style={{ color: "var(--c-terra)" }}>{ev.type}</span>
                           </div>
                         );
                       })}
@@ -211,7 +211,7 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect, the
                           <SpotDot event={ev} />
                           <span className={`w-1.5 h-1.5 rounded-full ${meta.dot} shrink-0`} />
                           <span className="shrink-0 text-foreground/80">{ev.timeStart}</span>
-                          <span className="font-medium text-muted-foreground truncate min-w-0">{meta.label}</span>
+                          <span className="font-medium text-muted-foreground truncate min-w-0 capitalize">{ev.type}</span>
                         </div>
                       );
                     })}
