@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { TELEGRAM_URL } from "@/lib/constants";
 
-const LOGO_LIGHT = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/760cbfd5-821a-4526-9e92-8807a4ff87f6.png";
+const LOGO_ON_DARK = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/760cbfd5-821a-4526-9e92-8807a4ff87f6.png";
+const LOGO_ON_LIGHT = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/d2735e2c-6a4d-4538-b086-6156be8bd33a.png";
 
 const COLUMNS = [
   {
@@ -78,7 +79,8 @@ export default function Footer() {
           {/* Бренд */}
           <div className="max-w-xs shrink-0">
             <Link to="/" className="inline-block mb-4 hover:opacity-80 transition-opacity">
-              <img src={LOGO_LIGHT} alt="СПАРКОМ" className="h-8 w-auto object-contain" />
+              <img src={LOGO_ON_LIGHT} alt="СПАРКОМ" className="h-8 w-auto object-contain block dark:hidden" />
+              <img src={LOGO_ON_DARK} alt="СПАРКОМ" className="h-8 w-auto object-contain hidden dark:block" />
             </Link>
             <p className="text-sm leading-relaxed mb-5 text-muted-foreground">
               Банный агрегатор событий Москвы. Встречи у пара, огня и тепла — без алкоголя, с уважением к каждому.
