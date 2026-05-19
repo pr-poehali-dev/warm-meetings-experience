@@ -13,6 +13,8 @@ import Footer from "@/components/Footer";
 
 const THEME_STYLES = `
   [data-sparcom-theme="dark"] {
+    --header-nav-color: rgba(237,224,204,0.85);
+    --header-nav-active: #EDE0CC;
     --bg-page:       linear-gradient(160deg, #1a1410 0%, #1c2018 35%, #14201c 65%, #101818 100%);
     --bg-page-solid: #1a1410;
     --orb1: rgba(200,131,74,0.1);
@@ -53,6 +55,8 @@ const THEME_STYLES = `
   }
 
   [data-sparcom-theme="light"] {
+    --header-nav-color: #2d2318;
+    --header-nav-active: #1a1008;
     --bg-page:       linear-gradient(160deg, #fdf7f0 0%, #f4f8f5 35%, #eef6f4 65%, #eaf4f2 100%);
     --bg-page-solid: #fdf7f0;
     --orb1: rgba(200,131,74,0.07);

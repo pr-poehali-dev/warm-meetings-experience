@@ -108,11 +108,11 @@ export default function Header({ transparent = false }: HeaderProps) {
                   className="px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300"
                   style={onHero
                     ? isActive(link.to)
-                      ? { background: "rgba(255,255,255,0.2)", color: "#fff" }
-                      : { color: "rgba(255,255,255,0.85)" }
+                      ? { background: "rgba(255,255,255,0.2)", color: "var(--header-nav-active, #2d2318)" }
+                      : { color: "var(--header-nav-color, #2d2318)" }
                     : isActive(link.to)
-                      ? { background: isDarkTheme ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.07)", color: isDarkTheme ? "#EDE0CC" : "#2d2318" }
-                      : { color: isDarkTheme ? "rgba(237,224,204,0.75)" : "#2d2318" }
+                      ? { background: "rgba(0,0,0,0.06)", color: "var(--header-nav-active, #2d2318)" }
+                      : { color: "var(--header-nav-color, #2d2318)" }
                   }
                 >
                   {link.label}
