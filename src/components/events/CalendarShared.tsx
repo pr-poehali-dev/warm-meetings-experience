@@ -38,20 +38,31 @@ export function EventTooltip({ event, onClose }: { event: EventItem; onClose: ()
     const trigger = parent.getBoundingClientRect();
     const tip = ref.current.getBoundingClientRect();
     const margin = 8;
+    const gap = 6;
     const width = tip.width || 256;
     const height = tip.height || 200;
 
+    // По горизонтали — стартуем у левого края триггера, но удерживаем в окне.
     let left = trigger.left;
     if (left + width > window.innerWidth - margin) {
-      left = window.innerWidth - margin - width;
+      left = Math.max(margin, window.innerWidth - margin - width);
     }
     if (left < margin) left = margin;
 
-    let top = trigger.bottom + 4;
-    if (top + height > window.innerHeight - margin) {
-      const above = trigger.top - 4 - height;
-      if (above >= margin) top = above;
-      else top = Math.max(margin, window.innerHeight - margin - height);
+    // По вертикали — пробуем снизу, иначе сверху, иначе поверх (по центру триггера).
+    const spaceBelow = window.innerHeight - trigger.bottom - margin;
+    const spaceAbove = trigger.top - margin;
+    let top: number;
+    if (height + gap <= spaceBelow) {
+      top = trigger.bottom + gap;
+    } else if (height + gap <= spaceAbove) {
+      top = trigger.top - gap - height;
+    } else {
+      // Не помещается ни сверху, ни снизу — кладём поверх ячейки, прижимая к её верху.
+      top = Math.min(
+        Math.max(margin, trigger.top),
+        window.innerHeight - margin - height,
+      );
     }
     setPos({ top, left });
   }, []);
