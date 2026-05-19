@@ -112,7 +112,7 @@ export default function Header({ transparent = false }: HeaderProps) {
                         : "text-white/80 hover:text-white hover:bg-white/10"
                       : isActive(link.to)
                         ? "bg-muted text-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        : "text-foreground/80 hover:text-foreground hover:bg-muted/60"
                   }`}
                 >
                   {link.label}
