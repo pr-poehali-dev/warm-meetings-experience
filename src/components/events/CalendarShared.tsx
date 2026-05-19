@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState, useLayoutEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { Link } from "react-router-dom";
@@ -20,6 +20,7 @@ export function SpotDot({ event }: { event: EventItem }) {
 // ── мини-тултип (popup) при клике/hover ────────────────────────────────────────
 export function EventTooltip({ event, onClose }: { event: EventItem; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [offsetX, setOffsetX] = useState(0);
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
@@ -27,6 +28,20 @@ export function EventTooltip({ event, onClose }: { event: EventItem; onClose: ()
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [onClose]);
+
+  useLayoutEffect(() => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const margin = 8;
+    let shift = 0;
+    if (rect.right > window.innerWidth - margin) {
+      shift = window.innerWidth - margin - rect.right;
+    }
+    if (rect.left + shift < margin) {
+      shift = margin - rect.left;
+    }
+    setOffsetX(shift);
+  }, []);
 
   const meta = getTypeMeta(event.type);
   const pct = event.totalSpots > 0 ? event.spotsLeft / event.totalSpots : 1;
@@ -39,7 +54,8 @@ export function EventTooltip({ event, onClose }: { event: EventItem; onClose: ()
   return (
     <div
       ref={ref}
-      className="absolute z-50 left-0 top-full mt-1 w-64 bg-card border border-border rounded-xl shadow-xl p-4 text-sm"
+      className="absolute z-50 left-0 top-full mt-1 w-64 max-w-[calc(100vw-16px)] bg-card border border-border rounded-xl shadow-xl p-4 text-sm"
+      style={{ transform: `translateX(${offsetX}px)` }}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center gap-2 mb-2">
