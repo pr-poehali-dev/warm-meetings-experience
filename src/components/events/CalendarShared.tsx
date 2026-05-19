@@ -19,23 +19,34 @@ export function SpotDot({ event }: { event: EventItem }) {
 }
 
 // ── мини-тултип (popup) при клике/hover ────────────────────────────────────────
-export function EventTooltip({ event, onClose }: { event: EventItem; onClose: () => void }) {
+export function EventTooltip({
+  event,
+  onClose,
+  anchor,
+}: {
+  event: EventItem;
+  onClose: () => void;
+  anchor?: HTMLElement | null;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        if (anchor && anchor.contains(e.target as Node)) return;
+        onClose();
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
+  }, [onClose, anchor]);
 
   useLayoutEffect(() => {
     if (!ref.current) return;
-    const parent = ref.current.parentElement;
-    if (!parent) return;
-    const trigger = parent.getBoundingClientRect();
+    const anchorEl = anchor ?? ref.current.parentElement;
+    if (!anchorEl) return;
+    const trigger = anchorEl.getBoundingClientRect();
     const tip = ref.current.getBoundingClientRect();
     const margin = 8;
     const gap = 6;
@@ -65,7 +76,7 @@ export function EventTooltip({ event, onClose }: { event: EventItem; onClose: ()
       );
     }
     setPos({ top, left });
-  }, []);
+  }, [anchor]);
 
   const meta = getTypeMeta(event.type);
   const pct = event.totalSpots > 0 ? event.spotsLeft / event.totalSpots : 1;

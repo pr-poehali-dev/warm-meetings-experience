@@ -22,7 +22,7 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect, the
   onDateSelect: (d: Date) => void;
   themed?: boolean;
 }) {
-  const [tooltipEvent, setTooltipEvent] = useState<{ event: EventItem; key: string } | null>(null);
+  const [tooltipEvent, setTooltipEvent] = useState<{ event: EventItem; key: string; anchor: HTMLElement } | null>(null);
 
   const weeks = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 });
@@ -46,6 +46,14 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect, the
   }, [events]);
 
   const DOW = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
+  const tooltipNode = tooltipEvent ? (
+    <EventTooltip
+      event={tooltipEvent.event}
+      anchor={tooltipEvent.anchor}
+      onClose={() => setTooltipEvent(null)}
+    />
+  ) : null;
 
   if (themed) {
     return (
@@ -111,12 +119,17 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect, the
                         return (
                           <div
                             key={ev.slug}
-                            className="relative flex items-center gap-1 text-[10px] rounded px-1 py-0.5 cursor-pointer transition-all min-w-0"
+                            className="flex items-center gap-1 text-[10px] rounded px-1 py-0.5 cursor-pointer transition-all min-w-0"
                             style={{ background: "rgba(200,131,74,0.08)" }}
                             title={ev.title}
                             onClick={(e) => {
                               e.stopPropagation();
-                              setTooltipEvent(tooltipEvent?.key === tooltipKey ? null : { event: ev, key: tooltipKey });
+                              const anchor = e.currentTarget as HTMLElement;
+                              setTooltipEvent(
+                                tooltipEvent?.key === tooltipKey
+                                  ? null
+                                  : { event: ev, key: tooltipKey, anchor },
+                              );
                             }}
                           >
                             <SpotDot event={ev} />
@@ -124,10 +137,6 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect, the
                             <span className="shrink-0" style={{ color: "var(--c-text)" }}>{ev.timeStart}</span>
                             <span className="font-medium shrink-0" style={{ color: "var(--c-terra)" }}>{meta.short}</span>
                             <span className="truncate min-w-0" style={{ color: "var(--c-text)" }}>{ev.title}</span>
-
-                            {tooltipEvent?.key === tooltipKey && (
-                              <EventTooltip event={ev} onClose={() => setTooltipEvent(null)} />
-                            )}
                           </div>
                         );
                       })}
@@ -138,6 +147,7 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect, the
             </div>
           ))}
         </div>
+        {tooltipNode}
       </div>
     );
   }
@@ -187,20 +197,23 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect, the
                       return (
                         <div
                           key={ev.slug}
-                          className="relative flex items-center gap-1 text-[10px] rounded px-1 py-0.5 hover:bg-accent/10 cursor-pointer group"
+                          className="flex items-center gap-1 text-[10px] rounded px-1 py-0.5 hover:bg-accent/10 cursor-pointer group min-w-0"
+                          title={ev.title}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setTooltipEvent(tooltipEvent?.key === tooltipKey ? null : { event: ev, key: tooltipKey });
+                            const anchor = e.currentTarget as HTMLElement;
+                            setTooltipEvent(
+                              tooltipEvent?.key === tooltipKey
+                                ? null
+                                : { event: ev, key: tooltipKey, anchor },
+                            );
                           }}
                         >
                           <SpotDot event={ev} />
                           <span className={`w-1.5 h-1.5 rounded-full ${meta.dot} shrink-0`} />
-                          <span className="truncate text-foreground/80">{ev.timeStart}</span>
-                          <span className="font-medium text-muted-foreground">{meta.short}</span>
-
-                          {tooltipEvent?.key === tooltipKey && (
-                            <EventTooltip event={ev} onClose={() => setTooltipEvent(null)} />
-                          )}
+                          <span className="shrink-0 text-foreground/80">{ev.timeStart}</span>
+                          <span className="font-medium text-muted-foreground shrink-0">{meta.short}</span>
+                          <span className="truncate text-foreground/80 min-w-0">{ev.title}</span>
                         </div>
                       );
                     })}
@@ -211,6 +224,7 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect, the
           </div>
         ))}
       </div>
+      {tooltipNode}
     </div>
   );
 }
@@ -382,7 +396,7 @@ export function WeekView({ events, currentDate, onDateSelect, themed = false }: 
   onDateSelect: (d: Date) => void;
   themed?: boolean;
 }) {
-  const [tooltipEvent, setTooltipEvent] = useState<{ event: EventItem; key: string } | null>(null);
+  const [tooltipEvent, setTooltipEvent] = useState<{ event: EventItem; key: string; anchor: HTMLElement } | null>(null);
   const [isMobile] = useState(() => window.innerWidth < 640);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
