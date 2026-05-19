@@ -111,8 +111,9 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect, the
                         return (
                           <div
                             key={ev.slug}
-                            className="relative flex items-center gap-1 text-[10px] rounded px-1 py-0.5 cursor-pointer transition-all"
+                            className="relative flex items-center gap-1 text-[10px] rounded px-1 py-0.5 cursor-pointer transition-all min-w-0"
                             style={{ background: "rgba(200,131,74,0.08)" }}
+                            title={ev.title}
                             onClick={(e) => {
                               e.stopPropagation();
                               setTooltipEvent(tooltipEvent?.key === tooltipKey ? null : { event: ev, key: tooltipKey });
@@ -120,8 +121,9 @@ export function MonthView({ events, currentDate, selectedDate, onDateSelect, the
                           >
                             <SpotDot event={ev} />
                             <span className={`w-1.5 h-1.5 rounded-full ${meta.dot} shrink-0`} />
-                            <span className="truncate" style={{ color: "var(--c-text)" }}>{ev.timeStart}</span>
-                            <span className="font-medium" style={{ color: "var(--c-terra)" }}>{meta.short}</span>
+                            <span className="shrink-0" style={{ color: "var(--c-text)" }}>{ev.timeStart}</span>
+                            <span className="font-medium shrink-0" style={{ color: "var(--c-terra)" }}>{meta.short}</span>
+                            <span className="truncate min-w-0" style={{ color: "var(--c-text)" }}>{ev.title}</span>
 
                             {tooltipEvent?.key === tooltipKey && (
                               <EventTooltip event={ev} onClose={() => setTooltipEvent(null)} />
