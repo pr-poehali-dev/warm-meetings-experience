@@ -105,15 +105,15 @@ export default function Header({ transparent = false }: HeaderProps) {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300 ${
-                    onHero
-                      ? isActive(link.to)
-                        ? "bg-white/20 text-white"
-                        : "text-white/80 hover:text-white hover:bg-white/10"
-                      : isActive(link.to)
-                        ? "bg-muted text-foreground"
-                        : "text-foreground/80 hover:text-foreground hover:bg-muted/60"
-                  }`}
+                  className="px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300"
+                  style={onHero
+                    ? isActive(link.to)
+                      ? { background: "rgba(255,255,255,0.2)", color: "#fff" }
+                      : { color: "rgba(255,255,255,0.85)" }
+                    : isActive(link.to)
+                      ? { background: isDarkTheme ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.07)", color: isDarkTheme ? "#EDE0CC" : "#2d2318" }
+                      : { color: isDarkTheme ? "rgba(237,224,204,0.75)" : "#2d2318" }
+                  }
                 >
                   {link.label}
                 </Link>
