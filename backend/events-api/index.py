@@ -150,6 +150,22 @@ def handle_events(event, method, params, schema, headers):
         cur.execute(f"SELECT * FROM {schema}.events {where} {order}")
         rows = cur.fetchall()
         results = [serialize_event(r, cur, schema) for r in rows]
+
+        dynamic_ids = [r['id'] for r in rows if r.get('pricing_type') == 'dynamic']
+        if dynamic_ids:
+            ids_sql = ','.join(str(int(i)) for i in dynamic_ids)
+            cur.execute(
+                f"SELECT * FROM event_pricing_tiers WHERE event_id IN ({ids_sql}) "
+                f"ORDER BY sort_order, valid_until NULLS LAST"
+            )
+            tiers_by_event: dict = {}
+            for t in cur.fetchall():
+                td = dict(t)
+                tiers_by_event.setdefault(td['event_id'], []).append(td)
+            for ev in results:
+                if ev.get('pricing_type') == 'dynamic':
+                    ev['pricing_tiers'] = tiers_by_event.get(ev['id'], [])
+
         conn.close()
         return {
             'statusCode': 200,
