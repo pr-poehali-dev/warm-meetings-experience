@@ -908,8 +908,11 @@ def serialize_event(row, cur=None, schema=None):
     if d.get('rules') is None:
         d['rules'] = []
 
-    # Crowdfund: добавляем расчётный объект cf
-    if d.get('pricing_mode') == 'crowdfund' and cur is not None and schema:
+    # Считаем актуальное число записавшихся и пересчитываем spots_left,
+    # чтобы публичные карточки и кабинет показывали одинаковые цифры
+    # (денормализованное поле events.spots_left может расходиться).
+    current_count = None
+    if cur is not None and schema and d.get('id') is not None:
         try:
             cur.execute(
                 f"SELECT COUNT(*) AS n FROM {schema}.event_signups "
@@ -918,6 +921,19 @@ def serialize_event(row, cur=None, schema=None):
             r = cur.fetchone()
             current_count = int(r['n']) if r else 0
         except Exception:
-            current_count = 0
-        d['cf'] = compute_crowdfund_info(d, current_count)
+            current_count = None
+
+    if current_count is not None:
+        total = d.get('total_spots')
+        d['signups_count'] = current_count
+        if total is not None:
+            try:
+                total_int = int(total)
+                d['spots_left'] = max(total_int - current_count, 0)
+            except (TypeError, ValueError):
+                pass
+
+    # Crowdfund: добавляем расчётный объект cf
+    if d.get('pricing_mode') == 'crowdfund' and cur is not None and schema:
+        d['cf'] = compute_crowdfund_info(d, current_count or 0)
     return d
