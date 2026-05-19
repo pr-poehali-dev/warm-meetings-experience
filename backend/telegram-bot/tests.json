@@ -42,6 +42,16 @@
     "bodyMatcher": "partial"
   },
   {
+    "name": "Notify question without organizer_id",
+    "method": "POST",
+    "path": "/",
+    "headers": {"Content-Type": "application/json"},
+    "body": {"action": "notify_question"},
+    "expectedStatus": 400,
+    "expectedBody": {"error": "string"},
+    "bodyMatcher": "partial"
+  },
+  {
     "name": "publish_content — missing params",
     "method": "POST",
     "path": "/",

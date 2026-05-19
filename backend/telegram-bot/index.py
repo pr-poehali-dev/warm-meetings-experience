@@ -83,6 +83,8 @@ def handler(event, context):
             return handle_flush_scheduled(body)
         if body.get('action') == 'notify_signup':
             return handle_notify_signup(body)
+        if body.get('action') == 'notify_question':
+            return handle_notify_question(body)
         if body.get('action') == 'get_channels':
             return handle_get_channels(body)
         if body.get('action') == 'preview_content':
@@ -762,6 +764,83 @@ def handle_notify_signup(body):
 
     sent = any(results.values()) if results else False
     return respond(200, {'ok': True, 'sent': sent, 'channels': results})
+
+
+def handle_notify_question(body):
+    """Уведомление организатору в Telegram о новом вопросе от гостя по событию."""
+    organizer_id = body.get('organizer_id')
+    if not organizer_id:
+        return respond(400, {'error': 'Не указан идентификатор организатора.'})
+
+    event_title  = body.get('event_title', '')
+    event_date   = body.get('event_date', '')
+    event_time   = body.get('event_time', '')
+    bath_name    = body.get('bath_name', '')
+    event_url    = body.get('event_url', '')
+    guest_name   = body.get('guest_name', '')
+    guest_contact = body.get('guest_contact', '')
+    contact_type = (body.get('contact_type') or 'email').lower()
+    message      = body.get('message', '')
+
+    contact_icon = {'email': '📧', 'phone': '📞', 'telegram': '✈️'}.get(contact_type, '📩')
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    schema = get_schema()
+
+    try:
+        organizer_id_int = int(organizer_id)
+    except Exception:
+        conn.close()
+        return respond(400, {'error': 'Некорректный organizer_id'})
+
+    cur.execute(f"""
+        SELECT COALESCE(op.notify_telegram, true) AS notify_telegram
+        FROM {schema}.users u
+        LEFT JOIN {schema}.organizer_profiles op ON op.user_id = u.id
+        WHERE u.id = {organizer_id_int}
+    """)
+    organizer = cur.fetchone()
+
+    cur.execute(f"""
+        SELECT telegram_user_id
+        FROM {schema}.tg_linked_accounts
+        WHERE user_id = {organizer_id_int}
+    """)
+    tg_link = cur.fetchone()
+    conn.close()
+
+    if not organizer:
+        return respond(200, {'ok': True, 'sent': False, 'reason': 'organizer_not_found'})
+
+    if not (organizer.get('notify_telegram') and tg_link):
+        return respond(200, {'ok': True, 'sent': False, 'reason': 'no_tg_link_or_disabled'})
+
+    # Markdown-safe экранирование (минимально нужное для parse_mode=Markdown)
+    def md_escape(s):
+        if not s:
+            return ''
+        return str(s).replace('_', r'\_').replace('*', r'\*').replace('`', r'\`').replace('[', r'\[')
+
+    msg_safe = md_escape(message)[:2000]
+    text = (
+        f"❓ *Новый вопрос по событию!*\n\n"
+        f"📌 {md_escape(event_title)}\n"
+        f"📅 {md_escape(event_date)}, {md_escape(event_time)}\n"
+    )
+    if bath_name:
+        text += f"🏠 {md_escape(bath_name)}\n"
+    text += (
+        f"\n👤 {md_escape(guest_name)}\n"
+        f"{contact_icon} {md_escape(guest_contact)}\n\n"
+        f"💬 {msg_safe}"
+    )
+    if event_url:
+        text += f"\n\n👉 [Открыть событие]({event_url})"
+
+    result = send_message(tg_link['telegram_user_id'], text)
+    sent = bool(result.get('ok'))
+    return respond(200, {'ok': True, 'sent': sent, 'tg': result})
 
 
 def handle_publish_event(body):

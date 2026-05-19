@@ -594,6 +594,13 @@ def handle_question(event, method, params, schema, headers):
             pass
 
     conn.close()
+
+    # Уведомление организатору в Telegram (если привязан и включено)
+    try:
+        notify_organizer_question_telegram(ev, name, contact, contact_type, message)
+    except Exception:
+        pass
+
     return {
         'statusCode': 200,
         'headers': headers,
@@ -793,6 +800,37 @@ def send_signup_telegram(signup_name, signup_phone, signup_email, signup_telegra
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
             json={'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'},
             timeout=5
+        )
+    except Exception:
+        pass
+
+
+def notify_organizer_question_telegram(ev, guest_name, guest_contact, contact_type, message):
+    """Шлёт уведомление организатору в Telegram о новом вопросе по событию."""
+    organizer_id = ev.get('organizer_id')
+    if not organizer_id:
+        return
+    start_time = str(ev.get('start_time', ''))[:5]
+    site_url = os.environ.get("SITE_URL", "https://sparcom.ru").rstrip("/")
+    slug = ev.get('slug')
+    event_url = f"{site_url}/events/{slug}" if slug else f"{site_url}/events/{ev.get('id', '')}"
+    try:
+        requests.post(
+            'https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1',
+            json={
+                'action': 'notify_question',
+                'organizer_id': organizer_id,
+                'event_title': ev.get('title', ''),
+                'event_date': str(ev.get('event_date', '')),
+                'event_time': start_time,
+                'bath_name': ev.get('bath_name', ''),
+                'event_url': event_url,
+                'guest_name': guest_name,
+                'guest_contact': guest_contact,
+                'contact_type': contact_type,
+                'message': message,
+            },
+            timeout=5,
         )
     except Exception:
         pass
