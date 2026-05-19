@@ -130,11 +130,11 @@ export default function Header({ transparent = false }: HeaderProps) {
               ) : (
                 <Link
                   to="/login"
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-300 ${
-                    onHero
-                      ? "bg-white/10 border border-white/20 text-white hover:bg-white/20"
-                      : "bg-primary text-primary-foreground hover:bg-primary/90"
-                  }`}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-300"
+                  style={onHero
+                    ? { background: "rgba(0,0,0,0.08)", border: "1px solid rgba(0,0,0,0.15)", color: "var(--header-nav-color, #2d2318)" }
+                    : undefined
+                  }
                 >
                   <Icon name="LogIn" size={16} />
                   <span className="hidden sm:inline">Войти</span>
