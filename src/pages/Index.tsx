@@ -253,7 +253,7 @@ function NetflixGridCard({ event }: { event: EventItem }) {
           {sold ? "Мест нет" : "Подробнее →"}
         </span>
         {event.priceLabel && !sold && (
-          <span className="font-bold text-lg" style={{ color: "var(--c-terra)" }}>{event.priceLabel}</span>
+          <span className="font-bold text-lg" style={{ color: "#FF6B1A" }}>{event.priceLabel}</span>
         )}
       </div>
 
