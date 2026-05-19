@@ -48,6 +48,9 @@ export interface OrgEvent {
   status?: 'draft' | 'pending' | 'published' | 'private' | 'rejected';
   is_private?: boolean;
   rejection_reason?: string;
+  has_pending_changes?: boolean;
+  pending_changed_fields?: string[] | null;
+  last_moderated_at?: string | null;
   // Crowdfund (в складчину)
   pricing_mode?: 'fixed' | 'crowdfund';
   cf_target_amount?: number | null;

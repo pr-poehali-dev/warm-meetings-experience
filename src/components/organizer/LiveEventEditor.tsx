@@ -4,36 +4,7 @@ import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
 import LiveEditorHero from "./LiveEditorHero";
 import LiveEditorCardBody from "./LiveEditorCardBody";
-
-const SENSITIVE_FIELDS: (keyof OrgEvent)[] = [
-  "title", "short_description", "full_description", "description",
-  "event_date", "end_date", "bath_name", "bath_address",
-  "price_amount", "price_label", "pricing_lines",
-  "image_url",
-];
-
-const SENSITIVE_LABELS: Partial<Record<keyof OrgEvent, string>> = {
-  title: "название",
-  short_description: "краткое описание",
-  full_description: "полное описание",
-  description: "описание",
-  event_date: "дата",
-  end_date: "дата окончания",
-  bath_name: "место",
-  bath_address: "адрес",
-  price_amount: "цена",
-  price_label: "текст цены",
-  pricing_lines: "состав участия",
-  image_url: "фото обложки",
-};
-
-function detectSensitiveChanges(initial: OrgEvent, current: OrgEvent): string[] {
-  return SENSITIVE_FIELDS.filter((f) => {
-    const a = initial[f];
-    const b = current[f];
-    return JSON.stringify(a) !== JSON.stringify(b);
-  }).map((f) => SENSITIVE_LABELS[f] || String(f));
-}
+import { detectSensitiveChanges } from "@/lib/moderation-fields";
 
 interface Props {
   formData: OrgEvent;
@@ -161,21 +132,34 @@ export default function LiveEventEditor({
       {/* Sensitive changes warning for published events */}
       {isPublished && sensitiveChanged.length > 0 && (
         <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700 flex items-start gap-2">
-          <Icon name="AlertTriangle" size={16} className="flex-shrink-0 mt-0.5" />
+          <Icon name="ShieldAlert" size={16} className="flex-shrink-0 mt-0.5" />
           <div>
-            <div className="font-medium">Изменены важные поля</div>
+            <div className="font-medium">Будет отправлено на повторную модерацию</div>
             <div className="mt-0.5 text-xs text-amber-600">
-              Изменено: {sensitiveChanged.join(", ")}. Правки сохранятся сразу, но модератор получит уведомление на проверку.
+              Изменено: {sensitiveChanged.join(", ")}. Событие сохранится и останется в каталоге, но администратор увидит изменения и проверит их.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Already pending re-moderation banner */}
+      {isPublished && fd.has_pending_changes && sensitiveChanged.length === 0 && (
+        <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700 flex items-start gap-2">
+          <Icon name="ShieldAlert" size={16} className="flex-shrink-0 mt-0.5" />
+          <div>
+            <div className="font-medium">Событие ожидает повторной модерации</div>
+            <div className="mt-0.5 text-xs text-amber-600">
+              Ранее внесённые правки уже отправлены администратору на проверку.
             </div>
           </div>
         </div>
       )}
 
       {/* Hero: image + type selector */}
-      <LiveEditorHero fd={fd} set={set} />
+      <LiveEditorHero fd={fd} set={set} showSensitive={isPublished} />
 
       {/* Card body: all fields */}
-      <LiveEditorCardBody fd={fd} set={set} />
+      <LiveEditorCardBody fd={fd} set={set} showSensitive={isPublished} />
 
       {/* Sticky bottom action bar */}
       <div className="fixed bottom-0 left-0 right-0 z-20 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">

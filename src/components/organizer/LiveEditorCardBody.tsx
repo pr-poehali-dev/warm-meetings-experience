@@ -22,13 +22,16 @@ import {
   InlinePricingLines,
   spotsColor,
 } from "./LiveEditorInlineFields";
+import SensitiveFieldBadge from "./SensitiveFieldBadge";
 
 interface Props {
   fd: OrgEvent;
   set: (patch: Partial<OrgEvent>) => void;
+  /** Показывать значки «требует модерации» — true для опубликованных событий */
+  showSensitive?: boolean;
 }
 
-export default function LiveEditorCardBody({ fd, set }: Props) {
+export default function LiveEditorCardBody({ fd, set, showSensitive = false }: Props) {
   const [showPricingPanel, setShowPricingPanel] = useState(false);
 
   const hasDate = fd.event_date && fd.event_date.length >= 10;
@@ -53,7 +56,10 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
       {/* Date & time row */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
         <div>
-          <div className="text-xs text-muted-foreground mb-1">Дата начала</div>
+          <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+            Дата начала
+            {showSensitive && <SensitiveFieldBadge />}
+          </div>
           <label className="flex items-center gap-1.5 cursor-pointer">
             <Icon name="Calendar" size={14} className="text-muted-foreground flex-shrink-0" />
             <input
@@ -70,7 +76,10 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
           )}
         </div>
         <div>
-          <div className="text-xs text-muted-foreground mb-1">Дата окончания <span className="text-muted-foreground/50">(если несколько дней)</span></div>
+          <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+            <span>Дата окончания <span className="text-muted-foreground/50">(если несколько дней)</span></span>
+            {showSensitive && <SensitiveFieldBadge />}
+          </div>
           <label className="flex items-center gap-1.5 cursor-pointer">
             <Icon name="CalendarCheck" size={14} className="text-muted-foreground flex-shrink-0" />
             <input
@@ -119,24 +128,34 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
       </div>
 
       {/* Title */}
-      <InlineText
-        value={fd.title}
-        onChange={(v) => set({ title: v })}
-        placeholder="Название события"
-        className="text-xl font-bold leading-snug"
-        maxLength={255}
-      />
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <InlineText
+            value={fd.title}
+            onChange={(v) => set({ title: v })}
+            placeholder="Название события"
+            className="text-xl font-bold leading-snug"
+            maxLength={255}
+          />
+        </div>
+        {showSensitive && <SensitiveFieldBadge className="mt-2" />}
+      </div>
 
       {/* Short description */}
-      <InlineText
-        value={fd.short_description}
-        onChange={(v) => set({ short_description: v })}
-        placeholder="Краткое описание — его увидят в карточке каталога"
-        className="text-sm text-muted-foreground leading-relaxed"
-        multiline
-        maxLength={200}
-        hint="Привлеките внимание кратким описанием"
-      />
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <InlineText
+            value={fd.short_description}
+            onChange={(v) => set({ short_description: v })}
+            placeholder="Краткое описание — его увидят в карточке каталога"
+            className="text-sm text-muted-foreground leading-relaxed"
+            multiline
+            maxLength={200}
+            hint="Привлеките внимание кратким описанием"
+          />
+        </div>
+        {showSensitive && <SensitiveFieldBadge className="mt-1" />}
+      </div>
 
       {/* Location */}
       <div className="flex items-start gap-2">
@@ -145,21 +164,31 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
           size={14}
           className="text-muted-foreground mt-0.5 flex-shrink-0"
         />
-        <div className="flex-1 space-y-1">
-          <InlineText
-            value={fd.bath_name || ""}
-            onChange={(v) => set({ bath_name: v })}
-            placeholder="Название места"
-            className="text-sm font-medium"
-            maxLength={255}
-          />
-          <InlineText
-            value={fd.bath_address || ""}
-            onChange={(v) => set({ bath_address: v })}
-            placeholder="Адрес"
-            className="text-xs text-muted-foreground"
-            maxLength={500}
-          />
+        <div className="flex-1 space-y-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <InlineText
+                value={fd.bath_name || ""}
+                onChange={(v) => set({ bath_name: v })}
+                placeholder="Название места"
+                className="text-sm font-medium"
+                maxLength={255}
+              />
+            </div>
+            {showSensitive && <SensitiveFieldBadge />}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <InlineText
+                value={fd.bath_address || ""}
+                onChange={(v) => set({ bath_address: v })}
+                placeholder="Адрес"
+                className="text-xs text-muted-foreground"
+                maxLength={500}
+              />
+            </div>
+            {showSensitive && <SensitiveFieldBadge />}
+          </div>
         </div>
       </div>
 
@@ -214,7 +243,10 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
 
       {/* Full description */}
       <div>
-        <h3 className="font-semibold text-sm mb-2">О встрече</h3>
+        <h3 className="font-semibold text-sm mb-2 flex items-center gap-1.5">
+          О встрече
+          {showSensitive && <SensitiveFieldBadge />}
+        </h3>
         <InlineText
           value={fd.full_description || ""}
           onChange={(v) => set({ full_description: v })}
@@ -262,7 +294,10 @@ export default function LiveEditorCardBody({ fd, set }: Props) {
       {/* ── PRICING BLOCK ── */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-sm">Стоимость</h3>
+          <h3 className="font-semibold text-sm flex items-center gap-1.5">
+            Стоимость
+            {showSensitive && <SensitiveFieldBadge />}
+          </h3>
           <button
             type="button"
             onClick={() => setShowPricingPanel(!showPricingPanel)}

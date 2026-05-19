@@ -6,13 +6,15 @@ import ImageUpload from "@/components/admin/ImageUpload";
 import PhotoBank, { useRecentPhotos } from "@/components/admin/PhotoBank";
 import { useEventTypes } from "@/hooks/useEventTypes";
 import { Input } from "@/components/ui/input";
+import SensitiveFieldBadge from "./SensitiveFieldBadge";
 
 interface Props {
   fd: OrgEvent;
   set: (patch: Partial<OrgEvent>) => void;
+  showSensitive?: boolean;
 }
 
-export default function LiveEditorHero({ fd, set }: Props) {
+export default function LiveEditorHero({ fd, set, showSensitive = false }: Props) {
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [showPhotoBank, setShowPhotoBank] = useState(false);
@@ -56,6 +58,13 @@ export default function LiveEditorHero({ fd, set }: Props) {
             <Icon name="ChevronDown" size={11} className="ml-0.5" />
           </button>
         </div>
+
+        {/* Бейдж «требует модерации» для обложки */}
+        {showSensitive && (
+          <div className="absolute top-3 right-3">
+            <SensitiveFieldBadge />
+          </div>
+        )}
 
         {/* Кнопки фото */}
         <div className="absolute bottom-3 right-3 flex gap-1.5">

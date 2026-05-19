@@ -495,9 +495,19 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                 'price_amount': 'цена', 'price_label': 'текст цены',
                 'pricing_lines': 'состав участия', 'image_url': 'фото обложки',
             }
-            changed = [_LABELS[f] for f in _SENSITIVE
-                       if f in body and str(body.get(f, '')) != str(existing.get(f, '') or '')]
-            if changed:
+            changed_fields = [f for f in _SENSITIVE
+                              if f in body and str(body.get(f, '')) != str(existing.get(f, '') or '')]
+            changed = [_LABELS[f] for f in changed_fields]
+            if changed_fields:
+                # Объединяем с уже ожидающими полями (если организатор правил несколько раз подряд)
+                cur2 = conn.cursor()
+                cur2.execute(f"SELECT pending_changed_fields FROM {schema}.events WHERE id = {event_id}")
+                _prev = cur2.fetchone()
+                prev_fields = list(_prev[0] or []) if _prev else []
+                merged = list(set(prev_fields) | set(changed_fields))
+                arr_sql = 'ARRAY[' + ','.join("'" + f.replace("'", "''") + "'" for f in merged) + ']::text[]'
+                cur2.execute(f"UPDATE {schema}.events SET has_pending_changes = true, pending_changed_fields = {arr_sql} WHERE id = {event_id}")
+                conn.commit()
                 tg_notify_admin(
                     f"✏️ <b>Правки в опубликованном событии</b>\n\n"
                     f"🎪 <b>{updated.get('title', '—')}</b>\n"
@@ -505,8 +515,10 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                     f"📍 {updated.get('bath_name', '—')}\n"
                     f"👤 Организатор ID: {user_id}\n\n"
                     f"Изменено: {', '.join(changed)}\n\n"
-                    f"Проверьте актуальность события в каталоге."
+                    f"Откройте Админ-панель → Модерация для проверки."
                 )
+                updated['has_pending_changes'] = True
+                updated['pending_changed_fields'] = merged
 
         if was_hidden and updated.get('is_visible'):
             trigger_tg_publish(event_id, updated.get('organizer_id') or user_id)
@@ -545,12 +557,13 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
         return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Forbidden: admin only'})}
 
     if method == 'GET':
+        # Модерация: новые (status=pending) + опубликованные с ожидающими правками (has_pending_changes=true)
         cur.execute(f"""
             SELECT e.*, u.name as organizer_name, u.email as organizer_email
             FROM {schema}.events e
             LEFT JOIN {schema}.users u ON u.id = e.organizer_id
-            WHERE e.status = 'pending'
-            ORDER BY e.created_at ASC
+            WHERE e.status = 'pending' OR e.has_pending_changes = true
+            ORDER BY e.has_pending_changes DESC NULLS LAST, e.created_at ASC
         """)
         rows = cur.fetchall()
         conn.close()
@@ -580,8 +593,18 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
 
         if action == 'approve':
             is_private_event = ev.get('is_private', False)
+            # Сохраняем snapshot одобренной версии в event_versions
+            cur.execute(f"SELECT row_to_json(e)::text FROM {schema}.events e WHERE id = {event_id}")
+            _snap_row = cur.fetchone()
+            if _snap_row:
+                snap_text = (_snap_row[0] if not isinstance(_snap_row, dict) else list(_snap_row.values())[0]) or '{}'
+                snap_text_sql = snap_text.replace("'", "''")
+                cur.execute(
+                    f"INSERT INTO {schema}.event_versions (event_id, snapshot, approved_by, reason) "
+                    f"VALUES ({event_id}, '{snap_text_sql}'::jsonb, {user_id}, 'approve')"
+                )
             if is_private_event:
-                cur.execute(f"UPDATE {schema}.events SET status = 'private', is_visible = false WHERE id = {event_id}")
+                cur.execute(f"UPDATE {schema}.events SET status = 'private', is_visible = false, has_pending_changes = false, pending_changed_fields = NULL, last_moderated_at = CURRENT_TIMESTAMP WHERE id = {event_id}")
                 tg_notify_admin(
                     f"🔒 <b>Событие одобрено (приватное)</b>\n\n"
                     f"🎪 <b>{ev['title']}</b>\n"
@@ -591,7 +614,7 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
                     f"🔗 Доступно только по прямой ссылке"
                 )
             else:
-                cur.execute(f"UPDATE {schema}.events SET status = 'published', is_visible = true WHERE id = {event_id}")
+                cur.execute(f"UPDATE {schema}.events SET status = 'published', is_visible = true, has_pending_changes = false, pending_changed_fields = NULL, last_moderated_at = CURRENT_TIMESTAMP WHERE id = {event_id}")
                 publish_to_telegram = body.get('publish_to_telegram', True)
                 if publish_to_telegram:
                     trigger_tg_publish(event_id, ev['organizer_id'])
@@ -603,7 +626,15 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
                     f"👤 Организатор: {ev.get('organizer_name', '—')}"
                 )
         else:
-            cur.execute(f"UPDATE {schema}.events SET status = 'rejected', is_visible = false WHERE id = {event_id}")
+            # Проверим, не правки ли это к опубликованному событию
+            cur.execute(f"SELECT status, has_pending_changes FROM {schema}.events WHERE id = {event_id}")
+            _r = cur.fetchone()
+            _is_pending_changes = bool(_r and _r.get('has_pending_changes') and _r.get('status') in ('published', 'private'))
+            if _is_pending_changes:
+                # Откатываем правки: сбрасываем флаги, статус оставляем (можно восстановить старое из event_versions при необходимости)
+                cur.execute(f"UPDATE {schema}.events SET has_pending_changes = false, pending_changed_fields = NULL, last_moderated_at = CURRENT_TIMESTAMP WHERE id = {event_id}")
+            else:
+                cur.execute(f"UPDATE {schema}.events SET status = 'rejected', is_visible = false, has_pending_changes = false, pending_changed_fields = NULL WHERE id = {event_id}")
             reason_display = reason.replace("''", "'") or 'не указана'
             tg_notify_admin(
                 f"❌ <b>Событие отклонено</b>\n\n"

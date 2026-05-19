@@ -2,25 +2,57 @@ import { useState, useEffect, useCallback } from "react";
 import { organizerApi, OrgEvent } from "@/lib/organizer-api";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
+import { SENSITIVE_LABELS } from "@/lib/moderation-fields";
 
 type EventWithMeta = OrgEvent & { organizer_name?: string; organizer_email?: string };
 
+function isChanged(changed: string[] | null | undefined, field: string): boolean {
+  return !!changed && changed.includes(field);
+}
+
+function ChangedMark() {
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 ml-1.5 align-middle">
+      <Icon name="ShieldAlert" size={9} />
+      изменено
+    </span>
+  );
+}
+
 function EventDetailModal({ ev, onClose }: { ev: EventWithMeta; onClose: () => void }) {
+  const changed = ev.pending_changed_fields || [];
+  const isReMod = !!ev.has_pending_changes;
+  const hl = (field: string) =>
+    isReMod && isChanged(changed, field)
+      ? "ring-2 ring-amber-300 bg-amber-50/60 rounded-md -m-1 p-1"
+      : "";
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg my-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 p-5 border-b">
           <div className="min-w-0">
-            <h3 className="font-bold text-base leading-tight break-words">{ev.title}</h3>
+            <h3 className={`font-bold text-base leading-tight break-words ${hl("title")}`}>{ev.title}</h3>
             <div className="flex flex-wrap gap-2 mt-1.5">
               {ev.is_private ? (
                 <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Приватное</span>
               ) : (
                 <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Публичное</span>
               )}
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">На модерации</span>
+              {isReMod ? (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1">
+                  <Icon name="ShieldAlert" size={10} />
+                  Повторная модерация
+                </span>
+              ) : (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">На модерации</span>
+              )}
             </div>
+            {isReMod && changed.length > 0 && (
+              <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                Изменено: <b>{changed.map((f) => SENSITIVE_LABELS[f as keyof typeof SENSITIVE_LABELS] || f).join(", ")}</b>
+              </div>
+            )}
           </div>
           <button onClick={onClose} className="flex-shrink-0 p-1 rounded-lg hover:bg-gray-100">
             <Icon name="X" size={18} />
@@ -29,17 +61,19 @@ function EventDetailModal({ ev, onClose }: { ev: EventWithMeta; onClose: () => v
 
         {/* Image */}
         {ev.image_url && (
-          <img src={ev.image_url} alt={ev.title} className="w-full max-h-56 object-cover" />
+          <div className={isReMod && isChanged(changed, "image_url") ? "ring-2 ring-amber-300" : ""}>
+            <img src={ev.image_url} alt={ev.title} className="w-full max-h-56 object-cover" />
+          </div>
         )}
 
         {/* Body */}
         <div className="p-5 flex flex-col gap-4">
           {/* Основная инфо */}
           <Section title="Основная информация">
-            <Row icon="Calendar" label="Дата" value={ev.event_date} />
+            <Row icon="Calendar" label="Дата" value={ev.event_date} highlighted={isReMod && (isChanged(changed, "event_date") || isChanged(changed, "end_date"))} />
             <Row icon="Clock" label="Время" value={[ev.start_time, ev.end_time].filter(Boolean).join(" – ")} />
-            <Row icon="MapPin" label="Место" value={ev.bath_name} />
-            <Row icon="Navigation" label="Адрес" value={ev.bath_address} />
+            <Row icon="MapPin" label="Место" value={ev.bath_name} highlighted={isReMod && isChanged(changed, "bath_name")} />
+            <Row icon="Navigation" label="Адрес" value={ev.bath_address} highlighted={isReMod && isChanged(changed, "bath_address")} />
             <Row icon="Tag" label="Тип события" value={ev.event_type} />
             <Row icon="Hash" label="Slug" value={ev.slug} />
             <Row icon="Code" label="Короткий код" value={ev.short_code} />
@@ -55,22 +89,30 @@ function EventDetailModal({ ev, onClose }: { ev: EventWithMeta; onClose: () => v
 
           {/* Цена и места */}
           <Section title="Цена и участники">
-            <Row icon="Banknote" label="Цена" value={ev.price_label || (ev.price_amount ? `${ev.price_amount} ₽` : undefined)} />
+            <Row icon="Banknote" label="Цена" value={ev.price_label || (ev.price_amount ? `${ev.price_amount} ₽` : undefined)} highlighted={isReMod && (isChanged(changed, "price_amount") || isChanged(changed, "price_label"))} />
             <Row icon="Users" label="Всего мест" value={ev.total_spots?.toString()} />
             <Row icon="UserCheck" label="Осталось мест" value={ev.spots_left?.toString()} />
             <Row icon="BarChart2" label="Тип цены" value={ev.pricing_type} />
+            {ev.pricing_lines && ev.pricing_lines.length > 0 && (
+              <div className={`text-sm text-gray-700 ${isReMod && isChanged(changed, "pricing_lines") ? "ring-2 ring-amber-300 bg-amber-50/60 rounded-md p-2" : ""}`}>
+                <div className="text-xs text-muted-foreground mb-1">Состав участия:</div>
+                {ev.pricing_lines.map((line, i) => (
+                  <div key={i} className="text-xs">• {line}</div>
+                ))}
+              </div>
+            )}
           </Section>
 
           {/* Описание */}
           {ev.short_description && (
-            <Section title="Краткое описание">
-              <p className="text-sm text-gray-700 leading-relaxed">{ev.short_description}</p>
+            <Section title={<>Краткое описание {isReMod && isChanged(changed, "short_description") && <ChangedMark />}</>}>
+              <p className={`text-sm text-gray-700 leading-relaxed ${isReMod && isChanged(changed, "short_description") ? "ring-2 ring-amber-300 bg-amber-50/60 rounded-md p-2" : ""}`}>{ev.short_description}</p>
             </Section>
           )}
 
           {ev.full_description && (
-            <Section title="Полное описание">
-              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{ev.full_description}</p>
+            <Section title={<>Полное описание {isReMod && (isChanged(changed, "full_description") || isChanged(changed, "description")) && <ChangedMark />}</>}>
+              <p className={`text-sm text-gray-700 leading-relaxed whitespace-pre-wrap ${isReMod && (isChanged(changed, "full_description") || isChanged(changed, "description")) ? "ring-2 ring-amber-300 bg-amber-50/60 rounded-md p-2" : ""}`}>{ev.full_description}</p>
             </Section>
           )}
 
@@ -118,7 +160,7 @@ function EventDetailModal({ ev, onClose }: { ev: EventWithMeta; onClose: () => v
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{title}</p>
@@ -127,13 +169,19 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Row({ icon, label, value }: { icon: string; label: string; value?: string | null }) {
+function Row({ icon, label, value, highlighted }: { icon: string; label: string; value?: string | null; highlighted?: boolean }) {
   if (!value) return null;
   return (
-    <div className="flex gap-2 text-sm">
+    <div className={`flex gap-2 text-sm ${highlighted ? "ring-2 ring-amber-300 bg-amber-50/60 rounded-md p-1.5 -m-1" : ""}`}>
       <Icon name={icon as never} size={14} className="flex-shrink-0 mt-0.5 text-muted-foreground" />
       <span className="text-muted-foreground flex-shrink-0">{label}:</span>
       <span className="break-words min-w-0 text-gray-900">{value}</span>
+      {highlighted && (
+        <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 flex items-center gap-1 flex-shrink-0">
+          <Icon name="ShieldAlert" size={9} />
+          изменено
+        </span>
+      )}
     </div>
   );
 }
@@ -204,8 +252,18 @@ export default function AdminEventModeration() {
         <div>
           <h2 className="text-xl font-bold">Модерация событий</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Заявки организаторов на публикацию
+            Новые заявки и правки в уже опубликованных событиях
           </p>
+          <div className="flex items-center gap-3 mt-2 text-xs">
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+              Новое — первичная проверка
+            </span>
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              <Icon name="ShieldAlert" size={11} className="text-amber-700" />
+              Повторная — проверьте только подсвеченные поля
+            </span>
+          </div>
         </div>
         <Button variant="outline" size="sm" onClick={load} className="flex-shrink-0">
           <Icon name="RefreshCw" size={14} className="mr-1.5" />
@@ -223,8 +281,10 @@ export default function AdminEventModeration() {
         <div className="flex flex-col gap-4">
           {events.map((ev) => {
             const tgOn = tgToggles[ev.id] ?? true;
+            const isReMod = !!ev.has_pending_changes;
+            const changedFields = ev.pending_changed_fields || [];
             return (
-              <div key={ev.id} className="bg-white rounded-xl border overflow-hidden">
+              <div key={ev.id} className={`bg-white rounded-xl border overflow-hidden ${isReMod ? "border-amber-300 ring-1 ring-amber-200" : ""}`}>
                 {/* Кликабельная часть карточки */}
                 <button
                   type="button"
@@ -243,10 +303,17 @@ export default function AdminEventModeration() {
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-semibold text-sm leading-tight break-words min-w-0 pr-1">{ev.title}</h3>
                         <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap flex items-center gap-1">
-                            <Icon name="Clock" size={10} />
-                            Ожидает
-                          </span>
+                          {isReMod ? (
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 whitespace-nowrap flex items-center gap-1 border border-amber-300">
+                              <Icon name="ShieldAlert" size={10} />
+                              Повторная
+                            </span>
+                          ) : (
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 whitespace-nowrap flex items-center gap-1">
+                              <Icon name="Clock" size={10} />
+                              Новое
+                            </span>
+                          )}
                           {ev.is_private ? (
                             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 whitespace-nowrap flex items-center gap-1">
                               <Icon name="Lock" size={10} />
@@ -293,12 +360,22 @@ export default function AdminEventModeration() {
                       {ev.short_description && (
                         <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">{ev.short_description}</p>
                       )}
+
+                      {isReMod && changedFields.length > 0 && (
+                        <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 flex items-start gap-1.5">
+                          <Icon name="ShieldAlert" size={12} className="flex-shrink-0 mt-0.5" />
+                          <span>
+                            <b>Изменено:</b>{" "}
+                            {changedFields.map((f) => SENSITIVE_LABELS[f as keyof typeof SENSITIVE_LABELS] || f).join(", ")}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1 mt-2 text-xs text-primary font-medium">
                     <Icon name="Eye" size={12} />
-                    Нажмите для просмотра всех полей
+                    {isReMod ? "Откройте, чтобы увидеть выделенные изменения" : "Нажмите для просмотра всех полей"}
                   </div>
                 </button>
 
