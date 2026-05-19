@@ -240,7 +240,7 @@ function NetflixGridCard({ event }: { event: EventItem }) {
             <span className="text-white/50 text-xs flex items-center gap-1">
               <Icon name="MapPin" size={11} />{event.bathName ?? "—"}
             </span>
-            <span className="font-bold text-sm" style={{ color: "var(--c-terra)" }}>{event.priceLabel}</span>
+            <span className="font-bold text-sm" style={{ color: "#FF6B1A" }}>{event.priceLabel}</span>
           </div>
         </div>
       </div>
@@ -312,7 +312,7 @@ function NetflixListCard({ event }: { event: EventItem }) {
             </div>
           </div>
           <div className="flex items-center justify-between mt-2">
-            <span className="font-bold text-sm" style={{ color: "var(--c-terra)" }}>{event.priceLabel}</span>
+            <span className="font-bold text-sm" style={{ color: "#FF6B1A" }}>{event.priceLabel}</span>
             <span
               className="text-xs font-semibold px-3 py-1 rounded-full transition-all duration-200"
               style={hovered && !sold
