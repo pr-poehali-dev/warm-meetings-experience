@@ -6,12 +6,6 @@
 
 @layer base {
   :root {
-    --footer-bg: #2d2318;
-    --footer-border: rgba(45, 35, 24, 0.12);
-    --footer-text: rgba(45, 35, 24, 0.38);
-    --footer-link: rgba(45, 35, 24, 0.58);
-    --footer-head: #b56b2e;
-
     --background: 36 33% 97%;
     --foreground: 20 20% 14%;
 
@@ -60,12 +54,6 @@
   }
 
   .dark {
-    --footer-bg: #14100c;
-    --footer-border: rgba(237, 224, 204, 0.08);
-    --footer-text: rgba(217, 237, 232, 0.22);
-    --footer-link: rgba(217, 237, 232, 0.42);
-    --footer-head: #c8834a;
-
     --background: 22 18% 9%;
     --foreground: 36 30% 90%;
 

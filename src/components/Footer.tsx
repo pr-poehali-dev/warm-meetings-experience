@@ -69,10 +69,7 @@ export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer
-      className="mt-auto transition-colors duration-500"
-      style={{ background: "var(--footer-bg)", borderTop: "1px solid var(--footer-border)" }}
-    >
+    <footer className="mt-auto bg-background text-foreground border-t border-border transition-colors duration-300">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8">
 
         {/* Основной блок */}
@@ -83,7 +80,7 @@ export default function Footer() {
             <Link to="/" className="inline-block mb-4 hover:opacity-80 transition-opacity">
               <img src={LOGO_LIGHT} alt="СПАРКОМ" className="h-8 w-auto object-contain" />
             </Link>
-            <p className="text-sm leading-relaxed mb-5" style={{ color: "var(--footer-link)" }}>
+            <p className="text-sm leading-relaxed mb-5 text-muted-foreground">
               Банный агрегатор событий Москвы. Встречи у пара, огня и тепла — без алкоголя, с уважением к каждому.
             </p>
 
@@ -96,12 +93,7 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   title={s.label}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl transition-all hover:brightness-125"
-                  style={{
-                    background: "rgba(200,131,74,0.12)",
-                    border: "1px solid rgba(200,131,74,0.2)",
-                    color: "var(--footer-head)",
-                  }}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl text-primary bg-primary/10 border border-primary/20 transition-all hover:bg-primary/20"
                 >
                   {s.icon}
                 </a>
@@ -112,16 +104,14 @@ export default function Footer() {
             <div className="mt-5 flex flex-col gap-2.5">
               <a
                 href="tel:+79265370200"
-                className="flex items-center gap-2 text-sm transition-colors hover:opacity-100"
-                style={{ color: "var(--footer-link)", opacity: 0.85 }}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Icon name="Phone" size={13} />
                 +7 (926) 537-02-00
               </a>
               <a
                 href="mailto:club@sparcom.ru"
-                className="flex items-center gap-2 text-sm transition-colors hover:opacity-100"
-                style={{ color: "var(--footer-link)", opacity: 0.85 }}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Icon name="Mail" size={13} />
                 club@sparcom.ru
@@ -130,8 +120,7 @@ export default function Footer() {
                 href="https://t.me/DmitryChikin"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm transition-colors hover:opacity-100"
-                style={{ color: "var(--footer-link)", opacity: 0.85 }}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Icon name="Send" size={13} />
                 @DmitryChikin
@@ -143,10 +132,7 @@ export default function Footer() {
           <div className="flex flex-wrap gap-10 sm:gap-14">
             {COLUMNS.map((col) => (
               <div key={col.title}>
-                <div
-                  className="text-xs font-semibold uppercase tracking-widest mb-4"
-                  style={{ color: "var(--footer-head)", opacity: 0.85 }}
-                >
+                <div className="text-xs font-semibold uppercase tracking-widest mb-4 text-primary">
                   {col.title}
                 </div>
                 <div className="space-y-2.5">
@@ -157,8 +143,7 @@ export default function Footer() {
                         href={l.to}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block text-sm transition-colors hover:opacity-100"
-                        style={{ color: "var(--footer-link)", opacity: 0.85 }}
+                        className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
                       >
                         {l.label}
                       </a>
@@ -166,8 +151,7 @@ export default function Footer() {
                       <Link
                         key={l.label}
                         to={l.to}
-                        className="block text-sm transition-colors hover:opacity-100"
-                        style={{ color: "var(--footer-link)", opacity: 0.85 }}
+                        className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
                       >
                         {l.label}
                       </Link>
@@ -180,19 +164,16 @@ export default function Footer() {
         </div>
 
         {/* Нижняя полоса */}
-        <div
-          className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs"
-          style={{ borderTop: "1px solid var(--footer-border)", color: "var(--footer-text)" }}
-        >
+        <div className="pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
           <span>© {year} ИП Чикин Дмитрий Сергеевич · ИНН 771916365140</span>
           <div className="flex gap-5">
-            <Link to="/documents?tab=privacy" className="hover:opacity-100 transition-opacity">
+            <Link to="/documents?tab=privacy" className="hover:text-foreground transition-colors">
               Конфиденциальность
             </Link>
-            <Link to="/documents?tab=terms" className="hover:opacity-100 transition-opacity">
+            <Link to="/documents?tab=terms" className="hover:text-foreground transition-colors">
               Правила
             </Link>
-            <Link to="/documents" className="hover:opacity-100 transition-opacity">
+            <Link to="/documents" className="hover:text-foreground transition-colors">
               Документы
             </Link>
           </div>
