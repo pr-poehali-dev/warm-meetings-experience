@@ -136,7 +136,6 @@ export default function Baths() {
       />
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <EventTypeFilter value={selectedEventType} onChange={setSelectedEventType} allLabel="Все события" />
         {/* Search + filter toggle */}
         <div className="flex gap-3 mb-6">
           <div className="relative flex-1">
