@@ -1,8 +1,22 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
+import { useTheme } from "next-themes";
 import Icon from "@/components/ui/icon";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
+
+const DOC_THEME_STYLES = `
+  [data-doc-theme="dark"] {
+    --doc-bg: linear-gradient(160deg, #1a1410 0%, #1c2018 35%, #14201c 65%, #101818 100%);
+    --doc-hero-bg: rgba(237,224,204,0.04);
+    --doc-hero-border: rgba(237,224,204,0.08);
+  }
+  [data-doc-theme="light"] {
+    --doc-bg: linear-gradient(160deg, #fdf7f0 0%, #f4f8f5 35%, #eef6f4 65%, #eaf4f2 100%);
+    --doc-hero-bg: rgba(255,255,255,0.5);
+    --doc-hero-border: rgba(200,131,74,0.12);
+  }
+`;
 import PrivacyContent from "./privacy/PrivacyContent";
 import TermsContent from "./terms/TermsContent";
 import TermsAppendixModal from "./terms/TermsAppendixModal";
@@ -19,6 +33,11 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
 ];
 
 export default function Documents() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted ? resolvedTheme === "dark" : true;
+
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") as TabId) || "privacy";
   const [activeTab, setActiveTab] = useState<TabId>(
@@ -46,11 +65,33 @@ export default function Documents() {
   const termsDate = "30 марта 2026 г.";
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Header />
+    <div
+      data-doc-theme={isDark ? "dark" : "light"}
+      className="min-h-screen flex flex-col relative overflow-x-hidden transition-colors duration-500"
+      style={{ background: "var(--doc-bg)" }}
+    >
+      <style dangerouslySetInnerHTML={{ __html: DOC_THEME_STYLES }} />
+
+      {/* Ambient orbs */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div
+          className="absolute top-[-15%] left-[-10%] w-[55vw] h-[55vw] rounded-full blur-[120px]"
+          style={{ background: "radial-gradient(circle, rgba(200,131,74,0.08) 0%, transparent 70%)" }}
+        />
+        <div
+          className="absolute bottom-[10%] right-[-10%] w-[45vw] h-[45vw] rounded-full blur-[100px]"
+          style={{ background: "radial-gradient(circle, rgba(143,168,154,0.07) 0%, transparent 70%)" }}
+        />
+      </div>
+
+      <div className="relative z-10 flex flex-col flex-1">
+      <Header transparent />
 
       {/* hero */}
-      <div className="bg-muted/40 border-b border-border">
+      <div
+        className="border-b pt-28"
+        style={{ background: "var(--doc-hero-bg)", borderColor: "var(--doc-hero-border)" }}
+      >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <Link
             to="/"
@@ -59,7 +100,14 @@ export default function Documents() {
             <Icon name="ArrowLeft" size={14} />
             На главную
           </Link>
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+          <h1
+            className="text-3xl md:text-4xl font-extrabold mb-2"
+            style={{
+              background: "linear-gradient(135deg, var(--foreground) 20%, #C8834A 60%, #8FA89A 90%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
             Юридические документы
           </h1>
           <p className="text-muted-foreground text-sm max-w-xl">
@@ -69,7 +117,10 @@ export default function Documents() {
       </div>
 
       {/* tabs bar */}
-      <div className="border-b border-border bg-background sticky top-0 z-30">
+      <div
+        className="border-b sticky top-0 z-30 backdrop-blur-xl"
+        style={{ background: "var(--doc-hero-bg)", borderColor: "var(--doc-hero-border)" }}
+      >
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-0 overflow-x-auto">
             {TABS.map((tab) => (
@@ -156,6 +207,7 @@ export default function Documents() {
           onClose={() => setOpenPrivacyAppendix(null)}
         />
       )}
+      </div>
     </div>
   );
 }

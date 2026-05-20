@@ -1,10 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useTheme } from "next-themes";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Icon from "@/components/ui/icon";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
+
+const MSG_THEME_STYLES = `
+  [data-msg-theme="dark"] {
+    --msg-bg: linear-gradient(160deg, #1a1410 0%, #1c2018 35%, #14201c 65%, #101818 100%);
+  }
+  [data-msg-theme="light"] {
+    --msg-bg: linear-gradient(160deg, #fdf7f0 0%, #f4f8f5 35%, #eef6f4 65%, #eaf4f2 100%);
+  }
+`;
 
 const NAV_SECTIONS = [
   { id: "intro", label: "Введение" },
@@ -160,16 +170,39 @@ function TableHeader({ cols }: { cols: string[] }) {
 
 export default function MasterScheduleGuide() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted ? resolvedTheme === "dark" : true;
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div
+      data-msg-theme={isDark ? "dark" : "light"}
+      className="min-h-screen relative overflow-x-hidden transition-colors duration-500"
+      style={{ background: "var(--msg-bg)" }}
+    >
+      <style dangerouslySetInnerHTML={{ __html: MSG_THEME_STYLES }} />
 
-      <div className="max-w-5xl mx-auto px-4 py-10 flex gap-8">
+      {/* Ambient orbs */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div
+          className="absolute top-[-15%] left-[-10%] w-[55vw] h-[55vw] rounded-full blur-[120px]"
+          style={{ background: "radial-gradient(circle, rgba(200,131,74,0.08) 0%, transparent 70%)" }}
+        />
+        <div
+          className="absolute bottom-[10%] right-[-10%] w-[45vw] h-[45vw] rounded-full blur-[100px]"
+          style={{ background: "radial-gradient(circle, rgba(143,168,154,0.07) 0%, transparent 70%)" }}
+        />
+      </div>
+
+      <div className="relative z-10">
+      <Header transparent />
+
+      <div className="max-w-5xl mx-auto px-4 pt-28 pb-10 flex gap-8">
         {/* Сайдбар навигации */}
         <aside className="hidden lg:block w-48 flex-shrink-0">
           <div className="sticky top-24 space-y-1">
@@ -815,6 +848,7 @@ export default function MasterScheduleGuide() {
       </div>
 
       <Footer />
+      </div>
     </div>
   );
 }
