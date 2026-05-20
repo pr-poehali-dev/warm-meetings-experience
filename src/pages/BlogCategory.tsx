@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import BlogHeader from "@/components/blog/BlogHeader";
 import BlogCard from "@/components/blog/BlogCard";
 import Footer from "@/components/Footer";
+import PageShell from "@/components/ui/page-shell";
 import { getCategoryBySlug, categories } from "@/lib/blog-data";
 import { blogApi, ApiBlogArticle } from "@/lib/blog-api";
 
@@ -25,10 +26,10 @@ export default function BlogCategory() {
   if (!category) return <Navigate to="/blog" replace />;
 
   return (
-    <div className="min-h-screen bg-background">
+    <PageShell>
       <BlogHeader title={category.name} backTo="/blog" backLabel="Энциклопедия" />
 
-      <section className="py-12 md:py-16">
+      <section className="pt-28 pb-12 md:pt-32 md:pb-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4 mb-8">
             <div className={`w-12 h-12 flex items-center justify-center ${category.color}`}>
@@ -91,6 +92,6 @@ export default function BlogCategory() {
       </section>
 
       <Footer />
-    </div>
+    </PageShell>
   );
 }

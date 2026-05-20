@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { bathsApi, Bath } from "@/lib/baths-api";
 import { mastersApi, Master, Specialization } from "@/lib/masters-api";
 import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
+import PageShell from "@/components/ui/page-shell";
 import func2url from "../../backend/func2url.json";
 
 const VIDEOS_API = func2url["media-api"];
@@ -74,9 +75,9 @@ export default function BathDetail() {
 
   if (loading || !bath) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <PageShell className="flex items-center justify-center">
         <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" />
-      </div>
+      </PageShell>
     );
   }
 
@@ -88,11 +89,11 @@ export default function BathDetail() {
   const vertVideos = (bath.videos || []).filter((v) => v.type === "video_vertical");
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <PageShell>
+      <Header transparent />
 
       {/* Gallery */}
-      <div className="relative bg-muted">
+      <div data-hero className="relative bg-muted">
         <img
           src={photoUrls[activePhoto]}
           alt={bath.name}
@@ -323,6 +324,6 @@ export default function BathDetail() {
       </div>
 
       <Footer />
-    </div>
+    </PageShell>
   );
 }

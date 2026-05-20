@@ -9,6 +9,7 @@ import { mastersApi, Master } from "@/lib/masters-api";
 import { masterCalendarApi, masterBookingsApi, MasterService, MasterSlot, MasterReview } from "@/lib/master-calendar-api";
 import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
 import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
+import PageShell from "@/components/ui/page-shell";
 import func2url from "../../backend/func2url.json";
 
 const VIDEOS_API = func2url["media-api"];
@@ -644,9 +645,9 @@ export default function MasterDetail() {
 
   if (loading || !master) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <PageShell className="flex items-center justify-center">
         <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" />
-      </div>
+      </PageShell>
     );
   }
 
@@ -668,11 +669,11 @@ export default function MasterDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <PageShell>
+      <Header transparent />
 
       {/* Фотогалерея */}
-      <div className="relative bg-muted">
+      <div data-hero className="relative bg-muted">
         <img
           src={photoUrls[activePhoto]}
           alt={master.name}
@@ -964,6 +965,6 @@ export default function MasterDetail() {
       {bookingSuccess && (
         <BookingSuccess onClose={() => setBookingSuccess(false)} />
       )}
-    </div>
+    </PageShell>
   );
 }

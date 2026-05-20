@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import BlogHeader from "@/components/blog/BlogHeader";
 import RelatedArticles from "@/components/blog/RelatedArticles";
 import Footer from "@/components/Footer";
+import PageShell from "@/components/ui/page-shell";
 import { getCategoryBySlug } from "@/lib/blog-data";
 import { blogApi, ApiBlogArticle } from "@/lib/blog-api";
 
@@ -31,12 +32,12 @@ export default function BlogArticle() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <PageShell>
         <BlogHeader title="Статья" backTo="/blog" backLabel="Энциклопедия" />
         <div className="flex items-center justify-center py-32">
           <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" />
         </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -51,10 +52,10 @@ export default function BlogArticle() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <PageShell>
       <BlogHeader title="Статья" backTo="/blog" backLabel="Энциклопедия" />
 
-      <article className="py-10 md:py-14">
+      <article className="pt-28 pb-10 md:pt-32 md:pb-14">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto">
             <div className="flex flex-wrap items-center gap-3 mb-6 text-sm">
@@ -133,7 +134,7 @@ export default function BlogArticle() {
       </article>
 
       <Footer />
-    </div>
+    </PageShell>
   );
 }
 

@@ -8,5 +8,5 @@ interface BlogHeaderProps {
 
 export default function BlogHeader({ title, backTo, backLabel }: BlogHeaderProps) {
   void title; void backTo; void backLabel;
-  return <Header />;
+  return <Header transparent />;
 }

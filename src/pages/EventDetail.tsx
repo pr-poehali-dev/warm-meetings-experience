@@ -12,6 +12,7 @@ import Header from "@/components/Header";
 import DynamicPricingBlock from "@/components/events/DynamicPricingBlock";
 import CrowdfundWidget from "@/components/events/CrowdfundWidget";
 import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
+import PageShell from "@/components/ui/page-shell";
 import func2url from "../../backend/func2url.json";
 
 const MEDIA_API = func2url["media-api"];
@@ -48,12 +49,12 @@ export default function EventDetail() {
 
   if (loading || !event) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <PageShell className="flex items-center justify-center">
         <div className="text-center">
           <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">Загрузка...</p>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
@@ -80,12 +81,12 @@ export default function EventDetail() {
       : event.priceLabel || null;
 
   return (
-    <div className="min-h-screen bg-background pb-32 lg:pb-0">
-      <Header />
+    <PageShell className="pb-32 lg:pb-0">
+      <Header transparent />
 
       {/* Hero */}
       {event.image ? (
-        <div className="relative h-64 md:h-96 overflow-hidden">
+        <div data-hero className="relative h-64 md:h-96 overflow-hidden">
           <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
           <div className="absolute bottom-6 left-0 right-0 container mx-auto px-4 sm:px-6 lg:px-8">
@@ -96,7 +97,7 @@ export default function EventDetail() {
           </div>
         </div>
       ) : (
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-2">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-2">
           <span className={`inline-block text-xs px-3 py-1.5 rounded-full font-medium ${typeColors.bg} ${typeColors.color} mb-3`}>
             {event.type}
           </span>
@@ -289,7 +290,7 @@ export default function EventDetail() {
           </div>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }
 
