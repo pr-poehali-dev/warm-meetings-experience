@@ -7,6 +7,9 @@ import Footer from "@/components/Footer";
 import { OrganizerApplicationForm } from "./organizer/OrganizerInteractive";
 
 const HERO_IMG = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/9f246eac-a825-45e2-ade0-bb4f134c82d0.jpg";
+const SCR_DASHBOARD = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/dabe2664-48de-487a-83db-3a9830565cf3.jpg";
+const SCR_CRM = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/5e01d147-6282-4ec3-b688-b5bf12db0497.jpg";
+const SCR_PRICING = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/7a6fe4a5-7ea1-4ded-a3f8-55b60aacae6a.jpg";
 
 const THEME_STYLES = `
   [data-org-theme="dark"] {
@@ -246,23 +249,27 @@ const PRICING_TYPES = [
 const FAQ = [
   {
     q: "Сколько берёте с продаж?",
-    a: "0%. Мы не берём комиссию с оплат гостей — деньги идут напрямую вам. Платформа окупается за счёт месячной подписки на активный тариф.",
+    a: "0% комиссии и никаких подписок. Платформа зарабатывает только на клубном взносе, который платит гость при записи на событие со складчиной. Размер взноса вы задаёте сами.",
+  },
+  {
+    q: "А если я провожу события с фиксированной ценой?",
+    a: "Тогда платформа для вас бесплатна. Клубный взнос работает только в модели «складчина». Для фикса и ступеней — все деньги напрямую вам, мы ничего не берём.",
+  },
+  {
+    q: "Что такое клубный взнос?",
+    a: "Сумма, которую гость платит при записи на событие со складчиной. Можно задать фиксированной (например, 500 ₽) или процентом от максимальной цены (например, 20% с округлением до 50 ₽). Взнос подтверждает место и гарантирует серьёзность намерений.",
+  },
+  {
+    q: "Что такое «складчина»?",
+    a: "Формат, когда общая сумма (аренда бани + услуги парильщика) делится на участников. Чем больше людей записывается, тем меньше платит каждый. За N часов до события цена фиксируется и каждый доплачивает разницу. Если порог не набран — событие отменяется, взнос возвращается.",
+  },
+  {
+    q: "Как принимать доплату от гостей?",
+    a: "В CRM вы фиксируете способ: наличные, перевод, карта или «по клубу». Все суммы и статусы хранятся внутри карточки гостя. Платёжный шлюз не обязателен.",
   },
   {
     q: "Что нужно, чтобы начать?",
     a: "Подайте заявку на этой странице. После короткого знакомства мы открываем доступ к кабинету и сопровождаем при создании первого события.",
-  },
-  {
-    q: "Можно протестировать бесплатно?",
-    a: "Да. Тестовый тариф позволяет создать первое событие и попробовать все базовые инструменты без оплаты.",
-  },
-  {
-    q: "Что такое «складчина»?",
-    a: "Формат, когда есть общая сумма (например, аренда бани и услуги парильщика), которая делится на участников. Чем больше людей записывается, тем меньше платит каждый. В кабинете есть отдельный редактор с целевой суммой, порогом и фиксацией цены.",
-  },
-  {
-    q: "Как принимать оплату?",
-    a: "В CRM вы фиксируете способ: наличные, перевод, карта или «по клубу». Все суммы и статусы хранятся внутри карточки гостя.",
   },
   {
     q: "Гости видят мои контакты?",
@@ -352,8 +359,8 @@ export default function Organizer() {
           <div className="flex flex-wrap justify-center gap-8 mt-12">
             {[
               { val: "0%", label: "комиссии с продаж" },
+              { val: "0 ₽", label: "за подписку" },
               { val: "10+", label: "инструментов в кабинете" },
-              { val: "6", label: "шагов от заявки до встречи" },
             ].map(({ val, label }) => (
               <div key={label} className="text-center">
                 <div
@@ -444,13 +451,39 @@ export default function Organizer() {
         </div>
       </section>
 
-      {/* Ценообразование */}
-      <section className="relative z-10 px-4 sm:px-6 max-w-5xl mx-auto py-20">
-        <SectionHeading subtitle="Три модели цен встроены прямо в редактор события — выбираете при создании.">
-          Гибкое ценообразование
+      {/* Скриншоты */}
+      <section className="relative z-10 px-4 sm:px-6 max-w-6xl mx-auto py-20">
+        <SectionHeading subtitle="Так выглядит ваше рабочее место — никаких таблиц, всё под рукой.">
+          Как это выглядит в кабинете
         </SectionHeading>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { src: SCR_DASHBOARD, title: "Дашборд событий", desc: "Активные, прошедшие, черновики и быстрая статистика." },
+            { src: SCR_CRM, title: "CRM гостей", desc: "Карточки, статусы оплат, чат и групповые рассылки." },
+            { src: SCR_PRICING, title: "Ценообразование", desc: "Складчина, ступени, фиксация цены, клубный взнос." },
+          ].map((s) => (
+            <div key={s.title} className="rounded-2xl overflow-hidden transition-all hover:-translate-y-1" style={glassCard}>
+              <div className="aspect-[4/3] overflow-hidden" style={{ background: "var(--step-num-bg)" }}>
+                <img src={s.src} alt={s.title} className="w-full h-full object-cover" loading="lazy" />
+              </div>
+              <div className="p-5">
+                <h3 className="font-bold text-base mb-1" style={{ color: "var(--c-cream)" }}>{s.title}</h3>
+                <p className="text-xs leading-relaxed" style={{ color: "var(--c-text)" }}>{s.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Ценообразование — подробно с примерами */}
+      <section className="relative z-10 px-4 sm:px-6 max-w-5xl mx-auto py-20">
+        <SectionHeading subtitle="Три модели цен — выбираете прямо в редакторе события. Ниже подробно, как работает каждая.">
+          Гибкое ценообразование
+        </SectionHeading>
+
+        {/* Карточки моделей */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
           {PRICING_TYPES.map((p) => (
             <div key={p.name} className="rounded-2xl p-6 text-center transition-all hover:-translate-y-1" style={glassCard}>
               <div
@@ -466,15 +499,148 @@ export default function Organizer() {
           ))}
         </div>
 
+        {/* 1. Фиксированная цена */}
+        <div className="rounded-2xl p-6 mb-4" style={glassCard}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--step-num-bg)" }}>
+              <Icon name="Coins" size={20} style={{ color: "var(--c-terra)" } as React.CSSProperties} />
+            </div>
+            <h3 className="font-bold text-lg" style={{ color: "var(--c-cream)" }}>1. Фиксированная цена</h3>
+          </div>
+          <p className="text-sm mb-4 leading-relaxed" style={{ color: "var(--c-text)" }}>
+            Одна цена за всё событие. Гость записывается, оплачивает любым удобным способом
+            (вы фиксируете оплату в CRM). Подходит для регулярных встреч и небольших групп.
+          </p>
+          <div className="rounded-xl p-4" style={{ background: "rgba(200,131,74,0.06)", border: "1px solid rgba(200,131,74,0.18)" }}>
+            <div className="text-xs uppercase tracking-wider font-semibold mb-2" style={{ color: "var(--c-terra)" }}>Пример</div>
+            <div className="text-sm" style={{ color: "var(--c-text)" }}>
+              «Воскресный пар, 2500 ₽ с человека». 8 мест, оплата при записи. Всё.
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Динамические ступени */}
+        <div className="rounded-2xl p-6 mb-4" style={glassCard}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--step-num-bg)" }}>
+              <Icon name="TrendingUp" size={20} style={{ color: "var(--c-terra)" } as React.CSSProperties} />
+            </div>
+            <h3 className="font-bold text-lg" style={{ color: "var(--c-cream)" }}>2. Динамические ступени (волны цен)</h3>
+          </div>
+          <p className="text-sm mb-4 leading-relaxed" style={{ color: "var(--c-text)" }}>
+            Несколько волн с разной ценой и датой окончания каждой. Раннее бронирование —
+            дешевле, ближе к событию — дороже. Гость видит таймер до повышения и быстрее
+            принимает решение.
+          </p>
+
+          <div className="text-xs uppercase tracking-wider font-semibold mb-3" style={{ color: "var(--c-terra)" }}>Пример: ступени для встречи 25 числа</div>
+
+          <div className="rounded-xl overflow-hidden" style={{ background: "rgba(0,0,0,0.15)", border: "1px solid var(--soft-divider)" }}>
+            <div className="grid grid-cols-3 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider" style={{ background: "var(--step-num-bg)", color: "var(--c-muted)" }}>
+              <div>Волна</div>
+              <div>До какой даты</div>
+              <div className="text-right">Цена</div>
+            </div>
+            {[
+              { name: "Раннее бронирование", date: "до 10 числа", price: "1 800 ₽" },
+              { name: "Стандарт", date: "до 22 числа", price: "2 200 ₽" },
+              { name: "У ворот", date: "в день события", price: "2 800 ₽" },
+            ].map((row) => (
+              <div key={row.name} className="grid grid-cols-3 px-4 py-3 text-sm" style={{ borderTop: "1px solid var(--soft-divider)", color: "var(--c-text)" }}>
+                <div className="font-medium" style={{ color: "var(--c-cream)" }}>{row.name}</div>
+                <div className="text-xs" style={{ color: "var(--c-muted)" }}>{row.date}</div>
+                <div className="text-right font-bold" style={{ color: "var(--c-terra)" }}>{row.price}</div>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-xs mt-3 italic" style={{ color: "var(--c-muted)" }}>
+            Можно задать любое число волн. Платформа сама подставит актуальную цену в момент записи.
+          </p>
+        </div>
+
+        {/* 3. Складчина — самое подробное */}
+        <div className="rounded-2xl p-6" style={glassCard}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "var(--step-num-bg)" }}>
+              <Icon name="HandCoins" size={20} style={{ color: "var(--c-terra)" } as React.CSSProperties} />
+            </div>
+            <h3 className="font-bold text-lg" style={{ color: "var(--c-cream)" }}>3. Складчина</h3>
+          </div>
+          <p className="text-sm mb-4 leading-relaxed" style={{ color: "var(--c-text)" }}>
+            Делите общую стоимость встречи на участников. Чем больше людей записалось — тем
+            меньше платит каждый. При записи гость вносит <strong style={{ color: "var(--c-cream)" }}>клубный взнос</strong>,
+            а за N часов до события цена фиксируется и каждый доплачивает разницу.
+          </p>
+
+          <div className="text-xs uppercase tracking-wider font-semibold mb-3" style={{ color: "var(--c-terra)" }}>Что настраивается</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-5">
+            {[
+              { l: "Целевая сумма сбора", v: "сколько нужно собрать (аренда, парильщик)" },
+              { l: "Доп. расходы", v: "веники, чай, угощения" },
+              { l: "Минимум участников", v: "ниже которого событие не состоится" },
+              { l: "Максимум участников", v: "сколько мест всего" },
+              { l: "Клубный взнос", v: "фиксированный или % от макс. цены" },
+              { l: "Стоп-сбор за N часов", v: "когда фиксируется итоговая цена" },
+            ].map((p) => (
+              <div key={p.l} className="rounded-lg p-3 text-xs" style={{ background: "rgba(143,168,154,0.06)", border: "1px solid rgba(143,168,154,0.15)" }}>
+                <div className="font-semibold mb-0.5" style={{ color: "var(--c-cream)" }}>{p.l}</div>
+                <div style={{ color: "var(--c-muted)" }}>{p.v}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-xs uppercase tracking-wider font-semibold mb-3" style={{ color: "var(--c-terra)" }}>Пример расчёта</div>
+
+          <div className="rounded-xl p-4 mb-3" style={{ background: "rgba(200,131,74,0.06)", border: "1px solid rgba(200,131,74,0.18)" }}>
+            <div className="text-sm leading-relaxed" style={{ color: "var(--c-text)" }}>
+              Аренда бани <strong style={{ color: "var(--c-cream)" }}>10 000 ₽</strong>, услуги
+              парильщика <strong style={{ color: "var(--c-cream)" }}>2 000 ₽</strong>. Итого:{" "}
+              <strong style={{ color: "var(--c-terra)" }}>12 000 ₽</strong>. Минимум — 6 человек, максимум — 12.
+            </div>
+          </div>
+
+          <div className="rounded-xl overflow-hidden mb-4" style={{ background: "rgba(0,0,0,0.15)", border: "1px solid var(--soft-divider)" }}>
+            <div className="grid grid-cols-3 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider" style={{ background: "var(--step-num-bg)", color: "var(--c-muted)" }}>
+              <div>Участников</div>
+              <div className="text-center">Цена за каждого</div>
+              <div className="text-right">Сбор</div>
+            </div>
+            {[
+              { n: "6", price: "2 000 ₽", total: "12 000 ₽", hint: "минимальный порог" },
+              { n: "9", price: "1 334 ₽", total: "12 000 ₽", hint: "наполовину наполнено" },
+              { n: "12", price: "1 000 ₽", total: "12 000 ₽", hint: "полный набор" },
+            ].map((r) => (
+              <div key={r.n} className="px-4 py-3" style={{ borderTop: "1px solid var(--soft-divider)" }}>
+                <div className="grid grid-cols-3 text-sm">
+                  <div className="font-bold" style={{ color: "var(--c-cream)" }}>{r.n} чел</div>
+                  <div className="text-center font-bold" style={{ color: "var(--c-terra)" }}>{r.price}</div>
+                  <div className="text-right" style={{ color: "var(--c-text)" }}>{r.total}</div>
+                </div>
+                <div className="text-[10px] mt-0.5" style={{ color: "var(--c-muted)" }}>{r.hint}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl p-4 flex items-start gap-3" style={{ background: "rgba(143,168,154,0.08)", border: "1px solid rgba(143,168,154,0.2)" }}>
+            <Icon name="ShieldCheck" size={18} className="shrink-0 mt-0.5" style={{ color: "var(--c-sage)" } as React.CSSProperties} />
+            <div className="text-xs leading-relaxed" style={{ color: "var(--c-text)" }}>
+              <strong style={{ color: "var(--c-cream)" }}>Защита гостей:</strong> если за 48 часов
+              минимум не набран — событие отменяется автоматически, клубный взнос возвращается.
+              Если набрано — цена фиксируется, доплата по факту.
+            </div>
+          </div>
+        </div>
+
         <div
           className="mt-6 rounded-2xl p-5 flex items-start gap-3"
-          style={{ background: "rgba(143,168,154,0.08)", border: "1px solid rgba(143,168,154,0.2)" }}
+          style={{ background: "rgba(200,131,74,0.06)", border: "1px solid rgba(200,131,74,0.2)" }}
         >
-          <Icon name="Lightbulb" size={20} className="shrink-0 mt-0.5" style={{ color: "var(--c-sage)" } as React.CSSProperties} />
+          <Icon name="Calculator" size={20} className="shrink-0 mt-0.5" style={{ color: "var(--c-terra)" } as React.CSSProperties} />
           <div className="text-sm" style={{ color: "var(--c-text)" }}>
-            <strong style={{ color: "var(--c-cream)" }}>Калькулятор события</strong> в кабинете
-            помогает заранее посчитать прибыль: задаёте постоянные и переменные расходы,
-            а сервис предлагает рекомендуемую цену для разного числа гостей.
+            В кабинете встроен <strong style={{ color: "var(--c-cream)" }}>калькулятор события</strong> с шаблонами:
+            задаёте расходы и желаемую прибыль — он показывает рекомендуемую цену для разного
+            числа гостей и предупреждает, если событие в минус.
           </div>
         </div>
       </section>
@@ -576,61 +742,128 @@ export default function Organizer() {
         </div>
       </section>
 
-      {/* Тарифы */}
-      <section className="relative z-10 px-4 sm:px-6 max-w-4xl mx-auto py-20">
-        <SectionHeading subtitle="Никакой комиссии с продаж. Только месячная подписка на активный тариф.">
-          Сколько это стоит
+      {/* Клубный взнос — основа монетизации */}
+      <section className="relative z-10 px-4 sm:px-6 max-w-5xl mx-auto py-20">
+        <SectionHeading subtitle="Никаких подписок и комиссий с продаж. Платформа живёт только за счёт клубного взноса — его задаёте вы сами.">
+          Как устроена монетизация
         </SectionHeading>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="rounded-2xl p-6" style={glassCard}>
-            <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--c-muted)" }}>Тестовый</div>
-            <div className="text-3xl font-extrabold mb-1" style={{ color: "var(--c-cream)" }}>Бесплатно</div>
-            <p className="text-sm mb-4" style={{ color: "var(--c-text)" }}>Чтобы попробовать платформу и провести первое событие.</p>
+        <div
+          className="rounded-2xl p-6 sm:p-8 mb-6 relative overflow-hidden"
+          style={{
+            ...glassCard,
+            border: "1px solid rgba(200,131,74,0.35)",
+            boxShadow: "0 8px 32px rgba(200,131,74,0.18)",
+          }}
+        >
+          <div className="flex items-start gap-4 mb-5">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "var(--step-num-bg)" }}>
+              <Icon name="Ticket" size={26} style={{ color: "var(--c-terra)" } as React.CSSProperties} />
+            </div>
+            <div>
+              <h3 className="font-bold text-xl mb-2" style={{ color: "var(--c-cream)" }}>Клубный взнос</h3>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--c-text)" }}>
+                Это небольшая сумма, которую гость платит при записи на событие со складчиной.
+                Взнос гарантирует место и подтверждает серьёзность намерений. На основе взноса
+                строится вся монетизация — никаких подписок и процентов с ваших продаж.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+            <div className="rounded-xl p-4" style={{ background: "rgba(200,131,74,0.08)", border: "1px solid rgba(200,131,74,0.2)" }}>
+              <div className="text-xs uppercase tracking-wider font-semibold mb-1" style={{ color: "var(--c-terra)" }}>Вариант 1</div>
+              <div className="font-bold text-base mb-1" style={{ color: "var(--c-cream)" }}>Фиксированная сумма</div>
+              <p className="text-xs leading-relaxed" style={{ color: "var(--c-text)" }}>
+                Указываете конкретную сумму, например <strong style={{ color: "var(--c-cream)" }}>500 ₽</strong>.
+                Каждый гость платит её при записи.
+              </p>
+            </div>
+            <div className="rounded-xl p-4" style={{ background: "rgba(143,168,154,0.08)", border: "1px solid rgba(143,168,154,0.2)" }}>
+              <div className="text-xs uppercase tracking-wider font-semibold mb-1" style={{ color: "var(--c-sage)" }}>Вариант 2</div>
+              <div className="font-bold text-base mb-1" style={{ color: "var(--c-cream)" }}>Процент от макс. цены</div>
+              <p className="text-xs leading-relaxed" style={{ color: "var(--c-text)" }}>
+                Например <strong style={{ color: "var(--c-cream)" }}>20%</strong>. Система сама считает
+                и округляет вверх до 50 ₽.
+              </p>
+            </div>
+          </div>
+
+          {/* Как идут деньги */}
+          <div className="text-xs uppercase tracking-wider font-semibold mb-3" style={{ color: "var(--c-terra)" }}>Как идут деньги</div>
+          <div className="space-y-2">
+            {[
+              { icon: "ArrowRight", text: "Гость записался на событие и внёс клубный взнос." },
+              { icon: "ArrowRight", text: "Когда минимум собран — событие подтверждается. Если нет — взнос возвращается гостю." },
+              { icon: "ArrowRight", text: "За N часов до встречи цена фиксируется, гость доплачивает разницу до полной стоимости." },
+              { icon: "Check", text: "Вы получаете всю сумму за вычетом клубного взноса. Никаких процентов сверху." },
+            ].map((row, i) => (
+              <div key={i} className="flex items-start gap-3 text-sm" style={{ color: "var(--c-text)" }}>
+                <Icon
+                  name={row.icon as "ArrowRight"}
+                  size={16}
+                  className="mt-0.5 shrink-0"
+                  style={{ color: i === 3 ? "var(--c-sage)" : "var(--c-terra)" } as React.CSSProperties}
+                />
+                <span>{row.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Что входит */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="rounded-2xl p-5" style={glassCard}>
+            <div className="flex items-center gap-2 mb-3">
+              <Icon name="CheckCircle2" size={20} style={{ color: "var(--c-sage)" } as React.CSSProperties} />
+              <h3 className="font-bold text-base" style={{ color: "var(--c-cream)" }}>Что входит для организатора</h3>
+            </div>
             <ul className="space-y-2">
-              {["Первое событие в любом формате", "Базовая CRM гостей", "Дашборд и редактор", "Поддержка чата организаторов"].map((f) => (
+              {[
+                "Неограниченное число событий",
+                "Все 3 модели цен (фикс, ступени, складчина)",
+                "CRM гостей с чатом и рассылками",
+                "Публикации в Telegram-каналы",
+                "Соорганизаторы и команда",
+                "Личная визитка и блог",
+                "Калькулятор и шаблоны событий",
+              ].map((f) => (
                 <li key={f} className="flex items-start gap-2 text-sm" style={{ color: "var(--c-text)" }}>
-                  <Icon name="Check" size={15} className="mt-0.5 shrink-0" style={{ color: "var(--c-sage)" } as React.CSSProperties} />
+                  <Icon name="Check" size={14} className="mt-1 shrink-0" style={{ color: "var(--c-sage)" } as React.CSSProperties} />
                   {f}
                 </li>
               ))}
             </ul>
           </div>
 
-          <div
-            className="rounded-2xl p-6 relative overflow-hidden"
-            style={{
-              ...glassCard,
-              border: "1px solid rgba(200,131,74,0.4)",
-              boxShadow: "0 8px 32px rgba(200,131,74,0.18)",
-            }}
-          >
-            <div
-              className="absolute top-3 right-3 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
-              style={{ background: "var(--c-terra)", color: "#fff" }}
-            >
-              Рекомендуем
+          <div className="rounded-2xl p-5" style={glassCard}>
+            <div className="flex items-center gap-2 mb-3">
+              <Icon name="XCircle" size={20} style={{ color: "var(--c-terra)" } as React.CSSProperties} />
+              <h3 className="font-bold text-base" style={{ color: "var(--c-cream)" }}>Чего нет</h3>
             </div>
-            <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--c-terra)" }}>Активный</div>
-            <div className="text-3xl font-extrabold mb-1" style={{ color: "var(--c-cream)" }}>
-              2 000 ₽ <span className="text-sm font-normal" style={{ color: "var(--c-muted)" }}>/ месяц</span>
-            </div>
-            <p className="text-sm mb-4" style={{ color: "var(--c-text)" }}>Всё нужное, чтобы регулярно проводить события.</p>
             <ul className="space-y-2">
               {[
-                "Неограниченное число событий",
-                "Динамические цены и складчина",
-                "Telegram-публикации с отложкой",
-                "Соорганизаторы и команда",
-                "Личная визитка и блог",
-                "Приоритетная модерация",
+                "Месячных подписок",
+                "Комиссии с ваших продаж",
+                "Платы за гостей",
+                "Платы за публикацию в Telegram",
+                "Скрытых сборов",
               ].map((f) => (
                 <li key={f} className="flex items-start gap-2 text-sm" style={{ color: "var(--c-text)" }}>
-                  <Icon name="Check" size={15} className="mt-0.5 shrink-0" style={{ color: "var(--c-terra)" } as React.CSSProperties} />
+                  <Icon name="Minus" size={14} className="mt-1 shrink-0" style={{ color: "var(--c-muted)" } as React.CSSProperties} />
                   {f}
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+
+        <div className="rounded-2xl p-5 flex items-start gap-3" style={{ background: "rgba(143,168,154,0.08)", border: "1px solid rgba(143,168,154,0.2)" }}>
+          <Icon name="Info" size={20} className="shrink-0 mt-0.5" style={{ color: "var(--c-sage)" } as React.CSSProperties} />
+          <div className="text-sm leading-relaxed" style={{ color: "var(--c-text)" }}>
+            <strong style={{ color: "var(--c-cream)" }}>Важно:</strong> для модели «фиксированная цена»
+            и «динамические ступени» клубный взнос не используется — оплату вы получаете
+            напрямую от гостя и фиксируете в CRM. Платформа в этих моделях работает бесплатно.
           </div>
         </div>
       </section>
