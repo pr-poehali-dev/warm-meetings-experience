@@ -75,9 +75,29 @@ export default function AskOrganizerModal({
     if (!v) reset();
   };
 
+  const validateContact = (type: ContactType, value: string): string | null => {
+    const v = value.trim();
+    if (!v) return "Укажите контакт";
+    if (type === "email") {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) return "Неверный формат email";
+      return null;
+    }
+    if (type === "phone") {
+      const digits = v.replace(/\D/g, "");
+      if (digits.length < 10 || digits.length > 15) return "Введите телефон полностью";
+      return null;
+    }
+    const clean = v.replace(/^@/, "");
+    if (!/^[A-Za-z0-9_]{3,32}$/.test(clean)) return "Никнейм 3–32 символа, латиница/цифры/_";
+    return null;
+  };
+
+  const contactError = contact.trim() ? validateContact(contactType, contact) : null;
+
   const canSubmit =
     name.trim().length >= 2 &&
     contact.trim().length >= 3 &&
+    !validateContact(contactType, contact) &&
     message.trim().length >= 5 &&
     (user ? true : captcha.isValid);
 
@@ -178,6 +198,13 @@ export default function AskOrganizerModal({
               <Input
                 value={contact}
                 onChange={(e) => setContact(e.target.value)}
+                inputMode={
+                  contactType === "email"
+                    ? "email"
+                    : contactType === "phone"
+                      ? "tel"
+                      : "text"
+                }
                 placeholder={
                   contactType === "email"
                     ? "you@example.com"
@@ -185,7 +212,15 @@ export default function AskOrganizerModal({
                       ? "+7 999 123-45-67"
                       : "@username"
                 }
+                aria-invalid={!!contactError}
+                className={contactError ? "border-red-400 focus-visible:ring-red-300" : ""}
               />
+              {contactError && (
+                <p className="text-[11px] text-red-600 flex items-center gap-1">
+                  <Icon name="AlertCircle" size={11} />
+                  {contactError}
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
