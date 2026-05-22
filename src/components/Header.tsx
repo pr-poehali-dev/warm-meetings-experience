@@ -5,7 +5,7 @@ import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import ThemeToggle from "@/components/ThemeToggle";
-import SupportHeartButton from "@/components/club/SupportHeartButton";
+import DonationModal from "@/components/club/DonationModal";
 
 // LOGO_ON_DARK — светлый логотип для тёмных поверхностей (тёмная тема, hero)
 // LOGO_ON_LIGHT — тёмный логотип для светлых поверхностей (светлая тема)
@@ -42,6 +42,13 @@ export default function Header({ transparent = false }: HeaderProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [donateOpen, setDonateOpen] = useState(false);
+  const [donateSource, setDonateSource] = useState<string>("header");
+  const openDonate = (src: string) => {
+    setDonateSource(src);
+    setMobileOpen(false);
+    setTimeout(() => setDonateOpen(true), 0);
+  };
   const [heroVisible, setHeroVisible] = useState(true);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -118,9 +125,19 @@ export default function Header({ transparent = false }: HeaderProps) {
             </nav>
 
             <div className="flex items-center gap-1.5 shrink-0 min-w-0 overflow-hidden">
-              <div className={`hidden sm:block ${onHero ? "opacity-80 hover:opacity-100" : ""} transition-opacity`}>
-                <SupportHeartButton variant={onHero ? "transparent" : "default"} source="header" />
-              </div>
+              <button
+                type="button"
+                onClick={() => openDonate("header")}
+                title="Поддержать клуб"
+                aria-label="Поддержать клуб"
+                className={`hidden sm:inline-flex p-2 rounded-full transition-colors ${
+                  onHero
+                    ? "text-white/90 hover:text-white hover:bg-white/10"
+                    : "text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                }`}
+              >
+                <Icon name="Heart" size={20} />
+              </button>
 
               <div className={`hidden md:block ${onHero ? "opacity-70 hover:opacity-100" : ""} transition-opacity`}>
                 <ThemeToggle compact />
@@ -194,11 +211,17 @@ export default function Header({ transparent = false }: HeaderProps) {
             ))}
           </nav>
           <div className="border-t border-border py-1">
-            <SupportHeartButton
-              variant="row"
-              source="mobile-menu"
-              onBeforeOpen={() => setMobileOpen(false)}
-            />
+            <button
+              type="button"
+              onClick={() => openDonate("mobile-menu")}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              <span className="flex items-center gap-3">
+                <Icon name="Heart" size={18} className="text-rose-500" />
+                Поддержать клуб
+              </span>
+              <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+            </button>
           </div>
           <div className="px-4 py-3 flex items-center justify-between border-t border-border">
             <span className="text-xs text-muted-foreground font-medium">Тема оформления</span>
@@ -254,6 +277,12 @@ export default function Header({ transparent = false }: HeaderProps) {
           </div>
         </div>
       )}
+
+      <DonationModal
+        open={donateOpen}
+        onOpenChange={setDonateOpen}
+        source={donateSource}
+      />
     </>
   );
 }
