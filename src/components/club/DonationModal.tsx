@@ -71,9 +71,9 @@ export default function DonationModal({
   const canSubmit =
     finalAmount >= MIN_AMOUNT &&
     finalAmount <= MAX_AMOUNT &&
-    (user
-      ? true
-      : guestName.trim().length >= 2 && guestEmail.trim().length > 0 && validEmail);
+    guestName.trim().length >= 2 &&
+    guestEmail.trim().length > 0 &&
+    validEmail;
 
   const submit = async () => {
     if (!canSubmit || loading) return;
@@ -87,8 +87,8 @@ export default function DonationModal({
         share_stats: shareStats,
         source,
         message: message.trim() || undefined,
-        guest_name: user ? undefined : guestName.trim(),
-        guest_email: user ? undefined : guestEmail.trim(),
+        guest_name: guestName.trim() || undefined,
+        guest_email: guestEmail.trim() || undefined,
         success_url: successUrl,
         fail_url: failUrl,
       });
@@ -169,29 +169,27 @@ export default function DonationModal({
               />
             </div>
 
-            {!user && (
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Как вас зовут</Label>
-                  <Input
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
-                    placeholder="Имя"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Email для чека</Label>
-                  <Input
-                    type="email"
-                    value={guestEmail}
-                    onChange={(e) => setGuestEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    aria-invalid={!validEmail}
-                    className={!validEmail ? "border-red-400" : ""}
-                  />
-                </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Как вас зовут</Label>
+                <Input
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="Имя"
+                />
               </div>
-            )}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Email для чека</Label>
+                <Input
+                  type="email"
+                  value={guestEmail}
+                  onChange={(e) => setGuestEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  aria-invalid={!validEmail}
+                  className={!validEmail ? "border-red-400" : ""}
+                />
+              </div>
+            </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs">Пожелание (необязательно)</Label>
