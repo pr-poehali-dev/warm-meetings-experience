@@ -112,7 +112,7 @@ export default function DonationModal({
       <DialogContent className="max-w-md z-[300]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Icon name="Heart" size={20} className="text-rose-500" />
+            <Icon name="Heart" size={20} className="text-emerald-500" />
             {done ? "Спасибо!" : title}
           </DialogTitle>
         </DialogHeader>
@@ -146,7 +146,7 @@ export default function DonationModal({
                     }}
                     className={`text-sm py-2 rounded-md border transition-colors ${
                       usePreset && amount === p
-                        ? "border-rose-500 bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
                         : "border-border text-muted-foreground hover:border-foreground/30"
                     }`}
                   >
@@ -205,7 +205,7 @@ export default function DonationModal({
               <label className="flex items-center gap-2 text-xs cursor-pointer">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-border accent-rose-600"
+                  className="h-4 w-4 rounded border-border accent-emerald-600"
                   checked={isAnonymous}
                   onChange={(e) => setIsAnonymous(e.target.checked)}
                 />
@@ -214,7 +214,7 @@ export default function DonationModal({
               <label className="flex items-center gap-2 text-xs cursor-pointer">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-border accent-rose-600"
+                  className="h-4 w-4 rounded border-border accent-emerald-600"
                   checked={shareStats}
                   onChange={(e) => setShareStats(e.target.checked)}
                 />
@@ -225,7 +225,7 @@ export default function DonationModal({
             <Button
               onClick={submit}
               disabled={!canSubmit || loading}
-              className="w-full bg-rose-600 hover:bg-rose-700 text-white"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               {loading ? (
                 <>

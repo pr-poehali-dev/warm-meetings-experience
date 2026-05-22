@@ -31,7 +31,7 @@ export default function SupportHeartButton({
           className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted transition-colors"
         >
           <span className="flex items-center gap-3">
-            <Icon name="Heart" size={18} className="text-rose-500" />
+            <Icon name="Heart" size={18} className="text-emerald-500" />
             {label ?? "Поддержать клуб"}
           </span>
           <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
@@ -44,7 +44,7 @@ export default function SupportHeartButton({
   const colors =
     variant === "transparent"
       ? "text-white/90 hover:text-white hover:bg-white/10"
-      : "text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20";
+      : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20";
 
   return (
     <>
