@@ -100,32 +100,24 @@ def handler(event: dict, context) -> dict:
         # Формирование ссылки на оплату
         amount_str = f"{amount:.2f}"
 
-        # Подпись с учётом SuccessUrl2/FailUrl2 если переданы
-        if success_url or fail_url:
-            # MerchantLogin:OutSum:InvId:SuccessUrl2:SuccessUrl2Method:FailUrl2:FailUrl2Method:Password#1
-            signature = calculate_signature(
-                merchant_login, amount_str, robokassa_inv_id,
-                success_url, 'GET', fail_url, 'GET', password_1
-            )
-        else:
-            signature = calculate_signature(merchant_login, amount_str, robokassa_inv_id, password_1)
+        # Подпись: MerchantLogin:OutSum:InvId:Password#1
+        signature = calculate_signature(merchant_login, amount_str, robokassa_inv_id, password_1)
 
         query_params = {
             'MerchantLogin': merchant_login,
             'OutSum': amount_str,
-            'InvoiceID': robokassa_inv_id,
+            'InvId': robokassa_inv_id,
             'SignatureValue': signature,
             'Email': user_email,
             'Culture': 'ru',
+            'Encoding': 'utf-8',
             'Description': f'Заказ {order_number}'
         }
 
         if success_url:
-            query_params['SuccessUrl2'] = success_url
-            query_params['SuccessUrl2Method'] = 'GET'
+            query_params['SuccessURL'] = success_url
         if fail_url:
-            query_params['FailUrl2'] = fail_url
-            query_params['FailUrl2Method'] = 'GET'
+            query_params['FailURL'] = fail_url
 
         payment_url = f"{ROBOKASSA_URL}?{urlencode(query_params)}"
 
