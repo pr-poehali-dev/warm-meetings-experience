@@ -3,15 +3,43 @@ import Icon from "@/components/ui/icon";
 import DonationModal from "@/components/club/DonationModal";
 
 interface SupportHeartButtonProps {
-  variant?: "default" | "transparent";
+  variant?: "default" | "transparent" | "row";
   source?: string;
+  label?: string;
+  onBeforeOpen?: () => void;
 }
 
 export default function SupportHeartButton({
   variant = "default",
   source = "header",
+  label,
+  onBeforeOpen,
 }: SupportHeartButtonProps) {
   const [open, setOpen] = useState(false);
+
+  const handleClick = () => {
+    onBeforeOpen?.();
+    setTimeout(() => setOpen(true), 0);
+  };
+
+  if (variant === "row") {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={handleClick}
+          className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted transition-colors"
+        >
+          <span className="flex items-center gap-3">
+            <Icon name="Heart" size={18} className="text-rose-500" />
+            {label ?? "Поддержать клуб"}
+          </span>
+          <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+        </button>
+        <DonationModal open={open} onOpenChange={setOpen} source={source} />
+      </>
+    );
+  }
 
   const colors =
     variant === "transparent"
@@ -22,7 +50,7 @@ export default function SupportHeartButton({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={handleClick}
         title="Поддержать клуб"
         aria-label="Поддержать клуб"
         className={`p-2 rounded-full transition-colors ${colors}`}

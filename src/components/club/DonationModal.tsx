@@ -109,7 +109,7 @@ export default function DonationModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md z-[300]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon name="Heart" size={20} className="text-rose-500" />

@@ -193,9 +193,12 @@ export default function Header({ transparent = false }: HeaderProps) {
               </Link>
             ))}
           </nav>
-          <div className="px-4 py-3 flex items-center justify-between border-t border-border">
-            <span className="text-xs text-muted-foreground font-medium">Поддержать клуб</span>
-            <SupportHeartButton source="mobile-menu" />
+          <div className="border-t border-border py-1">
+            <SupportHeartButton
+              variant="row"
+              source="mobile-menu"
+              onBeforeOpen={() => setMobileOpen(false)}
+            />
           </div>
           <div className="px-4 py-3 flex items-center justify-between border-t border-border">
             <span className="text-xs text-muted-foreground font-medium">Тема оформления</span>
