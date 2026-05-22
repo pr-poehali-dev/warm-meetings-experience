@@ -1,0 +1,30 @@
+{
+  "tests": [
+    {
+      "name": "Stats endpoint returns totals",
+      "method": "GET",
+      "path": "/?resource=stats",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Top donors list",
+      "method": "GET",
+      "path": "/?resource=top",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Donate rejects low amount",
+      "method": "POST",
+      "path": "/?resource=donate",
+      "body": {"amount": 10, "guest_name": "Test", "guest_email": "t@t.ru"},
+      "expectedStatus": 400
+    },
+    {
+      "name": "Donate guest creates donation",
+      "method": "POST",
+      "path": "/?resource=donate",
+      "body": {"amount": 150, "guest_name": "Тест", "guest_email": "g@test.ru", "source": "test"},
+      "expectedStatus": 200
+    }
+  ]
+}

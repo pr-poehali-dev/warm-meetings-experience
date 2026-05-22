@@ -5,6 +5,7 @@ import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import ThemeToggle from "@/components/ThemeToggle";
+import SupportHeartButton from "@/components/club/SupportHeartButton";
 
 // LOGO_ON_DARK — светлый логотип для тёмных поверхностей (тёмная тема, hero)
 // LOGO_ON_LIGHT — тёмный логотип для светлых поверхностей (светлая тема)
@@ -117,6 +118,10 @@ export default function Header({ transparent = false }: HeaderProps) {
             </nav>
 
             <div className="flex items-center gap-1.5 shrink-0 min-w-0 overflow-hidden">
+              <div className={`hidden sm:block ${onHero ? "opacity-80 hover:opacity-100" : ""} transition-opacity`}>
+                <SupportHeartButton variant={onHero ? "transparent" : "default"} source="header" />
+              </div>
+
               <div className={`hidden md:block ${onHero ? "opacity-70 hover:opacity-100" : ""} transition-opacity`}>
                 <ThemeToggle compact />
               </div>
@@ -188,6 +193,10 @@ export default function Header({ transparent = false }: HeaderProps) {
               </Link>
             ))}
           </nav>
+          <div className="px-4 py-3 flex items-center justify-between border-t border-border">
+            <span className="text-xs text-muted-foreground font-medium">Поддержать клуб</span>
+            <SupportHeartButton source="mobile-menu" />
+          </div>
           <div className="px-4 py-3 flex items-center justify-between border-t border-border">
             <span className="text-xs text-muted-foreground font-medium">Тема оформления</span>
             <ThemeToggle />

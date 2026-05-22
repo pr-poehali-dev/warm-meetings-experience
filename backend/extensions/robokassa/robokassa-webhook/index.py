@@ -68,26 +68,46 @@ def handler(event: dict, context) -> dict:
     if signature_value != expected_signature:
         return {'statusCode': 400, 'headers': HEADERS, 'body': 'Invalid signature', 'isBase64Encoded': False}
 
-    # Обновление статуса заказа
+    # Обновление статуса — сначала пробуем заказы, потом клубные взносы
     conn = get_db_connection()
     cur = conn.cursor()
+
+    inv_int = int(inv_id)
 
     cur.execute("""
         UPDATE orders
         SET status = 'paid', paid_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
         WHERE robokassa_inv_id = %s AND status = 'pending'
         RETURNING id, order_number, user_email
-    """, (int(inv_id),))
+    """, (inv_int,))
 
     result = cur.fetchone()
 
     if not result:
-        # Проверяем, может уже оплачен
-        cur.execute("SELECT status FROM orders WHERE robokassa_inv_id = %s", (int(inv_id),))
+        # Возможно это клубный взнос
+        cur.execute("""
+            UPDATE club_donations
+            SET status = 'succeeded', paid_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            WHERE robokassa_inv_id = %s AND status = 'pending'
+            RETURNING id
+        """, (inv_int,))
+        donation_result = cur.fetchone()
+
+        if donation_result:
+            conn.commit()
+            cur.close()
+            conn.close()
+            return {'statusCode': 200, 'headers': HEADERS, 'body': f'OK{inv_id}', 'isBase64Encoded': False}
+
+        # Проверяем, может уже обработан
+        cur.execute("SELECT status FROM orders WHERE robokassa_inv_id = %s", (inv_int,))
         existing = cur.fetchone()
+        if not existing:
+            cur.execute("SELECT status FROM club_donations WHERE robokassa_inv_id = %s", (inv_int,))
+            existing = cur.fetchone()
         conn.close()
 
-        if existing and existing[0] == 'paid':
+        if existing and existing[0] in ('paid', 'succeeded'):
             return {'statusCode': 200, 'headers': HEADERS, 'body': f'OK{inv_id}', 'isBase64Encoded': False}
         return {'statusCode': 404, 'headers': HEADERS, 'body': 'Order not found', 'isBase64Encoded': False}
 
