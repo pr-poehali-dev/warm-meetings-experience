@@ -11,6 +11,60 @@ import AttachmentPicker from "@/components/support/AttachmentPicker";
 import { toast } from "sonner";
 import BathCaptcha, { useBathCaptcha } from "@/components/BathCaptcha";
 
+function CategoryPicker({
+  value,
+  onChange,
+  categories,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  categories: { value: string; label: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = categories.find((c) => c.value === value);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm flex items-center justify-between gap-2 hover:bg-muted/40 transition-colors"
+      >
+        <span>{selected?.label}</span>
+        <Icon name="ChevronDown" size={16} className={`text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-[200]" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 right-0 top-full mt-1 z-[201] bg-background border border-border rounded-xl shadow-xl overflow-hidden">
+            {categories.map((c, i) => (
+              <button
+                key={c.value}
+                type="button"
+                onClick={() => { onChange(c.value); setOpen(false); }}
+                className={`w-full flex items-center justify-between px-4 py-3.5 text-sm transition-colors hover:bg-muted/50
+                  ${i !== 0 ? "border-t border-border" : ""}
+                  ${c.value === value ? "font-medium text-foreground" : "text-foreground/80"}`}
+              >
+                <span>{c.label}</span>
+                {c.value === value && (
+                  <span className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center">
+                    <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+                  </span>
+                )}
+                {c.value !== value && (
+                  <span className="w-5 h-5 rounded-full border-2 border-muted-foreground/40" />
+                )}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 type Tab = "faq" | "search" | "form";
 
 const ROLE_TABS: { key: string; label: string }[] = [
@@ -418,17 +472,7 @@ function ContactForm({ onDone }: { onDone: () => void }) {
 
       <div>
         <Label className="text-xs">Тема</Label>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-        >
-          {CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-        </select>
+        <CategoryPicker value={category} onChange={setCategory} categories={CATEGORIES} />
       </div>
 
       <div>
