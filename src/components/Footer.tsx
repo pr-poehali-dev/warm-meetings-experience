@@ -104,13 +104,7 @@ export default function Footer() {
 
             {/* Контакты */}
             <div className="mt-5 flex flex-col gap-2.5">
-              <a
-                href="tel:+79265370200"
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Icon name="Phone" size={13} />
-                +7 (926) 537-02-00
-              </a>
+
               <a
                 href="mailto:club@sparcom.ru"
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
