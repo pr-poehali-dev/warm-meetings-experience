@@ -498,13 +498,41 @@ export default function Index() {
                 themed
               />
             ) : view === "grid" ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filtered.map((e) => <NetflixGridCard key={e.slug} event={e} />)}
-              </div>
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filtered.slice(0, 6).map((e) => <NetflixGridCard key={e.slug} event={e} />)}
+                </div>
+                {filtered.length > 6 && (
+                  <div className="flex justify-center mt-8">
+                    <Link
+                      to="/events"
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-all"
+                      style={{ background: "var(--filter-active-bg)", color: "var(--filter-active-text)" }}
+                    >
+                      Посмотреть все события
+                      <Icon name="ArrowRight" size={16} />
+                    </Link>
+                  </div>
+                )}
+              </>
             ) : (
-              <div className="space-y-3">
-                {filtered.map((e) => <NetflixListCard key={e.slug} event={e} />)}
-              </div>
+              <>
+                <div className="space-y-3">
+                  {filtered.slice(0, 6).map((e) => <NetflixListCard key={e.slug} event={e} />)}
+                </div>
+                {filtered.length > 6 && (
+                  <div className="flex justify-center mt-8">
+                    <Link
+                      to="/events"
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-all"
+                      style={{ background: "var(--filter-active-bg)", color: "var(--filter-active-text)" }}
+                    >
+                      Посмотреть все события
+                      <Icon name="ArrowRight" size={16} />
+                    </Link>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>
