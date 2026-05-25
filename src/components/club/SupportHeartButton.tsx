@@ -1,6 +1,6 @@
-import { useState } from "react";
 import Icon from "@/components/ui/icon";
-import DonationModal from "@/components/club/DonationModal";
+
+const SBER_URL = "https://messenger.online.sberbank.ru/sl/9eE3EK9SoMLSsYC2x";
 
 interface SupportHeartButtonProps {
   variant?: "default" | "transparent" | "row";
@@ -11,33 +11,24 @@ interface SupportHeartButtonProps {
 
 export default function SupportHeartButton({
   variant = "default",
-  source = "header",
   label,
   onBeforeOpen,
 }: SupportHeartButtonProps) {
-  const [open, setOpen] = useState(false);
-
-  const handleClick = () => {
-    onBeforeOpen?.();
-    setTimeout(() => setOpen(true), 0);
-  };
-
   if (variant === "row") {
     return (
-      <>
-        <button
-          type="button"
-          onClick={handleClick}
-          className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted transition-colors"
-        >
-          <span className="flex items-center gap-3">
-            <Icon name="Heart" size={18} className="text-emerald-500" />
-            {label ?? "Поддержать клуб"}
-          </span>
-          <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
-        </button>
-        <DonationModal open={open} onOpenChange={setOpen} source={source} />
-      </>
+      <a
+        href={SBER_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => onBeforeOpen?.()}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted transition-colors"
+      >
+        <span className="flex items-center gap-3">
+          <Icon name="Heart" size={18} className="text-emerald-500" />
+          {label ?? "Поддержать клуб"}
+        </span>
+        <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+      </a>
     );
   }
 
@@ -47,17 +38,16 @@ export default function SupportHeartButton({
       : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20";
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={handleClick}
-        title="Поддержать клуб"
-        aria-label="Поддержать клуб"
-        className={`p-2 rounded-full transition-colors ${colors}`}
-      >
-        <Icon name="Heart" size={20} />
-      </button>
-      <DonationModal open={open} onOpenChange={setOpen} source={source} />
-    </>
+    <a
+      href={SBER_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() => onBeforeOpen?.()}
+      title="Поддержать клуб"
+      aria-label="Поддержать клуб"
+      className={`p-2 rounded-full transition-colors ${colors}`}
+    >
+      <Icon name="Heart" size={20} />
+    </a>
   );
 }
