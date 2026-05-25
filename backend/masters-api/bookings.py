@@ -1,7 +1,133 @@
 import json
+import os
+import urllib.request
+import urllib.parse
 import psycopg2.extras
 from datetime import datetime
 from shared import CORS_HEADERS, get_conn, get_schema
+
+
+def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
+    """Отправляет email и Telegram уведомление мастеру о новой брони.
+    Все ошибки молча проглатываются — уведомления не должны ломать сам флоу.
+    """
+    try:
+        cur.execute(f"""
+            SELECT m.name AS master_name, m.user_id, u.email, u.tg_chat_id,
+                   COALESCE(u.notify_email, true) AS notify_email,
+                   COALESCE(u.notify_telegram, false) AS notify_telegram
+            FROM {schema}.masters m
+            LEFT JOIN {schema}.users u ON u.id = m.user_id
+            WHERE m.id = {int(master_id)}
+        """)
+        m = cur.fetchone()
+        if not m:
+            return
+
+        client_name = booking.get('client_name', '')
+        client_phone = booking.get('client_phone', '')
+        client_email = booking.get('client_email', '') or ''
+        dt_start = booking.get('datetime_start', '')
+        dt_end = booking.get('datetime_end', '')
+        price = booking.get('price', 0)
+        status = booking.get('status', 'pending')
+        comment = booking.get('comment', '') or ''
+
+        try:
+            dt = datetime.fromisoformat(str(dt_start).replace('Z', '').split('+')[0])
+            dt_human = dt.strftime('%d.%m.%Y %H:%M')
+        except Exception:
+            dt_human = str(dt_start)
+
+        status_human = 'подтверждена автоматически' if status == 'confirmed' else 'ожидает подтверждения'
+
+        # === Email ===
+        if m.get('notify_email') and m.get('email'):
+            api_key = os.environ.get('UNISENDER_API_KEY', '')
+            sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+            sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
+            if api_key and sender_email:
+                subject = f'Новая запись: {client_name} на {dt_human}'
+                body_html = f"""
+                <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #2d2318;">
+                    <div style="background: linear-gradient(135deg,#C8834A,#8FA89A); color: #fff; padding: 24px; border-radius: 16px 16px 0 0;">
+                        <h1 style="margin: 0; font-size: 22px;">Новая запись на сеанс</h1>
+                        <p style="margin: 6px 0 0; opacity: .9; font-size: 14px;">Запись {status_human}</p>
+                    </div>
+                    <div style="background: #fff; border: 1px solid #eee; border-top: none; padding: 20px; border-radius: 0 0 16px 16px;">
+                        <p style="margin: 0 0 16px; font-size: 15px;">Здравствуйте{', ' + (m.get('master_name') or '') if m.get('master_name') else ''}!</p>
+                        <table style="width: 100%; font-size: 14px; line-height: 1.6;">
+                            <tr><td style="color: #666; padding: 4px 0;">Услуга:</td><td style="font-weight: 600;">{service_name or '—'}</td></tr>
+                            <tr><td style="color: #666; padding: 4px 0;">Время:</td><td style="font-weight: 600;">{dt_human}</td></tr>
+                            <tr><td style="color: #666; padding: 4px 0;">Стоимость:</td><td style="font-weight: 600;">{int(float(price))} ₽</td></tr>
+                            <tr><td colspan="2" style="padding-top: 12px; border-top: 1px solid #eee;"></td></tr>
+                            <tr><td style="color: #666; padding: 4px 0;">Клиент:</td><td style="font-weight: 600;">{client_name}</td></tr>
+                            <tr><td style="color: #666; padding: 4px 0;">Телефон:</td><td><a href="tel:{client_phone}" style="color: #C8834A; text-decoration: none;">{client_phone}</a></td></tr>
+                            {f'<tr><td style="color: #666; padding: 4px 0;">Email:</td><td><a href="mailto:{client_email}" style="color: #C8834A; text-decoration: none;">{client_email}</a></td></tr>' if client_email else ''}
+                            {f'<tr><td style="color: #666; padding: 4px 0; vertical-align: top;">Комментарий:</td><td>{comment}</td></tr>' if comment else ''}
+                        </table>
+                        <p style="margin: 20px 0 0; font-size: 13px; color: #888;">Управляйте записями в личном кабинете → «Записи».</p>
+                    </div>
+                </div>
+                """.strip()
+                payload = {
+                    'api_key': api_key,
+                    'message': {
+                        'recipients': [{'email': m['email'], 'substitutions': {'to_name': m.get('master_name') or ''}}],
+                        'body': {'html': body_html},
+                        'subject': subject,
+                        'from_email': sender_email,
+                        'from_name': sender_name,
+                    }
+                }
+                try:
+                    req = urllib.request.Request(
+                        'https://go1.unisender.ru/ru/transactional/api/v1/email/send.json',
+                        data=json.dumps(payload).encode('utf-8'),
+                        headers={'Content-Type': 'application/json'},
+                        method='POST',
+                    )
+                    urllib.request.urlopen(req, timeout=8).read()
+                except Exception:
+                    pass
+
+        # === Telegram ===
+        if m.get('notify_telegram') and m.get('tg_chat_id'):
+            bot_token = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+            if bot_token:
+                lines = [
+                    '🎫 <b>Новая запись на сеанс</b>',
+                    '',
+                    f'📌 {service_name or "Услуга"}',
+                    f'📅 {dt_human}',
+                    f'💰 {int(float(price))} ₽',
+                    '',
+                    f'👤 <b>{client_name}</b>',
+                    f'📞 {client_phone}',
+                ]
+                if client_email:
+                    lines.append(f'✉️ {client_email}')
+                if comment:
+                    lines.append(f'💬 {comment}')
+                lines.append('')
+                lines.append(f'<i>Статус: {status_human}</i>')
+                try:
+                    tg_req = urllib.request.Request(
+                        f'https://api.telegram.org/bot{bot_token}/sendMessage',
+                        data=json.dumps({
+                            'chat_id': int(m['tg_chat_id']),
+                            'text': '\n'.join(lines),
+                            'parse_mode': 'HTML',
+                        }).encode('utf-8'),
+                        headers={'Content-Type': 'application/json'},
+                        method='POST',
+                    )
+                    urllib.request.urlopen(tg_req, timeout=6).read()
+                except Exception:
+                    pass
+    except Exception:
+        # Любые проблемы с уведомлениями не должны ломать бронь
+        pass
 
 
 def handle_bookings_root(event, method, params, schema, headers):
@@ -403,6 +529,13 @@ def handle_public_book(event, method, params, schema, headers):
     """)
 
     conn.commit()
+
+    # Уведомляем мастера (email + Telegram) — после коммита, чтобы не задерживать транзакцию
+    try:
+        _notify_master_about_booking(cur, schema, master_id, dict(booking), booking_service_name)
+    except Exception:
+        pass
+
     conn.close()
 
     return {
