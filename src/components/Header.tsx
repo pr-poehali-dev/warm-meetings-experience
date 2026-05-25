@@ -125,9 +125,10 @@ export default function Header({ transparent = false }: HeaderProps) {
             </nav>
 
             <div className="flex items-center gap-1.5 shrink-0 min-w-0 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => openDonate("header")}
+              <a
+                href="https://messenger.online.sberbank.ru/sl/9eE3EK9SoMLSsYC2x"
+                target="_blank"
+                rel="noopener noreferrer"
                 title="Поддержать клуб"
                 aria-label="Поддержать клуб"
                 className={`hidden sm:inline-flex p-2 rounded-full transition-colors ${
@@ -137,7 +138,7 @@ export default function Header({ transparent = false }: HeaderProps) {
                 }`}
               >
                 <Icon name="Heart" size={20} />
-              </button>
+              </a>
 
               <div className={`hidden md:block ${onHero ? "opacity-70 hover:opacity-100" : ""} transition-opacity`}>
                 <ThemeToggle compact />
