@@ -5,7 +5,8 @@ import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import ThemeToggle from "@/components/ThemeToggle";
-import DonationModal from "@/components/club/DonationModal";
+
+const SBER_DONATE_URL = "https://messenger.online.sberbank.ru/sl/9eE3EK9SoMLSsYC2x";
 
 // LOGO_ON_DARK — светлый логотип для тёмных поверхностей (тёмная тема, hero)
 // LOGO_ON_LIGHT — тёмный логотип для светлых поверхностей (светлая тема)
@@ -42,13 +43,6 @@ export default function Header({ transparent = false }: HeaderProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [donateOpen, setDonateOpen] = useState(false);
-  const [donateSource, setDonateSource] = useState<string>("header");
-  const openDonate = (src: string) => {
-    setDonateSource(src);
-    setMobileOpen(false);
-    setTimeout(() => setDonateOpen(true), 0);
-  };
   const [heroVisible, setHeroVisible] = useState(true);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -212,9 +206,11 @@ export default function Header({ transparent = false }: HeaderProps) {
             ))}
           </nav>
           <div className="border-t border-border py-1">
-            <button
-              type="button"
-              onClick={() => openDonate("mobile-menu")}
+            <a
+              href={SBER_DONATE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setMobileOpen(false)}
               className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted transition-colors"
             >
               <span className="flex items-center gap-3">
@@ -222,7 +218,7 @@ export default function Header({ transparent = false }: HeaderProps) {
                 Поддержать клуб
               </span>
               <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
-            </button>
+            </a>
           </div>
           <div className="px-4 py-3 flex items-center justify-between border-t border-border">
             <span className="text-xs text-muted-foreground font-medium">Тема оформления</span>
@@ -279,11 +275,7 @@ export default function Header({ transparent = false }: HeaderProps) {
         </div>
       )}
 
-      <DonationModal
-        open={donateOpen}
-        onOpenChange={setDonateOpen}
-        source={donateSource}
-      />
+
     </>
   );
 }
