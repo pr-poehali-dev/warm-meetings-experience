@@ -100,8 +100,8 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
   const buttonClass = isTransparent
     ? "flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors bg-white/10 border border-white/20 text-white hover:bg-white/20"
     : isCompact
-    ? "flex items-center gap-2 px-2.5 py-1.5 rounded-full text-sm font-medium transition-colors bg-muted/60 hover:bg-muted text-foreground"
-    : "flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors bg-muted/60 hover:bg-muted text-foreground";
+    ? "flex items-center gap-2 px-2.5 py-1.5 rounded-full text-sm font-medium transition-colors bg-muted hover:bg-muted/80 text-foreground border border-border"
+    : "flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors bg-muted hover:bg-muted/80 text-foreground border border-border";
 
   const currentCabinet = visibleCabinets.find((c) =>
     location.pathname === c.to || location.pathname.startsWith(c.to + "/")
