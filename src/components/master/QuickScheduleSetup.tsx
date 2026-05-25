@@ -1,0 +1,505 @@
+import { useEffect, useState, useCallback } from "react";
+import { addDays, format, startOfWeek } from "date-fns";
+import { ru } from "date-fns/locale";
+import Icon from "@/components/ui/icon";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import {
+  masterCalendarApi,
+  MasterService,
+} from "@/lib/master-calendar-api";
+
+interface QuickScheduleSetupProps {
+  masterId: number;
+}
+
+const WEEK_DAYS = [
+  { idx: 1, label: "Пн" },
+  { idx: 2, label: "Вт" },
+  { idx: 3, label: "Ср" },
+  { idx: 4, label: "Чт" },
+  { idx: 5, label: "Пт" },
+  { idx: 6, label: "Сб" },
+  { idx: 0, label: "Вс" },
+];
+
+function fmt(n: number) {
+  return n.toLocaleString("ru-RU");
+}
+
+function fmtDuration(min: number) {
+  if (min < 60) return `${min} мин`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m ? `${h} ч ${m} мин` : `${h} ч`;
+}
+
+export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps) {
+  // Услуги
+  const [services, setServices] = useState<MasterService[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
+  const [newSvcOpen, setNewSvcOpen] = useState(false);
+  const [newSvc, setNewSvc] = useState({ name: "", duration_minutes: 60, price: 0, max_clients: 1 });
+  const [savingSvc, setSavingSvc] = useState(false);
+
+  // Шаблон расписания
+  const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5]));
+  const [startTime, setStartTime] = useState("10:00");
+  const [endTime, setEndTime] = useState("19:00");
+  const [serviceForSlots, setServiceForSlots] = useState<number | null>(null);
+  const [weeks, setWeeks] = useState(4);
+  const [generating, setGenerating] = useState(false);
+
+  // Превью существующих слотов
+  const [existingCount, setExistingCount] = useState<number | null>(null);
+
+  const loadServices = useCallback(async () => {
+    setLoadingServices(true);
+    try {
+      const svcs = await masterCalendarApi.getServices(masterId);
+      setServices(svcs);
+      if (svcs.length && serviceForSlots === null) {
+        setServiceForSlots(svcs[0].id ?? null);
+      }
+    } catch {
+      toast.error("Не удалось загрузить услуги");
+    } finally {
+      setLoadingServices(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [masterId]);
+
+  const loadExisting = useCallback(async () => {
+    try {
+      const from = format(new Date(), "yyyy-MM-dd");
+      const to = format(addDays(new Date(), 30), "yyyy-MM-dd");
+      const slots = await masterCalendarApi.getSlots(masterId, from, to);
+      setExistingCount(slots.length);
+    } catch {
+      setExistingCount(null);
+    }
+  }, [masterId]);
+
+  useEffect(() => {
+    loadServices();
+    loadExisting();
+  }, [loadServices, loadExisting]);
+
+  // Создание услуги
+  const handleAddService = async () => {
+    if (!newSvc.name.trim()) {
+      toast.error("Введите название услуги");
+      return;
+    }
+    if (newSvc.duration_minutes < 5) {
+      toast.error("Длительность должна быть минимум 5 минут");
+      return;
+    }
+    setSavingSvc(true);
+    try {
+      const created = await masterCalendarApi.createService({
+        master_id: masterId,
+        name: newSvc.name.trim(),
+        duration_minutes: newSvc.duration_minutes,
+        price: newSvc.price,
+        max_clients: newSvc.max_clients,
+        is_active: true,
+      });
+      setServices((prev) => [...prev, created]);
+      if (serviceForSlots === null) setServiceForSlots(created.id ?? null);
+      setNewSvc({ name: "", duration_minutes: 60, price: 0, max_clients: 1 });
+      setNewSvcOpen(false);
+      toast.success("Услуга добавлена");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось добавить услугу");
+    } finally {
+      setSavingSvc(false);
+    }
+  };
+
+  const handleDeleteService = async (id: number) => {
+    if (!confirm("Удалить услугу? Существующие слоты останутся.")) return;
+    try {
+      await masterCalendarApi.deleteService(id);
+      setServices((prev) => prev.filter((s) => s.id !== id));
+      if (serviceForSlots === id) setServiceForSlots(services.find((s) => s.id !== id)?.id ?? null);
+      toast.success("Услуга удалена");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось удалить");
+    }
+  };
+
+  const toggleDay = (idx: number) => {
+    setSelectedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  // Подсчёт сколько слотов будет создано
+  const slotsPreview = (() => {
+    if (!serviceForSlots || selectedDays.size === 0) return 0;
+    const svc = services.find((s) => s.id === serviceForSlots);
+    if (!svc) return 0;
+    const [sh, sm] = startTime.split(":").map(Number);
+    const [eh, em] = endTime.split(":").map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = eh * 60 + em;
+    if (endMin <= startMin) return 0;
+    const totalMinutes = endMin - startMin;
+    const slotsPerDay = Math.floor(totalMinutes / svc.duration_minutes);
+    return slotsPerDay * selectedDays.size * weeks;
+  })();
+
+  // Генерация слотов
+  const handleGenerate = async () => {
+    if (!serviceForSlots) {
+      toast.error("Выберите услугу");
+      return;
+    }
+    if (selectedDays.size === 0) {
+      toast.error("Выберите хотя бы один день недели");
+      return;
+    }
+    const svc = services.find((s) => s.id === serviceForSlots);
+    if (!svc) return;
+
+    const [sh, sm] = startTime.split(":").map(Number);
+    const [eh, em] = endTime.split(":").map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = eh * 60 + em;
+    if (endMin <= startMin) {
+      toast.error("Время окончания должно быть позже начала");
+      return;
+    }
+
+    if (!confirm(`Создать ${slotsPreview} слотов на ${weeks} недель вперёд?`)) return;
+
+    setGenerating(true);
+    try {
+      const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
+      let created = 0;
+      let failed = 0;
+      const promises: Promise<unknown>[] = [];
+
+      for (let w = 0; w < weeks; w++) {
+        for (const dayIdx of selectedDays) {
+          // dayIdx: 0=вс, 1=пн ... 6=сб; добавляем смещение от понедельника
+          const offset = dayIdx === 0 ? 6 : dayIdx - 1;
+          const date = addDays(monday, w * 7 + offset);
+          // Пропускаем прошлые даты
+          if (date < new Date(new Date().toDateString())) continue;
+
+          let curMin = startMin;
+          while (curMin + svc.duration_minutes <= endMin) {
+            const startDate = new Date(date);
+            startDate.setHours(Math.floor(curMin / 60), curMin % 60, 0, 0);
+            const endDate = new Date(date);
+            const endMinForSlot = curMin + svc.duration_minutes;
+            endDate.setHours(Math.floor(endMinForSlot / 60), endMinForSlot % 60, 0, 0);
+
+            const toIsoLocal = (d: Date) =>
+              `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
+
+            promises.push(
+              masterCalendarApi
+                .createSlot({
+                  master_id: masterId,
+                  service_id: svc.id,
+                  datetime_start: toIsoLocal(startDate),
+                  datetime_end: toIsoLocal(endDate),
+                  max_clients: svc.max_clients,
+                })
+                .then(() => {
+                  created++;
+                })
+                .catch(() => {
+                  failed++;
+                })
+            );
+
+            curMin += svc.duration_minutes;
+          }
+        }
+      }
+
+      await Promise.all(promises);
+      if (created > 0) {
+        toast.success(`Создано ${created} слотов${failed ? ` (пропущено ${failed})` : ""}`);
+        loadExisting();
+      } else {
+        toast.error("Не удалось создать слоты — возможно они уже есть");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Ошибка генерации");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Шапка с подсказкой */}
+      <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-start gap-3">
+        <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+          <Icon name="Sparkles" size={18} className="text-primary" />
+        </div>
+        <div className="text-sm">
+          <div className="font-semibold mb-0.5">Быстрая настройка</div>
+          <div className="text-muted-foreground">
+            Заполни услуги и рабочие дни — за минуту получишь готовое расписание на месяц вперёд.
+            {existingCount !== null && existingCount > 0 && (
+              <span className="text-foreground"> Сейчас уже создано {existingCount} слотов на ближайшие 30 дней.</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ШАГ 1: Услуги */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground inline-flex items-center justify-center text-xs font-bold">1</span>
+            <h3 className="text-base font-semibold">Услуги</h3>
+            <span className="text-xs text-muted-foreground">({services.filter((s) => s.is_active).length})</span>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setNewSvcOpen(!newSvcOpen)} className="gap-1.5">
+            <Icon name={newSvcOpen ? "X" : "Plus"} size={14} />
+            {newSvcOpen ? "Отмена" : "Добавить"}
+          </Button>
+        </div>
+
+        {newSvcOpen && (
+          <div className="bg-card border rounded-2xl p-4 mb-3 space-y-3">
+            <div>
+              <Label className="text-xs mb-1 block">Название</Label>
+              <Input
+                value={newSvc.name}
+                onChange={(e) => setNewSvc((p) => ({ ...p, name: e.target.value }))}
+                placeholder="Например: Парение веником"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs mb-1 block">Длительность, мин</Label>
+                <Input
+                  type="number"
+                  min={5}
+                  step={5}
+                  value={newSvc.duration_minutes}
+                  onChange={(e) => setNewSvc((p) => ({ ...p, duration_minutes: Number(e.target.value) || 60 }))}
+                />
+              </div>
+              <div>
+                <Label className="text-xs mb-1 block">Цена, ₽</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={100}
+                  value={newSvc.price}
+                  onChange={(e) => setNewSvc((p) => ({ ...p, price: Number(e.target.value) || 0 }))}
+                />
+              </div>
+              <div>
+                <Label className="text-xs mb-1 block">Макс. участников</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={newSvc.max_clients}
+                  onChange={(e) => setNewSvc((p) => ({ ...p, max_clients: Number(e.target.value) || 1 }))}
+                />
+              </div>
+            </div>
+            <Button onClick={handleAddService} disabled={savingSvc} size="sm" className="w-full">
+              {savingSvc ? <Icon name="Loader2" size={14} className="animate-spin" /> : "Сохранить услугу"}
+            </Button>
+          </div>
+        )}
+
+        {loadingServices ? (
+          <div className="flex justify-center py-6">
+            <Icon name="Loader2" size={20} className="animate-spin text-muted-foreground" />
+          </div>
+        ) : services.filter((s) => s.is_active).length === 0 ? (
+          <div className="text-center py-8 text-sm text-muted-foreground bg-muted/30 rounded-xl border border-dashed">
+            <Icon name="Sparkles" size={28} className="mx-auto mb-2 opacity-40" />
+            Пока нет услуг. Добавь первую — без них гости не смогут записаться.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {services.filter((s) => s.is_active).map((s) => (
+              <div key={s.id} className="flex items-center justify-between p-3 bg-card border rounded-xl">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-sm truncate">{s.name}</div>
+                  <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
+                    <span className="flex items-center gap-1">
+                      <Icon name="Clock" size={11} />
+                      {fmtDuration(s.duration_minutes)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Icon name="Wallet" size={11} />
+                      {fmt(s.price)} ₽
+                    </span>
+                    {s.max_clients > 1 && (
+                      <span className="flex items-center gap-1">
+                        <Icon name="Users" size={11} />
+                        до {s.max_clients}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteService(s.id!)}
+                  className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                  title="Удалить услугу"
+                >
+                  <Icon name="Trash2" size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ШАГ 2: Расписание */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground inline-flex items-center justify-center text-xs font-bold">2</span>
+          <h3 className="text-base font-semibold">Рабочие дни и часы</h3>
+        </div>
+
+        <div className="bg-card border rounded-2xl p-4 space-y-4">
+          {/* Выбор услуги для слотов */}
+          {services.filter((s) => s.is_active).length > 0 && (
+            <div>
+              <Label className="text-xs mb-2 block">Под какую услугу создаём слоты</Label>
+              <div className="flex flex-wrap gap-2">
+                {services.filter((s) => s.is_active).map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setServiceForSlots(s.id ?? null)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      serviceForSlots === s.id
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border hover:bg-muted"
+                    }`}
+                  >
+                    {s.name} · {fmtDuration(s.duration_minutes)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Дни недели */}
+          <div>
+            <Label className="text-xs mb-2 block">Какие дни работаешь</Label>
+            <div className="flex flex-wrap gap-2">
+              {WEEK_DAYS.map((d) => (
+                <button
+                  key={d.idx}
+                  type="button"
+                  onClick={() => toggleDay(d.idx)}
+                  className={`w-12 h-12 rounded-xl text-sm font-semibold border transition-colors ${
+                    selectedDays.has(d.idx)
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background border-border hover:bg-muted"
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Время работы */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs mb-1 block">Начало дня</Label>
+              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">Конец дня</Label>
+              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+            </div>
+          </div>
+
+          {/* Количество недель */}
+          <div>
+            <Label className="text-xs mb-2 block">На сколько недель вперёд</Label>
+            <div className="flex gap-2">
+              {[1, 2, 4, 8].map((w) => (
+                <button
+                  key={w}
+                  type="button"
+                  onClick={() => setWeeks(w)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    weeks === w
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background border-border hover:bg-muted"
+                  }`}
+                >
+                  {w} {w === 1 ? "нед." : w < 5 ? "недели" : "недель"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Превью + кнопка */}
+          <div className="border-t pt-3 flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-sm">
+              {slotsPreview > 0 ? (
+                <span>
+                  Будет создано <span className="font-bold text-primary">{slotsPreview}</span> слотов
+                </span>
+              ) : (
+                <span className="text-muted-foreground">Выбери услугу и дни</span>
+              )}
+            </div>
+            <Button
+              onClick={handleGenerate}
+              disabled={generating || slotsPreview === 0}
+              className="gap-1.5"
+            >
+              {generating ? (
+                <>
+                  <Icon name="Loader2" size={14} className="animate-spin" />
+                  Создаём...
+                </>
+              ) : (
+                <>
+                  <Icon name="Wand2" size={14} />
+                  Сгенерировать расписание
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <p className="text-[11px] text-muted-foreground mt-2">
+          Уже занятые периоды и существующие слоты не будут перезаписаны — система пропустит их автоматически.
+          После генерации можно подправить отдельные дни во вкладке «Календарь».
+        </p>
+      </section>
+
+      {/* Ссылка на превью */}
+      <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 flex items-start gap-3">
+        <Icon name="Eye" size={18} className="text-emerald-600 dark:text-emerald-400 mt-0.5" />
+        <div className="text-sm">
+          <div className="font-semibold text-emerald-900 dark:text-emerald-200">
+            Что увидит гость
+          </div>
+          <div className="text-emerald-800/80 dark:text-emerald-300/80 text-xs mt-0.5">
+            Гости увидят твои услуги и свободные слоты на странице мастера. Чтобы посмотреть как это выглядит, открой свою публичную страницу.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

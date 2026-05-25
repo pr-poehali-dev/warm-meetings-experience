@@ -8,6 +8,7 @@ import MasterBookingsList from "@/components/admin/MasterBookingsList";
 import MasterServices from "@/components/admin/MasterServices";
 import MasterTemplates from "@/components/admin/MasterTemplates";
 import MasterCalendarSettings from "@/components/admin/MasterCalendarSettings";
+import QuickScheduleSetup from "@/components/master/QuickScheduleSetup";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import func2url from "../../../backend/func2url.json";
@@ -319,8 +320,9 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
 // ─── Мастер: Расписание ───────────────────────────────────────────────────────
 
 export function MasterScheduleSection({ masterId }: { masterId: number }) {
-  const [tab, setTab] = useState<"calendar" | "services" | "templates" | "settings">("calendar");
+  const [tab, setTab] = useState<"quick" | "calendar" | "services" | "templates" | "settings">("quick");
   const tabs = [
+    { id: "quick", label: "Быстрый старт", icon: "Zap" },
     { id: "calendar", label: "Календарь", icon: "CalendarDays" },
     { id: "services", label: "Услуги", icon: "Sparkles" },
     { id: "templates", label: "Шаблоны", icon: "Copy" },
@@ -340,18 +342,19 @@ export function MasterScheduleSection({ masterId }: { masterId: number }) {
           Инструкция
         </a>
       </div>
-      <div className="flex gap-1 bg-muted/60 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 bg-muted/60 rounded-xl p-1 w-fit overflow-x-auto max-w-full">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${tab === t.id ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${tab === t.id ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             <Icon name={t.icon} size={13} />
             {t.label}
           </button>
         ))}
       </div>
+      {tab === "quick" && <QuickScheduleSetup masterId={masterId} />}
       {tab === "calendar" && <MasterCalendar masterId={masterId} />}
       {tab === "services" && <MasterServices masterId={masterId} />}
       {tab === "templates" && <MasterTemplates masterId={masterId} />}
