@@ -10,6 +10,7 @@ import { masterCalendarApi, masterBookingsApi, MasterService, MasterSlot, Master
 import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
 import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import PageShell from "@/components/ui/page-shell";
+import MasterBookingFlow from "@/components/masters/MasterBookingFlow";
 import func2url from "../../backend/func2url.json";
 
 const VIDEOS_API = func2url["media-api"];
@@ -220,208 +221,6 @@ function BookingSuccess({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Блок услуг ───────────────────────────────────────────────────────────────
-
-function ServicesBlock({
-  services,
-  selectedId,
-  onSelect,
-}: {
-  services: MasterService[];
-  selectedId: number | null;
-  onSelect: (id: number | null) => void;
-}) {
-  if (!services.length) return null;
-  return (
-    <div className="mb-8">
-      <h2 className="text-lg font-semibold mb-4">Услуги и цены</h2>
-      <div className="space-y-3">
-        {services.map((s) => (
-          <div
-            key={s.id}
-            onClick={() => onSelect(selectedId === s.id ? null : s.id!)}
-            className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
-              selectedId === s.id
-                ? "border-primary bg-primary/5"
-                : "border-border hover:bg-muted/50"
-            }`}
-          >
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm">{s.name}</div>
-              {s.description && (
-                <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{s.description}</div>
-              )}
-              <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Icon name="Clock" size={11} />
-                  {fmtDuration(s.duration_minutes)}
-                </span>
-                {s.max_clients > 1 && (
-                  <span className="flex items-center gap-1">
-                    <Icon name="Users" size={11} />
-                    до {s.max_clients} чел.
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-              <div className="text-right">
-                <div className="font-bold text-primary">{fmt(s.price)} ₽</div>
-              </div>
-              {selectedId === s.id && (
-                <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                  <Icon name="Check" size={12} className="text-primary-foreground" />
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-      {selectedId && (
-        <p className="text-xs text-muted-foreground mt-2 text-center">
-          Нажмите на услугу ещё раз, чтобы показать все слоты
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ─── Расписание ───────────────────────────────────────────────────────────────
-
-const DAYS_COUNT = 14;
-
-function ScheduleBlock({
-  masterId,
-  serviceId,
-  services,
-  onBookSlot,
-}: {
-  masterId: number;
-  serviceId: number | null;
-  services: MasterService[];
-  onBookSlot: (slot: MasterSlot) => void;
-}) {
-  const today = startOfToday();
-  const [selectedDate, setSelectedDate] = useState<Date>(today);
-  const [slots, setSlots] = useState<MasterSlot[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const days = Array.from({ length: DAYS_COUNT }, (_, i) => addDays(today, i));
-
-  const loadSlots = useCallback(async () => {
-    setLoading(true);
-    try {
-      const from = format(today, "yyyy-MM-dd");
-      const data = await masterBookingsApi.getPublicSlots(
-        masterId,
-        from,
-        serviceId ?? undefined
-      );
-      setSlots(data);
-    } catch {
-      setSlots([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [masterId, serviceId]);
-
-  useEffect(() => {
-    loadSlots();
-  }, [loadSlots]);
-
-  const dayKey = (d: Date) => format(d, "yyyy-MM-dd");
-
-  const slotsForDay = slots.filter(
-    (s) => s.datetime_start.startsWith(dayKey(selectedDate)) && s.status === "available"
-  );
-
-  const hasSlots = (d: Date) =>
-    slots.some((s) => s.datetime_start.startsWith(dayKey(d)) && s.status === "available");
-
-  return (
-    <div className="mb-8">
-      <h2 className="text-lg font-semibold mb-4">Расписание</h2>
-
-      {/* Список дат */}
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-0.5 px-0.5">
-        {days.map((d) => {
-          const isSelected = dayKey(d) === dayKey(selectedDate);
-          const hasFree = hasSlots(d);
-          return (
-            <button
-              key={dayKey(d)}
-              onClick={() => setSelectedDate(d)}
-              className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                isSelected
-                  ? "bg-primary text-primary-foreground"
-                  : hasFree
-                  ? "bg-muted hover:bg-muted/80 text-foreground"
-                  : "bg-muted/40 text-muted-foreground"
-              }`}
-            >
-              <span className="text-[10px] uppercase opacity-70">
-                {format(d, "EEE", { locale: ru })}
-              </span>
-              <span className="text-base font-bold leading-tight">{format(d, "d")}</span>
-              {hasFree && !isSelected && (
-                <span className="w-1.5 h-1.5 rounded-full bg-primary mt-0.5" />
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Слоты выбранного дня */}
-      <div className="mt-4">
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <Icon name="Loader2" size={24} className="animate-spin text-muted-foreground" />
-          </div>
-        ) : slotsForDay.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            <Icon name="CalendarX" size={32} className="mx-auto mb-2 opacity-30" />
-            Нет свободных слотов
-            <br />
-            <span className="text-xs">Выберите другую дату или свяжитесь с мастером</span>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {slotsForDay.map((slot) => {
-              const svc = services.find((s) => s.id === slot.service_id);
-              const free = slot.max_clients - slot.booked_count;
-              return (
-                <button
-                  key={slot.id}
-                  onClick={() => onBookSlot(slot)}
-                  className="flex flex-col items-start p-3 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
-                >
-                  <div className="font-semibold text-sm group-hover:text-primary transition-colors">
-                    {fmtTime(slot.datetime_start)} — {fmtTime(slot.datetime_end)}
-                  </div>
-                  {svc && (
-                    <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{svc.name}</div>
-                  )}
-                  <div className="flex items-center justify-between w-full mt-2">
-                    {(slot.service_price || svc?.price) ? (
-                      <span className="text-xs font-bold text-primary">
-                        {fmt(slot.service_price || svc!.price)} ₽
-                      </span>
-                    ) : <span />}
-                    {free > 0 && slot.max_clients > 1 && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {free} мест
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ─── Отзывы ───────────────────────────────────────────────────────────────────
 
@@ -781,19 +580,14 @@ export default function MasterDetail() {
               </div>
             )}
 
-            {/* Услуги и цены */}
-            <ServicesBlock
-              services={services}
-              selectedId={selectedServiceId}
-              onSelect={setSelectedServiceId}
-            />
-
-            {/* Расписание */}
-            <ScheduleBlock
+            {/* Запись на сеанс: услуга → дата → время */}
+            <MasterBookingFlow
               masterId={master.id}
-              serviceId={selectedServiceId}
               services={services}
-              onBookSlot={setBookingSlot}
+              onBookSlot={(slot, svc) => {
+                setSelectedServiceId(svc.id ?? null);
+                setBookingSlot(slot);
+              }}
             />
 
             {/* Портфолио */}
