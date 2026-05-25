@@ -38,7 +38,7 @@ function buildCabinets(hasRole: (slug: string) => boolean): Cabinet[] {
   const isPartner = hasRole("partner");
   if (isMaster || isOrganizer || isPartner) {
     list.push({
-      label: "Моё дело",
+      label: "Банный кабинет",
       description: getBusinessDescription(isMaster, isOrganizer, isPartner),
       to: "/workspace",
       icon: "Briefcase",
