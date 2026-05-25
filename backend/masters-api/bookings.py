@@ -211,12 +211,16 @@ def handle_bookings(event, method, params, schema, headers):
 
 
 def handle_public_slots(event, method, params, schema, headers):
+    """
+    Возвращает рабочие интервалы мастера (master_slots со статусом 'available')
+    вместе со списком активных бронирований внутри них.
+    Свободные «окна» вычисляются на фронте: интервал минус брони минус буфер.
+    """
     if method != 'GET':
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'GET only'})}
 
     master_id = params.get('master_id', '1')
     date_from = params.get('date_from')
-    service_id = params.get('service_id')
 
     if not date_from:
         date_from = datetime.now().strftime('%Y-%m-%d')
@@ -224,31 +228,50 @@ def handle_public_slots(event, method, params, schema, headers):
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    query = f"""
+    # Рабочие интервалы (слоты со статусом 'available' или 'booked' — оба идут под нарезку)
+    cur.execute(f"""
         SELECT s.id, s.master_id, s.service_id, s.datetime_start, s.datetime_end,
                s.max_clients, s.booked_count, s.status,
                ms.name as service_name, ms.duration_minutes, ms.price as service_price, ms.description as service_description
         FROM {schema}.master_slots s
         LEFT JOIN {schema}.master_services ms ON s.service_id = ms.id
         WHERE s.master_id = {int(master_id)}
-          AND s.status = 'available'
+          AND s.status IN ('available', 'booked')
           AND s.datetime_start >= '{date_from}'
           AND s.datetime_start <= '{date_from}'::date + interval '30 days'
-          AND s.booked_count < s.max_clients
-    """
-    # Если указан service_id — берём слоты этой услуги ИЛИ универсальные (без услуги)
-    if service_id:
-        query += f" AND (s.service_id = {int(service_id)} OR s.service_id IS NULL)"
-    query += " ORDER BY s.datetime_start"
+        ORDER BY s.datetime_start
+    """)
+    slots = cur.fetchall()
 
-    cur.execute(query)
-    rows = cur.fetchall()
+    # Активные брони мастера в том же диапазоне
+    cur.execute(f"""
+        SELECT id, slot_id, datetime_start, datetime_end, status
+        FROM {schema}.master_bookings
+        WHERE master_id = {int(master_id)}
+          AND status IN ('pending', 'confirmed')
+          AND datetime_start >= '{date_from}'
+          AND datetime_start <= '{date_from}'::date + interval '30 days'
+    """)
+    bookings = cur.fetchall()
     conn.close()
 
-    return {'statusCode': 200, 'headers': headers, 'body': json.dumps(rows, default=str)}
+    return {
+        'statusCode': 200,
+        'headers': headers,
+        'body': json.dumps({
+            'slots': slots,
+            'bookings': bookings,
+        }, default=str)
+    }
 
 
 def handle_public_book(event, method, params, schema, headers):
+    """
+    Бронирование в новой модели «вычисление на лету»:
+    - master_slots = рабочие интервалы, НЕ режутся
+    - master_bookings = собственно брони, лежат внутри интервалов
+    - Доступность проверяется по пересечениям с активными бронями
+    """
     if method != 'POST':
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'POST only'})}
 
@@ -259,7 +282,6 @@ def handle_public_book(event, method, params, schema, headers):
     client_email = (body.get('client_email') or '').replace("'", "''")
     comment = (body.get('comment') or '').replace("'", "''")
 
-    # Опционально: услуга и желаемое время (для универсальных окон)
     req_service_id = body.get('service_id')
     desired_start = body.get('desired_start')
     desired_end = body.get('desired_end')
@@ -267,30 +289,28 @@ def handle_public_book(event, method, params, schema, headers):
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+    # Лочим рабочий интервал
     cur.execute(f"""
         SELECT s.*, ms.price as service_price, ms.name as service_name, ms.duration_minutes as svc_duration
         FROM {schema}.master_slots s
         LEFT JOIN {schema}.master_services ms ON s.service_id = ms.id
         WHERE s.id = {int(slot_id)}
-          AND s.status = 'available'
-          AND s.booked_count < s.max_clients
+          AND s.status IN ('available', 'booked')
         FOR UPDATE OF s
     """)
     slot = cur.fetchone()
     if not slot:
         conn.close()
-        return {'statusCode': 409, 'headers': headers, 'body': json.dumps({'error': 'Слот уже недоступен'})}
+        return {'statusCode': 409, 'headers': headers, 'body': json.dumps({'error': 'Интервал недоступен'})}
 
     master_id = slot['master_id']
-
-    # Определяем услугу и финальное время сеанса
     booking_service_id = slot['service_id']
     booking_service_name = slot.get('service_name', '')
     booking_price = float(slot.get('service_price') or 0)
     dt_start = slot['datetime_start']
     dt_end = slot['datetime_end']
 
-    # Если слот без услуги и клиент выбрал услугу — берём её
+    # Если интервал универсальный (без услуги) и клиент выбрал услугу — берём её данные
     if not booking_service_id and req_service_id:
         cur.execute(f"""
             SELECT id, name, price, duration_minutes
@@ -305,28 +325,23 @@ def handle_public_book(event, method, params, schema, headers):
         booking_service_name = svc['name']
         booking_price = float(svc['price'] or 0)
 
-        # Если клиент указал желаемое время — проверяем что оно внутри окна
         if desired_start and desired_end:
             try:
                 ds = datetime.fromisoformat(str(desired_start).replace('Z', ''))
                 de = datetime.fromisoformat(str(desired_end).replace('Z', ''))
                 slot_s = slot['datetime_start']
                 slot_e = slot['datetime_end']
-                # Нормализуем без tz для сравнения
-                if hasattr(slot_s, 'replace'):
-                    slot_s_naive = slot_s.replace(tzinfo=None) if slot_s.tzinfo else slot_s
-                    slot_e_naive = slot_e.replace(tzinfo=None) if slot_e.tzinfo else slot_e
-                else:
-                    slot_s_naive = slot_s
-                    slot_e_naive = slot_e
+                slot_s_naive = slot_s.replace(tzinfo=None) if hasattr(slot_s, 'tzinfo') and slot_s.tzinfo else slot_s
+                slot_e_naive = slot_e.replace(tzinfo=None) if hasattr(slot_e, 'tzinfo') and slot_e.tzinfo else slot_e
                 if ds < slot_s_naive or de > slot_e_naive or de <= ds:
                     conn.close()
-                    return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Время вне доступного окна'})}
+                    return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Время вне рабочего интервала'})}
                 dt_start = ds
                 dt_end = de
             except (ValueError, TypeError):
                 pass
 
+    # Настройки
     cur.execute(f"""
         SELECT auto_confirm, break_between_slots FROM {schema}.master_calendar_settings WHERE master_id = {int(master_id)}
     """)
@@ -334,6 +349,27 @@ def handle_public_book(event, method, params, schema, headers):
     auto_confirm = settings['auto_confirm'] if settings else False
     buffer_min = int(settings['break_between_slots']) if settings and settings.get('break_between_slots') else 0
     status = 'confirmed' if auto_confirm else 'pending'
+
+    # Проверяем пересечение с активными бронями + буфер
+    from datetime import timedelta
+    dt_start_naive = dt_start.replace(tzinfo=None) if hasattr(dt_start, 'tzinfo') and dt_start.tzinfo else dt_start
+    dt_end_naive = dt_end.replace(tzinfo=None) if hasattr(dt_end, 'tzinfo') and dt_end.tzinfo else dt_end
+
+    # Расширяем диапазон проверки на буфер с обеих сторон
+    check_start = (dt_start_naive - timedelta(minutes=buffer_min)).isoformat()
+    check_end = (dt_end_naive + timedelta(minutes=buffer_min)).isoformat()
+
+    cur.execute(f"""
+        SELECT id FROM {schema}.master_bookings
+        WHERE master_id = {int(master_id)}
+          AND status IN ('pending', 'confirmed')
+          AND datetime_start < '{check_end}'
+          AND datetime_end > '{check_start}'
+        LIMIT 1
+    """)
+    if cur.fetchone():
+        conn.close()
+        return {'statusCode': 409, 'headers': headers, 'body': json.dumps({'error': 'Это время только что заняли. Выберите другое.'})}
 
     svc_val = f"{int(booking_service_id)}" if booking_service_id else "NULL"
     confirmed_at_val = 'CURRENT_TIMESTAMP' if auto_confirm else 'NULL'
@@ -352,57 +388,19 @@ def handle_public_book(event, method, params, schema, headers):
     """)
     booking = cur.fetchone()
 
-    # Если бронируем кусок универсального окна (не весь слот) — расщепляем слот:
-    # - оригинальный слот превращаем в "до" (или удаляем, если совпадает)
-    # - создаём новый слот "после" (если есть остаток)
-    slot_s = slot['datetime_start']
-    slot_e = slot['datetime_end']
-    slot_s_naive = slot_s.replace(tzinfo=None) if hasattr(slot_s, 'tzinfo') and slot_s.tzinfo else slot_s
-    slot_e_naive = slot_e.replace(tzinfo=None) if hasattr(slot_e, 'tzinfo') and slot_e.tzinfo else slot_e
-    dt_start_naive = dt_start.replace(tzinfo=None) if hasattr(dt_start, 'tzinfo') and dt_start.tzinfo else dt_start
-    dt_end_naive = dt_end.replace(tzinfo=None) if hasattr(dt_end, 'tzinfo') and dt_end.tzinfo else dt_end
+    # Обновляем счётчик в слоте, но НЕ режем его — само окно остаётся
+    new_slot_status = slot['status']
+    if slot['max_clients'] <= 1 and (dt_start_naive == (slot['datetime_start'].replace(tzinfo=None) if hasattr(slot['datetime_start'], 'tzinfo') and slot['datetime_start'].tzinfo else slot['datetime_start']) and dt_end_naive == (slot['datetime_end'].replace(tzinfo=None) if hasattr(slot['datetime_end'], 'tzinfo') and slot['datetime_end'].tzinfo else slot['datetime_end'])):
+        # Бронь занимает весь интервал — помечаем как booked для индикации
+        new_slot_status = 'booked'
 
-    is_partial = (dt_start_naive > slot_s_naive) or (dt_end_naive < slot_e_naive)
-
-    if is_partial and slot['max_clients'] == 1:
-        from datetime import timedelta
-        # Сдвиги с учётом буфера: ничего нельзя бронировать в эти зоны
-        tail_start = dt_end_naive + timedelta(minutes=buffer_min) if buffer_min > 0 else dt_end_naive
-
-        # Слот делим: 1) сам слот занимаем точно на dt_start..dt_end и booked
-        cur.execute(f"""
-            UPDATE {schema}.master_slots SET
-                datetime_start = '{dt_start_str}',
-                datetime_end = '{dt_end_str}',
-                booked_count = booked_count + 1,
-                status = 'booked',
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = {int(slot_id)}
-        """)
-        # 2) создаём "до" если есть
-        if dt_start_naive > slot_s_naive:
-            cur.execute(f"""
-                INSERT INTO {schema}.master_slots
-                (master_id, service_id, datetime_start, datetime_end, max_clients, booked_count, status, source)
-                VALUES ({int(master_id)}, NULL, '{slot_s_naive}', '{dt_start_naive}', 1, 0, 'available', 'split')
-            """)
-        # 3) создаём "после" с учётом буфера (если осталось место после буфера)
-        if tail_start < slot_e_naive:
-            cur.execute(f"""
-                INSERT INTO {schema}.master_slots
-                (master_id, service_id, datetime_start, datetime_end, max_clients, booked_count, status, source)
-                VALUES ({int(master_id)}, NULL, '{tail_start}', '{slot_e_naive}', 1, 0, 'available', 'split')
-            """)
-    else:
-        # Полный слот занят (или групповой) — просто увеличиваем счётчик
-        new_status = 'booked' if slot['booked_count'] + 1 >= slot['max_clients'] else 'available'
-        cur.execute(f"""
-            UPDATE {schema}.master_slots SET
-                booked_count = booked_count + 1,
-                status = '{new_status}',
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = {int(slot_id)}
-        """)
+    cur.execute(f"""
+        UPDATE {schema}.master_slots SET
+            booked_count = booked_count + 1,
+            status = '{new_slot_status}',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = {int(slot_id)}
+    """)
 
     conn.commit()
     conn.close()

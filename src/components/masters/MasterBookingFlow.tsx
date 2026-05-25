@@ -26,20 +26,22 @@ function fmtTime(d: Date) {
   return format(d, "HH:mm");
 }
 
-function slotDurationMinutes(slot: MasterSlot): number {
-  const s = parseLocalISO(slot.datetime_start).getTime();
-  const e = parseLocalISO(slot.datetime_end).getTime();
-  return Math.round((e - s) / 60000);
-}
-
 /**
  * Возможный «вариант времени начала» внутри окна доступности.
- * slot — само окно (физический слот в БД), start/end — конкретное время сеанса.
+ * slot — рабочий интервал в БД, start/end — конкретное время сеанса.
  */
 export interface BookingOption {
   slot: MasterSlot;
   start: Date;
   end: Date;
+}
+
+interface ActiveBooking {
+  id: number;
+  slot_id: number;
+  datetime_start: string;
+  datetime_end: string;
+  status: string;
 }
 
 interface MasterBookingFlowProps {
@@ -53,21 +55,16 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [slots, setSlots] = useState<MasterSlot[]>([]);
+  const [bookings, setBookings] = useState<ActiveBooking[]>([]);
   const [bufferMinutes, setBufferMinutes] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // Подгружаем настройки мастера (буфер между сеансами)
   useEffect(() => {
     masterBookingsApi
       .getPublicSettings(masterId)
       .then((s) => setBufferMinutes(s.break_between_slots || 0))
       .catch(() => setBufferMinutes(0));
   }, [masterId]);
-
-  const selectedService = useMemo(
-    () => activeServices.find((s) => s.id === selectedServiceId) ?? null,
-    [activeServices, selectedServiceId]
-  );
 
   const today = startOfToday();
   const days = useMemo(
@@ -77,30 +74,34 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
   );
 
   const loadSlots = useCallback(async () => {
-    if (!selectedServiceId) {
-      setSlots([]);
-      return;
-    }
     setLoading(true);
     try {
       const from = format(today, "yyyy-MM-dd");
-      // Запрашиваем все слоты мастера — фильтр по услуге делаем сами,
-      // чтобы поддержать «универсальные» окна доступности без service_id.
       const data = await masterBookingsApi.getPublicSlots(masterId, from);
-      setSlots(data);
+      setSlots(data.slots || []);
+      setBookings(data.bookings || []);
     } catch {
       setSlots([]);
+      setBookings([]);
     } finally {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [masterId, selectedServiceId]);
+  }, [masterId]);
 
   useEffect(() => {
     loadSlots();
   }, [loadSlots]);
 
-  // Из каждого подходящего «окна» собираем все возможные времена начала услуги
+  const selectedService = useMemo(
+    () => activeServices.find((s) => s.id === selectedServiceId) ?? null,
+    [activeServices, selectedServiceId]
+  );
+
+  /**
+   * Вычисление на лету: для каждого рабочего интервала
+   * считает свободные времена как «интервал минус брони (с буфером) минус прошлое»
+   */
   const options = useMemo<BookingOption[]>(() => {
     if (!selectedService) return [];
     const duration = selectedService.duration_minutes;
@@ -108,39 +109,56 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
     const result: BookingOption[] = [];
 
     for (const slot of slots) {
-      if (slot.status !== "available") continue;
-      if (slot.booked_count >= slot.max_clients) continue;
-
-      // Если слот жёстко привязан к другой услуге — пропускаем
       if (slot.service_id != null && slot.service_id !== selectedService.id) continue;
+      if (slot.max_clients > 1 && slot.booked_count >= slot.max_clients) continue;
 
       const winStart = parseLocalISO(slot.datetime_start);
       const winEnd = parseLocalISO(slot.datetime_end);
-      const winLen = slotDurationMinutes(slot);
 
-      if (winLen < duration) continue;
+      // Занятые промежутки этого интервала, расширенные на буфер
+      const slotBookings = bookings
+        .filter((b) => b.slot_id === slot.id)
+        .map((b) => {
+          const bs = parseLocalISO(b.datetime_start);
+          const be = parseLocalISO(b.datetime_end);
+          return {
+            start: new Date(bs.getTime() - bufferMinutes * 60000),
+            end: new Date(be.getTime() + bufferMinutes * 60000),
+          };
+        })
+        .sort((a, b) => a.start.getTime() - b.start.getTime());
 
-      // Если слот привязан именно к этой услуге — берём его время как есть
-      if (slot.service_id === selectedService.id) {
-        if (winStart <= now) continue;
-        result.push({ slot, start: winStart, end: winEnd });
-        continue;
+      // Свободные подокна = рабочий интервал − брони
+      const freeWindows: Array<{ start: Date; end: Date }> = [];
+      let cursor = new Date(winStart);
+      for (const b of slotBookings) {
+        if (b.start > cursor) {
+          freeWindows.push({ start: new Date(cursor), end: new Date(b.start) });
+        }
+        if (b.end > cursor) cursor = new Date(b.end);
+      }
+      if (cursor < winEnd) {
+        freeWindows.push({ start: new Date(cursor), end: new Date(winEnd) });
       }
 
-      // Универсальное окно: разбиваем на интервалы по длительности услуги + буфер
-      const step = duration + bufferMinutes;
-      let cursor = new Date(winStart);
-      while (cursor.getTime() + duration * 60000 <= winEnd.getTime()) {
-        if (cursor > now) {
-          const end = new Date(cursor.getTime() + duration * 60000);
-          result.push({ slot, start: new Date(cursor), end });
+      // В каждом свободном подокне — все возможные времена начала с шагом duration
+      for (const fw of freeWindows) {
+        const winLen = (fw.end.getTime() - fw.start.getTime()) / 60000;
+        if (winLen < duration) continue;
+
+        let c = new Date(fw.start);
+        while (c.getTime() + duration * 60000 <= fw.end.getTime()) {
+          if (c > now) {
+            const end = new Date(c.getTime() + duration * 60000);
+            result.push({ slot, start: new Date(c), end });
+          }
+          c = new Date(c.getTime() + duration * 60000);
         }
-        cursor = new Date(cursor.getTime() + step * 60000);
       }
     }
 
     return result.sort((a, b) => a.start.getTime() - b.start.getTime());
-  }, [slots, selectedService, bufferMinutes]);
+  }, [slots, bookings, selectedService, bufferMinutes]);
 
   const dayKey = (d: Date) => format(d, "yyyy-MM-dd");
 
@@ -154,7 +172,6 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
     return map;
   }, [options]);
 
-  // Авто-выбор первого дня со свободным временем
   useEffect(() => {
     if (!selectedService) {
       setSelectedDate(null);

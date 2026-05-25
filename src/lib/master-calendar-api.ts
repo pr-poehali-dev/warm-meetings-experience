@@ -284,11 +284,13 @@ export const masterBookingsApi = {
     return fetchApi<BookingStats>(url);
   },
 
-  getPublicSlots: (masterId: number, dateFrom?: string, serviceId?: number) => {
+  getPublicSlots: (masterId: number, dateFrom?: string) => {
     let url = `${BOOKINGS_URL}&sub=public-slots&master_id=${masterId}`;
     if (dateFrom) url += `&date_from=${dateFrom}`;
-    if (serviceId) url += `&service_id=${serviceId}`;
-    return fetchApi<MasterSlot[]>(url);
+    return fetchApi<{
+      slots: MasterSlot[];
+      bookings: Array<{ id: number; slot_id: number; datetime_start: string; datetime_end: string; status: string }>;
+    }>(url);
   },
 
   getPublicSettings: (masterId: number) =>
