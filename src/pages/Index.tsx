@@ -426,7 +426,7 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="relative z-10 px-4 sm:px-6 max-w-6xl mx-auto">
+          <div className="relative z-10 sm:px-6 max-w-6xl mx-auto px-[21px] py-[29px]">
             <div className="flex items-center gap-3 mb-5 flex-wrap">
               <div className="flex items-center gap-2 overflow-x-auto flex-1" style={{ scrollbarWidth: "none" }}>
                 {eventTypes.map((t) => (
