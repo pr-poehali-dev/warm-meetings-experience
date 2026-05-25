@@ -506,8 +506,8 @@ export default function Index() {
                   <div className="flex justify-center mt-8">
                     <Link
                       to="/events"
-                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-all"
-                      style={{ background: "var(--filter-active-bg)", color: "var(--filter-active-text)" }}
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold text-white transition-all hover:brightness-110 hover:scale-105"
+                      style={{ background: "linear-gradient(90deg,#C8834A,#8FA89A)", boxShadow: "0 0 28px rgba(200,131,74,0.3)" }}
                     >
                       Посмотреть все события
                       <Icon name="ArrowRight" size={16} />
@@ -524,8 +524,8 @@ export default function Index() {
                   <div className="flex justify-center mt-8">
                     <Link
                       to="/events"
-                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition-all"
-                      style={{ background: "var(--filter-active-bg)", color: "var(--filter-active-text)" }}
+                      className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold text-white transition-all hover:brightness-110 hover:scale-105"
+                      style={{ background: "linear-gradient(90deg,#C8834A,#8FA89A)", boxShadow: "0 0 28px rgba(200,131,74,0.3)" }}
                     >
                       Посмотреть все события
                       <Icon name="ArrowRight" size={16} />
