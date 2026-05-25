@@ -258,26 +258,57 @@ export default function EventQuestionsSection() {
                     <div className="text-sm leading-relaxed whitespace-pre-wrap">{q.message}</div>
                   </div>
 
-                  {q.answer_text && answeringId !== q.id && (
-                    <div className="rounded-xl border border-green-200 bg-green-50/50 p-3 space-y-1.5">
-                      <div className="text-[11px] text-green-700 font-semibold flex items-center gap-1.5">
-                        <Icon name="CheckCircle2" size={12} />
-                        Ваш ответ
-                        {q.answer_sent_at && (
-                          <span className="text-muted-foreground font-normal">· {formatDate(q.answer_sent_at)}</span>
-                        )}
-                        {q.answer_channel === "site" && (
-                          <span className="text-muted-foreground font-normal">· в кабинет</span>
-                        )}
-                        {q.answer_channel === "email" && (
-                          <span className="text-muted-foreground font-normal">· на email</span>
+                  {q.answer_text && answeringId !== q.id && (() => {
+                    const delivered = q.answer_channel === "site" || q.answer_channel === "email" || q.answer_channel === "telegram";
+                    const wrapCls = delivered
+                      ? "rounded-xl border border-green-200 bg-green-50/50 p-3 space-y-1.5"
+                      : "rounded-xl border border-amber-300 bg-amber-50/60 p-3 space-y-1.5";
+                    const headCls = delivered
+                      ? "text-[11px] text-green-700 font-semibold flex items-center gap-1.5"
+                      : "text-[11px] text-amber-800 font-semibold flex items-center gap-1.5";
+                    const bodyCls = delivered
+                      ? "text-sm leading-relaxed whitespace-pre-wrap text-green-950"
+                      : "text-sm leading-relaxed whitespace-pre-wrap text-amber-950";
+                    return (
+                      <div className={wrapCls}>
+                        <div className={headCls}>
+                          <Icon name={delivered ? "CheckCircle2" : "AlertTriangle"} size={12} />
+                          Ваш ответ
+                          {q.answer_sent_at && (
+                            <span className="text-muted-foreground font-normal">· {formatDate(q.answer_sent_at)}</span>
+                          )}
+                          {q.answer_channel === "site" && (
+                            <span className="text-muted-foreground font-normal">· доставлен в кабинет гостю</span>
+                          )}
+                          {q.answer_channel === "email" && (
+                            <span className="text-muted-foreground font-normal">· отправлен на email</span>
+                          )}
+                          {q.answer_channel === "telegram" && (
+                            <span className="text-muted-foreground font-normal">· отправлен в Telegram</span>
+                          )}
+                          {!delivered && (
+                            <span className="font-normal">
+                              · не доставлен{q.contact_type === "phone" ? " (SMS-канал не подключён)" : ""}
+                            </span>
+                          )}
+                        </div>
+                        <div className={bodyCls}>
+                          {q.answer_text}
+                        </div>
+                        {!delivered && (
+                          <div className="text-[11px] text-amber-800 bg-amber-100/70 rounded-lg px-2 py-1.5 flex items-start gap-1.5">
+                            <Icon name="Info" size={12} className="mt-0.5 shrink-0" />
+                            <span>
+                              Ответ сохранён, но не отправлен гостю.
+                              {q.contact_type === "phone" && " SMS-канал не подключён — свяжитесь с гостем по телефону."}
+                              {q.contact_type === "telegram" && " Свяжитесь с гостем напрямую в Telegram."}
+                              {q.contact_type === "email" && " Свяжитесь с гостем по email."}
+                            </span>
+                          </div>
                         )}
                       </div>
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap text-green-950">
-                        {q.answer_text}
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {answeringId === q.id ? (
                     <div className="rounded-xl border border-orange-200 bg-orange-50/40 p-3 space-y-2">
