@@ -334,7 +334,7 @@ export function MasterScheduleSection({ masterId }: { masterId: number }) {
           href="/master-schedule-guide"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-base font-semibold"
         >
           <Icon name="BookOpen" size={13} />
           Инструкция
