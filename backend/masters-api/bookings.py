@@ -5,7 +5,7 @@ from shared import CORS_HEADERS, get_conn, get_schema
 
 
 def handle_bookings_root(event, method, params, schema, headers):
-    """Маршрутизация подресурсов записей: bookings/public-slots/public-book/stats/reviews"""
+    """Маршрутизация подресурсов записей: bookings/public-slots/public-book/public-settings/stats/reviews"""
     sub = params.get('sub') or params.get('subresource') or 'bookings'
     if sub == 'bookings':
         return handle_bookings(event, method, params, schema, headers)
@@ -13,9 +13,39 @@ def handle_bookings_root(event, method, params, schema, headers):
         return handle_public_slots(event, method, params, schema, headers)
     elif sub == 'public-book':
         return handle_public_book(event, method, params, schema, headers)
+    elif sub == 'public-settings':
+        return handle_public_settings(event, method, params, schema, headers)
     elif sub == 'stats':
         return handle_stats(event, method, params, schema, headers)
     return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown bookings sub'})}
+
+
+def handle_public_settings(event, method, params, schema, headers):
+    """Публичные настройки мастера для виджета бронирования (буфер, авто-подтверждение)"""
+    if method != 'GET':
+        return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'GET only'})}
+    master_id = params.get('master_id')
+    if not master_id:
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'master_id required'})}
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(f"""
+        SELECT break_between_slots, prep_time
+        FROM {schema}.master_calendar_settings
+        WHERE master_id = {int(master_id)}
+    """)
+    row = cur.fetchone()
+    conn.close()
+
+    return {
+        'statusCode': 200,
+        'headers': headers,
+        'body': json.dumps({
+            'break_between_slots': (row.get('break_between_slots') if row else 0) or 0,
+            'prep_time': (row.get('prep_time') if row else 0) or 0,
+        })
+    }
 
 
 def handle_bookings(event, method, params, schema, headers):
@@ -298,10 +328,11 @@ def handle_public_book(event, method, params, schema, headers):
                 pass
 
     cur.execute(f"""
-        SELECT auto_confirm FROM {schema}.master_calendar_settings WHERE master_id = {int(master_id)}
+        SELECT auto_confirm, break_between_slots FROM {schema}.master_calendar_settings WHERE master_id = {int(master_id)}
     """)
     settings = cur.fetchone()
     auto_confirm = settings['auto_confirm'] if settings else False
+    buffer_min = int(settings['break_between_slots']) if settings and settings.get('break_between_slots') else 0
     status = 'confirmed' if auto_confirm else 'pending'
 
     svc_val = f"{int(booking_service_id)}" if booking_service_id else "NULL"
@@ -334,6 +365,10 @@ def handle_public_book(event, method, params, schema, headers):
     is_partial = (dt_start_naive > slot_s_naive) or (dt_end_naive < slot_e_naive)
 
     if is_partial and slot['max_clients'] == 1:
+        from datetime import timedelta
+        # Сдвиги с учётом буфера: ничего нельзя бронировать в эти зоны
+        tail_start = dt_end_naive + timedelta(minutes=buffer_min) if buffer_min > 0 else dt_end_naive
+
         # Слот делим: 1) сам слот занимаем точно на dt_start..dt_end и booked
         cur.execute(f"""
             UPDATE {schema}.master_slots SET
@@ -351,12 +386,12 @@ def handle_public_book(event, method, params, schema, headers):
                 (master_id, service_id, datetime_start, datetime_end, max_clients, booked_count, status, source)
                 VALUES ({int(master_id)}, NULL, '{slot_s_naive}', '{dt_start_naive}', 1, 0, 'available', 'split')
             """)
-        # 3) создаём "после" если есть
-        if dt_end_naive < slot_e_naive:
+        # 3) создаём "после" с учётом буфера (если осталось место после буфера)
+        if tail_start < slot_e_naive:
             cur.execute(f"""
                 INSERT INTO {schema}.master_slots
                 (master_id, service_id, datetime_start, datetime_end, max_clients, booked_count, status, source)
-                VALUES ({int(master_id)}, NULL, '{dt_end_naive}', '{slot_e_naive}', 1, 0, 'available', 'split')
+                VALUES ({int(master_id)}, NULL, '{tail_start}', '{slot_e_naive}', 1, 0, 'available', 'split')
             """)
     else:
         # Полный слот занят (или групповой) — просто увеличиваем счётчик

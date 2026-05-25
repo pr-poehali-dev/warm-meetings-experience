@@ -53,7 +53,16 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [slots, setSlots] = useState<MasterSlot[]>([]);
+  const [bufferMinutes, setBufferMinutes] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  // Подгружаем настройки мастера (буфер между сеансами)
+  useEffect(() => {
+    masterBookingsApi
+      .getPublicSettings(masterId)
+      .then((s) => setBufferMinutes(s.break_between_slots || 0))
+      .catch(() => setBufferMinutes(0));
+  }, [masterId]);
 
   const selectedService = useMemo(
     () => activeServices.find((s) => s.id === selectedServiceId) ?? null,
@@ -118,19 +127,20 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
         continue;
       }
 
-      // Универсальное окно: разбиваем на интервалы по длительности услуги
+      // Универсальное окно: разбиваем на интервалы по длительности услуги + буфер
+      const step = duration + bufferMinutes;
       let cursor = new Date(winStart);
       while (cursor.getTime() + duration * 60000 <= winEnd.getTime()) {
         if (cursor > now) {
           const end = new Date(cursor.getTime() + duration * 60000);
           result.push({ slot, start: new Date(cursor), end });
         }
-        cursor = new Date(cursor.getTime() + duration * 60000);
+        cursor = new Date(cursor.getTime() + step * 60000);
       }
     }
 
     return result.sort((a, b) => a.start.getTime() - b.start.getTime());
-  }, [slots, selectedService]);
+  }, [slots, selectedService, bufferMinutes]);
 
   const dayKey = (d: Date) => format(d, "yyyy-MM-dd");
 

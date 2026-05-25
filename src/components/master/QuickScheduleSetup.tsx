@@ -48,6 +48,8 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
   const [startTime, setStartTime] = useState("10:00");
   const [endTime, setEndTime] = useState("19:00");
   const [weeks, setWeeks] = useState(4);
+  const [bufferMinutes, setBufferMinutes] = useState(0);
+  const [savingBuffer, setSavingBuffer] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   // Превью существующих слотов
@@ -76,10 +78,37 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
     }
   }, [masterId]);
 
+  const loadSettings = useCallback(async () => {
+    try {
+      const s = await masterCalendarApi.getSettings(masterId);
+      if (s && typeof s.break_between_slots === "number") {
+        setBufferMinutes(s.break_between_slots);
+      }
+    } catch {
+      // настройки могут быть не созданы — это ок
+    }
+  }, [masterId]);
+
   useEffect(() => {
     loadServices();
     loadExisting();
-  }, [loadServices, loadExisting]);
+    loadSettings();
+  }, [loadServices, loadExisting, loadSettings]);
+
+  const handleSaveBuffer = async (value: number) => {
+    setSavingBuffer(true);
+    try {
+      await masterCalendarApi.saveSettings({
+        master_id: masterId,
+        break_between_slots: value,
+      });
+      toast.success("Буфер сохранён");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось сохранить");
+    } finally {
+      setSavingBuffer(false);
+    }
+  };
 
   // Создание услуги
   const handleAddService = async () => {
@@ -383,6 +412,51 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
               <Label className="text-xs mb-1 block">Конец дня</Label>
               <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
             </div>
+          </div>
+
+          {/* Буфер между сеансами */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <Label className="text-xs">Буфер между сеансами, мин</Label>
+              {savingBuffer && (
+                <Icon name="Loader2" size={12} className="animate-spin text-muted-foreground" />
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[0, 5, 10, 15, 20, 30, 45, 60].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => {
+                    setBufferMinutes(m);
+                    handleSaveBuffer(m);
+                  }}
+                  disabled={savingBuffer}
+                  className={`min-w-[48px] px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    bufferMinutes === m
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background border-border hover:bg-muted"
+                  }`}
+                >
+                  {m === 0 ? "Без паузы" : `${m} мин`}
+                </button>
+              ))}
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  min={0}
+                  max={240}
+                  value={bufferMinutes}
+                  onChange={(e) => setBufferMinutes(Math.max(0, Number(e.target.value) || 0))}
+                  onBlur={() => handleSaveBuffer(bufferMinutes)}
+                  className="w-20 h-8 text-xs"
+                />
+                <span className="text-xs text-muted-foreground">мин</span>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1.5">
+              Время после каждой записи — отдых, уборка, подготовка. Гости не смогут забронировать его.
+            </p>
           </div>
 
           {/* Количество недель */}

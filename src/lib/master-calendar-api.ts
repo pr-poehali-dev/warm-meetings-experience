@@ -291,6 +291,11 @@ export const masterBookingsApi = {
     return fetchApi<MasterSlot[]>(url);
   },
 
+  getPublicSettings: (masterId: number) =>
+    fetchApi<{ break_between_slots: number; prep_time: number }>(
+      `${BOOKINGS_URL}&sub=public-settings&master_id=${masterId}`
+    ),
+
   publicBook: (data: {
     slot_id: number;
     service_id?: number;
