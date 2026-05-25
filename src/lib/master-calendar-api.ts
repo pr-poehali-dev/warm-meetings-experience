@@ -291,7 +291,16 @@ export const masterBookingsApi = {
     return fetchApi<MasterSlot[]>(url);
   },
 
-  publicBook: (data: { slot_id: number; client_name: string; client_phone: string; client_email?: string; comment?: string }) =>
+  publicBook: (data: {
+    slot_id: number;
+    service_id?: number;
+    desired_start?: string;
+    desired_end?: string;
+    client_name: string;
+    client_phone: string;
+    client_email?: string;
+    comment?: string;
+  }) =>
     fetchApi(`${BOOKINGS_URL}&sub=public-book`, {
       method: "POST",
       body: JSON.stringify(data),

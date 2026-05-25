@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
-import { ru } from "date-fns/locale";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +47,6 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
   const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5]));
   const [startTime, setStartTime] = useState("10:00");
   const [endTime, setEndTime] = useState("19:00");
-  const [serviceForSlots, setServiceForSlots] = useState<number | null>(null);
   const [weeks, setWeeks] = useState(4);
   const [generating, setGenerating] = useState(false);
 
@@ -60,15 +58,11 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
     try {
       const svcs = await masterCalendarApi.getServices(masterId);
       setServices(svcs);
-      if (svcs.length && serviceForSlots === null) {
-        setServiceForSlots(svcs[0].id ?? null);
-      }
     } catch {
       toast.error("Не удалось загрузить услуги");
     } finally {
       setLoadingServices(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [masterId]);
 
   const loadExisting = useCallback(async () => {
@@ -108,7 +102,6 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
         is_active: true,
       });
       setServices((prev) => [...prev, created]);
-      if (serviceForSlots === null) setServiceForSlots(created.id ?? null);
       setNewSvc({ name: "", duration_minutes: 60, price: 0, max_clients: 1 });
       setNewSvcOpen(false);
       toast.success("Услуга добавлена");
@@ -124,7 +117,6 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
     try {
       await masterCalendarApi.deleteService(id);
       setServices((prev) => prev.filter((s) => s.id !== id));
-      if (serviceForSlots === id) setServiceForSlots(services.find((s) => s.id !== id)?.id ?? null);
       toast.success("Услуга удалена");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Не удалось удалить");
@@ -140,33 +132,21 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
     });
   };
 
-  // Подсчёт сколько слотов будет создано
-  const slotsPreview = (() => {
-    if (!serviceForSlots || selectedDays.size === 0) return 0;
-    const svc = services.find((s) => s.id === serviceForSlots);
-    if (!svc) return 0;
+  // Подсчёт сколько окон будет создано
+  const windowsCount = (() => {
+    if (selectedDays.size === 0) return 0;
     const [sh, sm] = startTime.split(":").map(Number);
     const [eh, em] = endTime.split(":").map(Number);
-    const startMin = sh * 60 + sm;
-    const endMin = eh * 60 + em;
-    if (endMin <= startMin) return 0;
-    const totalMinutes = endMin - startMin;
-    const slotsPerDay = Math.floor(totalMinutes / svc.duration_minutes);
-    return slotsPerDay * selectedDays.size * weeks;
+    if (eh * 60 + em <= sh * 60 + sm) return 0;
+    return selectedDays.size * weeks;
   })();
 
-  // Генерация слотов
+  // Генерация окон доступности
   const handleGenerate = async () => {
-    if (!serviceForSlots) {
-      toast.error("Выберите услугу");
-      return;
-    }
     if (selectedDays.size === 0) {
       toast.error("Выберите хотя бы один день недели");
       return;
     }
-    const svc = services.find((s) => s.id === serviceForSlots);
-    if (!svc) return;
 
     const [sh, sm] = startTime.split(":").map(Number);
     const [eh, em] = endTime.split(":").map(Number);
@@ -177,7 +157,7 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
       return;
     }
 
-    if (!confirm(`Создать ${slotsPreview} слотов на ${weeks} недель вперёд?`)) return;
+    if (!confirm(`Создать ${windowsCount} окон доступности на ${weeks} нед.?`)) return;
 
     setGenerating(true);
     try {
@@ -186,53 +166,47 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
       let failed = 0;
       const promises: Promise<unknown>[] = [];
 
+      const toIsoLocal = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
+
       for (let w = 0; w < weeks; w++) {
         for (const dayIdx of selectedDays) {
-          // dayIdx: 0=вс, 1=пн ... 6=сб; добавляем смещение от понедельника
           const offset = dayIdx === 0 ? 6 : dayIdx - 1;
           const date = addDays(monday, w * 7 + offset);
-          // Пропускаем прошлые даты
           if (date < new Date(new Date().toDateString())) continue;
 
-          let curMin = startMin;
-          while (curMin + svc.duration_minutes <= endMin) {
-            const startDate = new Date(date);
-            startDate.setHours(Math.floor(curMin / 60), curMin % 60, 0, 0);
-            const endDate = new Date(date);
-            const endMinForSlot = curMin + svc.duration_minutes;
-            endDate.setHours(Math.floor(endMinForSlot / 60), endMinForSlot % 60, 0, 0);
+          const startDate = new Date(date);
+          startDate.setHours(Math.floor(startMin / 60), startMin % 60, 0, 0);
+          const endDate = new Date(date);
+          endDate.setHours(Math.floor(endMin / 60), endMin % 60, 0, 0);
 
-            const toIsoLocal = (d: Date) =>
-              `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
-
-            promises.push(
-              masterCalendarApi
-                .createSlot({
-                  master_id: masterId,
-                  service_id: svc.id,
-                  datetime_start: toIsoLocal(startDate),
-                  datetime_end: toIsoLocal(endDate),
-                  max_clients: svc.max_clients,
-                })
-                .then(() => {
-                  created++;
-                })
-                .catch(() => {
-                  failed++;
-                })
-            );
-
-            curMin += svc.duration_minutes;
-          }
+          // Один универсальный слот = окно доступности на весь день
+          // service_id = null → подходит под любую активную услугу
+          promises.push(
+            masterCalendarApi
+              .createSlot({
+                master_id: masterId,
+                service_id: null,
+                datetime_start: toIsoLocal(startDate),
+                datetime_end: toIsoLocal(endDate),
+                max_clients: 1,
+              })
+              .then(() => {
+                created++;
+              })
+              .catch(() => {
+                failed++;
+              })
+          );
         }
       }
 
       await Promise.all(promises);
       if (created > 0) {
-        toast.success(`Создано ${created} слотов${failed ? ` (пропущено ${failed})` : ""}`);
+        toast.success(`Создано ${created} окон${failed ? ` (пропущено ${failed})` : ""}`);
         loadExisting();
       } else {
-        toast.error("Не удалось создать слоты — возможно они уже есть");
+        toast.error("Не удалось создать окна — возможно они уже есть");
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Ошибка генерации");
@@ -251,9 +225,9 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
         <div className="text-sm">
           <div className="font-semibold mb-0.5">Быстрая настройка</div>
           <div className="text-muted-foreground">
-            Заполни услуги и рабочие дни — за минуту получишь готовое расписание на месяц вперёд.
+            Заполни услуги и рабочие часы — гости смогут выбрать любую услугу и удобное время в твоих окнах доступности.
             {existingCount !== null && existingCount > 0 && (
-              <span className="text-foreground"> Сейчас уже создано {existingCount} слотов на ближайшие 30 дней.</span>
+              <span className="text-foreground"> Сейчас уже создано {existingCount} окон на ближайшие 30 дней.</span>
             )}
           </div>
         </div>
@@ -370,32 +344,13 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
       <section>
         <div className="flex items-center gap-2 mb-3">
           <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground inline-flex items-center justify-center text-xs font-bold">2</span>
-          <h3 className="text-base font-semibold">Рабочие дни и часы</h3>
+          <h3 className="text-base font-semibold">Рабочие часы</h3>
         </div>
 
         <div className="bg-card border rounded-2xl p-4 space-y-4">
-          {/* Выбор услуги для слотов */}
-          {services.filter((s) => s.is_active).length > 0 && (
-            <div>
-              <Label className="text-xs mb-2 block">Под какую услугу создаём слоты</Label>
-              <div className="flex flex-wrap gap-2">
-                {services.filter((s) => s.is_active).map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setServiceForSlots(s.id ?? null)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                      serviceForSlots === s.id
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background border-border hover:bg-muted"
-                    }`}
-                  >
-                    {s.name} · {fmtDuration(s.duration_minutes)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          <p className="text-xs text-muted-foreground">
+            Укажи дни и часы, когда ты доступен. Гость сам выберет услугу и удобное время начала внутри этого окна — система автоматически подберёт свободные интервалы под длительность услуги.
+          </p>
 
           {/* Дни недели */}
           <div>
@@ -454,17 +409,17 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
           {/* Превью + кнопка */}
           <div className="border-t pt-3 flex items-center justify-between gap-3 flex-wrap">
             <div className="text-sm">
-              {slotsPreview > 0 ? (
+              {windowsCount > 0 ? (
                 <span>
-                  Будет создано <span className="font-bold text-primary">{slotsPreview}</span> слотов
+                  Будет создано <span className="font-bold text-primary">{windowsCount}</span> рабочих окон
                 </span>
               ) : (
-                <span className="text-muted-foreground">Выбери услугу и дни</span>
+                <span className="text-muted-foreground">Выбери дни и часы</span>
               )}
             </div>
             <Button
               onClick={handleGenerate}
-              disabled={generating || slotsPreview === 0}
+              disabled={generating || windowsCount === 0}
               className="gap-1.5"
             >
               {generating ? (
@@ -483,8 +438,7 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
         </div>
 
         <p className="text-[11px] text-muted-foreground mt-2">
-          Уже занятые периоды и существующие слоты не будут перезаписаны — система пропустит их автоматически.
-          После генерации можно подправить отдельные дни во вкладке «Календарь».
+          Когда гость бронирует время, его кусочек окна занимается, а остаток разбивается на свободные интервалы — другие гости смогут забронировать оставшееся время.
         </p>
       </section>
 
@@ -496,7 +450,7 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
             Что увидит гость
           </div>
           <div className="text-emerald-800/80 dark:text-emerald-300/80 text-xs mt-0.5">
-            Гости увидят твои услуги и свободные слоты на странице мастера. Чтобы посмотреть как это выглядит, открой свою публичную страницу.
+            Гости увидят твои услуги и доступное время на странице мастера. Чтобы посмотреть как это выглядит, открой свою публичную страницу.
           </div>
         </div>
       </div>

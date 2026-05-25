@@ -195,7 +195,8 @@ def handle_public_slots(event, method, params, schema, headers):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     query = f"""
-        SELECT s.id, s.datetime_start, s.datetime_end, s.max_clients, s.booked_count, s.status,
+        SELECT s.id, s.master_id, s.service_id, s.datetime_start, s.datetime_end,
+               s.max_clients, s.booked_count, s.status,
                ms.name as service_name, ms.duration_minutes, ms.price as service_price, ms.description as service_description
         FROM {schema}.master_slots s
         LEFT JOIN {schema}.master_services ms ON s.service_id = ms.id
@@ -205,8 +206,9 @@ def handle_public_slots(event, method, params, schema, headers):
           AND s.datetime_start <= '{date_from}'::date + interval '30 days'
           AND s.booked_count < s.max_clients
     """
+    # Если указан service_id — берём слоты этой услуги ИЛИ универсальные (без услуги)
     if service_id:
-        query += f" AND s.service_id = {int(service_id)}"
+        query += f" AND (s.service_id = {int(service_id)} OR s.service_id IS NULL)"
     query += " ORDER BY s.datetime_start"
 
     cur.execute(query)
@@ -227,11 +229,16 @@ def handle_public_book(event, method, params, schema, headers):
     client_email = (body.get('client_email') or '').replace("'", "''")
     comment = (body.get('comment') or '').replace("'", "''")
 
+    # Опционально: услуга и желаемое время (для универсальных окон)
+    req_service_id = body.get('service_id')
+    desired_start = body.get('desired_start')
+    desired_end = body.get('desired_end')
+
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     cur.execute(f"""
-        SELECT s.*, ms.price as service_price, ms.name as service_name
+        SELECT s.*, ms.price as service_price, ms.name as service_name, ms.duration_minutes as svc_duration
         FROM {schema}.master_slots s
         LEFT JOIN {schema}.master_services ms ON s.service_id = ms.id
         WHERE s.id = {int(slot_id)}
@@ -244,8 +251,51 @@ def handle_public_book(event, method, params, schema, headers):
         conn.close()
         return {'statusCode': 409, 'headers': headers, 'body': json.dumps({'error': 'Слот уже недоступен'})}
 
-    price = float(slot.get('service_price') or 0)
     master_id = slot['master_id']
+
+    # Определяем услугу и финальное время сеанса
+    booking_service_id = slot['service_id']
+    booking_service_name = slot.get('service_name', '')
+    booking_price = float(slot.get('service_price') or 0)
+    dt_start = slot['datetime_start']
+    dt_end = slot['datetime_end']
+
+    # Если слот без услуги и клиент выбрал услугу — берём её
+    if not booking_service_id and req_service_id:
+        cur.execute(f"""
+            SELECT id, name, price, duration_minutes
+            FROM {schema}.master_services
+            WHERE id = {int(req_service_id)} AND master_id = {int(master_id)} AND is_active = true
+        """)
+        svc = cur.fetchone()
+        if not svc:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Услуга не найдена'})}
+        booking_service_id = svc['id']
+        booking_service_name = svc['name']
+        booking_price = float(svc['price'] or 0)
+
+        # Если клиент указал желаемое время — проверяем что оно внутри окна
+        if desired_start and desired_end:
+            try:
+                ds = datetime.fromisoformat(str(desired_start).replace('Z', ''))
+                de = datetime.fromisoformat(str(desired_end).replace('Z', ''))
+                slot_s = slot['datetime_start']
+                slot_e = slot['datetime_end']
+                # Нормализуем без tz для сравнения
+                if hasattr(slot_s, 'replace'):
+                    slot_s_naive = slot_s.replace(tzinfo=None) if slot_s.tzinfo else slot_s
+                    slot_e_naive = slot_e.replace(tzinfo=None) if slot_e.tzinfo else slot_e
+                else:
+                    slot_s_naive = slot_s
+                    slot_e_naive = slot_e
+                if ds < slot_s_naive or de > slot_e_naive or de <= ds:
+                    conn.close()
+                    return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Время вне доступного окна'})}
+                dt_start = ds
+                dt_end = de
+            except (ValueError, TypeError):
+                pass
 
     cur.execute(f"""
         SELECT auto_confirm FROM {schema}.master_calendar_settings WHERE master_id = {int(master_id)}
@@ -254,10 +304,10 @@ def handle_public_book(event, method, params, schema, headers):
     auto_confirm = settings['auto_confirm'] if settings else False
     status = 'confirmed' if auto_confirm else 'pending'
 
-    svc_val = f"{int(slot['service_id'])}" if slot['service_id'] else "NULL"
+    svc_val = f"{int(booking_service_id)}" if booking_service_id else "NULL"
     confirmed_at_val = 'CURRENT_TIMESTAMP' if auto_confirm else 'NULL'
-    dt_start = str(slot['datetime_start'])
-    dt_end = str(slot['datetime_end'])
+    dt_start_str = str(dt_start)
+    dt_end_str = str(dt_end)
 
     cur.execute(f"""
         INSERT INTO {schema}.master_bookings
@@ -265,20 +315,59 @@ def handle_public_book(event, method, params, schema, headers):
          datetime_start, datetime_end, price, status, source, comment,
          confirmed_at)
         VALUES ({int(slot_id)}, {int(master_id)}, '{client_name}', '{client_phone}', '{client_email}',
-         {svc_val}, '{dt_start}', '{dt_end}', {price}, '{status}', 'public', '{comment}',
+         {svc_val}, '{dt_start_str}', '{dt_end_str}', {booking_price}, '{status}', 'public', '{comment}',
          {confirmed_at_val})
         RETURNING *
     """)
     booking = cur.fetchone()
 
-    new_status = 'booked' if slot['booked_count'] + 1 >= slot['max_clients'] else 'pending'
-    cur.execute(f"""
-        UPDATE {schema}.master_slots SET
-            booked_count = booked_count + 1,
-            status = '{new_status}',
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = {int(slot_id)}
-    """)
+    # Если бронируем кусок универсального окна (не весь слот) — расщепляем слот:
+    # - оригинальный слот превращаем в "до" (или удаляем, если совпадает)
+    # - создаём новый слот "после" (если есть остаток)
+    slot_s = slot['datetime_start']
+    slot_e = slot['datetime_end']
+    slot_s_naive = slot_s.replace(tzinfo=None) if hasattr(slot_s, 'tzinfo') and slot_s.tzinfo else slot_s
+    slot_e_naive = slot_e.replace(tzinfo=None) if hasattr(slot_e, 'tzinfo') and slot_e.tzinfo else slot_e
+    dt_start_naive = dt_start.replace(tzinfo=None) if hasattr(dt_start, 'tzinfo') and dt_start.tzinfo else dt_start
+    dt_end_naive = dt_end.replace(tzinfo=None) if hasattr(dt_end, 'tzinfo') and dt_end.tzinfo else dt_end
+
+    is_partial = (dt_start_naive > slot_s_naive) or (dt_end_naive < slot_e_naive)
+
+    if is_partial and slot['max_clients'] == 1:
+        # Слот делим: 1) сам слот занимаем точно на dt_start..dt_end и booked
+        cur.execute(f"""
+            UPDATE {schema}.master_slots SET
+                datetime_start = '{dt_start_str}',
+                datetime_end = '{dt_end_str}',
+                booked_count = booked_count + 1,
+                status = 'booked',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = {int(slot_id)}
+        """)
+        # 2) создаём "до" если есть
+        if dt_start_naive > slot_s_naive:
+            cur.execute(f"""
+                INSERT INTO {schema}.master_slots
+                (master_id, service_id, datetime_start, datetime_end, max_clients, booked_count, status, source)
+                VALUES ({int(master_id)}, NULL, '{slot_s_naive}', '{dt_start_naive}', 1, 0, 'available', 'split')
+            """)
+        # 3) создаём "после" если есть
+        if dt_end_naive < slot_e_naive:
+            cur.execute(f"""
+                INSERT INTO {schema}.master_slots
+                (master_id, service_id, datetime_start, datetime_end, max_clients, booked_count, status, source)
+                VALUES ({int(master_id)}, NULL, '{dt_end_naive}', '{slot_e_naive}', 1, 0, 'available', 'split')
+            """)
+    else:
+        # Полный слот занят (или групповой) — просто увеличиваем счётчик
+        new_status = 'booked' if slot['booked_count'] + 1 >= slot['max_clients'] else 'available'
+        cur.execute(f"""
+            UPDATE {schema}.master_slots SET
+                booked_count = booked_count + 1,
+                status = '{new_status}',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = {int(slot_id)}
+        """)
 
     conn.commit()
     conn.close()
@@ -289,10 +378,10 @@ def handle_public_book(event, method, params, schema, headers):
         'body': json.dumps({
             'booking_id': booking['id'],
             'status': status,
-            'service_name': slot.get('service_name', ''),
-            'datetime_start': str(slot['datetime_start']),
-            'datetime_end': str(slot['datetime_end']),
-            'price': price
+            'service_name': booking_service_name,
+            'datetime_start': dt_start_str,
+            'datetime_end': dt_end_str,
+            'price': booking_price
         })
     }
 

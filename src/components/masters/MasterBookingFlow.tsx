@@ -22,8 +22,8 @@ function parseLocalISO(iso: string): Date {
   return new Date(clean);
 }
 
-function fmtTime(iso: string) {
-  return format(parseLocalISO(iso), "HH:mm");
+function fmtTime(d: Date) {
+  return format(d, "HH:mm");
 }
 
 function slotDurationMinutes(slot: MasterSlot): number {
@@ -32,10 +32,20 @@ function slotDurationMinutes(slot: MasterSlot): number {
   return Math.round((e - s) / 60000);
 }
 
+/**
+ * Возможный «вариант времени начала» внутри окна доступности.
+ * slot — само окно (физический слот в БД), start/end — конкретное время сеанса.
+ */
+export interface BookingOption {
+  slot: MasterSlot;
+  start: Date;
+  end: Date;
+}
+
 interface MasterBookingFlowProps {
   masterId: number;
   services: MasterService[];
-  onBookSlot: (slot: MasterSlot, service: MasterService) => void;
+  onBookSlot: (option: BookingOption, service: MasterService) => void;
 }
 
 export default function MasterBookingFlow({ masterId, services, onBookSlot }: MasterBookingFlowProps) {
@@ -65,7 +75,9 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
     setLoading(true);
     try {
       const from = format(today, "yyyy-MM-dd");
-      const data = await masterBookingsApi.getPublicSlots(masterId, from, selectedServiceId);
+      // Запрашиваем все слоты мастера — фильтр по услуге делаем сами,
+      // чтобы поддержать «универсальные» окна доступности без service_id.
+      const data = await masterBookingsApi.getPublicSlots(masterId, from);
       setSlots(data);
     } catch {
       setSlots([]);
@@ -79,46 +91,71 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
     loadSlots();
   }, [loadSlots]);
 
-  // Подбираем подходящие слоты: либо привязан к этой услуге, либо без услуги и длительность >= нужной
-  const matchingSlots = useMemo(() => {
+  // Из каждого подходящего «окна» собираем все возможные времена начала услуги
+  const options = useMemo<BookingOption[]>(() => {
     if (!selectedService) return [];
-    const minDuration = selectedService.duration_minutes;
-    return slots.filter((s) => {
-      if (s.status !== "available") return false;
-      if (s.booked_count >= s.max_clients) return false;
-      if (s.service_id === selectedService.id) return true;
-      if (s.service_id == null) return slotDurationMinutes(s) >= minDuration;
-      return false;
-    });
+    const duration = selectedService.duration_minutes;
+    const now = new Date();
+    const result: BookingOption[] = [];
+
+    for (const slot of slots) {
+      if (slot.status !== "available") continue;
+      if (slot.booked_count >= slot.max_clients) continue;
+
+      // Если слот жёстко привязан к другой услуге — пропускаем
+      if (slot.service_id != null && slot.service_id !== selectedService.id) continue;
+
+      const winStart = parseLocalISO(slot.datetime_start);
+      const winEnd = parseLocalISO(slot.datetime_end);
+      const winLen = slotDurationMinutes(slot);
+
+      if (winLen < duration) continue;
+
+      // Если слот привязан именно к этой услуге — берём его время как есть
+      if (slot.service_id === selectedService.id) {
+        if (winStart <= now) continue;
+        result.push({ slot, start: winStart, end: winEnd });
+        continue;
+      }
+
+      // Универсальное окно: разбиваем на интервалы по длительности услуги
+      let cursor = new Date(winStart);
+      while (cursor.getTime() + duration * 60000 <= winEnd.getTime()) {
+        if (cursor > now) {
+          const end = new Date(cursor.getTime() + duration * 60000);
+          result.push({ slot, start: new Date(cursor), end });
+        }
+        cursor = new Date(cursor.getTime() + duration * 60000);
+      }
+    }
+
+    return result.sort((a, b) => a.start.getTime() - b.start.getTime());
   }, [slots, selectedService]);
 
   const dayKey = (d: Date) => format(d, "yyyy-MM-dd");
 
-  const slotsByDay = useMemo(() => {
-    const map: Record<string, MasterSlot[]> = {};
-    matchingSlots.forEach((s) => {
-      const k = s.datetime_start.slice(0, 10);
+  const optionsByDay = useMemo(() => {
+    const map: Record<string, BookingOption[]> = {};
+    options.forEach((o) => {
+      const k = format(o.start, "yyyy-MM-dd");
       if (!map[k]) map[k] = [];
-      map[k].push(s);
+      map[k].push(o);
     });
-    Object.values(map).forEach((arr) =>
-      arr.sort((a, b) => a.datetime_start.localeCompare(b.datetime_start))
-    );
     return map;
-  }, [matchingSlots]);
+  }, [options]);
 
-  // Авто-выбор первого дня со свободными слотами
+  // Авто-выбор первого дня со свободным временем
   useEffect(() => {
     if (!selectedService) {
       setSelectedDate(null);
       return;
     }
-    const firstAvailable = days.find((d) => (slotsByDay[dayKey(d)] ?? []).length > 0);
+    const firstAvailable = days.find((d) => (optionsByDay[dayKey(d)] ?? []).length > 0);
     setSelectedDate(firstAvailable ?? null);
-  }, [selectedServiceId, slotsByDay, days, selectedService]);
+  }, [selectedServiceId, optionsByDay, days, selectedService]);
 
-  const slotsForDay = selectedDate ? slotsByDay[dayKey(selectedDate)] ?? [] : [];
-  const hasAnySlots = matchingSlots.length > 0;
+  const optionsForDay = selectedDate ? optionsByDay[dayKey(selectedDate)] ?? [] : [];
+  const hasAnyOptions = options.length > 0;
 
   if (!activeServices.length) return null;
 
@@ -180,7 +217,7 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
         </div>
       </div>
 
-      {/* ШАГ 2: Дата и время */}
+      {/* ШАГ 2: Дата */}
       {selectedService && (
         <div className="mb-2">
           <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
@@ -192,17 +229,19 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
             <div className="flex justify-center py-8">
               <Icon name="Loader2" size={24} className="animate-spin text-muted-foreground" />
             </div>
-          ) : !hasAnySlots ? (
+          ) : !hasAnyOptions ? (
             <div className="text-center py-8 rounded-xl bg-muted/40 border border-dashed border-border">
               <Icon name="CalendarX" size={32} className="mx-auto mb-2 opacity-30" />
               <p className="text-sm font-medium">Нет свободного времени</p>
-              <p className="text-xs text-muted-foreground mt-1">Попробуйте позже или свяжитесь с мастером напрямую</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Попробуйте позже или свяжитесь с мастером напрямую
+              </p>
             </div>
           ) : (
             <>
               <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1" style={{ scrollbarWidth: "thin" }}>
                 {days.map((d) => {
-                  const has = (slotsByDay[dayKey(d)] ?? []).length > 0;
+                  const has = (optionsByDay[dayKey(d)] ?? []).length > 0;
                   const isSelected = selectedDate && dayKey(d) === dayKey(selectedDate);
                   return (
                     <button
@@ -234,20 +273,20 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
                   <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground inline-flex items-center justify-center text-[10px] font-bold">3</span>
                   Время
                 </div>
-                {slotsForDay.length === 0 ? (
+                {optionsForDay.length === 0 ? (
                   <div className="text-center py-6 text-sm text-muted-foreground">
                     Нет свободного времени на эту дату
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {slotsForDay.map((slot) => (
+                    {optionsForDay.map((opt, i) => (
                       <button
-                        key={slot.id}
+                        key={`${opt.slot.id}-${i}`}
                         type="button"
-                        onClick={() => onBookSlot(slot, selectedService)}
+                        onClick={() => onBookSlot(opt, selectedService)}
                         className="min-h-[44px] px-4 py-2 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-sm font-semibold"
                       >
-                        {fmtTime(slot.datetime_start)}
+                        {fmtTime(opt.start)}
                       </button>
                     ))}
                   </div>

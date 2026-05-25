@@ -6,11 +6,11 @@ import Icon from "@/components/ui/icon";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { mastersApi, Master } from "@/lib/masters-api";
-import { masterCalendarApi, masterBookingsApi, MasterService, MasterSlot, MasterReview } from "@/lib/master-calendar-api";
+import { masterCalendarApi, masterBookingsApi, MasterService, MasterReview } from "@/lib/master-calendar-api";
 import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
 import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import PageShell from "@/components/ui/page-shell";
-import MasterBookingFlow from "@/components/masters/MasterBookingFlow";
+import MasterBookingFlow, { BookingOption } from "@/components/masters/MasterBookingFlow";
 import func2url from "../../backend/func2url.json";
 
 const VIDEOS_API = func2url["media-api"];
@@ -63,20 +63,23 @@ function fmtDuration(min: number) {
 // ─── Форма бронирования ────────────────────────────────────────────────────────
 
 interface BookingModalProps {
-  slot: MasterSlot;
-  service: MasterService | null;
+  option: BookingOption;
+  service: MasterService;
   masterName: string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-function BookingModal({ slot, service, masterName, onClose, onSuccess }: BookingModalProps) {
+function BookingModal({ option, service, masterName, onClose, onSuccess }: BookingModalProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const toIsoLocal = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +88,10 @@ function BookingModal({ slot, service, masterName, onClose, onSuccess }: Booking
     setError("");
     try {
       await masterBookingsApi.publicBook({
-        slot_id: slot.id!,
+        slot_id: option.slot.id!,
+        service_id: service.id,
+        desired_start: toIsoLocal(option.start),
+        desired_end: toIsoLocal(option.end),
         client_name: name.trim(),
         client_phone: phone.trim(),
         client_email: email.trim() || undefined,
@@ -112,20 +118,20 @@ function BookingModal({ slot, service, masterName, onClose, onSuccess }: Booking
 
         <div className="bg-muted/60 rounded-xl p-4 mb-5 space-y-1.5 text-sm">
           <div className="font-semibold text-base">{masterName}</div>
-          {service && <div className="text-muted-foreground">{service.name}</div>}
+          <div className="text-muted-foreground">{service.name}</div>
           <div className="flex items-center gap-3 mt-2">
             <div className="flex items-center gap-1.5 text-primary font-medium">
               <Icon name="Calendar" size={14} />
-              {format(parseLocalISO(slot.datetime_start), "d MMMM yyyy", { locale: ru })}
+              {format(option.start, "d MMMM yyyy", { locale: ru })}
             </div>
             <div className="flex items-center gap-1.5 text-primary font-medium">
               <Icon name="Clock" size={14} />
-              {fmtTime(slot.datetime_start)} — {fmtTime(slot.datetime_end)}
+              {format(option.start, "HH:mm")} — {format(option.end, "HH:mm")}
             </div>
           </div>
-          {(slot.service_price || service?.price) && (
+          {service.price > 0 && (
             <div className="text-lg font-bold text-primary mt-1">
-              {fmt(slot.service_price || service!.price)} ₽
+              {fmt(service.price)} ₽
             </div>
           )}
         </div>
@@ -418,8 +424,7 @@ export default function MasterDetail() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
-  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
-  const [bookingSlot, setBookingSlot] = useState<MasterSlot | null>(null);
+  const [bookingState, setBookingState] = useState<{ option: BookingOption; service: MasterService } | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [extVideos, setExtVideos] = useState<VideoItem[]>([]);
 
@@ -460,10 +465,8 @@ export default function MasterDetail() {
 
   const portfolio = master.portfolio || [];
 
-  const selectedService = services.find((s) => s.id === selectedServiceId) ?? null;
-
   const handleBookSuccess = () => {
-    setBookingSlot(null);
+    setBookingState(null);
     setBookingSuccess(true);
   };
 
@@ -584,10 +587,7 @@ export default function MasterDetail() {
             <MasterBookingFlow
               masterId={master.id}
               services={services}
-              onBookSlot={(slot, svc) => {
-                setSelectedServiceId(svc.id ?? null);
-                setBookingSlot(slot);
-              }}
+              onBookSlot={(option, service) => setBookingState({ option, service })}
             />
 
             {/* Портфолио */}
@@ -745,12 +745,12 @@ export default function MasterDetail() {
       <Footer />
 
       {/* Модалка бронирования */}
-      {bookingSlot && (
+      {bookingState && (
         <BookingModal
-          slot={bookingSlot}
-          service={selectedService}
+          option={bookingState.option}
+          service={bookingState.service}
           masterName={master.name}
-          onClose={() => setBookingSlot(null)}
+          onClose={() => setBookingState(null)}
           onSuccess={handleBookSuccess}
         />
       )}
