@@ -97,13 +97,9 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
   const isTransparent = variant === "transparent";
   const isCompact = variant === "compact";
 
-  const buttonClass = isTransparent
-    ? "flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors bg-white/10 border border-white/20 text-white hover:bg-white/20"
-    : isCompact
-    ? "flex items-center gap-2 px-2.5 py-1.5 rounded-full text-sm font-medium transition-colors bg-muted hover:bg-muted/80 border border-border"
-    : "flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors bg-muted hover:bg-muted/80 border border-border";
-
-  const buttonStyle = isTransparent ? undefined : { color: "var(--header-nav-color)" };
+  const buttonClass = isCompact
+    ? "flex items-center gap-2 px-2.5 py-1.5 rounded-full text-sm font-medium transition-colors bg-muted hover:bg-muted/80 border border-border text-foreground"
+    : "flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-colors bg-muted hover:bg-muted/80 border border-border text-foreground";
 
   const currentCabinet = visibleCabinets.find((c) =>
     location.pathname === c.to || location.pathname.startsWith(c.to + "/")
@@ -126,21 +122,19 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
           setOpen((v) => !v);
         }}
         className={buttonClass}
-        style={buttonStyle}
       >
         <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden flex-shrink-0">
           {user.avatar_url ? (
             <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
           ) : (
-            <Icon name="User" size={13} style={isTransparent ? { color: "#fff" } : { color: "var(--header-nav-color)" }} />
+            <Icon name="User" size={13} className="text-foreground" />
           )}
         </div>
-        <span className="hidden sm:inline max-w-[120px] truncate" style={isTransparent ? undefined : { color: "var(--header-nav-color)" }}>{user.name}</span>
+        <span className="hidden sm:inline max-w-[120px] truncate text-foreground">{user.name}</span>
         <Icon
           name="ChevronDown"
           size={14}
-          className={`hidden sm:block transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`}
-          style={isTransparent ? { color: "rgba(255,255,255,0.7)" } : { color: "var(--header-nav-color)", opacity: 0.7 }}
+          className={`hidden sm:block transition-transform flex-shrink-0 text-muted-foreground ${open ? "rotate-180" : ""}`}
         />
       </button>
 

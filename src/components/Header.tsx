@@ -145,7 +145,7 @@ export default function Header({ transparent = false }: HeaderProps) {
               </div>
 
               {user ? (
-                <ProfileDropdown variant={onHero ? "transparent" : "default"} />
+                <ProfileDropdown variant="default" />
               ) : (
                 <Link
                   to="/login"
