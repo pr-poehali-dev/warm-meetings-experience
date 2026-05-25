@@ -158,7 +158,7 @@ function CardPreview({ data }: { data: PreviewData }) {
             <div />
           )}
           <Button size="sm" className="rounded-full text-xs h-8 px-4">
-            Подробнее
+            Окунуться
           </Button>
         </div>
       </CardContent>

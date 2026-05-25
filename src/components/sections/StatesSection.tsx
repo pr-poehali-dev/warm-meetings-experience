@@ -40,7 +40,7 @@ export default function StatesSection() {
                 asChild
               >
                 <Link to="/warm-meetings">
-                  Подробнее
+                  Окунуться
                 </Link>
               </Button>
             </CardContent>
@@ -75,7 +75,7 @@ export default function StatesSection() {
                 asChild
               >
                 <Link to="/warm-team-building">
-                  Подробнее
+                  Окунуться
                 </Link>
               </Button>
             </CardContent>
@@ -110,7 +110,7 @@ export default function StatesSection() {
                 asChild
               >
                 <Link to="/svidanie">
-                  Подробнее
+                  Окунуться
                 </Link>
               </Button>
             </CardContent>

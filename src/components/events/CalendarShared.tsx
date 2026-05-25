@@ -129,7 +129,7 @@ export function EventTooltip({
       <div className="flex gap-2 mt-3">
         <Button asChild size="sm" className="flex-1 h-7 text-xs rounded-full">
           <Link to={`/events/${event.slug}`} onClick={onClose}>
-            {event.spotsLeft === 0 ? "Подробнее" : "Записаться"}
+            {event.spotsLeft === 0 ? "Окунуться" : "Записаться"}
           </Link>
         </Button>
       </div>

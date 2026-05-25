@@ -210,7 +210,7 @@ function EventCardGlass({ event }: { event: EventItem }) {
             className="inline-flex items-center gap-1 text-xs font-semibold transition-transform"
             style={{ color: "var(--c-terra)", transform: hovered ? "translateX(2px)" : "translateX(0)" }}
           >
-            Подробнее
+            Окунуться
             <Icon name="ArrowRight" size={12} />
           </span>
         </div>

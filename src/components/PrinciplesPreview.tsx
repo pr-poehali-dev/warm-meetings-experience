@@ -82,7 +82,7 @@ export default function PrinciplesPreview() {
               </Button>
               <Link to="/principles">
                 <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
-                  Подробнее о принципах
+                  Окунуться в принципы
                   <Icon name="ArrowRight" size={16} className="ml-2" />
                 </Button>
               </Link>

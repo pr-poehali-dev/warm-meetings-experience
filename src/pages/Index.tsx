@@ -250,7 +250,7 @@ function NetflixGridCard({ event }: { event: EventItem }) {
         style={{ background: "rgba(0,0,0,0.7)", opacity: hovered ? 1 : 0 }}
       >
         <span className="text-white font-bold rounded-full px-6 py-2 text-sm" style={{ background: sold ? "rgba(255,255,255,0.15)" : "linear-gradient(90deg,var(--c-terra),var(--c-sage))" }}>
-          {sold ? "Мест нет" : "Подробнее →"}
+          {sold ? "Мест нет" : "Окунуться →"}
         </span>
         {event.priceLabel && !sold && (
           <span className="font-bold text-lg" style={{ color: "#FF6B1A" }}>{event.priceLabel}</span>
@@ -320,7 +320,7 @@ function NetflixListCard({ event }: { event: EventItem }) {
                 : { background: "var(--toggle-bg)", color: "var(--toggle-idle)" }
               }
             >
-              {sold ? "Занято" : "Подробнее →"}
+              {sold ? "Занято" : "Окунуться →"}
             </span>
           </div>
         </div>

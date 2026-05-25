@@ -139,7 +139,7 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
                 <Icon name="Share2" size={15} />
               </Button>
               <Button size="sm" className="rounded-full">
-                Подробнее
+                Окунуться
               </Button>
             </div>
           </div>
