@@ -114,15 +114,22 @@ export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster
               { label: "Доход за месяц", value: `${masterData.stats.total_revenue.toLocaleString("ru-RU")} ₽`, icon: "TrendingUp", color: "text-green-600 dark:text-green-400", bg: "bg-green-500/15" },
               { label: "Загруженность", value: `${masterData.stats.occupancy_percent}%`, icon: "BarChart2", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/15" },
             ].map((m) => (
-              <Card key={m.label} className="border-0 shadow-sm">
-                <CardContent className="p-4">
-                  <div className={`w-8 h-8 rounded-lg ${m.bg} flex items-center justify-center mb-2`}>
-                    <Icon name={m.icon} size={15} className={m.color} />
-                  </div>
-                  <div className="text-xl font-bold text-foreground">{m.value}</div>
-                  <div className="text-xs text-muted-foreground">{m.label}</div>
-                </CardContent>
-              </Card>
+              <button
+                key={m.label}
+                type="button"
+                onClick={onGoToMaster}
+                className="text-left"
+              >
+                <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full">
+                  <CardContent className="p-4">
+                    <div className={`w-8 h-8 rounded-lg ${m.bg} flex items-center justify-center mb-2`}>
+                      <Icon name={m.icon} size={15} className={m.color} />
+                    </div>
+                    <div className="text-xl font-bold text-foreground">{m.value}</div>
+                    <div className="text-xs text-muted-foreground">{m.label}</div>
+                  </CardContent>
+                </Card>
+              </button>
             ))}
           </div>
         </div>
@@ -176,15 +183,22 @@ export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster
               { label: "Участников всего", value: orgData.stats.total_participants ?? 0, icon: "Users", color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-500/15" },
               { label: "Черновики", value: orgData.stats.drafts ?? 0, icon: "FileEdit", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/15" },
             ].map((m) => (
-              <Card key={m.label} className="border-0 shadow-sm">
-                <CardContent className="p-4">
-                  <div className={`w-8 h-8 rounded-lg ${m.bg} flex items-center justify-center mb-2`}>
-                    <Icon name={m.icon} size={15} className={m.color} />
-                  </div>
-                  <div className="text-xl font-bold text-foreground">{m.value}</div>
-                  <div className="text-xs text-muted-foreground">{m.label}</div>
-                </CardContent>
-              </Card>
+              <button
+                key={m.label}
+                type="button"
+                onClick={onGoToOrganizer}
+                className="text-left"
+              >
+                <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full">
+                  <CardContent className="p-4">
+                    <div className={`w-8 h-8 rounded-lg ${m.bg} flex items-center justify-center mb-2`}>
+                      <Icon name={m.icon} size={15} className={m.color} />
+                    </div>
+                    <div className="text-xl font-bold text-foreground">{m.value}</div>
+                    <div className="text-xs text-muted-foreground">{m.label}</div>
+                  </CardContent>
+                </Card>
+              </button>
             ))}
           </div>
         </div>
