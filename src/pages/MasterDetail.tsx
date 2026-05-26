@@ -11,6 +11,7 @@ import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
 import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import PageShell from "@/components/ui/page-shell";
 import MasterBookingFlow, { BookingOption } from "@/components/masters/MasterBookingFlow";
+import { parseServiceDescription } from "@/lib/service-description";
 import func2url from "../../backend/func2url.json";
 
 const VIDEOS_API = func2url["media-api"];
@@ -77,6 +78,10 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [contraAccepted, setContraAccepted] = useState(false);
+
+  const parsedDesc = parseServiceDescription(service.description);
+  const hasContraindications = parsedDesc.contraindications.length > 0;
 
   const toIsoLocal = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
@@ -84,6 +89,10 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim()) return;
+    if (hasContraindications && !contraAccepted) {
+      setError("Подтвердите, что ознакомились с противопоказаниями");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -179,12 +188,41 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
               className="w-full px-3 py-2.5 rounded-xl border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/30 transition resize-none"
             />
           </div>
+          {hasContraindications && (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
+              <div className="flex items-start gap-2 mb-2">
+                <Icon name="AlertTriangle" size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                <div className="text-xs font-semibold text-foreground">
+                  Противопоказания к процедуре
+                </div>
+              </div>
+              <ul className="space-y-1 mb-3 pl-1">
+                {parsedDesc.contraindications.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-foreground/80 leading-relaxed">
+                    <Icon name="X" size={12} className="text-amber-600 mt-0.5 shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <label className="flex items-start gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={contraAccepted}
+                  onChange={(e) => setContraAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-amber-500/60 text-amber-600 focus:ring-amber-500/40 cursor-pointer shrink-0"
+                />
+                <span className="text-xs text-foreground/90 leading-snug">
+                  Я ознакомлен(а) с противопоказаниями и подтверждаю, что они ко мне не относятся. Обязуюсь предупредить мастера о хронических заболеваниях.
+                </span>
+              </label>
+            </div>
+          )}
           {error && (
             <div className="text-sm text-destructive bg-destructive/10 rounded-xl px-3 py-2">{error}</div>
           )}
           <button
             type="submit"
-            disabled={loading || !name.trim() || !isPhoneComplete(phone)}
+            disabled={loading || !name.trim() || !isPhoneComplete(phone) || (hasContraindications && !contraAccepted)}
             className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold text-sm hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
