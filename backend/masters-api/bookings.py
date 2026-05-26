@@ -142,9 +142,10 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                         headers={'Content-Type': 'application/json'},
                         method='POST',
                     )
-                    urllib.request.urlopen(req, timeout=8).read()
-                except Exception:
-                    pass
+                    resp_raw = urllib.request.urlopen(req, timeout=8).read()
+                    print(f"[notify_master] email send response: {resp_raw.decode('utf-8', errors='replace')}")
+                except Exception as e:
+                    print(f"[notify_master] email send ERROR: {e}")
 
         # === Telegram ===
         if m.get('notify_telegram') and m.get('tg_chat_id'):
