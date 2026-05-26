@@ -20,8 +20,8 @@ from shared import (
     CORS_HEADERS, options_response, ok, err,
     get_conn, get_schema, get_cursor,
     get_token, get_user_from_token, has_commercial_role,
-    slug_validation_error,
 )
+from landing_utils import slug_validation_error
 
 
 # ───────────────────────── S3 ─────────────────────────

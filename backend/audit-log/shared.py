@@ -1,23 +1,36 @@
+"""Канонический общий модуль для всех Cloud Functions проекта.
+
+ВАЖНО: Этот файл — единственный источник правды.
+Во все папки backend/*/shared.py он автоматически копируется скриптом
+backend/_shared/sync_shared.py. НЕ редактируйте копии вручную — они
+будут перезаписаны при следующей синхронизации.
+
+Уникальный код, специфичный для одной функции, выносите в локальные
+файлы рядом с index.py (например, support_utils.py, landing_utils.py).
+"""
+
 import hashlib
 import json
 import os
+import re
 import time
+import urllib.request
 
 import psycopg2
 import psycopg2.extras
 
+# --- DB ---
 
 def get_conn():
     return psycopg2.connect(os.environ['DATABASE_URL'])
 
-
 def get_schema():
     return os.environ.get('MAIN_DB_SCHEMA', 'public')
-
 
 def get_cursor(conn):
     return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+# --- CORS ---
 
 CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
@@ -27,26 +40,64 @@ CORS_HEADERS = {
     'Content-Type': 'application/json',
 }
 
-
 def options_response():
     return {'statusCode': 200, 'headers': CORS_HEADERS, 'body': ''}
 
-
 def respond(status, body):
-    return {
-        'statusCode': status,
-        'headers': CORS_HEADERS,
-        'body': json.dumps(body, default=str, ensure_ascii=False),
-    }
-
+    return {'statusCode': status, 'headers': CORS_HEADERS, 'body': json.dumps(body, default=str, ensure_ascii=False)}
 
 def ok(body):
     return respond(200, body)
 
-
 def err(message, status=400):
     return respond(status, {'error': message})
 
+# --- Auth ---
+
+def get_token(event):
+    """Достаёт токен сессии из заголовков (учитывая прокси-переименование Authorization → X-Authorization)."""
+    headers = event.get('headers') or {}
+    for k in (
+        'X-Session-Token', 'x-session-token',
+        'X-Auth-Token', 'x-auth-token',
+        'X-Authorization', 'x-authorization',
+        'Authorization', 'authorization',
+    ):
+        v = headers.get(k)
+        if v:
+            v = v.strip()
+            if v.lower().startswith('bearer '):
+                v = v[7:].strip()
+            if v:
+                return v
+    return ''
+
+def get_user_from_token(cur, schema, token, extra_fields=''):
+    if not token:
+        return None
+    t = token.replace("'", "''")
+    fields = f', {extra_fields}' if extra_fields else ''
+    cur.execute(f"""
+        SELECT u.id, u.name, u.email, u.phone, u.telegram, u.avatar_url{fields}
+        FROM {schema}.user_sessions s
+        JOIN {schema}.users u ON u.id = s.user_id
+        WHERE s.token = '{t}' AND s.expires_at > NOW() AND u.is_active = true
+    """)
+    return cur.fetchone()
+
+def has_role(cur, schema, user_id, *slugs):
+    slug_list = ', '.join(f"'{s}'" for s in slugs)
+    cur.execute(f"""
+        SELECT 1 FROM {schema}.user_roles ur
+        JOIN {schema}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = {int(user_id)} AND r.slug IN ({slug_list}) AND ur.status = 'active'
+        LIMIT 1
+    """)
+    return cur.fetchone() is not None
+
+def has_commercial_role(cur, schema, user_id):
+    """True, если у пользователя есть хотя бы одна "коммерческая" роль."""
+    return has_role(cur, schema, user_id, 'parmaster', 'organizer', 'partner', 'bath_owner', 'admin')
 
 def verify_admin_token(token):
     if not token:
@@ -54,7 +105,126 @@ def verify_admin_token(token):
     admin_pwd = os.environ.get('ADMIN_PASSWORD', '')
     if not admin_pwd:
         return False
-    expected = hashlib.sha256(
-        f"{admin_pwd}:{int(time.time() // 86400)}".encode()
-    ).hexdigest()
+    expected = hashlib.sha256(f"{admin_pwd}:{int(time.time() // 86400)}".encode()).hexdigest()
     return token == expected
+
+# --- Audit log ---
+
+def _esc(v):
+    if v is None:
+        return 'NULL'
+    return "'" + str(v).replace("'", "''") + "'"
+
+def audit_log(cur, schema, entity_type, entity_id, action,
+              field=None, old_value=None, new_value=None,
+              actor_type='admin', actor_id=None, actor_name=None, comment=None):
+    """Записывает событие в admin_audit_log. Никогда не падает.
+
+    Использование:
+        audit_log(cur, schema, 'ticket', ticket_id, 'status_change',
+                  field='status', old_value='open', new_value='closed')
+    """
+    try:
+        def _trunc(v, n=2000):
+            if v is None:
+                return None
+            return str(v)[:n]
+        cur.execute(f"""
+            INSERT INTO {schema}.admin_audit_log
+                (entity_type, entity_id, action, field, old_value, new_value,
+                 actor_type, actor_id, actor_name, comment)
+            VALUES ({_esc(entity_type)}, {_esc(str(entity_id))}, {_esc(action)},
+                    {_esc(field)}, {_esc(_trunc(old_value))}, {_esc(_trunc(new_value))},
+                    {_esc(actor_type)},
+                    {'NULL' if actor_id is None else int(actor_id)},
+                    {_esc(actor_name)}, {_esc(_trunc(comment))})
+        """)
+    except Exception:
+        # audit лог никогда не должен ронять основную операцию
+        pass
+
+# --- Slugify ---
+
+_TRANSLIT = {
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
+    'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+    'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts',
+    'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+    ' ': '-',
+}
+
+def slugify(text, max_length=80, fallback='item'):
+    text = text.lower().strip()
+    result = ''.join(_TRANSLIT.get(c, c) for c in text)
+    result = re.sub(r'[^a-z0-9-]', '', result)
+    result = re.sub(r'-+', '-', result).strip('-')
+    return (result or fallback)[:max_length]
+
+# --- Telegram ---
+
+def tg_send(chat_id, text, token=None, parse_mode='HTML'):
+    """Отправляет сообщение в Telegram. Не падает при ошибках."""
+    bot_token = token or os.environ.get('TG_PUBLISH_BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+    if not bot_token or not chat_id:
+        return False
+    payload = json.dumps({
+        'chat_id': int(chat_id) if str(chat_id).lstrip('-').isdigit() else chat_id,
+        'text': text,
+        'parse_mode': parse_mode,
+    }).encode('utf-8')
+    req = urllib.request.Request(
+        f'https://api.telegram.org/bot{bot_token}/sendMessage',
+        data=payload,
+        headers={'Content-Type': 'application/json'},
+    )
+    try:
+        urllib.request.urlopen(req, timeout=6)
+        return True
+    except Exception:
+        return False
+
+def tg_notify_admin(text, token=None):
+    """Уведомление администратору (TELEGRAM_CHAT_ID)."""
+    return tg_send(os.environ.get('TELEGRAM_CHAT_ID', ''), text, token=token)
+
+# --- Email (Unisender Go) ---
+
+def send_email(to_email, subject, body_html, to_name=None, tags=None):
+    """Отправляет письмо через Unisender Go. Возвращает True/False, не падает при ошибках.
+
+    Использует актуальный endpoint go2.unisender.ru и заголовок X-API-KEY.
+    """
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
+    if not api_key or not sender_email or not to_email:
+        return False
+    recipient = {'email': to_email}
+    if to_name:
+        recipient['substitutions'] = {'to_name': to_name}
+    message = {
+        'recipients': [recipient],
+        'sender_email': sender_email,
+        'sender_name': sender_name,
+        'subject': subject,
+        'body': {'html': body_html},
+        'track_links': 1,
+        'track_read': 1,
+    }
+    if tags:
+        message['tags'] = tags if isinstance(tags, list) else [str(tags)]
+    payload = json.dumps({'message': message}).encode('utf-8')
+    req = urllib.request.Request(
+        'https://go2.unisender.ru/ru/transactional/api/v1/email/send.json',
+        data=payload,
+        headers={'X-API-KEY': api_key, 'Content-Type': 'application/json'},
+    )
+    try:
+        urllib.request.urlopen(req, timeout=10)
+        return True
+    except Exception:
+        return False
+
+def admin_email():
+    """Email администратора для уведомлений (env SUPPORT_ADMIN_EMAIL или UNISENDER_SENDER_EMAIL)."""
+    return os.environ.get('SUPPORT_ADMIN_EMAIL') or os.environ.get('UNISENDER_SENDER_EMAIL', '')
