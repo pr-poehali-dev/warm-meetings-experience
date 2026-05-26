@@ -504,11 +504,11 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                         boxShadow: isSelected ? "0 4px 14px rgba(200,131,74,0.35)" : "none",
                       }}
                     >
-                      <span className="text-[10px] uppercase opacity-70">
+                      <span className="text-[10px] uppercase opacity-70 text-[#000000]">
                         {format(d, "EEE", { locale: ru })}
                       </span>
-                      <span className="text-base font-bold leading-tight">{format(d, "d")}</span>
-                      <span className="text-[10px] opacity-60">{format(d, "MMM", { locale: ru })}</span>
+                      <span className="text-base font-bold leading-tight text-orange-500">{format(d, "d")}</span>
+                      <span className="text-[10px] opacity-60 text-[#000000]">{format(d, "MMM", { locale: ru })}</span>
                     </button>
                   );
                 })}
