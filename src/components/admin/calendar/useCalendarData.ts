@@ -351,6 +351,32 @@ export const useCalendarData = (masterId: number) => {
     }
   };
 
+  const handleCreateBusySlot = async (datetimeStart: string, datetimeEnd: string, notes?: string) => {
+    setSaving(true);
+    try {
+      await masterCalendarApi.createSlot({
+        master_id: masterId,
+        datetime_start: datetimeStart,
+        datetime_end: datetimeEnd,
+        service_id: null,
+        max_clients: 1,
+        notes: notes || "Занято",
+        status: "blocked",
+        booked_count: 0,
+      });
+      toast({ title: "Готово", description: "Время помечено как занятое" });
+      fetchWeekData();
+    } catch (error) {
+      toast({
+        title: "Ошибка",
+        description: error instanceof Error ? error.message : "Не удалось пометить занятость",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const selectedTemplate = useMemo(() => {
     if (!templateForm.template_id) return null;
     return templates.find((t) => t.id === Number(templateForm.template_id)) || null;
@@ -407,5 +433,6 @@ export const useCalendarData = (masterId: number) => {
     handleApplyTemplate,
     handleBookingAction,
     handleDeleteBlock,
+    handleCreateBusySlot,
   };
 };

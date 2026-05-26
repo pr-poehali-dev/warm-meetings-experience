@@ -63,6 +63,7 @@ const MasterCalendar = ({ masterId = MASTER_ID }: MasterCalendarProps) => {
     handleApplyTemplate,
     handleBookingAction,
     handleDeleteBlock,
+    handleCreateBusySlot,
   } = useCalendarData(masterId);
 
   return (
@@ -92,6 +93,7 @@ const MasterCalendar = ({ masterId = MASTER_ID }: MasterCalendarProps) => {
           isDayBlocked={isDayBlocked}
           onSlotClick={handleSlotClick}
           onDeleteBlock={handleDeleteBlock}
+          onCreateBusySlot={handleCreateBusySlot}
         />
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
