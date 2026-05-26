@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -77,21 +78,23 @@ export default function Workspace() {
   }, []);
 
   // Telegram info — общий для всех коммерческих ролей
-  const [tgLinked, setTgLinked] = useState(false);
-  const [tgChannelsCount, setTgChannelsCount] = useState(0);
-
-  const loadTgInfo = useCallback(async () => {
-    const token = localStorage.getItem("user_token") || "";
-    if (!token) return;
-    try {
+  const userToken = typeof window !== "undefined" ? localStorage.getItem("user_token") || "" : "";
+  const { data: tgInfo, refetch: refetchTgInfo } = useQuery({
+    queryKey: ["tg-info", userToken],
+    enabled: !!user && !!userToken,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
       const r = await fetch(
-        `https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1/?action=tg_info&token=${encodeURIComponent(token)}`
+        `https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1/?action=tg_info&token=${encodeURIComponent(userToken)}`
       );
-      const data = await r.json();
-      if (data.tg_linked !== undefined) setTgLinked(data.tg_linked);
-      if (data.tg_channels_count !== undefined) setTgChannelsCount(data.tg_channels_count);
-    } catch { /* ignore */ }
-  }, []);
+      return r.json();
+    },
+  });
+  const [tgLinkedOverride, setTgLinked] = useState<boolean | null>(null);
+  const [tgChannelsCountOverride, setTgChannelsCount] = useState<number | null>(null);
+  const tgLinked = tgLinkedOverride ?? !!tgInfo?.tg_linked;
+  const tgChannelsCount = tgChannelsCountOverride ?? Number(tgInfo?.tg_channels_count ?? 0);
+  const loadTgInfo = useCallback(async () => { await refetchTgInfo(); }, [refetchTgInfo]);
 
   // Organizer state
   const [orgDashboard, setOrgDashboard] = useState<DashboardData | null>(null);

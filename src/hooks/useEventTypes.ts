@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import func2url from '../../backend/func2url.json';
 
 export interface EventType {
@@ -12,25 +12,36 @@ export interface EventType {
 const EVENTS_API_URL = func2url['events-api'];
 const EVENT_TYPES_URL = `${EVENTS_API_URL}?resource=event_types`;
 
+export const EVENT_TYPES_QUERY_KEY = ['event-types'] as const;
+
+async function fetchEventTypes(): Promise<EventType[]> {
+  const res = await fetch(EVENT_TYPES_URL);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+/**
+ * Справочник типов событий. Кэшируется на 1 час (это словарь, меняется
+ * только через админку), переживает навигацию между страницами.
+ */
 export function useEventTypes() {
-  const [types, setTypes] = useState<EventType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: EVENT_TYPES_QUERY_KEY,
+    queryFn: fetchEventTypes,
+    staleTime: 60 * 60_000, // 1 час
+    gcTime: 24 * 60 * 60_000, // 24 часа в памяти
+  });
 
-  const load = async () => {
-    try {
-      const res = await fetch(EVENT_TYPES_URL);
-      const data = await res.json();
-      setTypes(data);
-    } catch {
-      setTypes([]);
-    } finally {
-      setLoading(false);
-    }
+  return {
+    types: data ?? [],
+    loading: isLoading,
+    reload: async () => {
+      await queryClient.invalidateQueries({ queryKey: EVENT_TYPES_QUERY_KEY });
+      await refetch();
+    },
   };
-
-  useEffect(() => { load(); }, []);
-
-  return { types, loading, reload: load };
 }
 
 export async function createEventType(payload: { value: string; label: string; icon: string; sort_order?: number }, adminToken: string) {

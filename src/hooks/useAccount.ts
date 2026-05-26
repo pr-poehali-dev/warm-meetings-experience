@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { UserSignup, userProfileApi } from "@/lib/user-api";
+import { userProfileApi } from "@/lib/user-api";
 import { toast } from "sonner";
 
 const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 60 минут бездействия
@@ -17,8 +18,13 @@ export function useAccount() {
   const [editTelegram, setEditTelegram] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
-  const [signups, setSignups] = useState<UserSignup[]>([]);
-  const [signupsLoading, setSignupsLoading] = useState(true);
+  const { data: signupsData, isLoading: signupsLoading, isError: signupsError } = useQuery({
+    queryKey: ["user-signups", user?.id],
+    queryFn: () => userProfileApi.getSignups(),
+    enabled: !!user,
+    staleTime: 5 * 60_000, // 5 минут — список записей не меняется часто
+  });
+  const signups = signupsData?.signups ?? [];
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -67,14 +73,8 @@ export function useAccount() {
   }, [user?.id]);
 
   useEffect(() => {
-    if (user) {
-      userProfileApi
-        .getSignups()
-        .then((data) => setSignups(data.signups))
-        .catch(() => toast.error("Не удалось загрузить записи"))
-        .finally(() => setSignupsLoading(false));
-    }
-  }, [user]);
+    if (signupsError) toast.error("Не удалось загрузить записи");
+  }, [signupsError]);
 
   const handleSaveProfile = async () => {
     setSavingProfile(true);

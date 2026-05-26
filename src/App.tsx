@@ -56,7 +56,20 @@ const IndexGlass = lazy(() => import("./pages/IndexGlass"));
 const IndexNew = lazy(() => import("./pages/IndexNew"));
 const FunctionalDescription = lazy(() => import("./pages/FunctionalDescription"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,         // 1 минута — фон не дёргает бэк лишний раз
+      gcTime: 10 * 60_000,       // 10 минут хранения в памяти
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
 
 const RouteFallback = () => (
   <div className="min-h-screen flex items-center justify-center">

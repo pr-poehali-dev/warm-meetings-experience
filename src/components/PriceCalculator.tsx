@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { calculatePrice } from "./calculator/utils";
 import Step1PackageSelection from "./calculator/Step1PackageSelection";
@@ -32,59 +33,33 @@ const PriceCalculator: React.FC<PriceCalculatorProps> = ({ open, onClose }) => {
   const [comment, setComment] = useState<string>("");
   const [consentChecked, setConsentChecked] = useState<boolean>(false);
 
-  const [packages, setPackages] = useState<any[]>([]);
-  const [addons, setAddons] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [showRestoreNotice, setShowRestoreNotice] = useState<boolean>(false);
 
   const STORAGE_KEY = 'warmDatesCalculatorProgress';
-  const CACHE_KEY = 'warmDatesCalculatorCache';
-  const CACHE_EXPIRY = 5 * 60 * 1000;
+
+  const { data: calcData, isLoading: loading } = useQuery({
+    queryKey: ["calculator-catalog"],
+    enabled: open,
+    staleTime: 5 * 60_000,      // 5 минут — пакеты/допы меняются редко
+    gcTime: 30 * 60_000,        // полчаса в памяти
+    queryFn: async () => {
+      const [packagesRes, addonsRes] = await Promise.all([
+        fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=packages'),
+        fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=addons'),
+      ]);
+      const packagesData = await packagesRes.json();
+      const addonsData = await addonsRes.json();
+      return {
+        packages: (packagesData as { is_active?: boolean }[]).filter((p) => p.is_active),
+        addons: (addonsData as { is_active?: boolean }[]).filter((a) => a.is_active),
+      };
+    },
+  });
+  const packages = useMemo(() => calcData?.packages ?? [], [calcData]);
+  const addons = useMemo(() => calcData?.addons ?? [], [calcData]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (cached) {
-          const { data, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < CACHE_EXPIRY) {
-            setPackages(data.packages);
-            setAddons(data.addons);
-            setLoading(false);
-            return;
-          }
-        }
-        
-        const [packagesRes, addonsRes] = await Promise.all([
-          fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=packages'),
-          fetch('https://functions.poehali.dev/0c83af59-23b2-45d2-b91c-4948f162ee87?resource=addons')
-        ]);
-        
-        const packagesData = await packagesRes.json();
-        const addonsData = await addonsRes.json();
-        
-        const activePackages = packagesData.filter((p: any) => p.is_active);
-        const activeAddons = addonsData.filter((a: any) => a.is_active);
-        
-        setPackages(activePackages);
-        setAddons(activeAddons);
-        
-        localStorage.setItem(CACHE_KEY, JSON.stringify({
-          data: { packages: activePackages, addons: activeAddons },
-          timestamp: Date.now()
-        }));
-      } catch (error) {
-        console.error('Error loading calculator data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (open) {
-      fetchData();
-      
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         try {
