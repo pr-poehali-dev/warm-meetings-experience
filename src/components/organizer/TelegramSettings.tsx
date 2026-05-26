@@ -18,14 +18,31 @@ interface Props {
   userRole?: "organizer" | "master" | "partner" | "editor";
 }
 
-function NotifyChannelRow({ icon, label, description, active, disabled, onToggle }: {
-  icon: string; label: string; description: string;
-  active: boolean; disabled: boolean; onToggle: () => void;
+function NotifyChannelRow({
+  icon,
+  label,
+  description,
+  active,
+  disabled,
+  onToggle,
+}: {
+  icon: string;
+  label: string;
+  description: string;
+  active: boolean;
+  disabled: boolean;
+  onToggle: () => void;
 }) {
   return (
-    <div className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${active ? "border-green-200 bg-green-50/50" : "border-border bg-muted/20"} ${disabled ? "opacity-50" : ""}`}>
+    <div
+      className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${active ? "border-green-200 bg-green-50/50" : "border-border bg-muted/20"} ${disabled ? "opacity-50" : ""}`}
+    >
       <div className="flex items-center gap-2.5">
-        <Icon name={icon as "Send"} size={15} className={active ? "text-green-600" : "text-muted-foreground"} />
+        <Icon
+          name={icon as "Send"}
+          size={15}
+          className={active ? "text-green-600" : "text-muted-foreground"}
+        />
         <div>
           <p className="text-sm font-medium leading-tight">{label}</p>
           <p className="text-xs text-muted-foreground">{description}</p>
@@ -36,7 +53,9 @@ function NotifyChannelRow({ icon, label, description, active, disabled, onToggle
         disabled={disabled}
         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${active ? "bg-green-500" : "bg-muted-foreground/30"}`}
       >
-        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${active ? "translate-x-4" : "translate-x-1"}`} />
+        <span
+          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${active ? "translate-x-4" : "translate-x-1"}`}
+        />
       </button>
     </div>
   );
@@ -44,7 +63,7 @@ function NotifyChannelRow({ icon, label, description, active, disabled, onToggle
 
 const ROLE_COPY: Record<string, { title: string; desc: string }> = {
   organizer: {
-    title: "Telegram для организатора",
+    title: "Банный бот Telegram",
     desc: "Публикуйте события в ваш канал и получайте уведомления о новых записях прямо в Telegram",
   },
   master: {
@@ -61,30 +80,44 @@ const ROLE_COPY: Record<string, { title: string; desc: string }> = {
   },
 };
 
-export default function TelegramSettings({ tgLinked, tgChannelsCount, userId, onRefresh, userRole = "organizer" }: Props) {
+export default function TelegramSettings({
+  tgLinked,
+  tgChannelsCount,
+  userId,
+  onRefresh,
+  userRole = "organizer",
+}: Props) {
   const roleCopy = ROLE_COPY[userRole] || ROLE_COPY.organizer;
   const [code, setCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [checking, setChecking] = useState(false);
-  const [notifySettings, setNotifySettings] = useState<OrgNotifySettings | null>(null);
+  const [notifySettings, setNotifySettings] =
+    useState<OrgNotifySettings | null>(null);
   const [savingNotify, setSavingNotify] = useState(false);
   const [channels, setChannels] = useState<TgChannel[]>([]);
 
   useEffect(() => {
-    organizerApi.getNotifySettings()
+    organizerApi
+      .getNotifySettings()
       .then(setNotifySettings)
       .catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!tgChannelsCount || !userId) return;
-    tgPublishApi.getChannels(userId)
+    tgPublishApi
+      .getChannels(userId)
       .then(setChannels)
       .catch(() => {});
   }, [tgChannelsCount, userId]);
 
-  const handleNotifyToggle = async (field: keyof Pick<OrgNotifySettings, "notify_telegram" | "notify_email" | "notify_vk">) => {
+  const handleNotifyToggle = async (
+    field: keyof Pick<
+      OrgNotifySettings,
+      "notify_telegram" | "notify_email" | "notify_vk"
+    >,
+  ) => {
     if (!notifySettings) return;
     const newVal = !notifySettings[field];
     setNotifySettings({ ...notifySettings, [field]: newVal });
@@ -105,7 +138,11 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, userId, on
       const data = await organizerApi.getTelegramCode();
       setCode(data.code);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Не удалось получить код. Попробуйте ещё раз.");
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Не удалось получить код. Попробуйте ещё раз.",
+      );
     } finally {
       setLoading(false);
     }
@@ -130,16 +167,13 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, userId, on
 
   return (
     <div className="space-y-5">
-
       {/* Шапка */}
       <div>
         <h2 className="text-xl font-bold flex items-center gap-2">
           <Icon name="Send" size={20} className="text-primary" />
           {roleCopy.title}
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          {roleCopy.desc}
-        </p>
+        <p className="text-sm text-muted-foreground mt-1">{roleCopy.desc}</p>
       </div>
 
       {/* Прогресс */}
@@ -159,22 +193,37 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, userId, on
         <Card>
           <CardContent className="pt-5 space-y-4">
             <div>
-              <p className="font-semibold text-sm">Уведомления о новых записях</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Выберите, куда присылать оповещение когда кто-то записался на вашу встречу</p>
+              <p className="font-semibold text-sm">
+                Уведомления о новых записях
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Выберите, куда присылать оповещение когда кто-то записался на
+                вашу встречу
+              </p>
             </div>
             <div className="space-y-2">
               <NotifyChannelRow
                 icon="Send"
                 label="Telegram"
-                description={notifySettings.tg_linked ? "Личное сообщение в Telegram" : "Нужно привязать аккаунт выше"}
-                active={notifySettings.notify_telegram && notifySettings.tg_linked}
+                description={
+                  notifySettings.tg_linked
+                    ? "Личное сообщение в Telegram"
+                    : "Нужно привязать аккаунт выше"
+                }
+                active={
+                  notifySettings.notify_telegram && notifySettings.tg_linked
+                }
                 disabled={!notifySettings.tg_linked || savingNotify}
                 onToggle={() => handleNotifyToggle("notify_telegram")}
               />
               <NotifyChannelRow
                 icon="Mail"
                 label="Email"
-                description={notifySettings.email ? notifySettings.email : "Email не указан в профиле"}
+                description={
+                  notifySettings.email
+                    ? notifySettings.email
+                    : "Email не указан в профиле"
+                }
                 active={notifySettings.notify_email && !!notifySettings.email}
                 disabled={!notifySettings.email || savingNotify}
                 onToggle={() => handleNotifyToggle("notify_email")}
@@ -182,7 +231,11 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, userId, on
               <NotifyChannelRow
                 icon="MessageCircle"
                 label="ВКонтакте"
-                description={notifySettings.vk_id ? "Личное сообщение от сообщества" : "VK не привязан в профиле"}
+                description={
+                  notifySettings.vk_id
+                    ? "Личное сообщение от сообщества"
+                    : "VK не привязан в профиле"
+                }
                 active={notifySettings.notify_vk && !!notifySettings.vk_id}
                 disabled={!notifySettings.vk_id || savingNotify}
                 onToggle={() => handleNotifyToggle("notify_vk")}
@@ -190,7 +243,8 @@ export default function TelegramSettings({ tgLinked, tgChannelsCount, userId, on
             </div>
             {!notifySettings.tg_linked && !notifySettings.email && (
               <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg p-2.5">
-                Настройте хотя бы один канал, чтобы получать уведомления о записях.
+                Настройте хотя бы один канал, чтобы получать уведомления о
+                записях.
               </p>
             )}
           </CardContent>
