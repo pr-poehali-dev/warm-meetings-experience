@@ -59,6 +59,7 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
   const [bookings, setBookings] = useState<ActiveBooking[]>([]);
   const [bufferMinutes, setBufferMinutes] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [aboutServiceId, setAboutServiceId] = useState<number | null>(null);
 
   useEffect(() => {
     masterBookingsApi
@@ -188,61 +189,53 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
   if (!activeServices.length) return null;
 
   return (
-    <div
-      className="rounded-2xl p-5 sm:p-6"
-      style={{
-        background: "var(--card-idle)",
-        border: "1px solid var(--card-border)",
-      }}
-    >
-      <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--c-cream)" }}>
+    <div className="rounded-2xl p-5 sm:p-6 bg-card border border-border shadow-sm">
+      <h2 className="text-2xl font-bold mb-1 text-foreground">
         Запись на сеанс
       </h2>
-      <p className="text-sm mb-5" style={{ color: "var(--c-text)" }}>
+      <p className="text-sm mb-5 text-muted-foreground">
         Выберите услугу, дату и удобное время — мастер подтвердит запись.
       </p>
 
       {/* ШАГ 1: Услуги */}
       <div className="mb-6">
-        <div
-          className="text-[11px] font-semibold uppercase tracking-wider mb-3"
-          style={{ color: "var(--c-muted)" }}
-        >
+        <div className="text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground">
           Услуга
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {activeServices.map((s) => {
             const active = selectedServiceId === s.id;
             return (
-              <button
+              <div
                 key={s.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedServiceId(active ? null : s.id!)}
-                className="group relative text-left p-4 rounded-2xl transition-all overflow-hidden"
-                style={{
-                  background: active
-                    ? "linear-gradient(135deg, rgba(200,131,74,0.18) 0%, rgba(143,168,154,0.12) 100%)"
-                    : "var(--card-idle)",
-                  border: active
-                    ? "1.5px solid var(--c-terra)"
-                    : "1px solid var(--card-border)",
-                  boxShadow: active ? "0 4px 18px rgba(200,131,74,0.18)" : "none",
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedServiceId(active ? null : s.id!);
+                  }
                 }}
+                className={`group relative text-left p-4 rounded-2xl transition-all overflow-hidden cursor-pointer ${
+                  active
+                    ? "border-[1.5px] border-primary shadow-[0_4px_18px_rgba(200,131,74,0.18)] bg-gradient-to-br from-primary/15 to-nature-sage/10"
+                    : "border border-border bg-background hover:border-primary/40 hover:shadow-sm"
+                }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-sm leading-tight mb-1" style={{ color: "var(--c-cream)" }}>
+                    <div className="font-semibold text-sm leading-tight mb-1 text-foreground">
                       {s.name}
                     </div>
                     {s.description && (
                       <p
-                        className={`text-xs leading-relaxed mb-2 ${active ? "" : "line-clamp-2"}`}
-                        style={{ color: "var(--c-text)" }}
+                        className={`text-xs leading-relaxed mb-2 text-muted-foreground ${active ? "" : "line-clamp-2"}`}
                       >
                         {s.description}
                       </p>
                     )}
-                    <div className="flex items-center gap-3 text-[11px]" style={{ color: "var(--card-meta)" }}>
+                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Icon name="Clock" size={11} />
                         {fmtDuration(s.duration_minutes)}
@@ -256,24 +249,108 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
-                    <span className="font-bold text-base" style={{ color: "var(--c-terra)" }}>
+                    <span className="font-bold text-base text-primary">
                       {fmt(s.price)} ₽
                     </span>
                     {active && (
-                      <span
-                        className="w-5 h-5 rounded-full inline-flex items-center justify-center"
-                        style={{ background: "var(--c-terra)" }}
-                      >
-                        <Icon name="Check" size={12} className="text-white" />
+                      <span className="w-5 h-5 rounded-full inline-flex items-center justify-center bg-primary">
+                        <Icon name="Check" size={12} className="text-primary-foreground" />
                       </span>
                     )}
                   </div>
                 </div>
-              </button>
+
+                {/* Кнопка «Подробнее о процедуре» — появляется при выделении */}
+                {active && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAboutServiceId(s.id!);
+                    }}
+                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                  >
+                    <Icon name="Info" size={13} />
+                    Подробнее о процедуре
+                    <Icon name="ChevronRight" size={13} />
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
       </div>
+
+      {/* Модалка с описанием процедуры */}
+      {aboutServiceId !== null && (() => {
+        const svc = activeServices.find((x) => x.id === aboutServiceId);
+        if (!svc) return null;
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setAboutServiceId(null)}
+          >
+            <div
+              className="bg-card border border-border rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                      Процедура
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground leading-tight">
+                      {svc.name}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAboutServiceId(null)}
+                    className="shrink-0 w-8 h-8 rounded-full inline-flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
+                  >
+                    <Icon name="X" size={16} />
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mb-4 pb-4 border-b border-border">
+                  <span className="flex items-center gap-1.5">
+                    <Icon name="Clock" size={13} className="text-primary" />
+                    {fmtDuration(svc.duration_minutes)}
+                  </span>
+                  {svc.max_clients > 1 && (
+                    <span className="flex items-center gap-1.5">
+                      <Icon name="Users" size={13} className="text-primary" />
+                      до {svc.max_clients} чел.
+                    </span>
+                  )}
+                  <span className="flex items-center gap-1.5 ml-auto font-bold text-primary text-base">
+                    {fmt(svc.price)} ₽
+                  </span>
+                </div>
+
+                {svc.description ? (
+                  <p className="text-sm leading-relaxed whitespace-pre-line text-foreground/80">
+                    {svc.description}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    Мастер пока не добавил подробное описание этой процедуры.
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setAboutServiceId(null)}
+                  className="mt-5 w-full py-2.5 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  Понятно
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ШАГ 2: Дата */}
       {selectedService && (
