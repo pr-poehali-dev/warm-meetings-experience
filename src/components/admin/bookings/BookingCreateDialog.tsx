@@ -52,7 +52,7 @@ const BookingCreateDialog = ({
             Новая запись
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-2 overflow-y-auto flex-1">
+        <div className="space-y-4 overflow-y-auto flex-1 px-1.5 py-[3px]">
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 sm:col-span-1">
               <Label>Имя клиента <span className="text-red-500">*</span></Label>
