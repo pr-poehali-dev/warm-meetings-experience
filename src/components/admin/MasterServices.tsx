@@ -324,7 +324,7 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[480px] flex flex-col">
+        <DialogContent className="sm:max-w-[480px] flex flex-col max-h-[90vh]">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Icon
