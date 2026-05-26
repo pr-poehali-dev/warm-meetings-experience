@@ -48,11 +48,12 @@ interface MasterBookingFlowProps {
   masterId: number;
   services: MasterService[];
   onBookSlot: (option: BookingOption, service: MasterService) => void;
+  preselectedServiceId?: number | null;
 }
 
-export default function MasterBookingFlow({ masterId, services, onBookSlot }: MasterBookingFlowProps) {
+export default function MasterBookingFlow({ masterId, services, onBookSlot, preselectedServiceId }: MasterBookingFlowProps) {
   const activeServices = useMemo(() => services.filter((s) => s.is_active), [services]);
-  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(preselectedServiceId ?? null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [slots, setSlots] = useState<MasterSlot[]>([]);
   const [bookings, setBookings] = useState<ActiveBooking[]>([]);

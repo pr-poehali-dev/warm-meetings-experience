@@ -427,6 +427,7 @@ export default function MasterDetail() {
   const [bookingState, setBookingState] = useState<{ option: BookingOption; service: MasterService } | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [extVideos, setExtVideos] = useState<VideoItem[]>([]);
+  const [selectedServiceForFlow, setSelectedServiceForFlow] = useState<number | null>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -643,14 +644,78 @@ export default function MasterDetail() {
               </div>
             )}
 
-            {/* Запись на сеанс — только на мобильных (на десктопе — в правой колонке) */}
-            <div className="lg:hidden">
-              <MasterBookingFlow
-                masterId={master.id}
-                services={services}
-                onBookSlot={(option, service) => setBookingState({ option, service })}
-              />
-            </div>
+            {/* Услуги — карточки */}
+            {services.length > 0 && (
+              <div className="mb-8" data-section="schedule">
+                <h2 className="text-lg font-semibold mb-1">Запись на сеанс</h2>
+                <p className="text-sm text-muted-foreground mb-4">Выберите услугу и удобное время — мастер подтвердит запись.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {services.map((svc) => (
+                    <div
+                      key={svc.id}
+                      className="group bg-card border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col"
+                    >
+                      <div className="p-5 flex-1">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h3 className="font-semibold text-base leading-tight group-hover:text-primary transition-colors">
+                            {svc.name}
+                          </h3>
+                          {svc.price > 0 && (
+                            <span className="text-primary font-bold text-base whitespace-nowrap flex-shrink-0">
+                              {fmt(svc.price)} ₽
+                            </span>
+                          )}
+                        </div>
+                        {svc.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{svc.description}</p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Icon name="Clock" size={12} />
+                            {fmtDuration(svc.duration_minutes)}
+                          </span>
+                          {svc.max_clients && svc.max_clients > 1 && (
+                            <span className="flex items-center gap-1">
+                              <Icon name="Users" size={12} />
+                              до {svc.max_clients}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="px-5 pb-4">
+                        <button
+                          onClick={() => {
+                            const el = document.getElementById(`booking-flow-${svc.id}`);
+                            if (el) {
+                              el.scrollIntoView({ behavior: "smooth" });
+                            } else {
+                              setSelectedServiceForFlow(svc.id);
+                              setTimeout(() => {
+                                document.getElementById("booking-flow-section")?.scrollIntoView({ behavior: "smooth" });
+                              }, 50);
+                            }
+                          }}
+                          className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Icon name="CalendarCheck" size={15} />
+                          Выбрать время
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Виджет выбора времени */}
+                <div id="booking-flow-section" className="mt-6">
+                  <MasterBookingFlow
+                    masterId={master.id}
+                    services={services}
+                    preselectedServiceId={selectedServiceForFlow}
+                    onBookSlot={(option, service) => setBookingState({ option, service })}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Портфолио */}
             {portfolio.length > 0 && (
@@ -678,8 +743,10 @@ export default function MasterDetail() {
               </div>
             )}
 
-            {/* Отзывы */}
-            <ReviewsBlock masterId={master.id} rating={master.rating} reviewsCount={master.reviews_count} />
+            {/* Отзывы (на мобильных) */}
+            <div className="lg:hidden">
+              <ReviewsBlock masterId={master.id} rating={master.rating} reviewsCount={master.reviews_count} />
+            </div>
 
             {/* Бани */}
             {(master.baths || []).length > 0 && (
@@ -727,30 +794,9 @@ export default function MasterDetail() {
             )}
           </div>
 
-          {/* Правая колонка — sticky-виджет */}
-          <div className="lg:w-[320px] flex-shrink-0">
+          {/* Правая колонка 30% — контакты + отзывы */}
+          <div className="lg:w-[300px] flex-shrink-0">
             <div className="lg:sticky lg:top-24 space-y-4">
-
-              {/* Виджет бронирования (десктоп) */}
-              {services.length > 0 && (
-                <div className="hidden lg:block bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-                  <div className="bg-primary/5 border-b border-border px-5 py-4">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-sm">Запись на сеанс</span>
-                      {master.price_from > 0 && (
-                        <span className="text-primary font-bold">от {fmt(master.price_from)} ₽</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="px-4 py-4">
-                    <MasterBookingFlow
-                      masterId={master.id}
-                      services={services}
-                      onBookSlot={(option, service) => setBookingState({ option, service })}
-                    />
-                  </div>
-                </div>
-              )}
 
               {/* Контакты */}
               <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
@@ -788,18 +834,10 @@ export default function MasterDetail() {
                 )}
               </div>
 
-              {master.reviews_count > 0 && (
-                <div className="bg-card border border-border rounded-2xl p-5">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold text-sm">Рейтинг</span>
-                    <span className="text-2xl font-bold text-primary">{master.rating.toFixed(1)}</span>
-                  </div>
-                  <StarRating rating={master.rating} />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    На основе {master.reviews_count} отзывов
-                  </p>
-                </div>
-              )}
+              {/* Отзывы (десктоп) */}
+              <div className="hidden lg:block">
+                <ReviewsBlock masterId={master.id} rating={master.rating} reviewsCount={master.reviews_count} />
+              </div>
             </div>
           </div>
         </div>
