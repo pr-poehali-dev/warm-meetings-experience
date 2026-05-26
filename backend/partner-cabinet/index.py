@@ -90,18 +90,22 @@ def handler(event, context):
 
 def handle_list_baths(cur, conn, schema, user):
     uid = user['id']
+    # Считаем просмотры одним проходом по bath_views (LEFT JOIN + GROUP BY),
+    # а не отдельным COUNT(*) на каждую баню — это убирает N+1.
     cur.execute(f"""
         SELECT b.id, b.slug, b.name, b.address, b.city, b.phone, b.is_active,
                b.is_verified, b.verification_requested_at,
                b.price_from, b.price_per_hour, b.rating, b.reviews_count,
                b.capacity_min, b.capacity_max, b.created_at, b.updated_at,
-               COALESCE((
-                 SELECT COUNT(*) FROM {schema}.bath_views bv
-                 WHERE bv.bath_id = b.id
-                 AND bv.viewed_at > CURRENT_TIMESTAMP - INTERVAL '30 days'
-               ), 0) AS views_30d,
-               (SELECT photos -> 0 FROM {schema}.baths WHERE id = b.id) AS cover_photo
+               COALESCE(v.views_30d, 0) AS views_30d,
+               b.photos -> 0 AS cover_photo
         FROM {schema}.baths b
+        LEFT JOIN (
+            SELECT bath_id, COUNT(*) AS views_30d
+            FROM {schema}.bath_views
+            WHERE viewed_at > CURRENT_TIMESTAMP - INTERVAL '30 days'
+            GROUP BY bath_id
+        ) v ON v.bath_id = b.id
         WHERE b.owner_id = {uid}
         ORDER BY b.created_at DESC
     """)
@@ -119,17 +123,22 @@ def handle_get_bath(cur, conn, schema, user, bath_id):
         conn.close()
         return respond(403, {'error': 'Нет доступа к этой бане'})
 
+    # Один проход по bath_views — две метрики через FILTER, вместо двух подзапросов.
     cur.execute(f"""
         SELECT b.*,
-               COALESCE((
-                 SELECT COUNT(*) FROM {schema}.bath_views bv WHERE bv.bath_id = b.id
-                 AND bv.viewed_at > CURRENT_TIMESTAMP - INTERVAL '7 days'
-               ), 0) AS views_7d,
-               COALESCE((
-                 SELECT COUNT(*) FROM {schema}.bath_views bv WHERE bv.bath_id = b.id
-                 AND bv.viewed_at > CURRENT_TIMESTAMP - INTERVAL '30 days'
-               ), 0) AS views_30d
+               COALESCE(v.views_7d, 0)  AS views_7d,
+               COALESCE(v.views_30d, 0) AS views_30d
         FROM {schema}.baths b
+        LEFT JOIN (
+            SELECT
+              bath_id,
+              COUNT(*) FILTER (WHERE viewed_at > CURRENT_TIMESTAMP - INTERVAL '7 days')  AS views_7d,
+              COUNT(*) FILTER (WHERE viewed_at > CURRENT_TIMESTAMP - INTERVAL '30 days') AS views_30d
+            FROM {schema}.bath_views
+            WHERE bath_id = {bath_id}
+              AND viewed_at > CURRENT_TIMESTAMP - INTERVAL '30 days'
+            GROUP BY bath_id
+        ) v ON v.bath_id = b.id
         WHERE b.id = {bath_id}
     """)
     bath = cur.fetchone()

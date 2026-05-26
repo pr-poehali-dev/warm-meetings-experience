@@ -52,6 +52,61 @@ def ok(body):
 def err(message, status=400):
     return respond(status, {'error': message})
 
+# --- Process-local memo cache (TTL) ---
+#
+# Простой in-memory кэш для счётчиков публичных списков и справочников.
+# Живёт в памяти Cloud Function между холодными стартами (пока контейнер тёплый).
+# Не подходит для авторизованных персональных данных — используй только для
+# того, что одинаково для всех клиентов: total публичных списков, справочники,
+# агрегаты по событиям/мастерам/баням.
+#
+# Использование:
+#     from shared import cached
+#     total = cached('events:total', 60, lambda: _query_events_total(cur, schema))
+
+_MEMO: dict = {}  # key -> (expires_at_ts, value)
+
+
+def memo_get(key: str):
+    """Возвращает значение из кэша, если не протухло. Иначе None."""
+    item = _MEMO.get(key)
+    if not item:
+        return None
+    expires_at, value = item
+    if expires_at < time.time():
+        _MEMO.pop(key, None)
+        return None
+    return value
+
+
+def memo_set(key: str, value, ttl_seconds: int = 60):
+    """Кладёт значение в кэш с TTL (по умолчанию 60 секунд)."""
+    _MEMO[key] = (time.time() + max(1, int(ttl_seconds)), value)
+    return value
+
+
+def memo_invalidate(prefix: str = ''):
+    """Сбрасывает кэш (полностью или по префиксу ключа)."""
+    if not prefix:
+        _MEMO.clear()
+        return
+    for k in list(_MEMO.keys()):
+        if k.startswith(prefix):
+            _MEMO.pop(k, None)
+
+
+def cached(key: str, ttl_seconds: int, loader):
+    """Удобная обёртка: вернуть из кэша или вызвать loader() и закэшировать.
+
+    loader — callable без аргументов, возвращающий JSON-сериализуемое значение.
+    """
+    hit = memo_get(key)
+    if hit is not None:
+        return hit
+    value = loader()
+    memo_set(key, value, ttl_seconds)
+    return value
+
 # --- Auth ---
 
 def get_token(event):

@@ -127,15 +127,25 @@ def handle_guests(event, method, params, cur, conn, user_id, schema, admin):
         return respond(404, {'error': 'Event not found'})
 
     if method == 'GET':
+        # Считаем сообщения одним проходом по guest_messages для всего события
+        # (LEFT JOIN + GROUP BY) — это убирает N+1 (по подзапросу на каждого гостя).
         cur.execute(f"""
             SELECT s.id, s.name, s.phone, s.email, s.telegram,
                    s.status, s.preferred_channel, s.created_at, s.wrote_at,
                    s.user_id,
                    u.tg_chat_id, u.vk_id, u.notify_telegram, u.notify_vk,
                    u.notify_email, u.notify_sms,
-                   (SELECT COUNT(*) FROM {schema}.guest_messages gm WHERE gm.signup_id = s.id) as messages_count
+                   COALESCE(gm.messages_count, 0) AS messages_count
             FROM {schema}.event_signups s
             LEFT JOIN {schema}.users u ON u.id = s.user_id
+            LEFT JOIN (
+                SELECT signup_id, COUNT(*) AS messages_count
+                FROM {schema}.guest_messages
+                WHERE signup_id IN (
+                    SELECT id FROM {schema}.event_signups WHERE event_id = {event_id}
+                )
+                GROUP BY signup_id
+            ) gm ON gm.signup_id = s.id
             WHERE s.event_id = {event_id}
             ORDER BY s.created_at ASC
         """)

@@ -333,10 +333,17 @@ def handle_signups(event, method, params, schema, headers):
             ip_address = ''
         ip_safe = ip_address.replace("'", "''")[:64]
         if ip_safe:
-            cur.execute(f"SELECT COUNT(*) AS c FROM {schema}.signup_rate_limit WHERE ip_address = '{ip_safe}' AND created_at > NOW() - INTERVAL '1 minute'")
-            cnt_minute = (cur.fetchone() or {}).get('c', 0) or 0
-            cur.execute(f"SELECT COUNT(*) AS c FROM {schema}.signup_rate_limit WHERE ip_address = '{ip_safe}' AND created_at > NOW() - INTERVAL '1 hour'")
-            cnt_hour = (cur.fetchone() or {}).get('c', 0) or 0
+            cur.execute(f"""
+                SELECT
+                  COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '1 minute') AS c_min,
+                  COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '1 hour')   AS c_hour
+                FROM {schema}.signup_rate_limit
+                WHERE ip_address = '{ip_safe}'
+                  AND created_at > NOW() - INTERVAL '1 hour'
+            """)
+            rl = cur.fetchone() or {}
+            cnt_minute = rl.get('c_min', 0) or 0
+            cnt_hour = rl.get('c_hour', 0) or 0
             if cnt_minute >= 2 or cnt_hour >= 5:
                 conn.close()
                 return {'statusCode': 429, 'headers': headers, 'body': json.dumps({'error': 'Слишком много заявок. Попробуйте позже.'})}
@@ -550,10 +557,17 @@ def handle_question(event, method, params, schema, headers):
         ip_address = ''
     ip_safe = ip_address.replace("'", "''")[:64]
     if ip_safe:
-        cur.execute(f"SELECT COUNT(*) AS c FROM {schema}.event_questions WHERE ip_address = '{ip_safe}' AND created_at > NOW() - INTERVAL '1 minute'")
-        cnt_min = (cur.fetchone() or {}).get('c', 0) or 0
-        cur.execute(f"SELECT COUNT(*) AS c FROM {schema}.event_questions WHERE ip_address = '{ip_safe}' AND created_at > NOW() - INTERVAL '1 hour'")
-        cnt_hr = (cur.fetchone() or {}).get('c', 0) or 0
+        cur.execute(f"""
+            SELECT
+              COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '1 minute') AS c_min,
+              COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '1 hour')   AS c_hr
+            FROM {schema}.event_questions
+            WHERE ip_address = '{ip_safe}'
+              AND created_at > NOW() - INTERVAL '1 hour'
+        """)
+        rl = cur.fetchone() or {}
+        cnt_min = rl.get('c_min', 0) or 0
+        cnt_hr = rl.get('c_hr', 0) or 0
         if cnt_min >= 3 or cnt_hr >= 10:
             conn.close()
             return {'statusCode': 429, 'headers': headers, 'body': json.dumps({'error': 'Слишком много обращений. Попробуйте позже.'})}

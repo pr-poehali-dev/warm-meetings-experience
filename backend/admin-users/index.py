@@ -80,15 +80,19 @@ def handler(event, context):
         """)
         rows_n = [dict(r) for r in cur.fetchall()]
 
-        cur.execute(f"""
-            SELECT
-                COUNT(*) FILTER (WHERE status = 'success') AS ok_24h,
-                COUNT(*) FILTER (WHERE status = 'failed')  AS fail_24h,
-                COUNT(*) FILTER (WHERE status = 'failed' AND (error_code IN ('401','403') OR error_text ILIKE '%unauthorized%' OR error_text ILIKE '%forbidden%')) AS critical_24h
-            FROM {schema}.notification_log
-            WHERE created_at >= NOW() - INTERVAL '24 hours'
-        """)
-        stats_n = dict(cur.fetchone() or {})
+        # 24h-статистика одинакова для всех админов и не зависит от фильтров —
+        # кэшируем на 60 секунд, чтобы не считать тяжёлый агрегат на каждое открытие.
+        def _load_stats_24h():
+            cur.execute(f"""
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'success') AS ok_24h,
+                    COUNT(*) FILTER (WHERE status = 'failed')  AS fail_24h,
+                    COUNT(*) FILTER (WHERE status = 'failed' AND (error_code IN ('401','403') OR error_text ILIKE '%unauthorized%' OR error_text ILIKE '%forbidden%')) AS critical_24h
+                FROM {schema}.notification_log
+                WHERE created_at >= NOW() - INTERVAL '24 hours'
+            """)
+            return dict(cur.fetchone() or {})
+        stats_n = cached('notif_log_stats_24h', 60, _load_stats_24h)
         conn.close()
         return respond(200, {
             'items': rows_n,

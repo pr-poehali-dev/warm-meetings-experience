@@ -52,6 +52,45 @@ def ok(body):
 def err(message, status=400):
     return respond(status, {'error': message})
 
+# --- Process-local memo cache (TTL) ---
+
+_MEMO: dict = {}
+
+
+def memo_get(key: str):
+    item = _MEMO.get(key)
+    if not item:
+        return None
+    expires_at, value = item
+    if expires_at < time.time():
+        _MEMO.pop(key, None)
+        return None
+    return value
+
+
+def memo_set(key: str, value, ttl_seconds: int = 60):
+    _MEMO[key] = (time.time() + max(1, int(ttl_seconds)), value)
+    return value
+
+
+def memo_invalidate(prefix: str = ''):
+    if not prefix:
+        _MEMO.clear()
+        return
+    for k in list(_MEMO.keys()):
+        if k.startswith(prefix):
+            _MEMO.pop(k, None)
+
+
+def cached(key: str, ttl_seconds: int, loader):
+    """Вернуть из кэша или вызвать loader() и закэшировать."""
+    hit = memo_get(key)
+    if hit is not None:
+        return hit
+    value = loader()
+    memo_set(key, value, ttl_seconds)
+    return value
+
 # --- Auth ---
 
 def get_token(event):

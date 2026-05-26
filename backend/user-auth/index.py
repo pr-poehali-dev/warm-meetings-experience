@@ -66,10 +66,11 @@ def check_device_and_notify(cur, schema, user_id, user_email, user_name, ip, use
         VALUES ({user_id}, '{safe_fp}', '{safe_ua}', '{safe_ip}')
     """)
 
-    cur.execute(f"SELECT COUNT(*) as cnt FROM {schema}.user_login_devices WHERE user_id = {user_id}")
-    cnt = cur.fetchone()['cnt']
+    # Нам важно лишь "это первое устройство или нет" — достаточно LIMIT 2.
+    cur.execute(f"SELECT 1 FROM {schema}.user_login_devices WHERE user_id = {user_id} LIMIT 2")
+    has_more_than_one = len(cur.fetchall()) > 1
 
-    if cnt > 1 and user_email and '@vk.local' not in user_email:
+    if has_more_than_one and user_email and '@vk.local' not in user_email:
         send_new_device_email(user_email, user_name or '', ip or 'неизвестен', user_agent or 'неизвестен')
         return True
 
