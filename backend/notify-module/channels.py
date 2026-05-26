@@ -11,7 +11,7 @@ import requests
 
 from shared import (
     CORS_HEADERS, options_response, get_conn, get_schema,
-    get_user_from_token, respond,
+    get_user_from_token, respond, tg_send,
 )
 
 VK_API_URL = "https://api.vk.com/method"
@@ -42,15 +42,13 @@ def _send_vk_message(vk_user_id: int, message: str) -> dict:
 
 
 def _send_tg_message(chat_id: int, message: str) -> dict:
-    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    if not bot_token:
-        return {"error": "TELEGRAM_BOT_TOKEN not set"}
-    r = requests.post(
-        f"https://api.telegram.org/bot{bot_token}/sendMessage",
-        json={"chat_id": chat_id, "text": message, "parse_mode": "HTML"},
-        timeout=10
-    )
-    return r.json()
+    """Тонкая обёртка над shared.tg_send: сохраняем dict-результат
+    для обратной совместимости с вызывающим кодом.
+    """
+    ok_sent = tg_send(chat_id, message)
+    if ok_sent:
+        return {"ok": True}
+    return {"ok": False, "error": "tg_send failed"}
 
 
 def handle_channels_router(event, method, params, body):

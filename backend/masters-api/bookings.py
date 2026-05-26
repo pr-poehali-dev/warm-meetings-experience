@@ -1,10 +1,8 @@
 import json
 import os
-import urllib.request
-import urllib.parse
 import psycopg2.extras
 from datetime import datetime
-from shared import CORS_HEADERS, get_conn, get_schema
+from shared import CORS_HEADERS, get_conn, get_schema, send_email, tg_send, admin_email
 
 
 def _log_notification(cur, schema, *, channel, event_type, recipient, status,
@@ -36,14 +34,9 @@ def _log_notification(cur, schema, *, channel, event_type, recipient, status,
 
 
 def _alert_admin_critical(channel, error_code, error_text, recipient=''):
-    """При критических сбоях (401/403/Forbidden) шлёт письмо админу проекта.
-    Использует тот же Unisender, поэтому если он сам и сломан — алерт не дойдёт,
-    но мы хотя бы попытаемся. Дополнительно дублируем в Telegram админу.
+    """При критических сбоях (401/403/Forbidden) шлёт письмо админу проекта
+    и дублирует в Telegram через единый shared.send_email/tg_send.
     """
-    admin_email = os.environ.get('SUPPORT_ADMIN_EMAIL', '') or os.environ.get('UNISENDER_SENDER_EMAIL', '')
-    api_key = os.environ.get('UNISENDER_API_KEY', '')
-    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
-    sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
     subject = f'[Sparcom] Критическая ошибка уведомлений: {channel} {error_code}'
     body_html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 560px; color: #1f2937;">
@@ -54,51 +47,20 @@ def _alert_admin_critical(channel, error_code, error_text, recipient=''):
         <p style="color: #6b7280; font-size: 13px;">Проверьте секреты UNISENDER_API_KEY / TG_PUBLISH_BOT_TOKEN в админке проекта.</p>
     </div>
     """.strip()
-    if admin_email and api_key and sender_email:
-        try:
-            req = urllib.request.Request(
-                'https://go2.unisender.ru/ru/transactional/api/v1/email/send.json',
-                data=json.dumps({
-                    'message': {
-                        'recipients': [{'email': admin_email}],
-                        'body': {'html': body_html},
-                        'subject': subject,
-                        'from_email': sender_email,
-                        'from_name': sender_name,
-                        'tags': ['admin-alert'],
-                    }
-                }).encode('utf-8'),
-                headers={
-                    'Content-Type': 'application/json',
-                    'X-API-KEY': api_key,
-                },
-                method='POST',
-            )
-            urllib.request.urlopen(req, timeout=6).read()
-        except Exception:
-            pass
+    addr = admin_email()
+    if addr:
+        send_email(addr, subject, body_html, tags=['admin-alert'])
+
     # Дублируем админу в Telegram
     admin_chat = os.environ.get('TELEGRAM_CHAT_ID', '')
-    bot_token = os.environ.get('TG_PUBLISH_BOT_TOKEN', '') or os.environ.get('TELEGRAM_BOT_TOKEN', '')
-    if admin_chat and bot_token:
-        try:
-            text = f'⚠️ <b>Сбой уведомлений</b>\n\nКанал: {channel}\nКод: {error_code}\nПолучатель: {recipient or "—"}\n\n<code>{(error_text or "")[:500]}</code>'
-            urllib.request.urlopen(urllib.request.Request(
-                f'https://api.telegram.org/bot{bot_token}/sendMessage',
-                data=json.dumps({'chat_id': int(admin_chat), 'text': text, 'parse_mode': 'HTML'}).encode('utf-8'),
-                headers={'Content-Type': 'application/json'},
-                method='POST',
-            ), timeout=5).read()
-        except Exception:
-            pass
-
-
-def _is_critical_error(error_text):
-    """401/403/Forbidden/Unauthorized — критический сбой канала."""
-    if not error_text:
-        return False
-    t = str(error_text).lower()
-    return ('401' in t) or ('403' in t) or ('unauthorized' in t) or ('forbidden' in t)
+    if admin_chat:
+        text = (
+            f'⚠️ <b>Сбой уведомлений</b>\n\n'
+            f'Канал: {channel}\nКод: {error_code}\n'
+            f'Получатель: {recipient or "—"}\n\n'
+            f'<code>{(error_text or "")[:500]}</code>'
+        )
+        tg_send(admin_chat, text)
 
 
 def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
@@ -160,10 +122,7 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
 
         # === Email ===
         if m.get('notify_email') and m.get('email'):
-            api_key = os.environ.get('UNISENDER_API_KEY', '')
-            sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
-            sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
-            if api_key and sender_email:
+            if os.environ.get('UNISENDER_API_KEY') and os.environ.get('UNISENDER_SENDER_EMAIL'):
                 subject = f'Новая запись: {client_name} на {dt_human}'
 
                 # Блок согласия с противопоказаниями
@@ -222,54 +181,30 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                     </div>
                 </div>
                 """.strip()
-                payload = {
-                    'message': {
-                        'recipients': [{'email': m['email'], 'substitutions': {'to_name': m.get('master_name') or ''}}],
-                        'body': {'html': body_html},
-                        'subject': subject,
-                        'from_email': sender_email,
-                        'from_name': sender_name,
-                        'track_links': 1,
-                        'track_read': 1,
-                        'tags': ['master-booking-new'],
-                    }
-                }
-                try:
-                    req = urllib.request.Request(
-                        'https://go2.unisender.ru/ru/transactional/api/v1/email/send.json',
-                        data=json.dumps(payload).encode('utf-8'),
-                        headers={
-                            'Content-Type': 'application/json',
-                            'X-API-KEY': api_key,
-                        },
-                        method='POST',
-                    )
-                    resp_raw = urllib.request.urlopen(req, timeout=8).read()
-                    resp_txt = resp_raw.decode('utf-8', errors='replace')
-                    print(f"[notify_master] email send response: {resp_txt}")
+                ok_sent = send_email(
+                    m['email'], subject, body_html,
+                    to_name=m.get('master_name') or '',
+                    tags=['master-booking-new'],
+                )
+                if ok_sent:
+                    print(f"[notify_master] email sent to {m.get('email')}")
                     _log_notification(cur, schema,
                         channel='email', event_type='master_booking_new',
                         recipient=m.get('email'), subject=subject, status='success',
-                        provider_resp=resp_txt[:1000], user_id=m.get('user_id'),
-                        related_id=booking.get('id'),
+                        user_id=m.get('user_id'), related_id=booking.get('id'),
                         payload={'master_id': master_id, 'client_name': client_name})
-                except Exception as e:
-                    err_text = str(e)
-                    err_code = ''
-                    try:
-                        err_code = str(getattr(e, 'code', '')) or ''
-                    except Exception:
-                        pass
-                    print(f"[notify_master] email send ERROR: {err_text}")
+                else:
+                    print(f"[notify_master] email send FAILED for {m.get('email')}")
                     _log_notification(cur, schema,
                         channel='email', event_type='master_booking_new',
                         recipient=m.get('email'), subject=subject, status='failed',
-                        error_code=err_code or 'exception', error_text=err_text[:2000],
+                        error_code='send_failed',
+                        error_text='shared.send_email returned False',
                         user_id=m.get('user_id'), related_id=booking.get('id'),
                         payload={'master_id': master_id, 'client_name': client_name})
-                    if _is_critical_error(err_text) or err_code in ('401', '403'):
-                        _alert_admin_critical('email (Unisender)', err_code or 'auth_error',
-                                              err_text, recipient=m.get('email') or '')
+                    _alert_admin_critical('email (Unisender)', 'send_failed',
+                                          'shared.send_email returned False',
+                                          recipient=m.get('email') or '')
 
         # === Telegram ===
         # Если у мастера в аккаунте привязан Telegram (через бота организатора)
@@ -281,70 +216,50 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
         # потому что наличие привязки в tg_linked_accounts = пользователь сам подключил бота.
         tg_disabled = m.get('notify_telegram') is False and not m.get('linked_tg')
         if tg_chat_id and not tg_disabled:
-            # Используем тот же бот, что и для уведомлений организатора о записях
-            # на события (TG_PUBLISH_BOT_TOKEN), чтобы всё приходило в один бот.
-            bot_token = os.environ.get('TG_PUBLISH_BOT_TOKEN', '') or os.environ.get('TELEGRAM_BOT_TOKEN', '')
-            if bot_token:
-                lines = [
-                    '🎫 <b>Новая запись на сеанс</b>',
-                    '',
-                    f'📌 {service_name or "Услуга"}',
-                    f'📅 {dt_human}',
-                    f'💰 {int(float(price))} ₽',
-                    '',
-                    f'👤 <b>{client_name}</b>',
-                    f'📞 {client_phone}',
-                ]
-                if client_email:
-                    lines.append(f'✉️ {client_email}')
-                if comment:
-                    lines.append(f'💬 {comment}')
-                if contra_accepted:
-                    when = contra_at_human or 'только что'
-                    ip_part = f' · IP {contra_ip}' if contra_ip else ''
-                    lines.append('')
-                    lines.append(f'✅ <i>Клиент ознакомлен с противопоказаниями</i>')
-                    lines.append(f'<i>{when}{ip_part}</i>')
+            lines = [
+                '🎫 <b>Новая запись на сеанс</b>',
+                '',
+                f'📌 {service_name or "Услуга"}',
+                f'📅 {dt_human}',
+                f'💰 {int(float(price))} ₽',
+                '',
+                f'👤 <b>{client_name}</b>',
+                f'📞 {client_phone}',
+            ]
+            if client_email:
+                lines.append(f'✉️ {client_email}')
+            if comment:
+                lines.append(f'💬 {comment}')
+            if contra_accepted:
+                when = contra_at_human or 'только что'
+                ip_part = f' · IP {contra_ip}' if contra_ip else ''
                 lines.append('')
-                lines.append(f'<i>Статус: {status_human}</i>')
-                try:
-                    tg_req = urllib.request.Request(
-                        f'https://api.telegram.org/bot{bot_token}/sendMessage',
-                        data=json.dumps({
-                            'chat_id': int(tg_chat_id),
-                            'text': '\n'.join(lines),
-                            'parse_mode': 'HTML',
-                        }).encode('utf-8'),
-                        headers={'Content-Type': 'application/json'},
-                        method='POST',
-                    )
-                    tg_resp = urllib.request.urlopen(tg_req, timeout=6).read()
-                    tg_txt = tg_resp.decode('utf-8', errors='replace')
-                    print(f"[notify_master] telegram chat_id={tg_chat_id} ok response={tg_txt[:200]}")
-                    _log_notification(cur, schema,
-                        channel='telegram', event_type='master_booking_new',
-                        recipient=str(tg_chat_id), subject='Новая запись на сеанс',
-                        status='success', provider_resp=tg_txt[:1000],
-                        user_id=m.get('user_id'), related_id=booking.get('id'),
-                        payload={'master_id': master_id, 'client_name': client_name})
-                except Exception as e:
-                    err_text = str(e)
-                    err_code = ''
-                    try:
-                        err_code = str(getattr(e, 'code', '')) or ''
-                    except Exception:
-                        pass
-                    print(f"[notify_master] telegram ERROR chat_id={tg_chat_id}: {err_text}")
-                    _log_notification(cur, schema,
-                        channel='telegram', event_type='master_booking_new',
-                        recipient=str(tg_chat_id), subject='Новая запись на сеанс',
-                        status='failed', error_code=err_code or 'exception',
-                        error_text=err_text[:2000], user_id=m.get('user_id'),
-                        related_id=booking.get('id'),
-                        payload={'master_id': master_id, 'client_name': client_name})
-                    if _is_critical_error(err_text) or err_code in ('401', '403'):
-                        _alert_admin_critical('telegram', err_code or 'forbidden',
-                                              err_text, recipient=str(tg_chat_id or ''))
+                lines.append('✅ <i>Клиент ознакомлен с противопоказаниями</i>')
+                lines.append(f'<i>{when}{ip_part}</i>')
+            lines.append('')
+            lines.append(f'<i>Статус: {status_human}</i>')
+            ok_tg = tg_send(tg_chat_id, '\n'.join(lines))
+            if ok_tg:
+                print(f"[notify_master] telegram sent to chat_id={tg_chat_id}")
+                _log_notification(cur, schema,
+                    channel='telegram', event_type='master_booking_new',
+                    recipient=str(tg_chat_id), subject='Новая запись на сеанс',
+                    status='success', user_id=m.get('user_id'),
+                    related_id=booking.get('id'),
+                    payload={'master_id': master_id, 'client_name': client_name})
+            else:
+                print(f"[notify_master] telegram FAILED chat_id={tg_chat_id}")
+                _log_notification(cur, schema,
+                    channel='telegram', event_type='master_booking_new',
+                    recipient=str(tg_chat_id), subject='Новая запись на сеанс',
+                    status='failed', error_code='send_failed',
+                    error_text='shared.tg_send returned False',
+                    user_id=m.get('user_id'),
+                    related_id=booking.get('id'),
+                    payload={'master_id': master_id, 'client_name': client_name})
+                _alert_admin_critical('telegram', 'send_failed',
+                                      'shared.tg_send returned False',
+                                      recipient=str(tg_chat_id or ''))
     except Exception:
         # Любые проблемы с уведомлениями не должны ломать бронь
         pass

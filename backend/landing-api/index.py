@@ -20,6 +20,7 @@ from shared import (
     CORS_HEADERS, options_response, ok, err,
     get_conn, get_schema, get_cursor,
     get_token, get_user_from_token, has_commercial_role,
+    tg_send,
 )
 from landing_utils import slug_validation_error
 
@@ -37,26 +38,6 @@ def get_s3():
 
 def make_cdn_url(key):
     return f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
-
-
-# ───────────────────────── Telegram ─────────────────────────
-
-def tg_send(chat_id, text):
-    if not chat_id:
-        return
-    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN', '')
-    if not bot_token:
-        return
-    try:
-        import urllib.request
-        payload = json.dumps({'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'}).encode('utf-8')
-        req = urllib.request.Request(
-            f'https://api.telegram.org/bot{bot_token}/sendMessage',
-            data=payload, headers={'Content-Type': 'application/json'},
-        )
-        urllib.request.urlopen(req, timeout=5)
-    except Exception:
-        pass
 
 
 # ───────────────────────── Helpers ─────────────────────────

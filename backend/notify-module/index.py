@@ -164,34 +164,17 @@ def send_telegram_message(chat_id, message):
 
 
 def send_email_via_unisender(to_email, to_name, subject, body_html):
-    """Отправляет письмо через Unisender Go."""
-    api_key = os.environ.get("UNISENDER_API_KEY", "")
-    sender_email = os.environ.get("UNISENDER_SENDER_EMAIL", "")
-    sender_name = os.environ.get("UNISENDER_SENDER_NAME", "Sparcom")
-    if not api_key or not sender_email:
-        raise ValueError("Unisender не настроен: отсутствует UNISENDER_API_KEY или UNISENDER_SENDER_EMAIL")
+    """Отправляет письмо через единый shared.send_email (Unisender Go).
 
-    payload = {
-        "message": {
-            "recipients": [{"email": to_email, "substitutions": {"to_name": to_name or ""}}],
-            "sender_email": sender_email,
-            "sender_name": sender_name,
-            "subject": subject,
-            "body": {"html": body_html},
-            "track_links": 1,
-            "track_read": 1,
-        }
-    }
-    resp = requests.post(
-        "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
-        headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
-        json=payload,
-        timeout=15,
-    )
-    data = resp.json()
-    if resp.status_code != 200 or data.get("status") == "error":
-        raise RuntimeError(data.get("message") or "Ошибка отправки через Unisender")
-    return data
+    Сохраняем старую сигнатуру и поведение: при ошибке поднимаем исключение,
+    чтобы вызывающий код мог корректно обработать сбой.
+    """
+    if not os.environ.get("UNISENDER_API_KEY") or not os.environ.get("UNISENDER_SENDER_EMAIL"):
+        raise ValueError("Unisender не настроен: отсутствует UNISENDER_API_KEY или UNISENDER_SENDER_EMAIL")
+    ok_sent = send_email(to_email, subject, body_html, to_name=to_name or None)
+    if not ok_sent:
+        raise RuntimeError("Ошибка отправки через Unisender")
+    return {"status": "success"}
 
 
 def render_template(text, variables):
