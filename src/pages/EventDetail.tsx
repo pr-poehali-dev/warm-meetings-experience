@@ -240,22 +240,22 @@ export default function EventDetail() {
       </div>
 
       {/* Мобильная sticky-панель снизу */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-border px-4 pt-2 pb-3">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-border px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {(priceDisplay || event.totalSpots > 0) && (
-          <div className="flex items-center gap-3 mb-2">
-            {priceDisplay && (
-              <div className="text-lg font-bold text-accent leading-tight">{priceDisplay}</div>
-            )}
+          <div className="flex items-center justify-between gap-2 mb-2 min-w-0">
+            {priceDisplay ? (
+              <div className="text-base font-bold text-accent leading-tight truncate min-w-0">{priceDisplay}</div>
+            ) : <span />}
             {event.totalSpots > 0 && (
-              <div className={`text-xs font-semibold px-2 py-0.5 rounded-full ${event.spotsLeft === 0 ? "text-red-700 bg-red-100" : event.spotsLeft <= 2 ? "text-orange-800 bg-orange-100" : "text-green-700 bg-green-100"}`}>
+              <div className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${event.spotsLeft === 0 ? "text-red-700 bg-red-100" : event.spotsLeft <= 2 ? "text-orange-800 bg-orange-100" : "text-green-700 bg-green-100"}`}>
                 {spotsLabel}
               </div>
             )}
           </div>
         )}
         {event.id && (
-          <div className="flex gap-2 items-stretch">
-            <div className="flex-1">
+          <div className="flex gap-2 items-stretch min-w-0">
+            <div className="flex-1 min-w-0">
               <SignUpForm
                 eventId={event.id}
                 eventTitle={event.title}
@@ -284,8 +284,9 @@ export default function EventDetail() {
               eventId={event.id}
               eventTitle={event.title}
               variant="outline"
-              size="default"
-              className="shrink-0 px-3"
+              size="icon"
+              className="shrink-0 w-11 h-11"
+              iconOnly
             />
           </div>
         )}

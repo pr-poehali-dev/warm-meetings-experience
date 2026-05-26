@@ -26,8 +26,9 @@ interface AskOrganizerModalProps {
   eventTitle: string;
   organizerName?: string | null;
   variant?: "default" | "outline" | "ghost";
-  size?: "default" | "sm" | "lg";
+  size?: "default" | "sm" | "lg" | "icon";
   className?: string;
+  iconOnly?: boolean;
 }
 
 type ContactType = "email" | "phone" | "telegram";
@@ -39,6 +40,7 @@ export default function AskOrganizerModal({
   variant = "outline",
   size = "default",
   className,
+  iconOnly = false,
 }: AskOrganizerModalProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -128,9 +130,10 @@ export default function AskOrganizerModal({
           size={size}
           className={className}
           type="button"
+          aria-label="Задать вопрос организатору"
         >
           <Icon name="MessageCircleQuestion" size={16} />
-          Задать вопрос
+          {!iconOnly && "Задать вопрос"}
         </Button>
       </DialogTrigger>
 
