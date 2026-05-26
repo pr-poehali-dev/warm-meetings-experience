@@ -7,8 +7,10 @@ import { parseServiceDescription } from "@/lib/service-description";
 
 const DAYS_AHEAD = 30;
 
-function fmt(n: number) {
-  return n.toLocaleString("ru-RU");
+function fmt(n: number | string) {
+  const num = typeof n === "number" ? n : Number(n);
+  if (!Number.isFinite(num)) return String(n);
+  return Math.round(num).toLocaleString("ru-RU");
 }
 
 function fmtDuration(min: number) {
@@ -226,11 +228,21 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                     : "border border-border bg-background hover:border-primary/40 hover:shadow-sm"
                 }`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-sm leading-tight mb-1 text-foreground">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="font-semibold text-sm leading-tight text-foreground break-words flex-1 min-w-0">
                       {s.name}
                     </div>
+                    {active && (
+                      <span className="w-5 h-5 rounded-full inline-flex items-center justify-center bg-primary shrink-0">
+                        <Icon name="Check" size={12} className="text-primary-foreground" />
+                      </span>
+                    )}
+                  </div>
+                  <div className="font-bold text-base text-primary whitespace-nowrap tabular-nums">
+                    {fmt(Number(s.price))} ₽
+                  </div>
+                  <div className="min-w-0 flex-1">
                     {s.description && (
                       <p
                         className={`text-xs leading-relaxed mb-2 text-muted-foreground ${active ? "" : "line-clamp-2"}`}
@@ -250,16 +262,6 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                         </span>
                       )}
                     </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <span className="font-bold text-base text-primary">
-                      {fmt(s.price)} ₽
-                    </span>
-                    {active && (
-                      <span className="w-5 h-5 rounded-full inline-flex items-center justify-center bg-primary">
-                        <Icon name="Check" size={12} className="text-primary-foreground" />
-                      </span>
-                    )}
                   </div>
                 </div>
 
