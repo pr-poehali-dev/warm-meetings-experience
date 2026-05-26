@@ -354,7 +354,7 @@ export function MasterScheduleSection({ masterId }: { masterId: number }) {
           </button>
         ))}
       </div>
-      {tab === "quick" && <QuickScheduleSetup masterId={masterId} />}
+      {tab === "quick" && <QuickScheduleSetup masterId={masterId} onNavigateToServices={() => setTab("services")} />}
       {tab === "calendar" && <MasterCalendar masterId={masterId} />}
       {tab === "services" && <MasterServices masterId={masterId} />}
       {tab === "templates" && <MasterTemplates masterId={masterId} />}

@@ -12,6 +12,7 @@ import {
 
 interface QuickScheduleSetupProps {
   masterId: number;
+  onNavigateToServices?: () => void;
 }
 
 const WEEK_DAYS = [
@@ -35,13 +36,10 @@ function fmtDuration(min: number) {
   return m ? `${h} ч ${m} мин` : `${h} ч`;
 }
 
-export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps) {
+export default function QuickScheduleSetup({ masterId, onNavigateToServices }: QuickScheduleSetupProps) {
   // Услуги
   const [services, setServices] = useState<MasterService[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
-  const [newSvcOpen, setNewSvcOpen] = useState(false);
-  const [newSvc, setNewSvc] = useState({ name: "", duration_minutes: 60, price: 0, max_clients: 1 });
-  const [savingSvc, setSavingSvc] = useState(false);
 
   // Шаблон расписания
   const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5]));
@@ -107,48 +105,6 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
       toast.error(e instanceof Error ? e.message : "Не удалось сохранить");
     } finally {
       setSavingBuffer(false);
-    }
-  };
-
-  // Создание услуги
-  const handleAddService = async () => {
-    if (!newSvc.name.trim()) {
-      toast.error("Введите название услуги");
-      return;
-    }
-    if (newSvc.duration_minutes < 5) {
-      toast.error("Длительность должна быть минимум 5 минут");
-      return;
-    }
-    setSavingSvc(true);
-    try {
-      const created = await masterCalendarApi.createService({
-        master_id: masterId,
-        name: newSvc.name.trim(),
-        duration_minutes: newSvc.duration_minutes,
-        price: newSvc.price,
-        max_clients: newSvc.max_clients,
-        is_active: true,
-      });
-      setServices((prev) => [...prev, created]);
-      setNewSvc({ name: "", duration_minutes: 60, price: 0, max_clients: 1 });
-      setNewSvcOpen(false);
-      toast.success("Услуга добавлена");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Не удалось добавить услугу");
-    } finally {
-      setSavingSvc(false);
-    }
-  };
-
-  const handleDeleteService = async (id: number) => {
-    if (!confirm("Удалить услугу? Существующие слоты останутся.")) return;
-    try {
-      await masterCalendarApi.deleteService(id);
-      setServices((prev) => prev.filter((s) => s.id !== id));
-      toast.success("Услуга удалена");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Не удалось удалить");
     }
   };
 
@@ -270,58 +226,13 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
             <h3 className="text-base font-semibold">Услуги</h3>
             <span className="text-xs text-muted-foreground">({services.filter((s) => s.is_active).length})</span>
           </div>
-          <Button size="sm" variant="outline" onClick={() => setNewSvcOpen(!newSvcOpen)} className="gap-1.5">
-            <Icon name={newSvcOpen ? "X" : "Plus"} size={14} />
-            {newSvcOpen ? "Отмена" : "Добавить"}
-          </Button>
-        </div>
-
-        {newSvcOpen && (
-          <div className="bg-card border rounded-2xl p-4 mb-3 space-y-3">
-            <div>
-              <Label className="text-xs mb-1 block">Название</Label>
-              <Input
-                value={newSvc.name}
-                onChange={(e) => setNewSvc((p) => ({ ...p, name: e.target.value }))}
-                placeholder="Например: Парение веником"
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs mb-1 block">Длительность, мин</Label>
-                <Input
-                  type="number"
-                  min={5}
-                  step={5}
-                  value={newSvc.duration_minutes}
-                  onChange={(e) => setNewSvc((p) => ({ ...p, duration_minutes: Number(e.target.value) || 60 }))}
-                />
-              </div>
-              <div>
-                <Label className="text-xs mb-1 block">Цена, ₽</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step={100}
-                  value={newSvc.price}
-                  onChange={(e) => setNewSvc((p) => ({ ...p, price: Number(e.target.value) || 0 }))}
-                />
-              </div>
-              <div>
-                <Label className="text-xs mb-1 block">Макс. участников</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={newSvc.max_clients}
-                  onChange={(e) => setNewSvc((p) => ({ ...p, max_clients: Number(e.target.value) || 1 }))}
-                />
-              </div>
-            </div>
-            <Button onClick={handleAddService} disabled={savingSvc} size="sm" className="w-full">
-              {savingSvc ? <Icon name="Loader2" size={14} className="animate-spin" /> : "Сохранить услугу"}
+          {onNavigateToServices && (
+            <Button size="sm" variant="outline" onClick={onNavigateToServices} className="gap-1.5">
+              <Icon name="Plus" size={14} />
+              Добавить
             </Button>
-          </div>
-        )}
+          )}
+        </div>
 
         {loadingServices ? (
           <div className="flex justify-center py-6">
@@ -330,7 +241,13 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
         ) : services.filter((s) => s.is_active).length === 0 ? (
           <div className="text-center py-8 text-sm text-muted-foreground bg-muted/30 rounded-xl border border-dashed">
             <Icon name="Sparkles" size={28} className="mx-auto mb-2 opacity-40" />
-            Пока нет услуг. Добавь первую — без них гости не смогут записаться.
+            <p>Пока нет услуг. Добавь первую — без них гости не смогут записаться.</p>
+            {onNavigateToServices && (
+              <Button size="sm" variant="outline" onClick={onNavigateToServices} className="mt-3 gap-1.5">
+                <Icon name="Plus" size={13} />
+                Добавить услугу
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-2">
@@ -355,16 +272,18 @@ export default function QuickScheduleSetup({ masterId }: QuickScheduleSetupProps
                     )}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteService(s.id!)}
-                  className="p-2 text-muted-foreground hover:text-destructive transition-colors"
-                  title="Удалить услугу"
-                >
-                  <Icon name="Trash2" size={14} />
-                </button>
               </div>
             ))}
+            {onNavigateToServices && (
+              <button
+                type="button"
+                onClick={onNavigateToServices}
+                className="w-full flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-dashed border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+              >
+                <Icon name="Plus" size={13} />
+                Добавить услугу
+              </button>
+            )}
           </div>
         )}
       </section>
