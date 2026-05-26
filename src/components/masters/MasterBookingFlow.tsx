@@ -210,9 +210,14 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="font-medium text-sm leading-tight">{s.name}</div>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                    {s.description && (
+                      <p className={`text-xs text-muted-foreground mt-1 leading-relaxed ${active ? "" : "line-clamp-2"}`}>
+                        {s.description}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Icon name="Clock" size={11} />
                         {fmtDuration(s.duration_minutes)}
