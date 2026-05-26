@@ -51,8 +51,23 @@ def _send_tg_message(chat_id: int, message: str) -> dict:
     return {"ok": False, "error": "tg_send failed"}
 
 
+def _close_safe(conn):
+    """Закрыть соединение и проглотить ошибки (для finally-блоков)."""
+    try:
+        if conn is not None:
+            conn.close()
+    except Exception:
+        pass
+
+
 def handle_channels_router(event, method, params, body):
-    """Маршрутизация запросов управления каналами уведомлений."""
+    """Маршрутизация запросов управления каналами уведомлений.
+
+    Внешний try/finally гарантирует закрытие conn при любом исключении внутри
+    обработчиков — это страховка от утечек к Postgres max_connections.
+    Существующие явные conn.close() в успешных ветках работают как раньше;
+    повторный close() в finally безопасен (psycopg2 идемпотентен).
+    """
     if event.get("httpMethod") == "OPTIONS":
         return options_response()
 
@@ -63,6 +78,13 @@ def handle_channels_router(event, method, params, body):
     action = params.get("action") or body.get("action", "")
 
     conn = get_conn()
+    try:
+        return _handle_channels_router_inner(event, method, params, body, conn, headers, token, action)
+    finally:
+        _close_safe(conn)
+
+
+def _handle_channels_router_inner(event, method, params, body, conn, headers, token, action):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     schema = get_schema()
 

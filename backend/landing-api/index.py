@@ -76,20 +76,18 @@ def handle_slug_check(event, schema):
         return ok({'available': False, 'error': error, 'slug': raw})
 
     token = get_token(event)
-    conn = get_conn(); cur = get_cursor(conn)
-    user = get_user_from_token(cur, schema, token) if token else None
+    conn = get_conn()
+    try:
+        cur = get_cursor(conn)
+        user = get_user_from_token(cur, schema, token) if token else None
 
-    s = raw.replace("'", "''")
-    if user:
+        s = raw.replace("'", "''")
         cur.execute(
             f"SELECT id, user_id FROM {schema}.landing_pages WHERE slug = '{s}' LIMIT 1"
         )
-    else:
-        cur.execute(
-            f"SELECT id, user_id FROM {schema}.landing_pages WHERE slug = '{s}' LIMIT 1"
-        )
-    row = cur.fetchone()
-    conn.close()
+        row = cur.fetchone()
+    finally:
+        conn.close()
 
     if row and (not user or row['user_id'] != user['id']):
         return ok({'available': False, 'error': 'Этот адрес уже занят', 'slug': raw})
@@ -101,13 +99,15 @@ def handle_get_my_landing(event, schema):
     token = get_token(event)
     if not token:
         return err('Не авторизован', 401)
-    conn = get_conn(); cur = get_cursor(conn)
-    user = get_user_from_token(cur, schema, token)
-    if not user:
-        conn.close(); return err('Не авторизован', 401)
-
-    row = get_landing_by_user(cur, schema, user['id'])
-    conn.close()
+    conn = get_conn()
+    try:
+        cur = get_cursor(conn)
+        user = get_user_from_token(cur, schema, token)
+        if not user:
+            return err('Не авторизован', 401)
+        row = get_landing_by_user(cur, schema, user['id'])
+    finally:
+        conn.close()
     return ok({'landing': serialize_landing(row)})
 
 
@@ -117,64 +117,66 @@ def handle_save_settings(event, schema):
         return err('Не авторизован', 401)
     body = json.loads(event.get('body') or '{}')
 
-    conn = get_conn(); cur = get_cursor(conn)
-    user = get_user_from_token(cur, schema, token)
-    if not user:
-        conn.close(); return err('Не авторизован', 401)
+    conn = get_conn()
+    try:
+        cur = get_cursor(conn)
+        user = get_user_from_token(cur, schema, token)
+        if not user:
+            return err('Не авторизован', 401)
 
-    if not has_commercial_role(cur, schema, user['id']):
+        if not has_commercial_role(cur, schema, user['id']):
+            return err('Визитка доступна только верифицированным управляющим', 403)
+
+        existing = get_landing_by_user(cur, schema, user['id'])
+
+        # slug
+        new_slug = (body.get('slug') or '').strip().lower()
+        if not existing and not new_slug:
+            return err('Укажите адрес визитки')
+
+        if new_slug:
+            verr = slug_validation_error(new_slug)
+            if verr:
+                return err(verr)
+            s = new_slug.replace("'", "''")
+            cur.execute(
+                f"SELECT id, user_id FROM {schema}.landing_pages WHERE slug = '{s}' LIMIT 1"
+            )
+            taken = cur.fetchone()
+            if taken and taken['user_id'] != user['id']:
+                return err('Этот адрес уже занят')
+
+        enabled = body.get('enabled')
+        theme = (body.get('theme') or '').strip().lower() or None
+        custom_data = body.get('custom_data')
+
+        if existing:
+            sets = []
+            if new_slug and new_slug != existing['slug']:
+                sets.append(f"slug = '{new_slug.replace(chr(39), chr(39)+chr(39))}'")
+            if enabled is not None:
+                sets.append(f"enabled = {bool(enabled)}")
+            if theme:
+                sets.append(f"theme = '{theme.replace(chr(39), chr(39)+chr(39))[:40]}'")
+            if custom_data is not None:
+                cd_json = json.dumps(custom_data, ensure_ascii=False).replace("'", "''")
+                sets.append(f"custom_data = '{cd_json}'::jsonb")
+            sets.append("updated_at = NOW()")
+            cur.execute(
+                f"UPDATE {schema}.landing_pages SET {', '.join(sets)} WHERE id = {existing['id']} RETURNING *"
+            )
+        else:
+            cd_json = json.dumps(custom_data or {}, ensure_ascii=False).replace("'", "''")
+            cur.execute(f"""
+                INSERT INTO {schema}.landing_pages (user_id, slug, enabled, theme, custom_data)
+                VALUES ({int(user['id'])}, '{new_slug}', {bool(enabled) if enabled is not None else True},
+                        '{(theme or 'terracotta')}', '{cd_json}'::jsonb)
+                RETURNING *
+            """)
+        row = cur.fetchone()
+        conn.commit()
+    finally:
         conn.close()
-        return err('Визитка доступна только верифицированным управляющим', 403)
-
-    existing = get_landing_by_user(cur, schema, user['id'])
-
-    # slug
-    new_slug = (body.get('slug') or '').strip().lower()
-    if not existing and not new_slug:
-        conn.close(); return err('Укажите адрес визитки')
-
-    if new_slug:
-        verr = slug_validation_error(new_slug)
-        if verr:
-            conn.close(); return err(verr)
-        s = new_slug.replace("'", "''")
-        cur.execute(
-            f"SELECT id, user_id FROM {schema}.landing_pages WHERE slug = '{s}' LIMIT 1"
-        )
-        taken = cur.fetchone()
-        if taken and taken['user_id'] != user['id']:
-            conn.close(); return err('Этот адрес уже занят')
-
-    enabled = body.get('enabled')
-    theme = (body.get('theme') or '').strip().lower() or None
-    custom_data = body.get('custom_data')
-
-    if existing:
-        sets = []
-        if new_slug and new_slug != existing['slug']:
-            sets.append(f"slug = '{new_slug.replace(chr(39), chr(39)+chr(39))}'")
-        if enabled is not None:
-            sets.append(f"enabled = {bool(enabled)}")
-        if theme:
-            sets.append(f"theme = '{theme.replace(chr(39), chr(39)+chr(39))[:40]}'")
-        if custom_data is not None:
-            cd_json = json.dumps(custom_data, ensure_ascii=False).replace("'", "''")
-            sets.append(f"custom_data = '{cd_json}'::jsonb")
-        sets.append("updated_at = NOW()")
-        cur.execute(
-            f"UPDATE {schema}.landing_pages SET {', '.join(sets)} WHERE id = {existing['id']} RETURNING *"
-        )
-    else:
-        cd_json = json.dumps(custom_data or {}, ensure_ascii=False).replace("'", "''")
-        cur.execute(f"""
-            INSERT INTO {schema}.landing_pages (user_id, slug, enabled, theme, custom_data)
-            VALUES ({int(user['id'])}, '{new_slug}', {bool(enabled) if enabled is not None else True},
-                    '{(theme or 'terracotta')}', '{cd_json}'::jsonb)
-            RETURNING *
-        """)
-    row = cur.fetchone()
-    conn.commit()
-    conn.close()
     return ok({'landing': serialize_landing(row)})
 
 
@@ -186,62 +188,65 @@ def handle_public_get(event, schema):
     if slug_validation_error(slug):
         return err('Not found', 404)
 
-    conn = get_conn(); cur = get_cursor(conn)
-    row = get_landing_by_slug(cur, schema, slug)
-    if not row or not row['enabled']:
-        conn.close(); return err('Not found', 404)
-
-    # Подтянем данные владельца и доступные сущности
-    user_id = int(row['user_id'])
-    cur.execute(
-        f"SELECT id, name, email, phone, telegram, avatar_url FROM {schema}.users WHERE id = {user_id}"
-    )
-    owner = cur.fetchone() or {}
-
-    # Услуги (если у пользователя есть мастер-карточка)
-    services = []
-    cur.execute(f"SELECT id FROM {schema}.masters WHERE user_id = {user_id} LIMIT 1")
-    master_row = cur.fetchone()
-    master_data = None
-    if master_row:
-        master_id = int(master_row['id'])
-        cur.execute(
-            f"SELECT * FROM {schema}.masters WHERE id = {master_id}"
-        )
-        master_data = cur.fetchone()
-        cur.execute(
-            f"SELECT id, name, description, duration_minutes, price "
-            f"FROM {schema}.master_services WHERE master_id = {master_id} AND is_active = true "
-            f"ORDER BY sort_order, id"
-        )
-        services = [dict(r) for r in cur.fetchall()]
-
-    # Отзывы — если есть мастер
-    reviews = []
-    if master_data:
-        cur.execute(
-            f"SELECT id, client_name, rating, text, created_at FROM {schema}.master_reviews "
-            f"WHERE master_id = {int(master_data['id'])} AND is_published = true "
-            f"ORDER BY created_at DESC LIMIT 10"
-        )
-        reviews = [dict(r) for r in cur.fetchall()]
-
-    # Бани
-    cur.execute(
-        f"SELECT id, name, address, lat, lng, photos FROM {schema}.baths "
-        f"WHERE owner_id = {user_id} AND is_active = true LIMIT 5"
-    )
-    baths = [dict(r) for r in cur.fetchall()]
-
-    # Async-инкремент visits
+    conn = get_conn()
     try:
+        cur = get_cursor(conn)
+        row = get_landing_by_slug(cur, schema, slug)
+        if not row or not row['enabled']:
+            return err('Not found', 404)
+
+        # Подтянем данные владельца и доступные сущности
+        user_id = int(row['user_id'])
         cur.execute(
-            f"UPDATE {schema}.landing_pages SET visits = visits + 1 WHERE id = {int(row['id'])}"
+            f"SELECT id, name, email, phone, telegram, avatar_url FROM {schema}.users WHERE id = {user_id}"
         )
-        conn.commit()
-    except Exception:
-        pass
-    conn.close()
+        owner = cur.fetchone() or {}
+
+        # Услуги (если у пользователя есть мастер-карточка)
+        services = []
+        cur.execute(f"SELECT id FROM {schema}.masters WHERE user_id = {user_id} LIMIT 1")
+        master_row = cur.fetchone()
+        master_data = None
+        if master_row:
+            master_id = int(master_row['id'])
+            cur.execute(
+                f"SELECT * FROM {schema}.masters WHERE id = {master_id}"
+            )
+            master_data = cur.fetchone()
+            cur.execute(
+                f"SELECT id, name, description, duration_minutes, price "
+                f"FROM {schema}.master_services WHERE master_id = {master_id} AND is_active = true "
+                f"ORDER BY sort_order, id"
+            )
+            services = [dict(r) for r in cur.fetchall()]
+
+        # Отзывы — если есть мастер
+        reviews = []
+        if master_data:
+            cur.execute(
+                f"SELECT id, client_name, rating, text, created_at FROM {schema}.master_reviews "
+                f"WHERE master_id = {int(master_data['id'])} AND is_published = true "
+                f"ORDER BY created_at DESC LIMIT 10"
+            )
+            reviews = [dict(r) for r in cur.fetchall()]
+
+        # Бани
+        cur.execute(
+            f"SELECT id, name, address, lat, lng, photos FROM {schema}.baths "
+            f"WHERE owner_id = {user_id} AND is_active = true LIMIT 5"
+        )
+        baths = [dict(r) for r in cur.fetchall()]
+
+        # Async-инкремент visits
+        try:
+            cur.execute(
+                f"UPDATE {schema}.landing_pages SET visits = visits + 1 WHERE id = {int(row['id'])}"
+            )
+            conn.commit()
+        except Exception:
+            pass
+    finally:
+        conn.close()
 
     landing = serialize_landing(row)
 
@@ -265,24 +270,27 @@ def handle_lead(event, schema):
     if not name or not contact:
         return err('Укажите имя и контакт')
 
-    conn = get_conn(); cur = get_cursor(conn)
-    row = get_landing_by_slug(cur, schema, slug)
-    if not row or not row['enabled']:
-        conn.close(); return err('Not found', 404)
+    conn = get_conn()
+    try:
+        cur = get_cursor(conn)
+        row = get_landing_by_slug(cur, schema, slug)
+        if not row or not row['enabled']:
+            return err('Not found', 404)
 
-    n = name.replace("'", "''")
-    c = contact.replace("'", "''")
-    m = message.replace("'", "''")
-    cur.execute(f"""
-        INSERT INTO {schema}.landing_leads (landing_id, name, contact, message)
-        VALUES ({int(row['id'])}, '{n}', '{c}', '{m}')
-    """)
+        n = name.replace("'", "''")
+        c = contact.replace("'", "''")
+        m = message.replace("'", "''")
+        cur.execute(f"""
+            INSERT INTO {schema}.landing_leads (landing_id, name, contact, message)
+            VALUES ({int(row['id'])}, '{n}', '{c}', '{m}')
+        """)
 
-    # Уведомление владельцу
-    cur.execute(f"SELECT name, email, telegram FROM {schema}.users WHERE id = {int(row['user_id'])}")
-    owner = cur.fetchone()
-    conn.commit()
-    conn.close()
+        # Уведомление владельцу
+        cur.execute(f"SELECT name, email, telegram FROM {schema}.users WHERE id = {int(row['user_id'])}")
+        owner = cur.fetchone()
+        conn.commit()
+    finally:
+        conn.close()
 
     if owner and owner.get('telegram'):
         tg_handle = (owner['telegram'] or '').lstrip('@')
@@ -302,13 +310,16 @@ def handle_cta_click(event, schema):
     slug = (params.get('slug') or '').strip().lower()
     if not slug or slug_validation_error(slug):
         return ok({'ok': True})
-    conn = get_conn(); cur = get_cursor(conn)
-    s = slug.replace("'", "''")
-    cur.execute(
-        f"UPDATE {schema}.landing_pages SET cta_clicks = cta_clicks + 1 WHERE slug = '{s}'"
-    )
-    conn.commit()
-    conn.close()
+    conn = get_conn()
+    try:
+        cur = get_cursor(conn)
+        s = slug.replace("'", "''")
+        cur.execute(
+            f"UPDATE {schema}.landing_pages SET cta_clicks = cta_clicks + 1 WHERE slug = '{s}'"
+        )
+        conn.commit()
+    finally:
+        conn.close()
     return ok({'ok': True})
 
 

@@ -94,25 +94,32 @@ def handler(event, context):
 
 def handle_all_roles():
     schema = get_schema()
-    conn = get_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    cur.execute(f"""
-        SELECT r.id, r.name, r.slug, r.description, r.icon, r.sort_order,
-               json_agg(json_build_object(
-                   'id', rr.id,
-                   'type', rr.type,
-                   'value', rr.value,
-                   'description', rr.description
-               ) ORDER BY rr.sort_order) FILTER (WHERE rr.id IS NOT NULL) as requirements
-        FROM {schema}.roles r
-        LEFT JOIN {schema}.role_requirements rr ON rr.role_id = r.id AND rr.is_active = true
-        WHERE r.is_active = true AND r.slug != 'admin'
-        GROUP BY r.id
-        ORDER BY r.sort_order
-    """)
-    roles = [dict(r) for r in cur.fetchall()]
-    conn.close()
+    # Справочник ролей + их требования меняется крайне редко — кэшируем на 5 минут.
+    # Это убирает запрос к БД на каждый публичный визит страницы ролей.
+    def _load_all_roles():
+        conn = get_conn()
+        try:
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(f"""
+                SELECT r.id, r.name, r.slug, r.description, r.icon, r.sort_order,
+                       json_agg(json_build_object(
+                           'id', rr.id,
+                           'type', rr.type,
+                           'value', rr.value,
+                           'description', rr.description
+                       ) ORDER BY rr.sort_order) FILTER (WHERE rr.id IS NOT NULL) as requirements
+                FROM {schema}.roles r
+                LEFT JOIN {schema}.role_requirements rr ON rr.role_id = r.id AND rr.is_active = true
+                WHERE r.is_active = true AND r.slug != 'admin'
+                GROUP BY r.id
+                ORDER BY r.sort_order
+            """)
+            return [dict(r) for r in cur.fetchall()]
+        finally:
+            conn.close()
+
+    roles = cached(f'roles_all:{schema}', 300, _load_all_roles)
     return respond(200, {'roles': roles})
 
 
@@ -187,17 +194,28 @@ def handle_progress(cur, conn, schema, user):
 
 
 def handle_badges(cur, conn, schema, user):
+    # Сам справочник бейджей одинаков для всех — кэшируем на 5 минут.
+    # earned_at у каждого пользователя свой — берём отдельным дешёвым запросом.
+    def _load_badges_catalog():
+        cur.execute(f"""
+            SELECT id, name, slug, description, icon,
+                   condition_type, condition_value
+            FROM {schema}.badges
+            WHERE is_active = true
+            ORDER BY sort_order
+        """)
+        return [dict(r) for r in cur.fetchall()]
+    catalog = cached(f'badges_catalog:{schema}', 300, _load_badges_catalog)
+
     cur.execute(f"""
-        SELECT b.id, b.name, b.slug, b.description, b.icon,
-               b.condition_type, b.condition_value,
-               ub.earned_at
-        FROM {schema}.badges b
-        LEFT JOIN {schema}.user_badges ub ON ub.badge_id = b.id AND ub.user_id = {user['id']}
-        WHERE b.is_active = true
-        ORDER BY b.sort_order
+        SELECT badge_id, earned_at
+        FROM {schema}.user_badges
+        WHERE user_id = {user['id']}
     """)
-    badges = [dict(r) for r in cur.fetchall()]
+    earned = {r['badge_id']: r['earned_at'] for r in cur.fetchall()}
     conn.close()
+
+    badges = [{**b, 'earned_at': earned.get(b['id'])} for b in catalog]
     return respond(200, {'badges': badges})
 
 

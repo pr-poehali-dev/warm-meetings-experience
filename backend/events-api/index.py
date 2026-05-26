@@ -42,8 +42,11 @@ def handle_event_types(event, method, params, schema, headers):
         return {'statusCode': status, 'headers': headers, 'body': json.dumps(body, default=str, ensure_ascii=False)}
 
     if method == 'GET':
-        cur.execute(f"SELECT id, value, label, icon, sort_order FROM {schema}.event_custom_types ORDER BY sort_order, id")
-        rows = [dict(r) for r in cur.fetchall()]
+        # Справочник типов событий меняется через админку раз в неделю — кэшируем на 5 минут.
+        def _load_types():
+            cur.execute(f"SELECT id, value, label, icon, sort_order FROM {schema}.event_custom_types ORDER BY sort_order, id")
+            return [dict(r) for r in cur.fetchall()]
+        rows = cached(f'event_custom_types:{schema}', 300, _load_types)
         return _resp(200, rows)
 
     if method == 'POST':
@@ -67,6 +70,7 @@ def handle_event_types(event, method, params, schema, headers):
         """)
         row = dict(cur.fetchone())
         conn.commit()
+        memo_invalidate(f'event_custom_types:{schema}')
         return _resp(201, row)
 
     if method == 'PUT':
@@ -92,6 +96,7 @@ def handle_event_types(event, method, params, schema, headers):
         """)
         row = cur.fetchone()
         conn.commit()
+        memo_invalidate(f'event_custom_types:{schema}')
         if not row:
             return _resp(404, {'error': 'Not found'})
         return _resp(200, dict(row))
@@ -102,6 +107,7 @@ def handle_event_types(event, method, params, schema, headers):
             return _resp(400, {'error': 'id is required'})
         cur.execute(f"DELETE FROM {schema}.event_custom_types WHERE id={int(type_id)}")
         conn.commit()
+        memo_invalidate(f'event_custom_types:{schema}')
         return _resp(200, {'deleted': True})
 
     return _resp(405, {'error': 'Method not allowed'})

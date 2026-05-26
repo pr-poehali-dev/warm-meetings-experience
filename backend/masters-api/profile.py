@@ -3,7 +3,7 @@ import datetime
 import psycopg2.extras
 from shared import (
     CORS_HEADERS, get_conn, get_schema, get_user_from_token,
-    has_role, verify_admin_token, slugify,
+    has_role, verify_admin_token, slugify, cached,
 )
 
 
@@ -171,13 +171,19 @@ def handle_profile(event, method, params, schema, headers):
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'master': result})}
 
     if method == 'GET' and params.get('specializations') == '1':
-        conn = get_conn()
-        cur = conn.cursor()
-        cur.execute(f"SELECT * FROM {schema}.specializations ORDER BY sort_order")
-        rows = cur.fetchall()
-        specs = [row_to_dict(r, cur) for r in rows]
-        cur.close()
-        conn.close()
+        # Справочник специализаций мастеров — публичный, меняется через админку
+        # очень редко. Кэшируем на 5 минут, чтобы не дёргать БД на каждое
+        # открытие формы редактирования профиля мастера.
+        def _load_specializations():
+            conn = get_conn()
+            try:
+                cur = conn.cursor()
+                cur.execute(f"SELECT * FROM {schema}.specializations ORDER BY sort_order")
+                rows = cur.fetchall()
+                return [row_to_dict(r, cur) for r in rows]
+            finally:
+                conn.close()
+        specs = cached(f'specializations:{schema}', 300, _load_specializations)
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'specializations': specs}, ensure_ascii=False)}
 
     if method == 'GET' and params.get('slug'):
