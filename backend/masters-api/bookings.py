@@ -105,9 +105,10 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
     try:
         cur.execute(f"""
             SELECT m.name AS master_name, m.user_id, u.email,
-                   COALESCE(u.tg_chat_id, la.telegram_user_id) AS tg_chat_id,
+                   la.telegram_user_id AS linked_tg,
+                   u.tg_chat_id AS user_tg,
                    COALESCE(u.notify_email, true) AS notify_email,
-                   COALESCE(u.notify_telegram, false) AS notify_telegram
+                   u.notify_telegram AS notify_telegram
             FROM {schema}.masters m
             LEFT JOIN {schema}.users u ON u.id = m.user_id
             LEFT JOIN (
@@ -119,7 +120,9 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
         """)
         m = cur.fetchone()
         if not m:
+            print(f"[notify_master] master_id={master_id} not found")
             return
+        print(f"[notify_master] master_id={master_id} email={m.get('email')} linked_tg={m.get('linked_tg')} user_tg={m.get('user_tg')} notify_email={m.get('notify_email')} notify_telegram={m.get('notify_telegram')}")
 
         client_name = booking.get('client_name', '')
         client_phone = booking.get('client_phone', '')
@@ -263,11 +266,13 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
         # === Telegram ===
         # Если у мастера в аккаунте привязан Telegram (через бота организатора)
         # — шлём туда уведомление о записи, как это сделано для событий.
-        # Флаг notify_telegram уважается только если он явно выключен (false).
-        tg_enabled = m.get('notify_telegram')
-        if tg_enabled is None:
-            tg_enabled = True
-        if tg_enabled and m.get('tg_chat_id'):
+        # Приоритет: запись в tg_linked_accounts (бот точно привязан),
+        # запасной вариант — users.tg_chat_id.
+        tg_chat_id = m.get('linked_tg') or m.get('user_tg')
+        # Уважаем только явный отказ (false). По умолчанию (None) — отправляем,
+        # потому что наличие привязки в tg_linked_accounts = пользователь сам подключил бота.
+        tg_disabled = m.get('notify_telegram') is False and not m.get('linked_tg')
+        if tg_chat_id and not tg_disabled:
             # Используем тот же бот, что и для уведомлений организатора о записях
             # на события (TG_PUBLISH_BOT_TOKEN), чтобы всё приходило в один бот.
             bot_token = os.environ.get('TG_PUBLISH_BOT_TOKEN', '') or os.environ.get('TELEGRAM_BOT_TOKEN', '')
@@ -298,7 +303,7 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                     tg_req = urllib.request.Request(
                         f'https://api.telegram.org/bot{bot_token}/sendMessage',
                         data=json.dumps({
-                            'chat_id': int(m['tg_chat_id']),
+                            'chat_id': int(tg_chat_id),
                             'text': '\n'.join(lines),
                             'parse_mode': 'HTML',
                         }).encode('utf-8'),
@@ -307,10 +312,10 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                     )
                     tg_resp = urllib.request.urlopen(tg_req, timeout=6).read()
                     tg_txt = tg_resp.decode('utf-8', errors='replace')
-                    print(f"[notify_master] telegram chat_id={m['tg_chat_id']} ok response={tg_txt[:200]}")
+                    print(f"[notify_master] telegram chat_id={tg_chat_id} ok response={tg_txt[:200]}")
                     _log_notification(cur, schema,
                         channel='telegram', event_type='master_booking_new',
-                        recipient=str(m.get('tg_chat_id')), subject='Новая запись на сеанс',
+                        recipient=str(tg_chat_id), subject='Новая запись на сеанс',
                         status='success', provider_resp=tg_txt[:1000],
                         user_id=m.get('user_id'), related_id=booking.get('id'),
                         payload={'master_id': master_id, 'client_name': client_name})
@@ -321,17 +326,17 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                         err_code = str(getattr(e, 'code', '')) or ''
                     except Exception:
                         pass
-                    print(f"[notify_master] telegram ERROR chat_id={m.get('tg_chat_id')}: {err_text}")
+                    print(f"[notify_master] telegram ERROR chat_id={tg_chat_id}: {err_text}")
                     _log_notification(cur, schema,
                         channel='telegram', event_type='master_booking_new',
-                        recipient=str(m.get('tg_chat_id')), subject='Новая запись на сеанс',
+                        recipient=str(tg_chat_id), subject='Новая запись на сеанс',
                         status='failed', error_code=err_code or 'exception',
                         error_text=err_text[:2000], user_id=m.get('user_id'),
                         related_id=booking.get('id'),
                         payload={'master_id': master_id, 'client_name': client_name})
                     if _is_critical_error(err_text) or err_code in ('401', '403'):
                         _alert_admin_critical('telegram', err_code or 'forbidden',
-                                              err_text, recipient=str(m.get('tg_chat_id') or ''))
+                                              err_text, recipient=str(tg_chat_id or ''))
     except Exception:
         # Любые проблемы с уведомлениями не должны ломать бронь
         pass
