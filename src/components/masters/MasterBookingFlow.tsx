@@ -188,15 +188,29 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
   if (!activeServices.length) return null;
 
   return (
-    <div className="mb-8">
-      <h2 className="text-lg font-semibold mb-1">Что предлагает мастер</h2>
-      <p className="text-xs text-muted-foreground mb-4">
+    <div
+      className="rounded-2xl p-5 sm:p-6"
+      style={{
+        background: "var(--card-idle)",
+        border: "1px solid var(--card-border)",
+      }}
+    >
+      <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--c-cream)" }}>
+        Запись на сеанс
+      </h2>
+      <p className="text-sm mb-5" style={{ color: "var(--c-text)" }}>
         Выберите услугу, дату и удобное время — мастер подтвердит запись.
       </p>
 
       {/* ШАГ 1: Услуги */}
-      <div className="mb-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div className="mb-6">
+        <div
+          className="text-[11px] font-semibold uppercase tracking-wider mb-3"
+          style={{ color: "var(--c-muted)" }}
+        >
+          Услуга
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {activeServices.map((s) => {
             const active = selectedServiceId === s.id;
             return (
@@ -204,21 +218,31 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                 key={s.id}
                 type="button"
                 onClick={() => setSelectedServiceId(active ? null : s.id!)}
-                className={`text-left p-3 rounded-xl border transition-all ${
-                  active
-                    ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                    : "border-border hover:border-primary/40 hover:bg-muted/40"
-                }`}
+                className="group relative text-left p-4 rounded-2xl transition-all overflow-hidden"
+                style={{
+                  background: active
+                    ? "linear-gradient(135deg, rgba(200,131,74,0.18) 0%, rgba(143,168,154,0.12) 100%)"
+                    : "var(--card-idle)",
+                  border: active
+                    ? "1.5px solid var(--c-terra)"
+                    : "1px solid var(--card-border)",
+                  boxShadow: active ? "0 4px 18px rgba(200,131,74,0.18)" : "none",
+                }}
               >
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium text-sm leading-tight">{s.name}</div>
+                    <div className="font-semibold text-sm leading-tight mb-1" style={{ color: "var(--c-cream)" }}>
+                      {s.name}
+                    </div>
                     {s.description && (
-                      <p className={`text-xs text-muted-foreground mt-1 leading-relaxed ${active ? "" : "line-clamp-2"}`}>
+                      <p
+                        className={`text-xs leading-relaxed mb-2 ${active ? "" : "line-clamp-2"}`}
+                        style={{ color: "var(--c-text)" }}
+                      >
                         {s.description}
                       </p>
                     )}
-                    <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3 text-[11px]" style={{ color: "var(--card-meta)" }}>
                       <span className="flex items-center gap-1">
                         <Icon name="Clock" size={11} />
                         {fmtDuration(s.duration_minutes)}
@@ -231,11 +255,16 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className="font-bold text-sm text-primary">{fmt(s.price)} ₽</span>
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <span className="font-bold text-base" style={{ color: "var(--c-terra)" }}>
+                      {fmt(s.price)} ₽
+                    </span>
                     {active && (
-                      <span className="w-5 h-5 rounded-full bg-primary inline-flex items-center justify-center">
-                        <Icon name="Check" size={12} className="text-primary-foreground" />
+                      <span
+                        className="w-5 h-5 rounded-full inline-flex items-center justify-center"
+                        style={{ background: "var(--c-terra)" }}
+                      >
+                        <Icon name="Check" size={12} className="text-white" />
                       </span>
                     )}
                   </div>
@@ -249,19 +278,27 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
       {/* ШАГ 2: Дата */}
       {selectedService && (
         <div className="mb-2">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+          <div
+            className="text-[11px] font-semibold uppercase tracking-wider mb-3"
+            style={{ color: "var(--c-muted)" }}
+          >
             Дата
           </div>
 
           {loading ? (
             <div className="flex justify-center py-8">
-              <Icon name="Loader2" size={24} className="animate-spin text-muted-foreground" />
+              <Icon name="Loader2" size={24} className="animate-spin" style={{ color: "var(--c-muted)" }} />
             </div>
           ) : !hasAnyOptions ? (
-            <div className="text-center py-8 rounded-xl bg-muted/40 border border-dashed border-border">
+            <div
+              className="text-center py-8 rounded-2xl"
+              style={{ background: "var(--card-idle)", border: "1px dashed var(--card-border)" }}
+            >
               <Icon name="CalendarX" size={32} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm font-medium">Нет свободного времени</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-sm font-medium" style={{ color: "var(--c-cream)" }}>
+                Нет свободного времени
+              </p>
+              <p className="text-xs mt-1" style={{ color: "var(--c-text)" }}>
                 Попробуйте позже или свяжитесь с мастером напрямую
               </p>
             </div>
@@ -277,13 +314,23 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                       type="button"
                       disabled={!has}
                       onClick={() => setSelectedDate(d)}
-                      className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl text-xs font-medium transition-all min-w-[56px] ${
-                        isSelected
-                          ? "bg-primary text-primary-foreground"
+                      className="flex-shrink-0 flex flex-col items-center px-3 py-2.5 rounded-xl text-xs font-medium transition-all min-w-[58px]"
+                      style={{
+                        background: isSelected
+                          ? "linear-gradient(135deg, var(--c-terra), var(--c-sage))"
                           : has
-                          ? "bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-200 dark:border-emerald-800"
-                          : "bg-muted/30 text-muted-foreground/50 cursor-not-allowed"
-                      }`}
+                          ? "var(--card-idle)"
+                          : "transparent",
+                        color: isSelected ? "#fff" : has ? "var(--c-cream)" : "var(--c-faint)",
+                        border: isSelected
+                          ? "1px solid transparent"
+                          : has
+                          ? "1px solid var(--card-border)"
+                          : "1px solid transparent",
+                        cursor: has ? "pointer" : "not-allowed",
+                        opacity: has ? 1 : 0.4,
+                        boxShadow: isSelected ? "0 4px 14px rgba(200,131,74,0.35)" : "none",
+                      }}
                     >
                       <span className="text-[10px] uppercase opacity-70">
                         {format(d, "EEE", { locale: ru })}
@@ -296,12 +343,15 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
               </div>
 
               {/* ШАГ 3: Время */}
-              <div className="mt-4">
-                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              <div className="mt-5">
+                <div
+                  className="text-[11px] font-semibold uppercase tracking-wider mb-3"
+                  style={{ color: "var(--c-muted)" }}
+                >
                   Время
                 </div>
                 {optionsForDay.length === 0 ? (
-                  <div className="text-center py-6 text-sm text-muted-foreground">
+                  <div className="text-center py-6 text-sm" style={{ color: "var(--c-text)" }}>
                     Нет свободного времени на эту дату
                   </div>
                 ) : (
@@ -311,7 +361,23 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                         key={`${opt.slot.id}-${i}`}
                         type="button"
                         onClick={() => onBookSlot(opt, selectedService)}
-                        className="min-h-[44px] px-4 py-2 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-sm font-semibold"
+                        className="min-h-[44px] px-5 py-2 rounded-xl transition-all text-sm font-semibold hover:-translate-y-0.5"
+                        style={{
+                          background: "var(--card-idle)",
+                          border: "1px solid var(--card-border)",
+                          color: "var(--c-cream)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background =
+                            "linear-gradient(135deg, var(--c-terra), var(--c-sage))";
+                          e.currentTarget.style.color = "#fff";
+                          e.currentTarget.style.borderColor = "transparent";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "var(--card-idle)";
+                          e.currentTarget.style.color = "var(--c-cream)";
+                          e.currentTarget.style.borderColor = "var(--card-border)";
+                        }}
                       >
                         {fmtTime(opt.start)}
                       </button>
@@ -325,9 +391,16 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
       )}
 
       {!selectedService && (
-        <div className="text-center py-6 text-sm text-muted-foreground bg-muted/30 rounded-xl border border-dashed border-border">
+        <div
+          className="text-center py-8 rounded-2xl"
+          style={{
+            background: "var(--card-idle)",
+            border: "1px dashed var(--card-border)",
+            color: "var(--c-text)",
+          }}
+        >
           <Icon name="MousePointerClick" size={20} className="mx-auto mb-1.5 opacity-50" />
-          Выберите услугу выше, чтобы посмотреть свободное время
+          <p className="text-sm">Выберите услугу выше, чтобы посмотреть свободное время</p>
         </div>
       )}
     </div>
