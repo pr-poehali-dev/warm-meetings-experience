@@ -57,18 +57,21 @@ def _alert_admin_critical(channel, error_code, error_text, recipient=''):
     if admin_email and api_key and sender_email:
         try:
             req = urllib.request.Request(
-                'https://go1.unisender.ru/ru/transactional/api/v1/email/send.json',
+                'https://go2.unisender.ru/ru/transactional/api/v1/email/send.json',
                 data=json.dumps({
-                    'api_key': api_key,
                     'message': {
                         'recipients': [{'email': admin_email}],
                         'body': {'html': body_html},
                         'subject': subject,
                         'from_email': sender_email,
                         'from_name': sender_name,
+                        'tags': ['admin-alert'],
                     }
                 }).encode('utf-8'),
-                headers={'Content-Type': 'application/json'},
+                headers={
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': api_key,
+                },
                 method='POST',
             )
             urllib.request.urlopen(req, timeout=6).read()
@@ -220,20 +223,25 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                 </div>
                 """.strip()
                 payload = {
-                    'api_key': api_key,
                     'message': {
                         'recipients': [{'email': m['email'], 'substitutions': {'to_name': m.get('master_name') or ''}}],
                         'body': {'html': body_html},
                         'subject': subject,
                         'from_email': sender_email,
                         'from_name': sender_name,
+                        'track_links': 1,
+                        'track_read': 1,
+                        'tags': ['master-booking-new'],
                     }
                 }
                 try:
                     req = urllib.request.Request(
-                        'https://go1.unisender.ru/ru/transactional/api/v1/email/send.json',
+                        'https://go2.unisender.ru/ru/transactional/api/v1/email/send.json',
                         data=json.dumps(payload).encode('utf-8'),
-                        headers={'Content-Type': 'application/json'},
+                        headers={
+                            'Content-Type': 'application/json',
+                            'X-API-KEY': api_key,
+                        },
                         method='POST',
                     )
                     resp_raw = urllib.request.urlopen(req, timeout=8).read()
