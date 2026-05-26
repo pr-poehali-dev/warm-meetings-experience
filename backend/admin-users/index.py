@@ -41,8 +41,64 @@ def handler(event, context):
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+    # Подресурс: журнал уведомлений
+    params = event.get('queryStringParameters') or {}
+    if (params.get('resource') or '') == 'notifications' and method == 'GET':
+        page = max(1, int(params.get('page', 1)))
+        per_page = min(100, max(1, int(params.get('per_page', 30))))
+        offset = (page - 1) * per_page
+
+        filters = []
+        status_f = (params.get('status') or '').strip()
+        channel_f = (params.get('channel') or '').strip()
+        event_type_f = (params.get('event_type') or '').strip()
+        search_f = (params.get('search') or '').strip()
+
+        if status_f in ('success', 'failed'):
+            filters.append(f"status = '{status_f}'")
+        if channel_f in ('email', 'telegram', 'vk'):
+            filters.append(f"channel = '{channel_f}'")
+        if event_type_f:
+            et = event_type_f.replace("'", "''")[:60]
+            filters.append(f"event_type = '{et}'")
+        if search_f:
+            s = search_f.replace("'", "''")
+            filters.append(f"(recipient ILIKE '%{s}%' OR error_text ILIKE '%{s}%' OR subject ILIKE '%{s}%')")
+
+        where = ('WHERE ' + ' AND '.join(filters)) if filters else ''
+
+        cur.execute(f"SELECT COUNT(*) AS total FROM {schema}.notification_log {where}")
+        total_n = cur.fetchone()['total']
+
+        cur.execute(f"""
+            SELECT id, channel, event_type, recipient, subject, status,
+                   error_code, error_text, provider_resp, user_id, related_id, created_at
+            FROM {schema}.notification_log
+            {where}
+            ORDER BY created_at DESC
+            LIMIT {per_page} OFFSET {offset}
+        """)
+        rows_n = [dict(r) for r in cur.fetchall()]
+
+        cur.execute(f"""
+            SELECT
+                COUNT(*) FILTER (WHERE status = 'success') AS ok_24h,
+                COUNT(*) FILTER (WHERE status = 'failed')  AS fail_24h,
+                COUNT(*) FILTER (WHERE status = 'failed' AND (error_code IN ('401','403') OR error_text ILIKE '%unauthorized%' OR error_text ILIKE '%forbidden%')) AS critical_24h
+            FROM {schema}.notification_log
+            WHERE created_at >= NOW() - INTERVAL '24 hours'
+        """)
+        stats_n = dict(cur.fetchone() or {})
+        conn.close()
+        return respond(200, {
+            'items': rows_n,
+            'total': total_n,
+            'page': page,
+            'per_page': per_page,
+            'stats_24h': stats_n,
+        })
+
     if method == 'GET':
-        params = event.get('queryStringParameters') or {}
         search = (params.get('search') or '').strip()
         page = max(1, int(params.get('page', 1)))
         per_page = 20

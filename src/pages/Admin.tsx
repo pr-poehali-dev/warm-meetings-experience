@@ -25,6 +25,7 @@ import AdminEventModeration from "@/components/admin/AdminEventModeration";
 import AdminVideos from "@/components/admin/AdminVideos";
 import AdminSupport from "@/components/admin/AdminSupport";
 import AdminEventTypes from "@/components/admin/AdminEventTypes";
+import AdminNotifications from "@/components/admin/AdminNotifications";
 
 
 export default function Admin() {
@@ -127,6 +128,8 @@ export default function Admin() {
         return <AdminSupport />;
       case "event-types":
         return <AdminEventTypes />;
+      case "notifications":
+        return <AdminNotifications />;
       default:
         return null;
     }

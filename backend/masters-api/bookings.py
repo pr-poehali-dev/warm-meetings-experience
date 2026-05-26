@@ -7,6 +7,97 @@ from datetime import datetime
 from shared import CORS_HEADERS, get_conn, get_schema
 
 
+def _log_notification(cur, schema, *, channel, event_type, recipient, status,
+                      subject=None, error_code=None, error_text=None,
+                      provider_resp=None, user_id=None, related_id=None, payload=None):
+    """Пишет запись в notification_log. Никогда не падает."""
+    try:
+        def _esc(v):
+            if v is None:
+                return 'NULL'
+            return "'" + str(v).replace("'", "''")[:4000] + "'"
+        payload_json = 'NULL'
+        if payload is not None:
+            try:
+                payload_json = "'" + json.dumps(payload, default=str, ensure_ascii=False).replace("'", "''")[:6000] + "'"
+            except Exception:
+                payload_json = 'NULL'
+        cur.execute(f"""
+            INSERT INTO {schema}.notification_log
+                (channel, event_type, recipient, subject, status,
+                 error_code, error_text, provider_resp, payload, user_id, related_id)
+            VALUES ({_esc(channel)}, {_esc(event_type)}, {_esc(recipient)}, {_esc(subject)}, {_esc(status)},
+                    {_esc(error_code)}, {_esc(error_text)}, {_esc(provider_resp)}, {payload_json}::jsonb,
+                    {'NULL' if user_id is None else int(user_id)},
+                    {'NULL' if related_id is None else int(related_id)})
+        """)
+    except Exception:
+        pass
+
+
+def _alert_admin_critical(channel, error_code, error_text, recipient=''):
+    """При критических сбоях (401/403/Forbidden) шлёт письмо админу проекта.
+    Использует тот же Unisender, поэтому если он сам и сломан — алерт не дойдёт,
+    но мы хотя бы попытаемся. Дополнительно дублируем в Telegram админу.
+    """
+    admin_email = os.environ.get('SUPPORT_ADMIN_EMAIL', '') or os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
+    subject = f'[Sparcom] Критическая ошибка уведомлений: {channel} {error_code}'
+    body_html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 560px; color: #1f2937;">
+        <h2 style="color: #dc2626;">Сбой отправки уведомлений</h2>
+        <p>Канал: <b>{channel}</b><br/>Код ошибки: <b>{error_code}</b></p>
+        <p>Получатель: {recipient or '—'}</p>
+        <pre style="background: #f3f4f6; padding: 12px; border-radius: 8px; white-space: pre-wrap;">{error_text}</pre>
+        <p style="color: #6b7280; font-size: 13px;">Проверьте секреты UNISENDER_API_KEY / TG_PUBLISH_BOT_TOKEN в админке проекта.</p>
+    </div>
+    """.strip()
+    if admin_email and api_key and sender_email:
+        try:
+            req = urllib.request.Request(
+                'https://go1.unisender.ru/ru/transactional/api/v1/email/send.json',
+                data=json.dumps({
+                    'api_key': api_key,
+                    'message': {
+                        'recipients': [{'email': admin_email}],
+                        'body': {'html': body_html},
+                        'subject': subject,
+                        'from_email': sender_email,
+                        'from_name': sender_name,
+                    }
+                }).encode('utf-8'),
+                headers={'Content-Type': 'application/json'},
+                method='POST',
+            )
+            urllib.request.urlopen(req, timeout=6).read()
+        except Exception:
+            pass
+    # Дублируем админу в Telegram
+    admin_chat = os.environ.get('TELEGRAM_CHAT_ID', '')
+    bot_token = os.environ.get('TG_PUBLISH_BOT_TOKEN', '') or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+    if admin_chat and bot_token:
+        try:
+            text = f'⚠️ <b>Сбой уведомлений</b>\n\nКанал: {channel}\nКод: {error_code}\nПолучатель: {recipient or "—"}\n\n<code>{(error_text or "")[:500]}</code>'
+            urllib.request.urlopen(urllib.request.Request(
+                f'https://api.telegram.org/bot{bot_token}/sendMessage',
+                data=json.dumps({'chat_id': int(admin_chat), 'text': text, 'parse_mode': 'HTML'}).encode('utf-8'),
+                headers={'Content-Type': 'application/json'},
+                method='POST',
+            ), timeout=5).read()
+        except Exception:
+            pass
+
+
+def _is_critical_error(error_text):
+    """401/403/Forbidden/Unauthorized — критический сбой канала."""
+    if not error_text:
+        return False
+    t = str(error_text).lower()
+    return ('401' in t) or ('403' in t) or ('unauthorized' in t) or ('forbidden' in t)
+
+
 def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
     """Отправляет email и Telegram уведомление мастеру о новой брони.
     Все ошибки молча проглатываются — уведомления не должны ломать сам флоу.
@@ -143,9 +234,31 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                         method='POST',
                     )
                     resp_raw = urllib.request.urlopen(req, timeout=8).read()
-                    print(f"[notify_master] email send response: {resp_raw.decode('utf-8', errors='replace')}")
+                    resp_txt = resp_raw.decode('utf-8', errors='replace')
+                    print(f"[notify_master] email send response: {resp_txt}")
+                    _log_notification(cur, schema,
+                        channel='email', event_type='master_booking_new',
+                        recipient=m.get('email'), subject=subject, status='success',
+                        provider_resp=resp_txt[:1000], user_id=m.get('user_id'),
+                        related_id=booking.get('id'),
+                        payload={'master_id': master_id, 'client_name': client_name})
                 except Exception as e:
-                    print(f"[notify_master] email send ERROR: {e}")
+                    err_text = str(e)
+                    err_code = ''
+                    try:
+                        err_code = str(getattr(e, 'code', '')) or ''
+                    except Exception:
+                        pass
+                    print(f"[notify_master] email send ERROR: {err_text}")
+                    _log_notification(cur, schema,
+                        channel='email', event_type='master_booking_new',
+                        recipient=m.get('email'), subject=subject, status='failed',
+                        error_code=err_code or 'exception', error_text=err_text[:2000],
+                        user_id=m.get('user_id'), related_id=booking.get('id'),
+                        payload={'master_id': master_id, 'client_name': client_name})
+                    if _is_critical_error(err_text) or err_code in ('401', '403'):
+                        _alert_admin_critical('email (Unisender)', err_code or 'auth_error',
+                                              err_text, recipient=m.get('email') or '')
 
         # === Telegram ===
         # Если у мастера в аккаунте привязан Telegram (через бота организатора)
@@ -193,9 +306,32 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                         method='POST',
                     )
                     tg_resp = urllib.request.urlopen(tg_req, timeout=6).read()
-                    print(f"[notify_master] telegram chat_id={m['tg_chat_id']} ok response={tg_resp.decode('utf-8', errors='replace')[:200]}")
+                    tg_txt = tg_resp.decode('utf-8', errors='replace')
+                    print(f"[notify_master] telegram chat_id={m['tg_chat_id']} ok response={tg_txt[:200]}")
+                    _log_notification(cur, schema,
+                        channel='telegram', event_type='master_booking_new',
+                        recipient=str(m.get('tg_chat_id')), subject='Новая запись на сеанс',
+                        status='success', provider_resp=tg_txt[:1000],
+                        user_id=m.get('user_id'), related_id=booking.get('id'),
+                        payload={'master_id': master_id, 'client_name': client_name})
                 except Exception as e:
-                    print(f"[notify_master] telegram ERROR chat_id={m.get('tg_chat_id')}: {e}")
+                    err_text = str(e)
+                    err_code = ''
+                    try:
+                        err_code = str(getattr(e, 'code', '')) or ''
+                    except Exception:
+                        pass
+                    print(f"[notify_master] telegram ERROR chat_id={m.get('tg_chat_id')}: {err_text}")
+                    _log_notification(cur, schema,
+                        channel='telegram', event_type='master_booking_new',
+                        recipient=str(m.get('tg_chat_id')), subject='Новая запись на сеанс',
+                        status='failed', error_code=err_code or 'exception',
+                        error_text=err_text[:2000], user_id=m.get('user_id'),
+                        related_id=booking.get('id'),
+                        payload={'master_id': master_id, 'client_name': client_name})
+                    if _is_critical_error(err_text) or err_code in ('401', '403'):
+                        _alert_admin_critical('telegram', err_code or 'forbidden',
+                                              err_text, recipient=str(m.get('tg_chat_id') or ''))
     except Exception:
         # Любые проблемы с уведомлениями не должны ломать бронь
         pass

@@ -92,6 +92,12 @@ const NAV: NavGroup[] = [
         hint: "Тикеты и шаблоны",
         badgeKey: "support",
       },
+      {
+        view: "notifications",
+        label: "Уведомления",
+        icon: "Bell",
+        hint: "Журнал отправок email/Telegram",
+      },
     ],
   },
   {
