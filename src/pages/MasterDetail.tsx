@@ -470,50 +470,45 @@ export default function MasterDetail() {
     setBookingSuccess(true);
   };
 
+  const scrollToBooking = () => {
+    document.querySelector("[data-section='schedule']")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <PageShell>
       <Header transparent />
 
-      {/* Фотогалерея */}
-      <div data-hero className="relative bg-muted">
-        <img
-          src={photoUrls[activePhoto]}
-          alt={master.name}
-          className="w-full h-64 md:h-80 object-cover object-top"
-        />
-        {photoUrls.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-            {photoUrls.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setActivePhoto(i)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  i === activePhoto ? "bg-white w-6" : "bg-white/50"
-                }`}
-              />
-            ))}
+      {/* ── Hero-баннер ──────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-stone-900 via-stone-800 to-stone-900 min-h-[300px] md:min-h-[340px] flex items-end">
+        {/* Фоновая текстура */}
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary via-transparent to-transparent pointer-events-none" />
+
+        {/* Фото мастера справа */}
+        <div className="absolute right-0 top-0 h-full w-1/2 md:w-2/5 lg:w-[420px] pointer-events-none select-none hidden sm:block">
+          <img
+            src={photoUrls[activePhoto]}
+            alt={master.name}
+            className="h-full w-full object-cover object-top"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-stone-900 via-stone-900/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-stone-900/70 via-transparent to-transparent" />
+        </div>
+
+        {/* Контент слева */}
+        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 pb-10 pt-24">
+          {/* Хлебные крошки */}
+          <div className="flex items-center gap-2 text-xs text-white/50 mb-5">
+            <Link to="/masters" className="hover:text-white/80 transition-colors">Мастера</Link>
+            <Icon name="ChevronRight" size={12} />
+            <span className="text-white/70">{master.name}</span>
           </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent pointer-events-none" />
-      </div>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        <div className="flex flex-col lg:flex-row gap-10">
-
-          {/* Основной контент */}
-          <div className="flex-1 min-w-0">
-            {/* Хлебные крошки */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-              <Link to="/masters" className="hover:text-foreground transition-colors">Мастера</Link>
-              <Icon name="ChevronRight" size={14} />
-              <span className="text-foreground">{master.name}</span>
-            </div>
-
-            {/* Специализации — теги */}
+          <div className="max-w-lg">
+            {/* Специализации */}
             {(master.specializations || []).length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {master.specializations!.map((s) => (
-                  <span key={s.id} className="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full">
+                  <span key={s.id} className="text-xs bg-white/10 text-white/80 px-2.5 py-1 rounded-full border border-white/10">
                     {s.name}
                   </span>
                 ))}
@@ -522,29 +517,94 @@ export default function MasterDetail() {
 
             {/* Имя + бейдж */}
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl md:text-4xl font-bold">{master.name}</h1>
+              <h1 className="text-3xl md:text-4xl font-bold text-white">{master.name}</h1>
               {master.is_verified && (
-                <div className="flex items-center gap-1 text-primary text-sm font-medium">
-                  <Icon name="BadgeCheck" size={20} className="text-primary" />
+                <div className="flex items-center gap-1 text-primary text-sm font-medium bg-primary/20 px-2 py-0.5 rounded-full">
+                  <Icon name="BadgeCheck" size={14} className="text-primary" />
                   Проверен
                 </div>
               )}
             </div>
 
             {/* Мета-строка */}
-            <div className="flex flex-wrap gap-4 mb-6 text-sm text-muted-foreground">
+            <div className="flex flex-wrap gap-4 mb-5 text-sm text-white/70">
               {master.experience_years > 0 && (
                 <div className="flex items-center gap-1.5">
-                  <Icon name="Clock" size={15} />
+                  <Icon name="Clock" size={14} />
                   <span>{master.experience_years} {getYearWord(master.experience_years)} опыта</span>
                 </div>
               )}
               <div className="flex items-center gap-1.5">
-                <Icon name="MapPin" size={15} />
+                <Icon name="MapPin" size={14} />
                 <span>{master.city}</span>
               </div>
-              {master.rating > 0 && <StarRating rating={master.rating} />}
+              {master.rating > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <Icon name="Star" size={14} className="text-amber-400 fill-amber-400" />
+                  <span className="text-white/90 font-medium">{master.rating.toFixed(1)}</span>
+                  {master.reviews_count > 0 && (
+                    <span className="text-white/50">({master.reviews_count})</span>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* Кнопки */}
+            <div className="flex flex-wrap gap-3">
+              {services.length > 0 && (
+                <button
+                  onClick={scrollToBooking}
+                  className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
+                >
+                  <Icon name="CalendarCheck" size={16} />
+                  Записаться
+                </button>
+              )}
+              {master.phone && (
+                <a
+                  href={`tel:${master.phone}`}
+                  className="flex items-center gap-2 bg-white/10 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-white/15 transition-colors border border-white/10"
+                >
+                  <Icon name="Phone" size={16} />
+                  Позвонить
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Галерея-точки */}
+        {photoUrls.length > 1 && (
+          <div className="absolute bottom-4 right-6 flex gap-2 z-10">
+            {photoUrls.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setActivePhoto(i)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  i === activePhoto ? "bg-white w-6" : "bg-white/40"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Мобильное фото (только sm и меньше) */}
+      <div className="sm:hidden relative">
+        <img
+          src={photoUrls[activePhoto]}
+          alt={master.name}
+          className="w-full h-56 object-cover object-top"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent" />
+      </div>
+
+      {/* ── Основной layout ──────────────────────────────────────────────── */}
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <div className="flex flex-col lg:flex-row gap-10">
+
+          {/* Левая колонка 70% */}
+          <div className="flex-1 min-w-0">
 
             {/* Цитата */}
             {master.tagline && (
@@ -583,12 +643,14 @@ export default function MasterDetail() {
               </div>
             )}
 
-            {/* Запись на сеанс: услуга → дата → время */}
-            <MasterBookingFlow
-              masterId={master.id}
-              services={services}
-              onBookSlot={(option, service) => setBookingState({ option, service })}
-            />
+            {/* Запись на сеанс — только на мобильных (на десктопе — в правой колонке) */}
+            <div className="lg:hidden">
+              <MasterBookingFlow
+                masterId={master.id}
+                services={services}
+                onBookSlot={(option, service) => setBookingState({ option, service })}
+              />
+            </div>
 
             {/* Портфолио */}
             {portfolio.length > 0 && (
@@ -665,53 +727,54 @@ export default function MasterDetail() {
             )}
           </div>
 
-          {/* Правая колонка — контакты */}
-          <div className="lg:w-[300px] flex-shrink-0">
+          {/* Правая колонка — sticky-виджет */}
+          <div className="lg:w-[320px] flex-shrink-0">
             <div className="lg:sticky lg:top-24 space-y-4">
-              <div className="bg-card border border-border rounded-2xl p-6">
-                {master.price_from > 0 && (
-                  <div className="mb-4">
-                    <div className="text-3xl font-bold text-primary">
-                      {fmt(master.price_from)} ₽
+
+              {/* Виджет бронирования (десктоп) */}
+              {services.length > 0 && (
+                <div className="hidden lg:block bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                  <div className="bg-primary/5 border-b border-border px-5 py-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-sm">Запись на сеанс</span>
+                      {master.price_from > 0 && (
+                        <span className="text-primary font-bold">от {fmt(master.price_from)} ₽</span>
+                      )}
                     </div>
-                    <div className="text-sm text-muted-foreground">от / за сеанс</div>
                   </div>
-                )}
+                  <div className="px-4 py-4">
+                    <MasterBookingFlow
+                      masterId={master.id}
+                      services={services}
+                      onBookSlot={(option, service) => setBookingState({ option, service })}
+                    />
+                  </div>
+                </div>
+              )}
 
-                {services.length > 0 && (
-                  <button
-                    onClick={() => {
-                      document.querySelector("[data-section='schedule']")?.scrollIntoView({ behavior: "smooth" });
-                    }}
-                    className="flex items-center justify-center gap-2 w-full bg-primary text-primary-foreground px-4 py-3 rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors mb-3"
-                  >
-                    <Icon name="CalendarCheck" size={16} />
-                    Записаться
-                  </button>
-                )}
-
+              {/* Контакты */}
+              <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-3">Связаться</p>
                 {master.phone && (
                   <a
                     href={`tel:${master.phone}`}
-                    className="flex items-center gap-3 w-full bg-muted px-4 py-3 rounded-xl text-sm font-medium hover:bg-muted/80 transition-colors mb-3"
+                    className="flex items-center gap-3 w-full bg-muted px-4 py-3 rounded-xl text-sm font-medium hover:bg-muted/80 transition-colors"
                   >
                     <Icon name="Phone" size={16} />
                     {master.phone}
                   </a>
                 )}
-
                 {master.telegram && (
                   <a
                     href={`https://t.me/${master.telegram.replace("@", "")}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 w-full bg-muted px-4 py-3 rounded-xl text-sm font-medium hover:bg-muted/80 transition-colors mb-3"
+                    className="flex items-center gap-3 w-full bg-muted px-4 py-3 rounded-xl text-sm font-medium hover:bg-muted/80 transition-colors"
                   >
                     <Icon name="Send" size={16} />
                     Telegram
                   </a>
                 )}
-
                 {master.instagram && (
                   <a
                     href={`https://instagram.com/${master.instagram.replace("@", "")}`}
@@ -728,7 +791,7 @@ export default function MasterDetail() {
               {master.reviews_count > 0 && (
                 <div className="bg-card border border-border rounded-2xl p-5">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold">Рейтинг</span>
+                    <span className="font-semibold text-sm">Рейтинг</span>
                     <span className="text-2xl font-bold text-primary">{master.rating.toFixed(1)}</span>
                   </div>
                   <StarRating rating={master.rating} />
@@ -743,6 +806,19 @@ export default function MasterDetail() {
       </div>
 
       <Footer />
+
+      {/* Плавающая кнопка «Записаться» на мобильных */}
+      {services.length > 0 && (
+        <div className="lg:hidden fixed bottom-6 left-0 right-0 flex justify-center z-40 pointer-events-none px-4">
+          <button
+            onClick={scrollToBooking}
+            className="pointer-events-auto flex items-center gap-2 bg-primary text-primary-foreground px-8 py-3.5 rounded-2xl text-sm font-semibold shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all active:scale-95"
+          >
+            <Icon name="CalendarCheck" size={18} />
+            Записаться
+          </button>
+        </div>
+      )}
 
       {/* Модалка бронирования */}
       {bookingState && (
