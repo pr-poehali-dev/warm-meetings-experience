@@ -529,7 +529,7 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {optionsForDay.map((opt, i) => (
-                      <button
+                      <button className="min-h-[44px] px-5 py-2 rounded-xl transition-all text-sm font-semibold hover:-translate-y-0.5 text-orange-600"
                         key={`${opt.slot.id}-${i}`}
                         type="button"
                         onClick={() => onBookSlot(opt, selectedService)}
