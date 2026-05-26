@@ -13,11 +13,17 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
     """
     try:
         cur.execute(f"""
-            SELECT m.name AS master_name, m.user_id, u.email, u.tg_chat_id,
+            SELECT m.name AS master_name, m.user_id, u.email,
+                   COALESCE(u.tg_chat_id, la.telegram_user_id) AS tg_chat_id,
                    COALESCE(u.notify_email, true) AS notify_email,
                    COALESCE(u.notify_telegram, false) AS notify_telegram
             FROM {schema}.masters m
             LEFT JOIN {schema}.users u ON u.id = m.user_id
+            LEFT JOIN (
+                SELECT DISTINCT ON (user_id) user_id, telegram_user_id
+                FROM {schema}.tg_linked_accounts
+                ORDER BY user_id, linked_at DESC
+            ) la ON la.user_id = m.user_id
             WHERE m.id = {int(master_id)}
         """)
         m = cur.fetchone()
@@ -93,7 +99,9 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
 
         # === Telegram ===
         if m.get('notify_telegram') and m.get('tg_chat_id'):
-            bot_token = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+            # Используем тот же бот, что и для организатора (Банное дело),
+            # чтобы мастер получал уведомления через привычного бота.
+            bot_token = os.environ.get('TELEGRAM_BOT_TOKEN', '') or os.environ.get('TG_PUBLISH_BOT_TOKEN', '')
             if bot_token:
                 lines = [
                     '🎫 <b>Новая запись на сеанс</b>',
@@ -266,6 +274,22 @@ def handle_bookings(event, method, params, schema, headers):
             """)
 
         conn.commit()
+
+        # Уведомление мастеру (email + Telegram). Сбои не должны ломать бронь.
+        svc_name_for_notify = ''
+        if service_id:
+            try:
+                cur.execute(f"SELECT name FROM {schema}.master_services WHERE id = {int(service_id)}")
+                _svc = cur.fetchone()
+                if _svc:
+                    svc_name_for_notify = _svc.get('name') or ''
+            except Exception:
+                pass
+        try:
+            _notify_master_about_booking(cur, schema, master_id, dict(booking), svc_name_for_notify)
+        except Exception:
+            pass
+
         conn.close()
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(booking, default=str)}
 
