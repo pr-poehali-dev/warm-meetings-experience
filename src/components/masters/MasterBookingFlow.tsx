@@ -27,6 +27,75 @@ function fmtTime(d: Date) {
 }
 
 /**
+ * Парсит описание процедуры на структурированные блоки.
+ * Поддерживает разделы по заголовкам:
+ *   "Что входит" / "Включено" / "В стоимость входит"
+ *   "Что взять" / "Что взять с собой" / "С собой"
+ *   "Противопоказания" / "Не подходит" / "Ограничения"
+ *
+ * Заголовок может быть в любом регистре, заканчиваться `:` или быть на отдельной строке.
+ * Пункты списка распознаются по началу строки: -, •, *, —, 1., 1)
+ */
+interface ParsedDescription {
+  intro: string;
+  included: string[];
+  bring: string[];
+  contraindications: string[];
+}
+
+function parseServiceDescription(raw?: string): ParsedDescription {
+  const empty: ParsedDescription = { intro: "", included: [], bring: [], contraindications: [] };
+  if (!raw) return empty;
+
+  const lines = raw.split(/\r?\n/);
+  type Section = "intro" | "included" | "bring" | "contra";
+  let section: Section = "intro";
+  const buckets: Record<Section, string[]> = { intro: [], included: [], bring: [], contra: [] };
+
+  const headerRegex = /^(?:#{1,3}\s*)?(.+?)\s*[:：]?\s*$/;
+  const bulletRegex = /^\s*(?:[-•*—]|\d+[.)])\s+(.+?)\s*$/;
+
+  const detectHeader = (text: string): Section | null => {
+    const m = text.match(headerRegex);
+    if (!m) return null;
+    const t = m[1].toLowerCase().trim();
+    if (/^(что входит|включено|в стоимость входит|программа)$/.test(t)) return "included";
+    if (/^(что взять|что взять с собой|с собой|с собой нужно)$/.test(t)) return "bring";
+    if (/^(противопоказания|не подходит|ограничения|важно знать)$/.test(t)) return "contra";
+    return null;
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (section === "intro") buckets.intro.push("");
+      continue;
+    }
+    const newSection = detectHeader(trimmed);
+    if (newSection) {
+      section = newSection;
+      continue;
+    }
+    const bullet = trimmed.match(bulletRegex);
+    if (bullet && section !== "intro") {
+      buckets[section].push(bullet[1].trim());
+    } else if (section === "intro") {
+      buckets.intro.push(trimmed);
+    } else {
+      // Строка без буллета внутри раздела — тоже добавим как пункт
+      buckets[section].push(trimmed);
+    }
+  }
+
+  return {
+    intro: buckets.intro.join("\n").trim(),
+    included: buckets.included,
+    bring: buckets.bring,
+    contraindications: buckets.contra,
+  };
+}
+
+/**
  * Возможный «вариант времени начала» внутри окна доступности.
  * slot — рабочий интервал в БД, start/end — конкретное время сеанса.
  */
@@ -285,16 +354,22 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
       {aboutServiceId !== null && (() => {
         const svc = activeServices.find((x) => x.id === aboutServiceId);
         if (!svc) return null;
+        const parsed = parseServiceDescription(svc.description);
+        const hasStructured =
+          parsed.included.length > 0 ||
+          parsed.bring.length > 0 ||
+          parsed.contraindications.length > 0;
         return (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
             onClick={() => setAboutServiceId(null)}
           >
             <div
-              className="bg-card border border-border rounded-2xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto"
+              className="bg-card border border-border rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-5 sm:p-6">
+                {/* Шапка */}
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0">
                     <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
@@ -313,6 +388,7 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                   </button>
                 </div>
 
+                {/* Мета: длительность / гости / цена */}
                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mb-4 pb-4 border-b border-border">
                   <span className="flex items-center gap-1.5">
                     <Icon name="Clock" size={13} className="text-primary" />
@@ -329,23 +405,106 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                   </span>
                 </div>
 
-                {svc.description ? (
-                  <p className="text-sm leading-relaxed whitespace-pre-line text-foreground/80">
-                    {svc.description}
-                  </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">
-                    Мастер пока не добавил подробное описание этой процедуры.
+                {/* Краткое описание */}
+                {parsed.intro && (
+                  <div className="mb-5">
+                    <p className="text-sm leading-relaxed whitespace-pre-line text-foreground/80">
+                      {parsed.intro}
+                    </p>
+                  </div>
+                )}
+
+                {/* Если описания нет совсем */}
+                {!parsed.intro && !hasStructured && (
+                  <p className="text-sm text-muted-foreground italic mb-3">
+                    Мастер пока не добавил подробное описание этой процедуры. Свяжитесь с ним напрямую, чтобы узнать детали.
                   </p>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => setAboutServiceId(null)}
-                  className="mt-5 w-full py-2.5 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                >
-                  Понятно
-                </button>
+                {/* Что входит */}
+                {parsed.included.length > 0 && (
+                  <div className="mb-5 rounded-xl p-4 bg-primary/5 border border-primary/15">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <div className="w-7 h-7 rounded-full bg-primary/15 inline-flex items-center justify-center">
+                        <Icon name="ListChecks" size={15} className="text-primary" />
+                      </div>
+                      <div className="font-semibold text-sm text-foreground">Что входит</div>
+                    </div>
+                    <ul className="space-y-1.5">
+                      {parsed.included.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-foreground/80 leading-relaxed">
+                          <Icon name="Check" size={14} className="text-primary mt-0.5 shrink-0" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Что взять с собой */}
+                {parsed.bring.length > 0 && (
+                  <div className="mb-5 rounded-xl p-4 bg-nature-sage/10 border border-nature-sage/25">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <div className="w-7 h-7 rounded-full bg-nature-sage/20 inline-flex items-center justify-center">
+                        <Icon name="Briefcase" size={15} className="text-nature-sage" fallback="Package" />
+                      </div>
+                      <div className="font-semibold text-sm text-foreground">Что взять с собой</div>
+                    </div>
+                    <ul className="space-y-1.5">
+                      {parsed.bring.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-foreground/80 leading-relaxed">
+                          <Icon name="Dot" size={16} className="text-nature-sage mt-0.5 shrink-0" fallback="Circle" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Противопоказания */}
+                {parsed.contraindications.length > 0 && (
+                  <div className="mb-5 rounded-xl p-4 bg-amber-500/10 border border-amber-500/30">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <div className="w-7 h-7 rounded-full bg-amber-500/20 inline-flex items-center justify-center">
+                        <Icon name="AlertTriangle" size={15} className="text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div className="font-semibold text-sm text-foreground">Противопоказания</div>
+                    </div>
+                    <ul className="space-y-1.5 mb-2">
+                      {parsed.contraindications.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-foreground/80 leading-relaxed">
+                          <Icon name="X" size={14} className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-2 pt-2 border-t border-amber-500/20">
+                      Если есть хронические заболевания или сомнения — обязательно предупредите мастера перед сеансом.
+                    </p>
+                  </div>
+                )}
+
+                {/* CTA */}
+                <div className="flex gap-2 mt-5">
+                  <button
+                    type="button"
+                    onClick={() => setAboutServiceId(null)}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-muted text-foreground hover:bg-muted/80 transition-colors"
+                  >
+                    Закрыть
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedServiceId(svc.id!);
+                      setAboutServiceId(null);
+                    }}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors inline-flex items-center justify-center gap-1.5"
+                  >
+                    <Icon name="CalendarCheck" size={14} />
+                    Выбрать дату
+                  </button>
+                </div>
               </div>
             </div>
           </div>
