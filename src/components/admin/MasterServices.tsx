@@ -16,19 +16,33 @@ import {
 } from "@/components/ui/dialog";
 import { masterCalendarApi } from "@/lib/master-calendar-api";
 import type { MasterService } from "@/lib/master-calendar-api";
+import { parseServiceDescription, buildServiceDescription } from "@/lib/service-description";
 
 interface ServiceFormData {
   name: string;
   description: string;
+  included: string[];
+  bring: string[];
+  contraindications: string[];
   duration_minutes: string;
   price: string;
   max_clients: string;
   is_active: boolean;
 }
 
+const DEFAULT_CONTRA = [
+  "Беременность",
+  "Онкологические заболевания",
+  "Острые воспалительные процессы",
+  "Гипертония в стадии обострения",
+];
+
 const emptyForm: ServiceFormData = {
   name: "",
   description: "",
+  included: [],
+  bring: [],
+  contraindications: [],
   duration_minutes: "60",
   price: "",
   max_clients: "1",
@@ -37,6 +51,116 @@ const emptyForm: ServiceFormData = {
 
 const formatPrice = (price: number): string => {
   return price.toLocaleString("ru-RU") + " \u20BD";
+};
+
+interface ListFieldProps {
+  label: string;
+  icon: string;
+  color: string;
+  items: string[];
+  placeholder: string;
+  hint?: string;
+  onChange: (items: string[]) => void;
+  extraAction?: { label: string; onClick: () => void };
+}
+
+const ListField = ({
+  label,
+  icon,
+  color,
+  items,
+  placeholder,
+  hint,
+  onChange,
+  extraAction,
+}: ListFieldProps) => {
+  const [draft, setDraft] = useState("");
+
+  const addItem = (text: string) => {
+    const value = text.trim();
+    if (!value) return;
+    onChange([...items, value]);
+    setDraft("");
+  };
+
+  const removeItem = (idx: number) => {
+    onChange(items.filter((_, i) => i !== idx));
+  };
+
+  const updateItem = (idx: number, value: string) => {
+    onChange(items.map((it, i) => (i === idx ? value : it)));
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <Label className="flex items-center gap-1.5">
+          <Icon name={icon} size={14} className={color} />
+          {label}
+        </Label>
+        {extraAction && (
+          <button
+            type="button"
+            onClick={extraAction.onClick}
+            className="text-xs text-nature-forest hover:underline font-medium"
+          >
+            {extraAction.label}
+          </button>
+        )}
+      </div>
+
+      {items.length > 0 && (
+        <div className="space-y-1.5 mb-2">
+          {items.map((item, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <Icon name="GripVertical" size={14} className="text-gray-300 shrink-0" fallback="Dot" />
+              <Input
+                value={item}
+                onChange={(e) => updateItem(idx, e.target.value)}
+                className="h-8 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => removeItem(idx)}
+                className="shrink-0 w-8 h-8 inline-flex items-center justify-center rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                aria-label="Удалить пункт"
+              >
+                <Icon name="X" size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addItem(draft);
+            }
+          }}
+          placeholder={placeholder}
+          className="h-8 text-sm"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => addItem(draft)}
+          disabled={!draft.trim()}
+          className="h-8 px-3"
+        >
+          <Icon name="Plus" size={14} className="mr-1" />
+          Добавить
+        </Button>
+      </div>
+
+      {hint && <p className="text-[11px] text-gray-400 mt-1">{hint}</p>}
+    </div>
+  );
 };
 
 const MasterServices = ({ masterId }: { masterId: number }) => {
@@ -79,9 +203,13 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
 
   const openEdit = (service: MasterService) => {
     setEditingService(service);
+    const parsed = parseServiceDescription(service.description);
     setForm({
       name: service.name,
-      description: service.description || "",
+      description: parsed.intro,
+      included: parsed.included,
+      bring: parsed.bring,
+      contraindications: parsed.contraindications,
       duration_minutes: String(service.duration_minutes),
       price: String(service.price),
       max_clients: String(service.max_clients),
@@ -106,12 +234,18 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
 
     setSaving(true);
     try {
+      const fullDescription = buildServiceDescription({
+        intro: form.description.trim(),
+        included: form.included.map((x) => x.trim()).filter(Boolean),
+        bring: form.bring.map((x) => x.trim()).filter(Boolean),
+        contraindications: form.contraindications.map((x) => x.trim()).filter(Boolean),
+      });
       if (editingService?.id) {
         await masterCalendarApi.updateService({
           id: editingService.id,
           master_id: masterId,
           name: form.name.trim(),
-          description: form.description.trim() || undefined,
+          description: fullDescription || undefined,
           duration_minutes: Number(form.duration_minutes),
           price: Number(form.price),
           max_clients: Number(form.max_clients) || 1,
@@ -122,7 +256,7 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
         await masterCalendarApi.createService({
           master_id: masterId,
           name: form.name.trim(),
-          description: form.description.trim() || undefined,
+          description: fullDescription || undefined,
           duration_minutes: Number(form.duration_minutes),
           price: Number(form.price),
           max_clients: Number(form.max_clients) || 1,
@@ -324,7 +458,7 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[480px] flex flex-col max-h-[90vh]">
+        <DialogContent className="sm:max-w-[560px] flex flex-col max-h-[90vh]">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Icon
@@ -346,15 +480,59 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
               />
             </div>
             <div>
-              <Label>Описание</Label>
+              <Label>Краткое описание</Label>
               <Textarea
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Описание услуги для клиентов..."
+                placeholder="Суть процедуры в 1–2 предложениях..."
                 className="mt-1"
                 rows={3}
+                maxLength={300}
               />
+              <p className="text-[11px] text-gray-400 mt-1">
+                Например: «Традиционное русское парение с акцентом на прогревание и массаж веником.»
+              </p>
             </div>
+
+            {/* Что входит */}
+            <ListField
+              label="Что входит"
+              icon="ListChecks"
+              color="text-nature-forest"
+              items={form.included}
+              placeholder="Например: 3 захода с веником"
+              onChange={(items) => setForm({ ...form, included: items })}
+            />
+
+            {/* Что взять с собой */}
+            <ListField
+              label="Что взять с собой"
+              icon="Briefcase"
+              color="text-nature-sage"
+              items={form.bring}
+              placeholder="Например: купальник, сланцы"
+              onChange={(items) => setForm({ ...form, bring: items })}
+            />
+
+            {/* Противопоказания */}
+            <ListField
+              label="Противопоказания"
+              icon="AlertTriangle"
+              color="text-amber-600"
+              items={form.contraindications}
+              placeholder="Например: беременность"
+              hint="Обязательно для безопасности гостей. Можно использовать шаблон."
+              onChange={(items) => setForm({ ...form, contraindications: items })}
+              extraAction={
+                form.contraindications.length === 0
+                  ? {
+                      label: "Использовать шаблон",
+                      onClick: () => setForm({ ...form, contraindications: [...DEFAULT_CONTRA] }),
+                    }
+                  : undefined
+              }
+            />
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Длительность (мин) <span className="text-red-500">*</span></Label>

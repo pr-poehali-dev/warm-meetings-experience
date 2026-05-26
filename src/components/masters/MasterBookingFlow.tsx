@@ -3,6 +3,7 @@ import { addDays, format, startOfToday } from "date-fns";
 import { ru } from "date-fns/locale";
 import Icon from "@/components/ui/icon";
 import { masterBookingsApi, MasterService, MasterSlot } from "@/lib/master-calendar-api";
+import { parseServiceDescription } from "@/lib/service-description";
 
 const DAYS_AHEAD = 30;
 
@@ -26,74 +27,7 @@ function fmtTime(d: Date) {
   return format(d, "HH:mm");
 }
 
-/**
- * Парсит описание процедуры на структурированные блоки.
- * Поддерживает разделы по заголовкам:
- *   "Что входит" / "Включено" / "В стоимость входит"
- *   "Что взять" / "Что взять с собой" / "С собой"
- *   "Противопоказания" / "Не подходит" / "Ограничения"
- *
- * Заголовок может быть в любом регистре, заканчиваться `:` или быть на отдельной строке.
- * Пункты списка распознаются по началу строки: -, •, *, —, 1., 1)
- */
-interface ParsedDescription {
-  intro: string;
-  included: string[];
-  bring: string[];
-  contraindications: string[];
-}
 
-function parseServiceDescription(raw?: string): ParsedDescription {
-  const empty: ParsedDescription = { intro: "", included: [], bring: [], contraindications: [] };
-  if (!raw) return empty;
-
-  const lines = raw.split(/\r?\n/);
-  type Section = "intro" | "included" | "bring" | "contra";
-  let section: Section = "intro";
-  const buckets: Record<Section, string[]> = { intro: [], included: [], bring: [], contra: [] };
-
-  const headerRegex = /^(?:#{1,3}\s*)?(.+?)\s*[:：]?\s*$/;
-  const bulletRegex = /^\s*(?:[-•*—]|\d+[.)])\s+(.+?)\s*$/;
-
-  const detectHeader = (text: string): Section | null => {
-    const m = text.match(headerRegex);
-    if (!m) return null;
-    const t = m[1].toLowerCase().trim();
-    if (/^(что входит|включено|в стоимость входит|программа)$/.test(t)) return "included";
-    if (/^(что взять|что взять с собой|с собой|с собой нужно)$/.test(t)) return "bring";
-    if (/^(противопоказания|не подходит|ограничения|важно знать)$/.test(t)) return "contra";
-    return null;
-  };
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      if (section === "intro") buckets.intro.push("");
-      continue;
-    }
-    const newSection = detectHeader(trimmed);
-    if (newSection) {
-      section = newSection;
-      continue;
-    }
-    const bullet = trimmed.match(bulletRegex);
-    if (bullet && section !== "intro") {
-      buckets[section].push(bullet[1].trim());
-    } else if (section === "intro") {
-      buckets.intro.push(trimmed);
-    } else {
-      // Строка без буллета внутри раздела — тоже добавим как пункт
-      buckets[section].push(trimmed);
-    }
-  }
-
-  return {
-    intro: buckets.intro.join("\n").trim(),
-    included: buckets.included,
-    bring: buckets.bring,
-    contraindications: buckets.contra,
-  };
-}
 
 /**
  * Возможный «вариант времени начала» внутри окна доступности.
