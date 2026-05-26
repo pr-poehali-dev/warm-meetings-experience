@@ -148,10 +148,16 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                     print(f"[notify_master] email send ERROR: {e}")
 
         # === Telegram ===
-        if m.get('notify_telegram') and m.get('tg_chat_id'):
-            # Используем тот же бот, что и для организатора (Банное дело),
-            # чтобы мастер получал уведомления через привычного бота.
-            bot_token = os.environ.get('TELEGRAM_BOT_TOKEN', '') or os.environ.get('TG_PUBLISH_BOT_TOKEN', '')
+        # Если у мастера в аккаунте привязан Telegram (через бота организатора)
+        # — шлём туда уведомление о записи, как это сделано для событий.
+        # Флаг notify_telegram уважается только если он явно выключен (false).
+        tg_enabled = m.get('notify_telegram')
+        if tg_enabled is None:
+            tg_enabled = True
+        if tg_enabled and m.get('tg_chat_id'):
+            # Используем тот же бот, что и для уведомлений организатора о записях
+            # на события (TG_PUBLISH_BOT_TOKEN), чтобы всё приходило в один бот.
+            bot_token = os.environ.get('TG_PUBLISH_BOT_TOKEN', '') or os.environ.get('TELEGRAM_BOT_TOKEN', '')
             if bot_token:
                 lines = [
                     '🎫 <b>Новая запись на сеанс</b>',
@@ -186,9 +192,10 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                         headers={'Content-Type': 'application/json'},
                         method='POST',
                     )
-                    urllib.request.urlopen(tg_req, timeout=6).read()
-                except Exception:
-                    pass
+                    tg_resp = urllib.request.urlopen(tg_req, timeout=6).read()
+                    print(f"[notify_master] telegram chat_id={m['tg_chat_id']} ok response={tg_resp.decode('utf-8', errors='replace')[:200]}")
+                except Exception as e:
+                    print(f"[notify_master] telegram ERROR chat_id={m.get('tg_chat_id')}: {e}")
     except Exception:
         # Любые проблемы с уведомлениями не должны ломать бронь
         pass
