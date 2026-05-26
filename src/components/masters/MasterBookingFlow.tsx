@@ -188,17 +188,13 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
 
   return (
     <div className="mb-8">
-      <h2 className="text-lg font-semibold mb-1">Запись на сеанс</h2>
+      <h2 className="text-lg font-semibold mb-1">Что предлагает мастер</h2>
       <p className="text-xs text-muted-foreground mb-4">
         Выберите услугу, дату и удобное время — мастер подтвердит запись.
       </p>
 
       {/* ШАГ 1: Услуги */}
       <div className="mb-5">
-        <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
-          <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground inline-flex items-center justify-center text-[10px] font-bold">1</span>
-          Услуга
-        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {activeServices.map((s) => {
             const active = selectedServiceId === s.id;
@@ -247,8 +243,7 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
       {/* ШАГ 2: Дата */}
       {selectedService && (
         <div className="mb-2">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground inline-flex items-center justify-center text-[10px] font-bold">2</span>
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             Дата
           </div>
 
@@ -296,8 +291,7 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot }: Ma
 
               {/* ШАГ 3: Время */}
               <div className="mt-4">
-                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
-                  <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground inline-flex items-center justify-center text-[10px] font-bold">3</span>
+                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                   Время
                 </div>
                 {optionsForDay.length === 0 ? (
