@@ -479,125 +479,13 @@ export default function MasterDetail() {
     <PageShell>
       <Header transparent />
 
-      {/* ── Hero-баннер ──────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-stone-900 via-stone-800 to-stone-900 min-h-[300px] md:min-h-[340px] flex items-end">
-        {/* Фоновая текстура */}
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary via-transparent to-transparent pointer-events-none" />
-
-        {/* Фото мастера справа */}
-        <div className="absolute right-0 top-0 h-full w-1/2 md:w-2/5 lg:w-[420px] pointer-events-none select-none hidden sm:block">
-          <img
-            src={photoUrls[activePhoto]}
-            alt={master.name}
-            className="h-full w-full object-cover object-top"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-stone-900 via-stone-900/30 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-stone-900/70 via-transparent to-transparent" />
+      {/* ── Хлебные крошки ──────────────────────────────────────────────── */}
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-2">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Link to="/masters" className="hover:text-foreground transition-colors">Мастера</Link>
+          <Icon name="ChevronRight" size={12} />
+          <span className="text-foreground/80">{master.name}</span>
         </div>
-
-        {/* Контент слева */}
-        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 pb-10 pt-24">
-          {/* Хлебные крошки */}
-          <div className="flex items-center gap-2 text-xs text-white/50 mb-5">
-            <Link to="/masters" className="hover:text-white/80 transition-colors">Мастера</Link>
-            <Icon name="ChevronRight" size={12} />
-            <span className="text-white/70">{master.name}</span>
-          </div>
-
-          <div className="max-w-lg">
-            {/* Специализации */}
-            {(master.specializations || []).length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {master.specializations!.map((s) => (
-                  <span key={s.id} className="text-xs bg-white/10 text-white/80 px-2.5 py-1 rounded-full border border-white/10">
-                    {s.name}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Имя + бейдж */}
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl md:text-4xl font-bold text-white">{master.name}</h1>
-              {master.is_verified && (
-                <div className="flex items-center gap-1 text-primary text-sm font-medium bg-primary/20 px-2 py-0.5 rounded-full">
-                  <Icon name="BadgeCheck" size={14} className="text-primary" />
-                  Проверен
-                </div>
-              )}
-            </div>
-
-            {/* Мета-строка */}
-            <div className="flex flex-wrap gap-4 mb-5 text-sm text-white/70">
-              {master.experience_years > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <Icon name="Clock" size={14} />
-                  <span>{master.experience_years} {getYearWord(master.experience_years)} опыта</span>
-                </div>
-              )}
-              <div className="flex items-center gap-1.5">
-                <Icon name="MapPin" size={14} />
-                <span>{master.city}</span>
-              </div>
-              {master.rating > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <Icon name="Star" size={14} className="text-amber-400 fill-amber-400" />
-                  <span className="text-white/90 font-medium">{master.rating.toFixed(1)}</span>
-                  {master.reviews_count > 0 && (
-                    <span className="text-white/50">({master.reviews_count})</span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Кнопки */}
-            <div className="flex flex-wrap gap-3">
-              {services.length > 0 && (
-                <button
-                  onClick={scrollToBooking}
-                  className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors"
-                >
-                  <Icon name="CalendarCheck" size={16} />
-                  Записаться
-                </button>
-              )}
-              {master.phone && (
-                <a
-                  href={`tel:${master.phone}`}
-                  className="flex items-center gap-2 bg-white/10 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-white/15 transition-colors border border-white/10"
-                >
-                  <Icon name="Phone" size={16} />
-                  Позвонить
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Галерея-точки */}
-        {photoUrls.length > 1 && (
-          <div className="absolute bottom-4 right-6 flex gap-2 z-10">
-            {photoUrls.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setActivePhoto(i)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  i === activePhoto ? "bg-white w-6" : "bg-white/40"
-                }`}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Мобильное фото (только sm и меньше) */}
-      <div className="sm:hidden relative">
-        <img
-          src={photoUrls[activePhoto]}
-          alt={master.name}
-          className="w-full h-56 object-cover object-top"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent" />
       </div>
 
       {/* ── Основной layout ──────────────────────────────────────────────── */}
@@ -614,13 +502,68 @@ export default function MasterDetail() {
               </p>
             )}
 
-            {/* Биография */}
-            {master.bio && (
-              <div className="mb-8">
-                <h2 className="text-lg font-semibold mb-3">О мастере</h2>
-                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{master.bio}</p>
+            {/* О мастере: фото-кружок + имя + город + биография */}
+            <div className="mb-8">
+              <div className="flex items-start gap-4 mb-4">
+                {/* Фото в кружочке */}
+                <div className="relative shrink-0">
+                  <div
+                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden ring-2 ring-primary/20 shadow-md"
+                  >
+                    <img
+                      src={photoUrls[activePhoto]}
+                      alt={master.name}
+                      className="w-full h-full object-cover object-top"
+                    />
+                  </div>
+                  {master.is_verified && (
+                    <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-background flex items-center justify-center shadow-sm">
+                      <Icon name="BadgeCheck" size={20} className="text-primary" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Имя + город в стиле главной */}
+                <div className="min-w-0 flex-1 pt-1">
+                  <h1
+                    className="font-bold text-xl sm:text-2xl leading-tight mb-1"
+                    style={{ color: "var(--c-cream)" }}
+                  >
+                    {master.name}
+                  </h1>
+                  <div
+                    className="flex items-center gap-3 text-xs flex-wrap"
+                    style={{ color: "var(--c-muted)" }}
+                  >
+                    <span className="flex items-center gap-1">
+                      <Icon name="MapPin" size={11} />
+                      {master.city}
+                    </span>
+                    {master.experience_years > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Icon name="Award" size={11} style={{ color: "var(--c-terra)" } as React.CSSProperties} />
+                        <span style={{ color: "var(--c-cream)" }}>{master.experience_years}</span>
+                        {getYearWord(master.experience_years)} опыта
+                      </span>
+                    )}
+                    {master.rating > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Icon name="Star" size={11} style={{ color: "#F59E0B", fill: "#F59E0B" } as React.CSSProperties} />
+                        <span className="font-semibold" style={{ color: "#F59E0B" }}>{master.rating.toFixed(1)}</span>
+                        {master.reviews_count > 0 && <span>({master.reviews_count})</span>}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            )}
+
+              {master.bio && (
+                <>
+                  <h2 className="text-lg font-semibold mb-3">О мастере</h2>
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{master.bio}</p>
+                </>
+              )}
+            </div>
 
             {/* Специализации — детально */}
             {(master.specializations || []).length > 0 && (
