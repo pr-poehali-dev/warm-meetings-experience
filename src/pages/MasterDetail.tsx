@@ -644,65 +644,128 @@ export default function MasterDetail() {
               </div>
             )}
 
-            {/* Услуги — карточки */}
+            {/* Услуги — карточки в стиле главной */}
             {services.length > 0 && (
               <div className="mb-8" data-section="schedule">
-                <h2 className="text-lg font-semibold mb-1">Запись на сеанс</h2>
-                <p className="text-sm text-muted-foreground mb-4">Выберите услугу и удобное время — мастер подтвердит запись.</p>
+                <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--c-cream)" }}>Запись на сеанс</h2>
+                <p className="text-sm mb-5" style={{ color: "var(--c-text)" }}>
+                  Выберите услугу и удобное время — мастер подтвердит запись.
+                </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {services.map((svc) => (
-                    <div
-                      key={svc.id}
-                      className="group bg-card border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col"
-                    >
-                      <div className="p-5 flex-1">
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <h3 className="font-semibold text-base leading-tight group-hover:text-primary transition-colors">
+                  {services.map((svc) => {
+                    const handleSelect = () => {
+                      setSelectedServiceForFlow(svc.id!);
+                      setTimeout(() => {
+                        document.getElementById("booking-flow-section")?.scrollIntoView({ behavior: "smooth" });
+                      }, 50);
+                    };
+                    return (
+                      <button
+                        key={svc.id}
+                        type="button"
+                        onClick={handleSelect}
+                        className="group relative block rounded-2xl overflow-hidden cursor-pointer text-left transition-transform duration-300 hover:-translate-y-1"
+                        style={{
+                          background: "var(--card-idle)",
+                          border: "1px solid var(--card-border)",
+                        }}
+                      >
+                        {/* Верх — градиентная "шапка" */}
+                        <div
+                          className="relative h-28 overflow-hidden"
+                          style={{
+                            background:
+                              "linear-gradient(135deg, rgba(200,131,74,0.35) 0%, rgba(143,168,154,0.25) 100%)",
+                          }}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+
+                          {/* Бейдж длительности */}
+                          <div className="absolute top-3 left-3">
+                            <span
+                              className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide flex items-center gap-1"
+                              style={{ background: "var(--c-terra)", color: "#fff" }}
+                            >
+                              <Icon name="Clock" size={10} />
+                              {fmtDuration(svc.duration_minutes)}
+                            </span>
+                          </div>
+
+                          {/* Бейдж количества */}
+                          {svc.max_clients && svc.max_clients > 1 && (
+                            <div className="absolute top-3 right-3">
+                              <span
+                                className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
+                                style={{ background: "rgba(255,255,255,0.15)", color: "#fff", backdropFilter: "blur(8px)" }}
+                              >
+                                <Icon name="Users" size={10} />
+                                до {svc.max_clients}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Иконка пара */}
+                          <div className="absolute bottom-3 left-3 opacity-60">
+                            <Icon name="Flame" size={28} className="text-white" />
+                          </div>
+
+                          {/* Цена */}
+                          {svc.price > 0 && (
+                            <div className="absolute bottom-3 right-3">
+                              <span className="font-bold text-lg" style={{ color: "#FF6B1A" }}>
+                                {fmt(svc.price)} ₽
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Низ — текст */}
+                        <div className="p-4">
+                          <h3
+                            className="font-semibold text-base leading-snug mb-1.5 line-clamp-1 group-hover:text-[color:var(--c-terra)] transition-colors"
+                            style={{ color: "var(--c-cream)" }}
+                          >
                             {svc.name}
                           </h3>
-                          {svc.price > 0 && (
-                            <span className="text-primary font-bold text-base whitespace-nowrap flex-shrink-0">
-                              {fmt(svc.price)} ₽
-                            </span>
+                          {svc.description && (
+                            <p className="text-xs line-clamp-2 mb-3" style={{ color: "var(--c-text)" }}>
+                              {svc.description}
+                            </p>
                           )}
-                        </div>
-                        {svc.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{svc.description}</p>
-                        )}
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Icon name="Clock" size={12} />
-                            {fmtDuration(svc.duration_minutes)}
-                          </span>
-                          {svc.max_clients && svc.max_clients > 1 && (
-                            <span className="flex items-center gap-1">
-                              <Icon name="Users" size={12} />
-                              до {svc.max_clients}
+                          <div
+                            className="flex items-center justify-between text-xs pt-2"
+                            style={{ borderTop: "1px solid var(--card-border)" }}
+                          >
+                            <span className="flex items-center gap-1.5" style={{ color: "var(--card-meta)" }}>
+                              <Icon name="CalendarCheck" size={12} />
+                              Выбрать время
                             </span>
-                          )}
+                            <span
+                              className="flex items-center gap-1 font-semibold transition-transform group-hover:translate-x-1"
+                              style={{ color: "var(--c-terra)" }}
+                            >
+                              <Icon name="ArrowRight" size={14} />
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="px-5 pb-4">
-                        <button
-                          onClick={() => {
-                            const el = document.getElementById(`booking-flow-${svc.id}`);
-                            if (el) {
-                              el.scrollIntoView({ behavior: "smooth" });
-                            } else {
-                              setSelectedServiceForFlow(svc.id);
-                              setTimeout(() => {
-                                document.getElementById("booking-flow-section")?.scrollIntoView({ behavior: "smooth" });
-                              }, 50);
-                            }
-                          }}
-                          className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+
+                        {/* Hover-оверлей в стиле главной */}
+                        <div
+                          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-2xl pointer-events-none"
+                          style={{ background: "rgba(0,0,0,0.55)" }}
                         >
-                          <Icon name="CalendarCheck" size={15} />
-                          Выбрать время
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                          <span
+                            className="text-white font-bold rounded-full px-6 py-2.5 text-sm shadow-lg"
+                            style={{
+                              background: "linear-gradient(90deg, var(--c-terra), var(--c-sage))",
+                            }}
+                          >
+                            Записаться →
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Виджет выбора времени */}
