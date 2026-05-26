@@ -307,6 +307,8 @@ export const masterBookingsApi = {
     client_phone: string;
     client_email?: string;
     comment?: string;
+    contraindications_accepted?: boolean;
+    contraindications_snapshot?: string;
   }) =>
     fetchApi(`${BOOKINGS_URL}&sub=public-book`, {
       method: "POST",

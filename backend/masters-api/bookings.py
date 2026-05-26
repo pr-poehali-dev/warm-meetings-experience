@@ -39,6 +39,20 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
         status = booking.get('status', 'pending')
         comment = booking.get('comment', '') or ''
 
+        # Согласие клиента с противопоказаниями
+        contra_accepted = bool(booking.get('contraindications_accepted', False))
+        contra_at_raw = booking.get('contraindications_accepted_at')
+        contra_ip = booking.get('contraindications_accepted_ip') or ''
+        contra_snapshot = booking.get('contraindications_snapshot') or ''
+        try:
+            if contra_at_raw:
+                contra_at_dt = datetime.fromisoformat(str(contra_at_raw).replace('Z', '').split('+')[0])
+                contra_at_human = contra_at_dt.strftime('%d.%m.%Y %H:%M')
+            else:
+                contra_at_human = ''
+        except Exception:
+            contra_at_human = str(contra_at_raw or '')
+
         try:
             dt = datetime.fromisoformat(str(dt_start).replace('Z', '').split('+')[0])
             dt_human = dt.strftime('%d.%m.%Y %H:%M')
@@ -54,6 +68,40 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
             sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
             if api_key and sender_email:
                 subject = f'Новая запись: {client_name} на {dt_human}'
+
+                # Блок согласия с противопоказаниями
+                contra_block = ''
+                if contra_accepted:
+                    snapshot_html = ''
+                    if contra_snapshot:
+                        items = [s.strip() for s in contra_snapshot.split(';') if s.strip()]
+                        if items:
+                            snapshot_html = (
+                                '<ul style="margin: 6px 0 0 18px; padding: 0; color: #6b4f2a; font-size: 12px; line-height: 1.5;">'
+                                + ''.join(f'<li>{x}</li>' for x in items)
+                                + '</ul>'
+                            )
+                    ip_html = f' · IP {contra_ip}' if contra_ip else ''
+                    when_html = contra_at_human or ''
+                    contra_block = f"""
+                        <div style="margin-top: 16px; padding: 12px 14px; background: #fff7ed; border: 1px solid #fcd9a8; border-radius: 10px;">
+                            <div style="font-size: 13px; font-weight: 600; color: #92400e;">
+                                ✓ Клиент подтвердил ознакомление с противопоказаниями
+                            </div>
+                            <div style="font-size: 12px; color: #92400e; opacity: .85; margin-top: 2px;">
+                                {when_html}{ip_html}
+                            </div>
+                            {snapshot_html}
+                        </div>
+                    """
+                elif service_name:
+                    # Если согласия нет — на всякий случай напоминаем мастеру
+                    contra_block = """
+                        <div style="margin-top: 16px; padding: 10px 12px; background: #f3f4f6; border-radius: 10px; font-size: 12px; color: #6b7280;">
+                            Согласие с противопоказаниями не запрашивалось (в карточке услуги они не указаны).
+                        </div>
+                    """
+
                 body_html = f"""
                 <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #2d2318;">
                     <div style="background: linear-gradient(135deg,#C8834A,#8FA89A); color: #fff; padding: 24px; border-radius: 16px 16px 0 0;">
@@ -72,6 +120,7 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                             {f'<tr><td style="color: #666; padding: 4px 0;">Email:</td><td><a href="mailto:{client_email}" style="color: #C8834A; text-decoration: none;">{client_email}</a></td></tr>' if client_email else ''}
                             {f'<tr><td style="color: #666; padding: 4px 0; vertical-align: top;">Комментарий:</td><td>{comment}</td></tr>' if comment else ''}
                         </table>
+                        {contra_block}
                         <p style="margin: 20px 0 0; font-size: 13px; color: #888;">Управляйте записями в личном кабинете → «Записи».</p>
                     </div>
                 </div>
@@ -117,6 +166,12 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                     lines.append(f'✉️ {client_email}')
                 if comment:
                     lines.append(f'💬 {comment}')
+                if contra_accepted:
+                    when = contra_at_human or 'только что'
+                    ip_part = f' · IP {contra_ip}' if contra_ip else ''
+                    lines.append('')
+                    lines.append(f'✅ <i>Клиент ознакомлен с противопоказаниями</i>')
+                    lines.append(f'<i>{when}{ip_part}</i>')
                 lines.append('')
                 lines.append(f'<i>Статус: {status_human}</i>')
                 try:
@@ -436,6 +491,17 @@ def handle_public_book(event, method, params, schema, headers):
     desired_start = body.get('desired_start')
     desired_end = body.get('desired_end')
 
+    # Согласие с противопоказаниями (юр. фиксация)
+    contra_accepted = bool(body.get('contraindications_accepted', False))
+    contra_snapshot = (body.get('contraindications_snapshot') or '').replace("'", "''")
+    client_ip = ''
+    try:
+        rc = event.get('requestContext') or {}
+        client_ip = (rc.get('identity') or {}).get('sourceIp') or ''
+    except Exception:
+        client_ip = ''
+    client_ip = client_ip.replace("'", "''")[:64]
+
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
@@ -526,14 +592,24 @@ def handle_public_book(event, method, params, schema, headers):
     dt_start_str = str(dt_start)
     dt_end_str = str(dt_end)
 
+    # Поля согласия с противопоказаниями
+    contra_accepted_sql = 'TRUE' if contra_accepted else 'FALSE'
+    contra_accepted_at_sql = 'CURRENT_TIMESTAMP' if contra_accepted else 'NULL'
+    contra_ip_sql = f"'{client_ip}'" if (contra_accepted and client_ip) else 'NULL'
+    contra_snapshot_sql = f"'{contra_snapshot}'" if (contra_accepted and contra_snapshot) else 'NULL'
+
     cur.execute(f"""
         INSERT INTO {schema}.master_bookings
         (slot_id, master_id, client_name, client_phone, client_email, service_id,
          datetime_start, datetime_end, price, status, source, comment,
-         confirmed_at)
+         confirmed_at,
+         contraindications_accepted, contraindications_accepted_at,
+         contraindications_accepted_ip, contraindications_snapshot)
         VALUES ({int(slot_id)}, {int(master_id)}, '{client_name}', '{client_phone}', '{client_email}',
          {svc_val}, '{dt_start_str}', '{dt_end_str}', {booking_price}, '{status}', 'public', '{comment}',
-         {confirmed_at_val})
+         {confirmed_at_val},
+         {contra_accepted_sql}, {contra_accepted_at_sql},
+         {contra_ip_sql}, {contra_snapshot_sql})
         RETURNING *
     """)
     booking = cur.fetchone()

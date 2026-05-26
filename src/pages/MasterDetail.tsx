@@ -105,6 +105,10 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
         client_phone: phone.trim(),
         client_email: email.trim() || undefined,
         comment: comment.trim() || undefined,
+        contraindications_accepted: hasContraindications ? contraAccepted : undefined,
+        contraindications_snapshot: hasContraindications
+          ? parsedDesc.contraindications.join("; ")
+          : undefined,
       });
       onSuccess();
     } catch (err: unknown) {
