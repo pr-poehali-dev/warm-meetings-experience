@@ -192,7 +192,7 @@ def handle_profile(event, method, params, schema, headers):
         cur.execute(f"""
             SELECT m.id, m.slug, m.name, m.tagline, m.city, m.phone, m.telegram,
                    m.avatar, m.specialization_ids, m.rating, m.reviews_count,
-                   m.price_from, m.is_verified, m.is_active, m.created_at,
+                   m.price_from, m.is_verified, m.is_active, m.hidden_by_owner, m.created_at,
                    m.verification_note, m.verified_at, m.verification_requested_at
             FROM {schema}.masters m
             WHERE {where_sql}

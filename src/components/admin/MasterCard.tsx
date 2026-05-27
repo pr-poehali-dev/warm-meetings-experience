@@ -24,6 +24,7 @@ export interface AdminMaster {
   portfolio?: string[];
   is_verified: boolean;
   is_active: boolean;
+  hidden_by_owner?: boolean;
   created_at: string;
   verification_note?: string | null;
   verified_at?: string | null;
@@ -75,7 +76,17 @@ export default function MasterCard({
                 </Badge>
               )}
               {!master.is_active && (
-                <Badge variant="secondary" className="text-xs">Скрыт</Badge>
+                <Badge variant="secondary" className="text-xs">Скрыт админом</Badge>
+              )}
+              {master.is_active && master.hidden_by_owner && (
+                <Badge
+                  variant="outline"
+                  className="text-xs border-zinc-300 text-zinc-600 bg-zinc-50"
+                  title="Мастер сам скрыл профиль из публичного каталога"
+                >
+                  <Icon name="EyeOff" size={11} className="mr-1" />
+                  Скрыт мастером
+                </Badge>
               )}
             </div>
             <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">

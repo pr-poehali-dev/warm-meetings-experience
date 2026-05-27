@@ -76,7 +76,16 @@ export default function MasterDetailSheet({
                       </Badge>
                     )}
                     {!selected.is_active && (
-                      <Badge variant="secondary" className="text-xs">Скрыт</Badge>
+                      <Badge variant="secondary" className="text-xs">Скрыт админом</Badge>
+                    )}
+                    {selected.is_active && selected.hidden_by_owner && (
+                      <Badge
+                        variant="outline"
+                        className="text-xs border-zinc-300 text-zinc-600 bg-zinc-50"
+                      >
+                        <Icon name="EyeOff" size={11} className="mr-1" />
+                        Скрыт мастером
+                      </Badge>
                     )}
                   </div>
                   {(selected.verification_note || selected.verified_at || selected.verification_requested_at) && (
