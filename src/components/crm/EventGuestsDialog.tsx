@@ -105,10 +105,16 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
     if (value === anonCount) return;
     setSavingAnon(true);
     try {
-      await organizerApi.updateEvent({ id: eventId, anonymous_count: value });
-      setAnonCount(value);
-      setAnonInput(String(value));
-      toast.success(value === 0 ? "Доп. брони очищены" : `Доп. броней: ${value}`);
+      const updated = await organizerApi.updateEvent({ id: eventId, anonymous_count: value });
+      const saved = (updated as { anonymous_count?: number })?.anonymous_count ?? value;
+      // Доверяем серверу: показываем то, что реально сохранилось в БД
+      setAnonCount(saved);
+      setAnonInput(String(saved));
+      if (saved !== value) {
+        toast.warning(`Сервер вернул ${saved} вместо ${value}. Проверьте права доступа.`);
+      } else {
+        toast.success(saved === 0 ? "Доп. брони очищены" : `Сохранено: ${saved} доп. броней`);
+      }
     } catch (e) {
       toast.error("Не удалось сохранить: " + String(e));
       setAnonInput(String(anonCount));

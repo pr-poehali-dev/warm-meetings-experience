@@ -53,6 +53,14 @@
       "expectedStatus": 401,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Events PUT unauthorized (anon_count deploy marker)",
+      "method": "PUT",
+      "path": "/?resource=events",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

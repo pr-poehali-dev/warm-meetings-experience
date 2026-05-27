@@ -10,6 +10,7 @@ import requests as http_requests
 
 from shared import *
 
+# build: anon-count-v2
 TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
 NOTIFY_MODULE_URL = "https://functions.poehali.dev/47bb36f1-5d1a-45e7-86e3-bd7a07a3d8de"  # notify-module
 

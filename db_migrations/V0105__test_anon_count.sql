@@ -1,0 +1,1 @@
+UPDATE events SET anonymous_count = 7 WHERE id = 42;
