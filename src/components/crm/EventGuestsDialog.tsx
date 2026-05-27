@@ -572,9 +572,22 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                               <div className="flex items-start gap-2">
                                 <Checkbox checked={selected.has(g.signup_id)} onCheckedChange={() => toggleSel(g.signup_id)} className="mt-1 shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                  <button onClick={() => setOpenCard(g.client_key)} className="font-semibold text-sm hover:underline truncate text-left w-full block">
-                                    {g.name || "Без имени"}
-                                  </button>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <button onClick={() => setOpenCard(g.client_key)} className="font-semibold text-sm hover:underline truncate text-left">
+                                      {g.name || "Без имени"}
+                                    </button>
+                                    {(g.name || "").startsWith("Гость без данных") && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[10px] py-0 px-1.5 bg-muted/40 text-muted-foreground border-muted-foreground/20 gap-1 cursor-pointer hover:bg-muted"
+                                        title="Запись-плейсхолдер для офлайн-места. Нажмите, чтобы заполнить данные"
+                                        onClick={() => startEdit(g)}
+                                      >
+                                        <Icon name="UserX" size={10} />
+                                        без данных
+                                      </Badge>
+                                    )}
+                                  </div>
                                   {g.tags.length > 0 && (
                                     <div className="flex items-center gap-1 flex-wrap mt-1">
                                       {g.tags.map((t) => (
