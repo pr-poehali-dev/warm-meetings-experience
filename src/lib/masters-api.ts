@@ -43,6 +43,7 @@ export interface Master {
   price_from: number;
   is_active?: boolean;
   is_verified?: boolean;
+  hidden_by_owner?: boolean;
   verification_note?: string | null;
   verified_at?: string | null;
   verification_requested_at?: string | null;
@@ -100,6 +101,20 @@ export const mastersApi = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Ошибка сохранения");
+    return data.master || {};
+  },
+
+  // Переключить видимость профиля в публичном каталоге.
+  // Не влияет на верификацию и не отправляет профиль на повторную проверку.
+  setVisibility: async (hidden: boolean): Promise<Partial<Master>> => {
+    const token = localStorage.getItem("user_token") || "";
+    const res = await fetch(`${MASTERS_API}/?me=1`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Session-Token": token },
+      body: JSON.stringify({ hidden_by_owner: hidden }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Не удалось изменить видимость");
     return data.master || {};
   },
 };

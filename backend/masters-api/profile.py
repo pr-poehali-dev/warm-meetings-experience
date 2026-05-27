@@ -139,19 +139,29 @@ def handle_profile(event, method, params, schema, headers):
             if jsonf in body:
                 fields.append(f'{jsonf} = %s')
                 vals.append(json.dumps(body[jsonf], ensure_ascii=False))
+
+        # Мастер может сам скрыть/показать профиль в каталоге.
+        # Это не влияет на верификацию и обрабатывается отдельно от контентных полей.
+        toggle_only = 'hidden_by_owner' in body and not fields
+        if 'hidden_by_owner' in body:
+            fields.append('hidden_by_owner = %s')
+            vals.append(bool(body['hidden_by_owner']))
+
         if not fields:
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Нет полей для обновления'})}
         fields.append('updated_at = NOW()')
-        # Сохранение профиля = отправка на проверку. Если ранее был неверифицирован,
-        # обновляем дату заявки. Если был верифицирован — статус не трогаем.
-        fields.append(
-            "verification_requested_at = CASE WHEN is_verified = TRUE THEN verification_requested_at ELSE NOW() END"
-        )
+        # Сохранение контента = отправка на проверку. Но если мастер просто щёлкнул
+        # переключатель видимости — статус заявки не трогаем.
+        if not toggle_only:
+            fields.append(
+                "verification_requested_at = CASE WHEN is_verified = TRUE THEN verification_requested_at ELSE NOW() END"
+            )
         vals.append(user['id'])
         cur.execute(
             f"UPDATE {schema}.masters SET {', '.join(fields)} WHERE user_id = %s "
-            f"RETURNING id, name, slug, is_verified, is_active, verification_note, verified_at, verification_requested_at",
+            f"RETURNING id, name, slug, is_verified, is_active, hidden_by_owner, "
+            f"verification_note, verified_at, verification_requested_at",
             vals,
         )
         row = cur.fetchone()
@@ -297,7 +307,10 @@ def handle_profile(event, method, params, schema, headers):
     if method == 'GET' and params.get('slug'):
         conn = get_conn()
         cur = conn.cursor()
-        cur.execute(f"SELECT * FROM {schema}.masters WHERE slug = %s AND is_active = true", [params['slug']])
+        cur.execute(
+            f"SELECT * FROM {schema}.masters WHERE slug = %s AND is_active = true AND hidden_by_owner = false",
+            [params['slug']],
+        )
         row = cur.fetchone()
         if not row:
             cur.close()
@@ -335,7 +348,9 @@ def handle_profile(event, method, params, schema, headers):
         conn = get_conn()
         cur = conn.cursor()
 
-        where = ['m.is_active = true']
+        # is_active — управляется админом, hidden_by_owner — самим мастером.
+        # Из публичного каталога убираем оба варианта скрытия.
+        where = ['m.is_active = true', 'm.hidden_by_owner = false']
         args = []
 
         city = params.get('city')

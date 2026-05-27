@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { masterBookingsApi, masterCalendarApi, MasterReview } from "@/lib/master-calendar-api";
 import { mastersApi, Master } from "@/lib/masters-api";
 import MasterCalendar from "@/components/admin/MasterCalendar";
@@ -62,13 +63,18 @@ function VerificationStatus({ master }: { master: Master }) {
   }
 
   if (verified) {
+    const hiddenByOwner = !!master.hidden_by_owner;
     return (
       <div className="rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-sm flex gap-3">
         <Icon name="ShieldCheck" size={18} className="text-green-600 mt-0.5 flex-shrink-0" />
         <div>
-          <div className="font-medium text-green-900">Профиль одобрен и опубликован</div>
+          <div className="font-medium text-green-900">
+            {hiddenByOwner ? "Профиль одобрен, но временно скрыт вами" : "Профиль одобрен и опубликован"}
+          </div>
           <div className="text-xs text-green-700 mt-0.5">
-            Клиенты могут найти вас в каталоге мастеров.
+            {hiddenByOwner
+              ? "Включите видимость ниже, чтобы клиенты снова могли найти вас в каталоге."
+              : "Клиенты могут найти вас в каталоге мастеров."}
             {master.verified_at && (
               <> Одобрен {new Date(master.verified_at).toLocaleDateString("ru-RU")}.</>
             )}
@@ -108,6 +114,49 @@ function VerificationStatus({ master }: { master: Master }) {
             Внесите правки и сохраните профиль — он автоматически уйдёт на повторную проверку.
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Мастер: видимость в каталоге ─────────────────────────────────────────────
+
+function VisibilityToggle({
+  master,
+  onToggle,
+}: {
+  master: Master;
+  onToggle: (hide: boolean) => void;
+}) {
+  // Если админ скрыл мастера через is_active=false — переключатель не показываем,
+  // мастер всё равно не может вернуть себя в каталог сам.
+  if (master.is_active === false) return null;
+
+  const hidden = !!master.hidden_by_owner;
+
+  return (
+    <div className="rounded-xl border border-border bg-card/40 px-4 py-3 flex items-start gap-3">
+      <Icon
+        name={hidden ? "EyeOff" : "Eye"}
+        size={18}
+        className={`mt-0.5 flex-shrink-0 ${hidden ? "text-muted-foreground" : "text-primary"}`}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-3">
+          <div className="font-medium text-sm">
+            {hidden ? "Профиль скрыт из каталога" : "Профиль виден в каталоге"}
+          </div>
+          <Switch
+            checked={!hidden}
+            onCheckedChange={(checked) => onToggle(!checked)}
+            aria-label="Показывать профиль в каталоге"
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+          {hidden
+            ? "Клиенты не найдут вас в списке мастеров. Уже назначенные записи и прямые ссылки продолжают работать."
+            : "Клиенты могут найти вас в общем каталоге мастеров. В любой момент вы можете временно скрыть профиль."}
+        </p>
       </div>
     </div>
   );
@@ -157,6 +206,19 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка сохранения");
     } finally { setSaving(false); }
+  };
+
+  const handleToggleVisibility = async (hide: boolean) => {
+    // Оптимистичное обновление, чтобы переключатель отзывался моментально.
+    setMaster((prev) => (prev ? { ...prev, hidden_by_owner: hide } : prev));
+    try {
+      const updated = await mastersApi.setVisibility(hide);
+      setMaster((prev) => (prev ? { ...prev, ...updated } as Master : prev));
+    } catch (e) {
+      // Откат при ошибке.
+      setMaster((prev) => (prev ? { ...prev, hidden_by_owner: !hide } : prev));
+      setError(e instanceof Error ? e.message : "Не удалось изменить видимость");
+    }
   };
 
   const handlePhotoUpload = async (file: File) => {
@@ -219,6 +281,9 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
 
       {/* Статус верификации — мастер должен понимать, что с его профилем */}
       <VerificationStatus master={master} />
+
+      {/* Переключатель видимости профиля в каталоге */}
+      <VisibilityToggle master={master} onToggle={handleToggleVisibility} />
 
       {/* Аватар */}
       <div className="flex items-center gap-4">
