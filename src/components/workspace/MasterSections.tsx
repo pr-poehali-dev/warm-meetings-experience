@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { masterBookingsApi, masterCalendarApi, MasterReview } from "@/lib/master-calendar-api";
 import { mastersApi, Master } from "@/lib/masters-api";
-import MasterCalendar from "@/components/admin/MasterCalendar";
+import MasterCalendar from "@/components/admin/calendar-dnd/MasterCalendarDnd";
 import MasterBookingsList from "@/components/admin/MasterBookingsList";
 import MasterServices from "@/components/admin/MasterServices";
 import MasterTemplates from "@/components/admin/MasterTemplates";

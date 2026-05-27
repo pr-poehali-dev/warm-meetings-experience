@@ -1,0 +1,183 @@
+/* Тонкая стилизация FullCalendar под shadcn/tailwind */
+.fc-dnd .fc {
+  font-family: inherit;
+  font-size: 13px;
+  background: hsl(var(--card));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.fc-dnd .fc .fc-toolbar.fc-header-toolbar {
+  display: none; /* собственный заголовок */
+}
+
+.fc-dnd .fc-col-header-cell {
+  background: hsl(var(--muted) / 0.4);
+  padding: 8px 4px;
+  border-color: hsl(var(--border)) !important;
+}
+
+.fc-dnd .fc-col-header-cell-cushion {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  text-decoration: none !important;
+  text-transform: capitalize;
+}
+
+.fc-dnd .fc-day-today {
+  background: hsl(var(--primary) / 0.05) !important;
+}
+
+.fc-dnd .fc-timegrid-axis,
+.fc-dnd .fc-timegrid-slot-label {
+  background: hsl(var(--muted) / 0.2);
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+  border-color: hsl(var(--border)) !important;
+}
+
+.fc-dnd .fc-timegrid-slot {
+  border-color: hsl(var(--border) / 0.6) !important;
+  height: 28px !important;
+}
+
+.fc-dnd .fc-scrollgrid,
+.fc-dnd .fc-scrollgrid td,
+.fc-dnd .fc-scrollgrid th {
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Цвета блоков */
+.fc-dnd .fc-event {
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.fc-dnd .fc-event.fcb-booking {
+  background: #4caf50 !important;
+  color: white;
+}
+.fc-dnd .fc-event.fcb-booking-pending {
+  background: #66bb6a !important;
+  color: white;
+  opacity: 0.85;
+}
+.fc-dnd .fc-event.fcb-block {
+  background: #9e9e9e !important;
+  color: white;
+}
+.fc-dnd .fc-event.fcb-break {
+  background: #ffc107 !important;
+  color: #5a4500;
+}
+.fc-dnd .fc-event.fcb-group {
+  background: #9c27b0 !important;
+  color: white;
+}
+.fc-dnd .fc-event.fcb-canceled {
+  background: #e57373 !important;
+  color: white;
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+.fc-dnd .fc-event.fcb-available {
+  background: #e0f2f1 !important;
+  color: #00695c;
+  border: 1px dashed #4db6ac !important;
+}
+
+/* Hover */
+.fc-dnd .fc-event:hover {
+  filter: brightness(1.05);
+}
+
+/* Mirror (drag-create selection) */
+.fc-dnd .fc-highlight {
+  background: hsl(var(--primary) / 0.2) !important;
+}
+
+/* Конфликт-подсветка */
+.fc-dnd .fc-event.fcb-conflict {
+  outline: 2px solid #ef4444 !important;
+  outline-offset: -2px;
+  animation: fcb-pulse 0.6s ease-in-out 2;
+}
+@keyframes fcb-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+}
+
+/* Now-indicator */
+.fc-dnd .fc-timegrid-now-indicator-line {
+  border-color: #ef4444 !important;
+  border-width: 2px;
+}
+.fc-dnd .fc-timegrid-now-indicator-arrow {
+  border-color: #ef4444 !important;
+  border-right-color: transparent !important;
+  border-bottom-color: transparent !important;
+}
+
+/* Буфер-полоса под событием */
+.fcb-buffer {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(0, 0, 0, 0.08),
+    rgba(0, 0, 0, 0.08) 3px,
+    rgba(0, 0, 0, 0.02) 3px,
+    rgba(0, 0, 0, 0.02) 6px
+  );
+  border-radius: 0 0 6px 6px;
+  margin-top: -1px;
+}
+
+/* Тултип при перетаскивании */
+.fcb-drag-tooltip {
+  position: fixed;
+  z-index: 9999;
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+/* Прогресс-бар загруженности дня */
+.fcb-day-load {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-top: 2px;
+}
+.fcb-day-load-bar {
+  width: 70%;
+  height: 4px;
+  background: hsl(var(--muted));
+  border-radius: 2px;
+  overflow: hidden;
+}
+.fcb-day-load-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50, #ffc107, #ef4444);
+  transition: width 0.3s;
+}
+.fcb-day-load-label {
+  font-size: 10px;
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
