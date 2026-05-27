@@ -3,7 +3,7 @@ import datetime
 import psycopg2.extras
 from shared import (
     CORS_HEADERS, get_conn, get_schema, get_user_from_token,
-    has_role, verify_admin_token, slugify, cached,
+    has_role, verify_admin_token, slugify, cached, tg_send, send_email,
 )
 
 
@@ -16,6 +16,54 @@ def row_to_dict(row, cursor):
         else:
             result[col] = val
     return result
+
+
+def _notify_master_verification(user, master_name, master_slug, now_verified, note=''):
+    """Шлёт мастеру письмо и сообщение в Telegram при смене статуса верификации.
+
+    user — dict с полями name, email, telegram, tg_chat_id (из таблицы users).
+    Никогда не падает — ошибки молча проглатываются вызывающим try/except.
+    """
+    display_name = (user.get('name') or master_name or 'мастер').strip()
+
+    if now_verified:
+        subject = 'Ваш профиль мастера одобрен'
+        tg_text = (
+            f"✅ <b>{display_name}</b>, ваш профиль мастера прошёл проверку и опубликован.\n\n"
+            f"Теперь клиенты могут вас найти в общем каталоге."
+        )
+        email_html = (
+            f"<p>Здравствуйте, {display_name}!</p>"
+            f"<p>Хорошие новости — администратор одобрил ваш профиль мастера. "
+            f"Он опубликован в каталоге и доступен клиентам.</p>"
+            + (f"<p><b>Комментарий администратора:</b> {note}</p>" if note else '')
+            + "<p>Желаем тёплых встреч!</p>"
+        )
+    else:
+        subject = 'Профиль мастера снят с публикации'
+        tg_text = (
+            f"⚠️ <b>{display_name}</b>, ваш профиль мастера снят с публикации.\n\n"
+            + (f"<b>Причина:</b> {note}\n\n" if note else '')
+            + "Внесите изменения в кабинете и сохраните — он автоматически отправится на повторную проверку."
+        )
+        email_html = (
+            f"<p>Здравствуйте, {display_name}!</p>"
+            f"<p>Администратор снял ваш профиль мастера с публикации.</p>"
+            + (f"<p><b>Причина:</b> {note}</p>" if note else '')
+            + "<p>Внесите правки в личном кабинете и сохраните — он автоматически отправится на повторную проверку.</p>"
+        )
+
+    if user.get('tg_chat_id'):
+        try:
+            tg_send(user['tg_chat_id'], tg_text)
+        except Exception:
+            pass
+
+    if user.get('email') and '@vk.local' not in (user.get('email') or ''):
+        try:
+            send_email(user['email'], subject, email_html, to_name=display_name, tags=['master_verification'])
+        except Exception:
+            pass
 
 
 def handle_profile(event, method, params, schema, headers):
@@ -95,14 +143,23 @@ def handle_profile(event, method, params, schema, headers):
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Нет полей для обновления'})}
         fields.append('updated_at = NOW()')
+        # Сохранение профиля = отправка на проверку. Если ранее был неверифицирован,
+        # обновляем дату заявки. Если был верифицирован — статус не трогаем.
+        fields.append(
+            "verification_requested_at = CASE WHEN is_verified = TRUE THEN verification_requested_at ELSE NOW() END"
+        )
         vals.append(user['id'])
-        cur.execute(f"UPDATE {schema}.masters SET {', '.join(fields)} WHERE user_id = %s RETURNING id, name, slug", vals)
+        cur.execute(
+            f"UPDATE {schema}.masters SET {', '.join(fields)} WHERE user_id = %s "
+            f"RETURNING id, name, slug, is_verified, is_active, verification_note, verified_at, verification_requested_at",
+            vals,
+        )
         row = cur.fetchone()
         conn.commit()
         conn.close()
         if not row:
             return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Профиль не найден. Обратитесь к администратору.'})}
-        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'master': dict(row)}, ensure_ascii=False)}
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'master': dict(row)}, default=str, ensure_ascii=False)}
 
     if method == 'GET' and params.get('admin') == '1':
         if not verify_admin_token(admin_token):
@@ -125,7 +182,8 @@ def handle_profile(event, method, params, schema, headers):
         cur.execute(f"""
             SELECT m.id, m.slug, m.name, m.tagline, m.city, m.phone, m.telegram,
                    m.avatar, m.specialization_ids, m.rating, m.reviews_count,
-                   m.price_from, m.is_verified, m.is_active, m.created_at
+                   m.price_from, m.is_verified, m.is_active, m.created_at,
+                   m.verification_note, m.verified_at, m.verification_requested_at
             FROM {schema}.masters m
             WHERE {where_sql}
             ORDER BY m.is_verified ASC, m.created_at DESC
@@ -147,28 +205,78 @@ def handle_profile(event, method, params, schema, headers):
         master_id = body.get('id')
         is_verified = body.get('is_verified')
         is_active = body.get('is_active')
+        note = body.get('verification_note')
         if not master_id:
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id обязателен'})}
+
         conn = get_conn()
-        cur = conn.cursor()
-        fields = ['updated_at = NOW()']
-        vals = []
-        if is_verified is not None:
-            fields.append('is_verified = %s')
-            vals.append(bool(is_verified))
-        if is_active is not None:
-            fields.append('is_active = %s')
-            vals.append(bool(is_active))
-        vals.append(master_id)
-        cur.execute(f"UPDATE {schema}.masters SET {', '.join(fields)} WHERE id = %s RETURNING id, name, is_verified, is_active", vals)
-        row = cur.fetchone()
-        conn.commit()
-        result = row_to_dict(row, cur) if row else None
-        cur.close()
-        conn.close()
-        if not result:
-            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Мастер не найден'})}
-        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'master': result})}
+        try:
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            # Текущее состояние — нужно для определения "изменилось ли is_verified".
+            cur.execute(
+                f"SELECT id, name, slug, is_verified, is_active, user_id FROM {schema}.masters WHERE id = %s",
+                [master_id],
+            )
+            before = cur.fetchone()
+            if not before:
+                return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Мастер не найден'})}
+
+            fields = ['updated_at = NOW()']
+            vals = []
+            if is_verified is not None:
+                fields.append('is_verified = %s')
+                vals.append(bool(is_verified))
+                # verified_at обновляем только при переводе в true
+                if bool(is_verified):
+                    fields.append('verified_at = NOW()')
+                    # Очищаем requested_at — заявка обработана
+                    fields.append('verification_requested_at = NULL')
+            if is_active is not None:
+                fields.append('is_active = %s')
+                vals.append(bool(is_active))
+            if note is not None:
+                fields.append('verification_note = %s')
+                # пустая строка → NULL (очистить комментарий)
+                vals.append(str(note).strip()[:2000] or None)
+            vals.append(master_id)
+
+            cur.execute(
+                f"UPDATE {schema}.masters SET {', '.join(fields)} WHERE id = %s "
+                f"RETURNING id, name, is_verified, is_active, verification_note, verified_at",
+                vals,
+            )
+            row = cur.fetchone()
+            conn.commit()
+
+            # Подтягиваем контакты пользователя для уведомления.
+            user_contacts = None
+            if before.get('user_id'):
+                cur.execute(
+                    f"SELECT id, name, email, telegram, tg_chat_id FROM {schema}.users WHERE id = %s",
+                    [before['user_id']],
+                )
+                user_contacts = cur.fetchone()
+        finally:
+            conn.close()
+
+        result = dict(row) if row else None
+
+        # Уведомления мастеру при изменении статуса верификации.
+        try:
+            verified_changed = is_verified is not None and bool(is_verified) != bool(before['is_verified'])
+            if verified_changed and user_contacts:
+                _notify_master_verification(
+                    user_contacts,
+                    master_name=before['name'],
+                    master_slug=before['slug'],
+                    now_verified=bool(is_verified),
+                    note=str(note).strip() if note else '',
+                )
+        except Exception:
+            # Уведомление никогда не должно ронять основную операцию.
+            pass
+
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'master': result}, default=str, ensure_ascii=False)}
 
     if method == 'GET' and params.get('specializations') == '1':
         # Справочник специализаций мастеров — публичный, меняется через админку

@@ -25,13 +25,16 @@ export interface AdminMaster {
   is_verified: boolean;
   is_active: boolean;
   created_at: string;
+  verification_note?: string | null;
+  verified_at?: string | null;
+  verification_requested_at?: string | null;
 }
 
 interface MasterCardProps {
   master: AdminMaster;
   processing: number | null;
   onOpen: (master: AdminMaster) => void;
-  onVerify: (id: number, is_verified: boolean) => void;
+  onVerify: (id: number, is_verified: boolean, note?: string) => void;
   onToggleActive: (id: number, is_active: boolean) => void;
 }
 
@@ -63,6 +66,12 @@ export default function MasterCard({
                 <Badge variant="default" className="text-xs bg-green-600 hover:bg-green-600">
                   <Icon name="ShieldCheck" size={11} className="mr-1" />
                   Верифицирован
+                </Badge>
+              )}
+              {!master.is_verified && master.is_active && (
+                <Badge variant="outline" className="text-xs border-amber-400 text-amber-700">
+                  <Icon name="Clock" size={11} className="mr-1" />
+                  Ожидает проверки
                 </Badge>
               )}
               {!master.is_active && (

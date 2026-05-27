@@ -70,10 +70,35 @@ export default function MasterDetailSheet({
                         <Icon name="ShieldCheck" size={11} className="mr-1" />Верифицирован
                       </Badge>
                     )}
+                    {!selected.is_verified && selected.is_active && (
+                      <Badge variant="outline" className="text-xs border-amber-400 text-amber-700">
+                        <Icon name="Clock" size={11} className="mr-1" />Ожидает проверки
+                      </Badge>
+                    )}
                     {!selected.is_active && (
                       <Badge variant="secondary" className="text-xs">Скрыт</Badge>
                     )}
                   </div>
+                  {(selected.verification_note || selected.verified_at || selected.verification_requested_at) && (
+                    <div className="mt-2 rounded-md border bg-muted/40 px-3 py-2 text-xs space-y-1">
+                      {selected.verification_note && (
+                        <div>
+                          <span className="font-medium">Заметка админа:</span>{" "}
+                          <span className="text-muted-foreground">{selected.verification_note}</span>
+                        </div>
+                      )}
+                      {selected.verified_at && (
+                        <div className="text-muted-foreground">
+                          Одобрен: {new Date(selected.verified_at).toLocaleString("ru-RU")}
+                        </div>
+                      )}
+                      {selected.verification_requested_at && !selected.is_verified && (
+                        <div className="text-muted-foreground">
+                          Заявка обновлена: {new Date(selected.verification_requested_at).toLocaleString("ru-RU")}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {selected.tagline && (
                     <p className="text-sm italic text-muted-foreground">«{selected.tagline}»</p>
                   )}

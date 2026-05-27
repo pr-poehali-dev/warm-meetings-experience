@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import MastersToolbar from "./MastersToolbar";
 import MasterCard, { AdminMaster } from "./MasterCard";
 import MasterDetailSheet from "./MasterDetailSheet";
+import VerifyNoteDialog from "./VerifyNoteDialog";
 
 const MASTERS_API = "https://functions.poehali.dev/5e680421-cf43-4b07-abc1-8005b1b68de6";
 
@@ -22,6 +23,10 @@ export default function AdminMasters() {
   const [processing, setProcessing] = useState<number | null>(null);
   const [selected, setSelected] = useState<AdminMaster | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [verifyDialog, setVerifyDialog] = useState<{
+    master: AdminMaster;
+    mode: "approve" | "reject";
+  } | null>(null);
 
   const load = useCallback(async (s = search, f = filter) => {
     setLoading(true);
@@ -69,18 +74,36 @@ export default function AdminMasters() {
     }
   };
 
-  const handleVerify = async (id: number, is_verified: boolean) => {
-    setProcessing(id);
+  // Открываем диалог с подтверждением и полем комментария.
+  // Мастер всегда получит уведомление — поэтому здесь нет «тихой» верификации.
+  const handleVerify = (id: number, is_verified: boolean) => {
+    const master = masters.find((m) => m.id === id) || (selected?.id === id ? selected : null);
+    if (!master) return;
+    setVerifyDialog({ master, mode: is_verified ? "approve" : "reject" });
+  };
+
+  const confirmVerify = async (note: string) => {
+    if (!verifyDialog) return;
+    const { master, mode } = verifyDialog;
+    const is_verified = mode === "approve";
+    setProcessing(master.id);
     try {
       const res = await fetch(`${MASTERS_API}/?admin_verify=1`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "X-Admin-Token": getAdminToken() },
-        body: JSON.stringify({ id, is_verified }),
+        body: JSON.stringify({
+          id: master.id,
+          is_verified,
+          verification_note: note,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success(is_verified ? "Мастер верифицирован" : "Верификация снята");
-      if (selected?.id === id) setSelected((s) => s ? { ...s, is_verified } : s);
+      toast.success(is_verified ? "Мастер верифицирован, уведомление отправлено" : "Верификация снята, мастер уведомлён");
+      if (selected?.id === master.id) {
+        setSelected((s) => (s ? { ...s, is_verified, verification_note: note || null } : s));
+      }
+      setVerifyDialog(null);
       load();
     } catch {
       toast.error("Ошибка при изменении статуса");
@@ -159,6 +182,16 @@ export default function AdminMasters() {
         onClose={() => setSelected(null)}
         onVerify={handleVerify}
         onToggleActive={handleToggleActive}
+      />
+
+      <VerifyNoteDialog
+        open={!!verifyDialog}
+        mode={verifyDialog?.mode || "approve"}
+        masterName={verifyDialog?.master.name || ""}
+        defaultNote={verifyDialog?.master.verification_note || ""}
+        processing={processing === verifyDialog?.master.id}
+        onCancel={() => setVerifyDialog(null)}
+        onConfirm={confirmVerify}
       />
     </div>
   );

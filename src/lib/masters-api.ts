@@ -43,6 +43,9 @@ export interface Master {
   price_from: number;
   is_active?: boolean;
   is_verified?: boolean;
+  verification_note?: string | null;
+  verified_at?: string | null;
+  verification_requested_at?: string | null;
 }
 
 export interface MasterFilters {
@@ -88,7 +91,7 @@ export const mastersApi = {
     return data.master;
   },
 
-  updateMyProfile: async (profile: Partial<Pick<Master, "name" | "tagline" | "bio" | "experience_years" | "city" | "phone" | "telegram" | "instagram" | "price_from" | "portfolio" | "photos" | "avatar">>): Promise<void> => {
+  updateMyProfile: async (profile: Partial<Pick<Master, "name" | "tagline" | "bio" | "experience_years" | "city" | "phone" | "telegram" | "instagram" | "price_from" | "portfolio" | "photos" | "avatar">>): Promise<Partial<Master>> => {
     const token = localStorage.getItem("user_token") || "";
     const res = await fetch(`${MASTERS_API}/?me=1`, {
       method: "PUT",
@@ -97,5 +100,6 @@ export const mastersApi = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Ошибка сохранения");
+    return data.master || {};
   },
 };

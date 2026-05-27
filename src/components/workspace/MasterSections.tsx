@@ -39,6 +39,80 @@ export async function uploadFile(file: File) {
   });
 }
 
+// ─── Мастер: статус верификации ───────────────────────────────────────────────
+
+function VerificationStatus({ master }: { master: Master }) {
+  const verified = !!master.is_verified;
+  const hidden = master.is_active === false;
+  const note = (master.verification_note || "").trim();
+
+  if (hidden) {
+    return (
+      <div className="rounded-xl border border-zinc-300 bg-zinc-50 px-4 py-3 text-sm flex gap-3">
+        <Icon name="EyeOff" size={18} className="text-zinc-500 mt-0.5 flex-shrink-0" />
+        <div>
+          <div className="font-medium text-zinc-800">Профиль скрыт администратором</div>
+          {note && <div className="text-xs text-zinc-600 mt-1">{note}</div>}
+          <div className="text-xs text-zinc-500 mt-1">
+            Свяжитесь с поддержкой, чтобы вернуть профиль в каталог.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (verified) {
+    return (
+      <div className="rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-sm flex gap-3">
+        <Icon name="ShieldCheck" size={18} className="text-green-600 mt-0.5 flex-shrink-0" />
+        <div>
+          <div className="font-medium text-green-900">Профиль одобрен и опубликован</div>
+          <div className="text-xs text-green-700 mt-0.5">
+            Клиенты могут найти вас в каталоге мастеров.
+            {master.verified_at && (
+              <> Одобрен {new Date(master.verified_at).toLocaleDateString("ru-RU")}.</>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Не верифицирован — либо новая заявка, либо снят с пометкой
+  const wasRejected = !!note;
+  return (
+    <div className={`rounded-xl border px-4 py-3 text-sm flex gap-3 ${
+      wasRejected ? "border-amber-300 bg-amber-50" : "border-sky-200 bg-sky-50"
+    }`}>
+      <Icon
+        name={wasRejected ? "AlertCircle" : "Clock"}
+        size={18}
+        className={`mt-0.5 flex-shrink-0 ${wasRejected ? "text-amber-600" : "text-sky-600"}`}
+      />
+      <div>
+        <div className={`font-medium ${wasRejected ? "text-amber-900" : "text-sky-900"}`}>
+          {wasRejected ? "Нужно исправить и отправить повторно" : "Профиль на проверке у администратора"}
+        </div>
+        {wasRejected ? (
+          <div className="text-xs text-amber-800 mt-1">
+            <span className="font-medium">Комментарий администратора:</span> {note}
+          </div>
+        ) : (
+          <div className="text-xs text-sky-800 mt-0.5">
+            Обычно проверка занимает 1–2 рабочих дня. После одобрения профиль
+            появится в каталоге, мы пришлём уведомление в Telegram и на почту.
+          </div>
+        )}
+        {wasRejected && (
+          <div className="text-xs text-amber-700 mt-1">
+            Внесите правки и сохраните профиль — он автоматически уйдёт на повторную проверку.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Мастер: Профиль ──────────────────────────────────────────────────────────
 
 export function MasterProfileSection({ masterId: _masterId }: { masterId: number }) {
@@ -75,7 +149,9 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
   const handleSave = async () => {
     setSaving(true); setError("");
     try {
-      await mastersApi.updateMyProfile({ ...form, avatar, portfolio, photos });
+      const updated = await mastersApi.updateMyProfile({ ...form, avatar, portfolio, photos });
+      // Подтягиваем свежее состояние верификации (бэкенд мог обновить requested_at).
+      setMaster((prev) => (prev ? { ...prev, ...updated } as Master : prev));
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
@@ -140,6 +216,10 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
   return (
     <div className="space-y-5 max-w-2xl">
       <h2 className="text-xl font-bold">Мой профиль мастера</h2>
+
+      {/* Статус верификации — мастер должен понимать, что с его профилем */}
+      <VerificationStatus master={master} />
+
       {/* Аватар */}
       <div className="flex items-center gap-4">
         <div className="relative group">
