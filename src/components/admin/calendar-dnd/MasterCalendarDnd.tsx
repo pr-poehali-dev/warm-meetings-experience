@@ -182,7 +182,24 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
 
   // Drag create
   const handleSelect = (sel: DateSelectArg) => {
-    setCreateMode({ open: true, start: sel.start, end: sel.end });
+    let start = sel.start;
+    let end = sel.end;
+
+    // Если выделение all-day или растянуто на несколько дней — обрезаем до 1 часа в этот день в 12:00
+    const isMultiDay = start.toDateString() !== end.toDateString();
+    if (sel.allDay || isMultiDay) {
+      const base = new Date(start);
+      base.setHours(12, 0, 0, 0);
+      start = base;
+      end = new Date(base.getTime() + 60 * 60_000);
+    }
+
+    // Минимум 15 минут
+    if (end.getTime() - start.getTime() < 15 * 60_000) {
+      end = new Date(start.getTime() + 60 * 60_000);
+    }
+
+    setCreateMode({ open: true, start, end });
     sel.view.calendar.unselect();
   };
 
@@ -250,7 +267,8 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
       setCreateMode({ open: false, start: null, end: null });
       loadData();
     } catch (e) {
-      toast.error("Не удалось сохранить: " + String(e));
+      console.error("[Calendar] save failed", e);
+      toast.error("Не удалось сохранить: " + (e instanceof Error ? e.message : String(e)));
     }
   };
 
@@ -516,11 +534,12 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
         initialView="timeGridWeek"
         locale={ruLocale}
         firstDay={1}
-        allDaySlot={true}
+        allDaySlot={false}
         nowIndicator
         editable
         selectable
         selectMirror
+        unselectAuto={false}
         longPressDelay={350}
         eventLongPressDelay={350}
         selectLongPressDelay={350}
@@ -530,6 +549,12 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
         slotMaxTime="23:00:00"
         height="auto"
         events={fcEvents}
+        selectAllow={(sel) => {
+          // только в пределах одного дня и не больше 8 часов
+          if (sel.start.toDateString() !== sel.end.toDateString()) return false;
+          if (sel.end.getTime() - sel.start.getTime() > 8 * 60 * 60_000) return false;
+          return true;
+        }}
         select={handleSelect}
         eventClick={handleEventClick}
         eventDrop={handleEventDrop}

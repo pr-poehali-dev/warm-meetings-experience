@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -73,17 +73,16 @@ export default function EventForm({ start, end, services, onCancel, onCreate }: 
 
   return (
     <Dialog open onOpenChange={(o) => !o && onCancel()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icon name={mode === "booking" ? "Calendar" : mode === "block" ? "Lock" : "Coffee"} size={18} />
             {title}
           </DialogTitle>
+          <DialogDescription className="text-xs">
+            {fmt(start)} → {fmt(end)}
+          </DialogDescription>
         </DialogHeader>
-
-        <div className="text-xs text-muted-foreground">
-          {fmt(start)} → {fmt(end)}
-        </div>
 
         {step === "choose" ? (
           <div className="grid grid-cols-1 gap-2 mt-2">
