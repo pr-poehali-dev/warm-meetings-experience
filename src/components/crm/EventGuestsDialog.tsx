@@ -78,10 +78,9 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
 
   // Add new
   const [adding, setAdding] = useState(false);
-  const [newForm, setNewForm] = useState({ name: "", phone: "", email: "", telegram: "", status: "confirmed", payment_amount: 0, payment_type: "", seats: 1 });
+  const [newForm, setNewForm] = useState({ name: "", phone: "", email: "", telegram: "", status: "confirmed", payment_amount: 0, payment_type: "" });
 
-  // Общая вместимость события и доп. брони без данных
-  const [anonCount, setAnonCount] = useState<number>(0);
+  // Общая вместимость события
   const [totalSpots, setTotalSpots] = useState<number>(0);
 
   const loadEventCapacity = useCallback(async () => {
@@ -89,23 +88,10 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
     try {
       const ev = await organizerApi.getEvent(eventId);
       setTotalSpots(ev.total_spots ?? 0);
-      setAnonCount(ev.anonymous_count ?? 0);
     } catch {
       // молча — не критично
     }
   }, [eventId]);
-
-  const clearAnonCount = async () => {
-    if (anonCount === 0) return;
-    if (!confirm(`Убрать ${anonCount} доп. броней без данных?`)) return;
-    try {
-      await organizerApi.updateEvent({ id: eventId, anonymous_count: 0 });
-      setAnonCount(0);
-      toast.success("Доп. брони убраны");
-    } catch (e) {
-      toast.error("Не удалось: " + String(e));
-    }
-  };
 
   const load = useCallback(async () => {
     if (!eventId) return;
@@ -269,35 +255,58 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
       toast.error("Введите имя");
       return;
     }
-    const seats = Math.max(parseInt(String(newForm.seats), 10) || 1, 1);
-    const extraSeats = seats - 1;
-    const newAnon = anonCount + extraSeats;
-
-    if (totalSpots > 0 && stats.total + 1 + newAnon > totalSpots) {
+    if (totalSpots > 0 && stats.total + 1 > totalSpots) {
       toast.error(`Превышена вместимость: всего ${totalSpots} мест`);
       return;
     }
-
     try {
-      const { seats: _ignored, ...guestData } = newForm;
-      await crmApi.addEventGuest({ event_id: eventId, ...guestData });
-
-      if (extraSeats > 0) {
-        try {
-          await organizerApi.updateEvent({ id: eventId, anonymous_count: newAnon });
-          setAnonCount(newAnon);
-        } catch (e) {
-          toast.warning(`Гость добавлен, но не удалось записать ${extraSeats} доп. мест: ${String(e)}`);
-        }
-      }
-
-      toast.success(seats > 1 ? `Гость + ${extraSeats} доп. мест добавлены` : "Гость добавлен");
+      await crmApi.addEventGuest({ event_id: eventId, ...newForm });
+      toast.success("Гость добавлен");
       setAdding(false);
-      setNewForm({ name: "", phone: "", email: "", telegram: "", status: "confirmed", payment_amount: 0, payment_type: "", seats: 1 });
+      setNewForm({ name: "", phone: "", email: "", telegram: "", status: "confirmed", payment_amount: 0, payment_type: "" });
       load();
     } catch (e) {
       toast.error("Не удалось добавить: " + String(e));
     }
+  };
+
+  // Добавление N мест без данных — отдельные записи-плейсхолдеры в event_signups
+  const [addingSeats, setAddingSeats] = useState(false);
+  const [seatsCount, setSeatsCount] = useState<number>(1);
+  const [savingSeats, setSavingSeats] = useState(false);
+
+  const handleAddSeats = async () => {
+    const n = Math.max(parseInt(String(seatsCount), 10) || 0, 1);
+    if (totalSpots > 0 && stats.total + n > totalSpots) {
+      toast.error(`Превышена вместимость: свободно ${Math.max(totalSpots - stats.total, 0)} мест`);
+      return;
+    }
+    setSavingSeats(true);
+    let ok = 0;
+    let fail = 0;
+    for (let i = 1; i <= n; i++) {
+      try {
+        await crmApi.addEventGuest({
+          event_id: eventId,
+          name: `Гость без данных #${stats.total + i}`,
+          phone: "",
+          email: "",
+          telegram: "",
+          status: "confirmed",
+          payment_amount: 0,
+          payment_type: "",
+        });
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    setSavingSeats(false);
+    if (ok > 0) toast.success(`Добавлено ${ok} ${ok === 1 ? "место" : "мест"} без данных`);
+    if (fail > 0) toast.error(`Не удалось добавить ${fail} из ${n}`);
+    setAddingSeats(false);
+    setSeatsCount(1);
+    load();
   };
 
   const toggleSel = (id: number) => {
@@ -363,25 +372,10 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
               </div>
 
               {/* Занятость события */}
-              {(totalSpots > 0 || anonCount > 0) && (
-                <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-muted/40 text-xs text-muted-foreground">
-                  <div>
-                    {totalSpots > 0 ? (
-                      <>Занято <b className="text-foreground">{stats.total + anonCount}</b> из <b className="text-foreground">{totalSpots}</b></>
-                    ) : (
-                      <>Записано <b className="text-foreground">{stats.total + anonCount}</b></>
-                    )}
-                    {anonCount > 0 && <> · из них <b className="text-foreground">{anonCount}</b> доп. бронь без данных</>}
-                  </div>
-                  {anonCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={clearAnonCount}
-                      className="text-xs text-muted-foreground hover:text-destructive underline-offset-2 hover:underline"
-                    >
-                      убрать
-                    </button>
-                  )}
+              {totalSpots > 0 && (
+                <div className="px-3 py-2 rounded-md bg-muted/40 text-xs text-muted-foreground">
+                  Занято <b className="text-foreground">{stats.total}</b> из <b className="text-foreground">{totalSpots}</b>
+                  {stats.total < totalSpots && <> · свободно <b className="text-foreground">{totalSpots - stats.total}</b></>}
                 </div>
               )}
 
@@ -402,9 +396,19 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                     </button>
                   ))}
                 </div>
-                <Button size="sm" onClick={() => setAdding(true)} className="gap-1 h-8">
+                <Button size="sm" onClick={() => { setAdding(true); setAddingSeats(false); }} className="gap-1 h-8">
                   <Icon name="UserPlus" size={13} />
                   Добавить
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setAddingSeats(true); setAdding(false); }}
+                  className="gap-1 h-8"
+                  title="Записать N мест без данных гостя (для офлайна)"
+                >
+                  <Icon name="Users" size={13} />
+                  + Места
                 </Button>
                 {selected.size > 0 && (
                   <Button
@@ -445,45 +449,59 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                         </SelectContent>
                       </Select>
                       <Input type="number" placeholder="Сумма ₽" value={newForm.payment_amount || ""} onChange={(e) => setNewForm({ ...newForm, payment_amount: parseInt(e.target.value) || 0 })} className="h-8 text-sm" />
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">Мест:</span>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0 text-base shrink-0"
-                          onClick={() => setNewForm({ ...newForm, seats: Math.max((newForm.seats || 1) - 1, 1) })}
-                          disabled={(newForm.seats || 1) <= 1}
-                        >
-                          −
-                        </Button>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={newForm.seats}
-                          onChange={(e) => setNewForm({ ...newForm, seats: Math.max(parseInt(e.target.value, 10) || 1, 1) })}
-                          className="h-8 w-12 text-center px-1 text-sm"
-                        />
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0 text-base shrink-0"
-                          onClick={() => setNewForm({ ...newForm, seats: (newForm.seats || 1) + 1 })}
-                        >
-                          +
-                        </Button>
-                      </div>
                       <div className="flex gap-1">
                         <Button size="sm" onClick={handleAdd} className="h-8 flex-1">Добавить</Button>
                         <Button size="sm" variant="ghost" onClick={() => setAdding(false)} className="h-8">Отмена</Button>
                       </div>
                     </div>
-                    {(newForm.seats || 1) > 1 && (
-                      <div className="text-xs text-muted-foreground">
-                        Создаётся 1 гость с данными + <b>{(newForm.seats || 1) - 1}</b> доп. {((newForm.seats || 1) - 1) === 1 ? "место" : "мест"} без данных.
-                      </div>
-                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Add seats without data */}
+              {addingSeats && (
+                <Card className="border-primary/40 shadow-sm">
+                  <CardContent className="p-3 space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">Места без данных гостя</div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm">Количество:</span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 w-8 p-0 text-base shrink-0"
+                        onClick={() => setSeatsCount(Math.max(seatsCount - 1, 1))}
+                        disabled={seatsCount <= 1 || savingSeats}
+                      >
+                        −
+                      </Button>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={seatsCount}
+                        onChange={(e) => setSeatsCount(Math.max(parseInt(e.target.value, 10) || 1, 1))}
+                        className="h-8 w-16 text-center px-1 text-sm"
+                        disabled={savingSeats}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 w-8 p-0 text-base shrink-0"
+                        onClick={() => setSeatsCount(seatsCount + 1)}
+                        disabled={savingSeats}
+                      >
+                        +
+                      </Button>
+                      <div className="flex-1" />
+                      <Button size="sm" onClick={handleAddSeats} disabled={savingSeats} className="h-8">
+                        {savingSeats ? <Icon name="Loader2" size={13} className="animate-spin" /> : `Создать ${seatsCount}`}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setAddingSeats(false)} disabled={savingSeats} className="h-8">Отмена</Button>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Будут созданы записи с именем «Гость без данных #…». Их можно потом дозаполнить, отметить оплату или удалить.
+                    </div>
                   </CardContent>
                 </Card>
               )}
