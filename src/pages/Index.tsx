@@ -200,7 +200,9 @@ function SpotsBar({ left, total }: { left: number; total: number }) {
 function NetflixGridCard({ event }: { event: EventItem }) {
   const [hovered, setHovered] = useState(false);
   const dateObj = parseISO(event.date);
-  const dateStr = format(dateObj, "d MMM, EEE", { locale: ru });
+  const dayNum = format(dateObj, "d");
+  const monthShort = format(dateObj, "LLL", { locale: ru });
+  const weekday = format(dateObj, "EEEEEE", { locale: ru });
   const sp = spotsInfo(event.spotsLeft, event.totalSpots);
   const sold = event.spotsLeft === 0;
 
@@ -223,16 +225,38 @@ function NetflixGridCard({ event }: { event: EventItem }) {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
 
+        {/* Дата-плашка: число + месяц + день недели, всегда контрастна на любом фото */}
+        <div
+          className="absolute top-3 left-3 flex flex-col items-center justify-center px-2.5 py-1.5 rounded-xl min-w-[52px]"
+          style={{ background: "rgba(0,0,0,0.62)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+        >
+          <div className="text-[10px] uppercase font-semibold leading-none tracking-wide" style={{ color: "var(--c-terra)" }}>
+            {monthShort}
+          </div>
+          <div className="text-xl font-extrabold leading-none mt-0.5 text-white">{dayNum}</div>
+          <div className="text-[9px] uppercase leading-none mt-0.5 text-white/60">{weekday}</div>
+        </div>
+
         {event.featured && (
-          <div className="absolute top-3 left-3 bg-yellow-400 text-black text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">ТОП</div>
+          <div className="absolute top-3 left-[72px] bg-yellow-400 text-black text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">ТОП</div>
         )}
         <div className="absolute top-3 right-3">
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--c-terra)", color: "#fff" }}>{event.type}</span>
         </div>
 
+        {/* Время — отдельной плашкой справа под бейджем типа */}
+        {event.timeStart && (
+          <div
+            className="absolute top-12 right-3 inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", color: "#fff" }}
+          >
+            <Icon name="Clock" size={10} />
+            {event.timeStart}
+          </div>
+        )}
+
         <div className="absolute bottom-0 left-0 right-0 p-4">
-          <div className="flex items-center justify-between text-xs mb-1" style={{ color: "var(--card-meta)" }}>
-            <span>{dateStr}, {event.timeStart}</span>
+          <div className="flex items-center justify-end text-xs mb-1">
             <span className={`font-semibold ${sp.cls}`}>{sp.text}</span>
           </div>
           <p className="font-semibold text-sm leading-snug mb-1 line-clamp-2 text-white">{event.title}</p>
