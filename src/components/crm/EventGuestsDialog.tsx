@@ -78,61 +78,33 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
 
   // Add new
   const [adding, setAdding] = useState(false);
-  const [newForm, setNewForm] = useState({ name: "", phone: "", email: "", telegram: "", status: "confirmed", payment_amount: 0, payment_type: "" });
+  const [newForm, setNewForm] = useState({ name: "", phone: "", email: "", telegram: "", status: "confirmed", payment_amount: 0, payment_type: "", seats: 1 });
 
-  // Анонимные брони и общая вместимость события
+  // Общая вместимость события и доп. брони без данных
   const [anonCount, setAnonCount] = useState<number>(0);
-  const [anonInput, setAnonInput] = useState<string>("0");
   const [totalSpots, setTotalSpots] = useState<number>(0);
-  const [savingAnon, setSavingAnon] = useState(false);
 
   const loadEventCapacity = useCallback(async () => {
     if (!eventId) return;
     try {
       const ev = await organizerApi.getEvent(eventId);
-      const total = ev.total_spots ?? 0;
-      const anon = ev.anonymous_count ?? 0;
-      setTotalSpots(total);
-      setAnonCount(anon);
-      setAnonInput(String(anon));
-    } catch (e) {
-      // молча — это не критично для основного функционала диалога
+      setTotalSpots(ev.total_spots ?? 0);
+      setAnonCount(ev.anonymous_count ?? 0);
+    } catch {
+      // молча — не критично
     }
   }, [eventId]);
 
-  const persistAnonCount = async (rawValue: number) => {
-    const value = Math.max(rawValue, 0);
-    if (value === anonCount) return;
-    setSavingAnon(true);
+  const clearAnonCount = async () => {
+    if (anonCount === 0) return;
+    if (!confirm(`Убрать ${anonCount} доп. броней без данных?`)) return;
     try {
-      const updated = await organizerApi.updateEvent({ id: eventId, anonymous_count: value });
-      const saved = (updated as { anonymous_count?: number })?.anonymous_count ?? value;
-      // Доверяем серверу: показываем то, что реально сохранилось в БД
-      setAnonCount(saved);
-      setAnonInput(String(saved));
-      if (saved !== value) {
-        toast.warning(`Сервер вернул ${saved} вместо ${value}. Проверьте права доступа.`);
-      } else {
-        toast.success(saved === 0 ? "Доп. брони очищены" : `Сохранено: ${saved} доп. броней`);
-      }
+      await organizerApi.updateEvent({ id: eventId, anonymous_count: 0 });
+      setAnonCount(0);
+      toast.success("Доп. брони убраны");
     } catch (e) {
-      toast.error("Не удалось сохранить: " + String(e));
-      setAnonInput(String(anonCount));
-    } finally {
-      setSavingAnon(false);
+      toast.error("Не удалось: " + String(e));
     }
-  };
-
-  const saveAnonCount = () => persistAnonCount(parseInt(anonInput, 10) || 0);
-
-  const bumpAnonCount = (delta: number) => {
-    const next = Math.max((parseInt(anonInput, 10) || 0) + delta, 0);
-    if (delta > 0 && totalSpots > 0 && stats.total + next > totalSpots) {
-      toast.error("Превышена вместимость события");
-      return;
-    }
-    setAnonInput(String(next));
-    persistAnonCount(next);
   };
 
   const load = useCallback(async () => {
@@ -297,11 +269,31 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
       toast.error("Введите имя");
       return;
     }
+    const seats = Math.max(parseInt(String(newForm.seats), 10) || 1, 1);
+    const extraSeats = seats - 1;
+    const newAnon = anonCount + extraSeats;
+
+    if (totalSpots > 0 && stats.total + 1 + newAnon > totalSpots) {
+      toast.error(`Превышена вместимость: всего ${totalSpots} мест`);
+      return;
+    }
+
     try {
-      await crmApi.addEventGuest({ event_id: eventId, ...newForm });
-      toast.success("Гость добавлен");
+      const { seats: _ignored, ...guestData } = newForm;
+      await crmApi.addEventGuest({ event_id: eventId, ...guestData });
+
+      if (extraSeats > 0) {
+        try {
+          await organizerApi.updateEvent({ id: eventId, anonymous_count: newAnon });
+          setAnonCount(newAnon);
+        } catch (e) {
+          toast.warning(`Гость добавлен, но не удалось записать ${extraSeats} доп. мест: ${String(e)}`);
+        }
+      }
+
+      toast.success(seats > 1 ? `Гость + ${extraSeats} доп. мест добавлены` : "Гость добавлен");
       setAdding(false);
-      setNewForm({ name: "", phone: "", email: "", telegram: "", status: "confirmed", payment_amount: 0, payment_type: "" });
+      setNewForm({ name: "", phone: "", email: "", telegram: "", status: "confirmed", payment_amount: 0, payment_type: "", seats: 1 });
       load();
     } catch (e) {
       toast.error("Не удалось добавить: " + String(e));
@@ -370,57 +362,28 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                 </CardContent></Card>
               </div>
 
-              {/* Анонимные брони */}
-              <Card className="border-dashed">
-                <CardContent className="p-3 flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                    <Icon name="UserMinus" size={16} className="text-muted-foreground" />
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">Доп. брони без данных</div>
-                      <div className="text-xs text-muted-foreground">
-                        Учитываются в занятости события, но без личных данных гостей.
-                        {totalSpots > 0 && (
-                          <> Всего мест: <b>{totalSpots}</b> · занято: <b>{stats.total + anonCount}</b> ({stats.total} с данными + {anonCount} анонимных).</>
-                        )}
-                      </div>
-                    </div>
+              {/* Занятость события */}
+              {(totalSpots > 0 || anonCount > 0) && (
+                <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-muted/40 text-xs text-muted-foreground">
+                  <div>
+                    {totalSpots > 0 ? (
+                      <>Занято <b className="text-foreground">{stats.total + anonCount}</b> из <b className="text-foreground">{totalSpots}</b></>
+                    ) : (
+                      <>Записано <b className="text-foreground">{stats.total + anonCount}</b></>
+                    )}
+                    {anonCount > 0 && <> · из них <b className="text-foreground">{anonCount}</b> доп. бронь без данных</>}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
+                  {anonCount > 0 && (
+                    <button
                       type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-9 w-9 p-0 text-base"
-                      onClick={() => bumpAnonCount(-1)}
-                      disabled={savingAnon || (parseInt(anonInput, 10) || 0) <= 0}
+                      onClick={clearAnonCount}
+                      className="text-xs text-muted-foreground hover:text-destructive underline-offset-2 hover:underline"
                     >
-                      −
-                    </Button>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={anonInput}
-                      onChange={(e) => setAnonInput(e.target.value)}
-                      onBlur={saveAnonCount}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                      }}
-                      className="h-9 w-14 text-center px-1"
-                      disabled={savingAnon}
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-9 w-9 p-0 text-base"
-                      onClick={() => bumpAnonCount(1)}
-                      disabled={savingAnon}
-                    >
-                      +
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                      убрать
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Toolbar */}
               <div className="flex items-center gap-2 flex-wrap">
@@ -482,11 +445,45 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                         </SelectContent>
                       </Select>
                       <Input type="number" placeholder="Сумма ₽" value={newForm.payment_amount || ""} onChange={(e) => setNewForm({ ...newForm, payment_amount: parseInt(e.target.value) || 0 })} className="h-8 text-sm" />
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">Мест:</span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0 text-base shrink-0"
+                          onClick={() => setNewForm({ ...newForm, seats: Math.max((newForm.seats || 1) - 1, 1) })}
+                          disabled={(newForm.seats || 1) <= 1}
+                        >
+                          −
+                        </Button>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={newForm.seats}
+                          onChange={(e) => setNewForm({ ...newForm, seats: Math.max(parseInt(e.target.value, 10) || 1, 1) })}
+                          className="h-8 w-12 text-center px-1 text-sm"
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0 text-base shrink-0"
+                          onClick={() => setNewForm({ ...newForm, seats: (newForm.seats || 1) + 1 })}
+                        >
+                          +
+                        </Button>
+                      </div>
                       <div className="flex gap-1">
                         <Button size="sm" onClick={handleAdd} className="h-8 flex-1">Добавить</Button>
                         <Button size="sm" variant="ghost" onClick={() => setAdding(false)} className="h-8">Отмена</Button>
                       </div>
                     </div>
+                    {(newForm.seats || 1) > 1 && (
+                      <div className="text-xs text-muted-foreground">
+                        Создаётся 1 гость с данными + <b>{(newForm.seats || 1) - 1}</b> доп. {((newForm.seats || 1) - 1) === 1 ? "место" : "мест"} без данных.
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
