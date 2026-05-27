@@ -100,8 +100,8 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
     }
   }, [eventId]);
 
-  const saveAnonCount = async () => {
-    const value = Math.max(parseInt(anonInput, 10) || 0, 0);
+  const persistAnonCount = async (rawValue: number) => {
+    const value = Math.max(rawValue, 0);
     if (value === anonCount) return;
     setSavingAnon(true);
     try {
@@ -115,6 +115,18 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
     } finally {
       setSavingAnon(false);
     }
+  };
+
+  const saveAnonCount = () => persistAnonCount(parseInt(anonInput, 10) || 0);
+
+  const bumpAnonCount = (delta: number) => {
+    const next = Math.max((parseInt(anonInput, 10) || 0) + delta, 0);
+    if (delta > 0 && totalSpots > 0 && stats.total + next > totalSpots) {
+      toast.error("Превышена вместимость события");
+      return;
+    }
+    setAnonInput(String(next));
+    persistAnonCount(next);
   };
 
   const load = useCallback(async () => {
@@ -367,13 +379,14 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 shrink-0">
                     <Button
+                      type="button"
                       size="sm"
                       variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() => setAnonInput(String(Math.max(parseInt(anonInput, 10) - 1 || 0, 0)))}
-                      disabled={savingAnon}
+                      className="h-9 w-9 p-0 text-base"
+                      onClick={() => bumpAnonCount(-1)}
+                      disabled={savingAnon || (parseInt(anonInput, 10) || 0) <= 0}
                     >
                       −
                     </Button>
@@ -386,30 +399,19 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                       onKeyDown={(e) => {
                         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                       }}
-                      className="h-8 w-16 text-center"
+                      className="h-9 w-14 text-center px-1"
                       disabled={savingAnon}
                     />
                     <Button
+                      type="button"
                       size="sm"
                       variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() => {
-                        const next = (parseInt(anonInput, 10) || 0) + 1;
-                        if (totalSpots > 0 && stats.total + next > totalSpots) {
-                          toast.error("Превышена вместимость события");
-                          return;
-                        }
-                        setAnonInput(String(next));
-                      }}
+                      className="h-9 w-9 p-0 text-base"
+                      onClick={() => bumpAnonCount(1)}
                       disabled={savingAnon}
                     >
                       +
                     </Button>
-                    {parseInt(anonInput, 10) !== anonCount && (
-                      <Button size="sm" onClick={saveAnonCount} disabled={savingAnon} className="h-8">
-                        Сохранить
-                      </Button>
-                    )}
                   </div>
                 </CardContent>
               </Card>
