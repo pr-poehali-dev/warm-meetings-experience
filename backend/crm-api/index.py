@@ -314,7 +314,11 @@ def list_event_guests(cur, user_id, schema, event_id, search_sql):
     is_organizer_owner = ev.get('organizer_id') == user_id
     is_bath_owner = ev.get('bath_owner_id') == user_id
     is_admin = has_role(cur, schema, user_id, 'admin')
+    is_co_organizer = False
     if not (is_organizer_owner or is_bath_owner or is_admin):
+        cur.execute(f"SELECT 1 FROM {schema}.event_co_organizers WHERE event_id = {event_id} AND user_id = {user_id}")
+        is_co_organizer = cur.fetchone() is not None
+    if not (is_organizer_owner or is_bath_owner or is_admin or is_co_organizer):
         return respond(403, {'error': 'no access to event'})
 
     cur.execute(f"""
@@ -407,12 +411,22 @@ def update_event_guest(cur, conn, user_id, schema, event):
         return respond(400, {'error': 'signup_id required'})
     sid = int(signup_id)
 
-    # Проверка прав
-    cur.execute(f"""
-        SELECT s.id FROM {schema}.event_signups s
-        JOIN {schema}.events e ON e.id = s.event_id
-        WHERE s.id = {sid} AND e.organizer_id = {user_id}
-    """)
+    # Проверка прав: organizer, соорганизатор или admin
+    is_admin = has_role(cur, schema, user_id, 'admin')
+    if is_admin:
+        cur.execute(f"SELECT s.id FROM {schema}.event_signups s WHERE s.id = {sid}")
+    else:
+        cur.execute(f"""
+            SELECT s.id FROM {schema}.event_signups s
+            JOIN {schema}.events e ON e.id = s.event_id
+            WHERE s.id = {sid} AND (
+                e.organizer_id = {user_id}
+                OR EXISTS (
+                    SELECT 1 FROM {schema}.event_co_organizers c
+                    WHERE c.event_id = e.id AND c.user_id = {user_id}
+                )
+            )
+        """)
     if not cur.fetchone():
         return respond(403, {'error': 'no access'})
 
@@ -453,7 +467,21 @@ def add_event_guest(cur, conn, user_id, schema, event):
         return respond(400, {'error': 'event_id and name required'})
     eid = int(event_id)
 
-    cur.execute(f"SELECT id FROM {schema}.events WHERE id = {eid} AND organizer_id = {user_id}")
+    # Доступ: организатор события, соорганизатор или админ
+    is_admin = has_role(cur, schema, user_id, 'admin')
+    if is_admin:
+        cur.execute(f"SELECT id FROM {schema}.events WHERE id = {eid}")
+    else:
+        cur.execute(f"""
+            SELECT e.id FROM {schema}.events e
+            WHERE e.id = {eid} AND (
+                e.organizer_id = {user_id}
+                OR EXISTS (
+                    SELECT 1 FROM {schema}.event_co_organizers c
+                    WHERE c.event_id = e.id AND c.user_id = {user_id}
+                )
+            )
+        """)
     if not cur.fetchone():
         return respond(403, {'error': 'no access'})
 
@@ -485,12 +513,21 @@ def delete_event_guest(cur, conn, user_id, schema, params):
     if not sid or not str(sid).isdigit():
         return respond(400, {'error': 'signup_id required'})
     sid = int(sid)
-    cur.execute(f"""
-        DELETE FROM {schema}.event_signups
-        WHERE id = {sid} AND event_id IN (
-            SELECT id FROM {schema}.events WHERE organizer_id = {user_id}
-        )
-    """)
+    is_admin = has_role(cur, schema, user_id, 'admin')
+    if is_admin:
+        cur.execute(f"DELETE FROM {schema}.event_signups WHERE id = {sid}")
+    else:
+        cur.execute(f"""
+            DELETE FROM {schema}.event_signups
+            WHERE id = {sid} AND event_id IN (
+                SELECT e.id FROM {schema}.events e
+                WHERE e.organizer_id = {user_id}
+                   OR EXISTS (
+                       SELECT 1 FROM {schema}.event_co_organizers c
+                       WHERE c.event_id = e.id AND c.user_id = {user_id}
+                   )
+            )
+        """)
     conn.commit()
     return respond(200, {'ok': True, 'deleted': cur.rowcount})
 
