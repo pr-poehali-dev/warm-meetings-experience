@@ -731,7 +731,7 @@ export default function MasterDetail() {
                     className="flex items-center gap-3 w-full bg-muted px-4 py-3 rounded-xl text-sm font-medium hover:bg-muted/80 transition-colors"
                   >
                     <Icon name="Phone" size={16} />
-                    {master.phone}
+                    Позвонить
                   </a>
                 )}
                 {master.telegram && (

@@ -205,10 +205,11 @@ export default function LandingPage() {
                       <Icon name="Phone" size={18} /> Контакты
                     </h2>
                     <div className="space-y-2.5 text-sm">
-                      {contacts.phone && <ContactRow icon="Phone" label="Телефон" value={contacts.phone} href={`tel:${contacts.phone}`} />}
+                      {/* Телефоны и WhatsApp скрываем в целях приватности — оставляем только действие. */}
+                      {contacts.phone && <ContactRow icon="Phone" label="Телефон" value="Позвонить" href={`tel:${contacts.phone}`} />}
                       {contacts.email && <ContactRow icon="Mail" label="Email" value={contacts.email} href={`mailto:${contacts.email}`} />}
                       {contacts.telegram && <ContactRow icon="Send" label="Telegram" value={`@${contacts.telegram.replace(/^@/, "")}`} href={`https://t.me/${contacts.telegram.replace(/^@/, "")}`} />}
-                      {contacts.whatsapp && <ContactRow icon="MessageCircle" label="WhatsApp" value={contacts.whatsapp} href={`https://wa.me/${contacts.whatsapp.replace(/[^0-9]/g, "")}`} />}
+                      {contacts.whatsapp && <ContactRow icon="MessageCircle" label="WhatsApp" value="Написать в WhatsApp" href={`https://wa.me/${contacts.whatsapp.replace(/[^0-9]/g, "")}`} />}
                       {contacts.vk && <ContactRow icon="Globe" label="ВКонтакте" value={contacts.vk} href={contacts.vk.startsWith("http") ? contacts.vk : `https://vk.com/${contacts.vk}`} />}
                     </div>
                   </CardContent>
