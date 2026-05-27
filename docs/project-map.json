@@ -2,13 +2,15 @@
   "_meta": {
     "purpose": "Карта связей проекта. Машиночитаемая. Обновляется вручную при значимых изменениях структуры.",
     "version": 1,
-    "updated": "2026-05-27",
-    "entry_rule_for_ai": "ОБЯЗАТЕЛЬНО: перед любым поиском в коде (Grep/Glob/Task) Юра сверяется с этим файлом — находит нужные страницы/API/функции/таблицы здесь, затем уже идёт точечно в найденные файлы. Если фичи нет в карте — добавить запись после реализации.",
+    "updated": "2026-05-27 (anonymous_count + правило обновления карты)",
+    "entry_rule_for_ai": "ОБЯЗАТЕЛЬНО: перед любым поиском в коде (Grep/Glob/Task) Юра сверяется с этим файлом — находит нужные страницы/API/функции/таблицы здесь, затем уже идёт точечно в найденные файлы.",
+    "update_rule_for_ai": "ОБЯЗАТЕЛЬНО: после любого изменения структуры проекта (новая страница / роут / API-клиент / backend-функция / таблица БД / значимое поле / новая значимая фича) Юра вносит соответствующие правки в этот файл (project-map.json) И в PROJECT_MAP.md. Поле _meta.updated тоже обновляется. Если карта не обновлена — задача считается незавершённой.",
     "schema": {
       "pages": "страницы фронта: route → component → file → guard",
       "apiClients": "файлы src/lib/*-api.ts: какие методы есть и в какую backend-функцию ходят",
       "backendFunctions": "функции в /backend/: URL, таблицы БД, описание",
-      "dbTables": "плоский список всех таблиц, упомянутых в backendFunctions.tables"
+      "dbTables": "плоский список всех таблиц, упомянутых в backendFunctions.tables",
+      "notableFields": "значимые поля важных таблиц с пояснением — добавляются вручную для контекста ИИ"
     }
   },
 
@@ -89,7 +91,7 @@
     { "name": "masters-api",        "url": "https://functions.poehali.dev/5e680421-cf43-4b07-abc1-8005b1b68de6", "description": "API мастеров: профиль, календарь, записи, отзывы",                          "tables": ["masters", "specializations", "master_baths", "master_services", "master_slots", "master_schedule_templates", "master_day_blocks", "master_bookings", "reviews", "users", "user_sessions", "user_roles", "roles"] },
     { "name": "media-api",          "url": "https://functions.poehali.dev/c154b509-fa63-4739-b116-5773e82615a3", "description": "Загрузка фото/видео (S3)",                                                  "tables": [] },
     { "name": "notify-module",      "url": "https://functions.poehali.dev/47bb36f1-5d1a-45e7-86e3-bd7a07a3d8de", "description": "Персональные уведомления — сценарии и отправка",                            "tables": ["notify_scenarios", "notify_log", "user_sessions", "user_roles", "roles", "events", "baths", "event_signups", "master_bookings", "ritual_bookings"] },
-    { "name": "organizer-cabinet",  "url": "https://functions.poehali.dev/730d60f4-a9cf-4f56-90d9-f48caaa9007d", "description": "Кабинет организатора: дашборд, события, участники",                          "tables": ["events", "event_signups", "event_co_organizers", "event_questions", "baths", "users", "user_sessions", "user_roles", "roles"] },
+    { "name": "organizer-cabinet",  "url": "https://functions.poehali.dev/730d60f4-a9cf-4f56-90d9-f48caaa9007d", "description": "Кабинет организатора: дашборд, события (CRUD + поле events.anonymous_count — доп. брони без данных), участники, ко-организаторы, вопросы события", "tables": ["events", "event_signups", "event_co_organizers", "event_questions", "baths", "users", "user_sessions", "user_roles", "roles"] },
     { "name": "partner-cabinet",    "url": "https://functions.poehali.dev/3989724b-e648-40f8-9642-5310fb7fcb5d", "description": "Кабинет управляющего: бани, статистика, верификация",                       "tables": ["baths", "users", "user_sessions", "user_roles", "roles"] },
     { "name": "roles-api",          "url": "https://functions.poehali.dev/ccd16473-f2d9-40af-a82e-4e348402aa29", "description": "Система ролей: роли пользователя, прогресс, бейджи, заявки",                "tables": ["roles", "user_roles", "role_requirements", "role_applications", "badges", "role_verifications", "users", "user_sessions"] },
     { "name": "support",            "url": "https://functions.poehali.dev/a0a86024-792f-4be0-8a06-30173c46b07a", "description": "Поддержка: FAQ, тикеты, сообщения, админка",                                "tables": ["support_tickets", "support_messages", "support_templates", "support_faq", "users", "user_sessions"] },
@@ -152,5 +154,19 @@
     "user_sessions",
     "user_wallet_transactions",
     "users"
-  ]
+  ],
+
+  "notableFields": {
+    "events": {
+      "anonymous_count": "int, default 0. Доп. брони без личных данных гостя — учитываются в занятости события (totalSpots = stats.total + anonymous_count), но не показываются как карточки гостей. Управляется в CRM-диалоге EventGuestsDialog кнопками −/+ и сохраняется через PUT organizer-cabinet?resource=events { anonymous_count }."
+    }
+  },
+
+  "notableComponents": {
+    "EventGuestsDialog": {
+      "file": "src/components/crm/EventGuestsDialog.tsx",
+      "usedIn": ["src/components/workspace/WorkspaceContent.tsx"],
+      "purpose": "Диалог гостей события в CRM: список записанных, поиск/фильтры, управление anonymous_count (доп. брони без данных) через −/+ с мгновенным сохранением."
+    }
+  }
 }

@@ -5,16 +5,31 @@
 
 ---
 
-## ⚠️ Правило для Юры (ИИ-разработчика)
+## ⚠️ Правила для Юры (ИИ-разработчика)
 
-**Перед любым поиском в коде — сначала свериться с `docs/project-map.json`.**
+### 1. Перед задачей — свериться с картой
+**Перед любым поиском в коде — сначала открыть `docs/project-map.json`.**
 
-Алгоритм работы с задачей:
+Алгоритм:
 1. Прочитать `docs/project-map.json` — найти упомянутые в задаче страницы, API, бэкенд-функции, таблицы.
-2. Только потом запускать `Grep` / `Glob` / `Task(Explore)` — уже точечно, по найденным файлам.
-3. Если в карте чего-то нет (новая фича, ранее не задокументированная) — добавить запись в `project-map.json` после реализации.
+2. Только потом запускать `Grep` / `Glob` / `Task(Explore)` — точечно, по найденным файлам.
 
-Это экономит контекст, снижает число лишних поисков и предотвращает «слепой» обход кодовой базы.
+### 2. После задачи — обновить карту
+**После любого изменения структуры проекта Юра обязан обновить карту.**
+
+Что считается изменением структуры:
+- Новая страница / роут в `src/App.tsx`
+- Новый API-клиент в `src/lib/*-api.ts` или новый метод в существующем
+- Новая backend-функция в `/backend/` или существенное изменение её ответственности
+- Новая таблица в БД или значимое поле в существующей
+- Новая значимая фича / диалог / компонент с собственной бизнес-логикой
+
+Куда вносить правки:
+- `docs/project-map.json` — соответствующая секция (`pages`, `apiClients`, `backendFunctions`, `dbTables`, `notableFields`, `notableComponents`)
+- `docs/PROJECT_MAP.md` — соответствующая таблица/раздел
+- `_meta.updated` в JSON — текущая дата + короткая пометка что изменилось
+
+**Задача считается незавершённой, если карта не обновлена.**
 
 ---
 
@@ -125,7 +140,7 @@
 | `masters-api` | Профиль мастера, календарь, записи, отзывы | `masters`, `specializations`, `master_baths`, `master_services`, `master_slots`, `master_schedule_templates`, `master_day_blocks`, `master_bookings`, `reviews`, `users`, `user_sessions`, `user_roles`, `roles` |
 | `media-api` | Загрузка фото/видео (S3) | — |
 | `notify-module` | Сценарии уведомлений и отправка | `notify_scenarios`, `notify_log`, `user_sessions`, `user_roles`, `roles`, `events`, `baths`, `event_signups`, `master_bookings`, `ritual_bookings` |
-| `organizer-cabinet` | Кабинет организатора: дашборд, события, участники | `events`, `event_signups`, `event_co_organizers`, `event_questions`, `baths`, `users`, `user_sessions`, `user_roles`, `roles` |
+| `organizer-cabinet` | Кабинет организатора: дашборд, события (CRUD + `events.anonymous_count` — доп. брони без данных), участники, ко-организаторы, вопросы события | `events`, `event_signups`, `event_co_organizers`, `event_questions`, `baths`, `users`, `user_sessions`, `user_roles`, `roles` |
 | `partner-cabinet` | Кабинет управляющего: бани, статистика, верификация | `baths`, `users`, `user_sessions`, `user_roles`, `roles` |
 | `roles-api` | Роли пользователей: прогресс, бейджи, заявки | `roles`, `user_roles`, `role_requirements`, `role_applications`, `badges`, `role_verifications`, `users`, `user_sessions` |
 | `support` | Поддержка: FAQ, тикеты, сообщения, админка | `support_tickets`, `support_messages`, `support_templates`, `support_faq`, `users`, `user_sessions` |
@@ -147,13 +162,38 @@
 
 ---
 
+## Значимые поля и компоненты
+
+Это «точечный» индекс важных полей и компонентов, чтобы ИИ не искал их по всему репозиторию.
+
+### Поля таблиц
+| Таблица | Поле | Описание |
+|---|---|---|
+| `events` | `anonymous_count` | int, default 0. Доп. брони без личных данных гостя. Учитывается в занятости (`занято = stats.total + anonymous_count`), но не отображается карточками. Управляется в `EventGuestsDialog` через −/+ и PUT `organizer-cabinet?resource=events { anonymous_count }`. |
+
+### Компоненты
+| Компонент | Файл | Используется | Назначение |
+|---|---|---|---|
+| `EventGuestsDialog` | `src/components/crm/EventGuestsDialog.tsx` | `src/components/workspace/WorkspaceContent.tsx` | Диалог гостей события в CRM: список записанных, поиск/фильтры, управление `anonymous_count` через −/+ с мгновенным сохранением. |
+
+---
+
 ## Когда и как обновлять карту
+
+**Правило: задача считается незавершённой, пока карта не обновлена.**
 
 Обнови, если:
 - Добавил/удалил **страницу** в `src/App.tsx`
 - Добавил/удалил **API-клиент** в `src/lib/`
-- Добавил/удалил **бэкенд-функцию** в `backend/`
-- Добавил/удалил **таблицу** или существенно изменил её использование
+- Добавил/удалил **бэкенд-функцию** в `backend/` (или существенно изменил её ответственность)
+- Добавил/удалил **таблицу** в БД или существенно изменил её использование
+- Добавил **значимое поле** в важную таблицу (`events`, `users`, `masters`, `baths`, `event_signups` и т.п.) — внести в раздел «Значимые поля» + JSON `notableFields`
+- Добавил **значимый компонент** с собственной бизнес-логикой — в раздел «Компоненты» + JSON `notableComponents`
+
+Куда вносить:
+1. `docs/project-map.json` — соответствующая секция
+2. `docs/PROJECT_MAP.md` — соответствующая таблица
+3. `_meta.updated` в JSON — текущая дата + короткая пометка
 
 Источники истины (карта может слегка отставать — это нормально):
 
