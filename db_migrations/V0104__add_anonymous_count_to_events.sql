@@ -1,0 +1,2 @@
+ALTER TABLE events ADD COLUMN IF NOT EXISTS anonymous_count INTEGER NOT NULL DEFAULT 0;
+COMMENT ON COLUMN events.anonymous_count IS 'Количество дополнительно зарезервированных мест без указания личных данных гостей. Учитывается в spots_left.';

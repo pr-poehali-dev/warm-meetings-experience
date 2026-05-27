@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import Icon from "@/components/ui/icon";
 import { crmApi, CrmEventGuest } from "@/lib/crm-api";
+import { organizerApi } from "@/lib/organizer-api";
 import ClientCard from "./ClientCard";
 import NotifyModule from "@/components/notify/NotifyModule";
 import GuestChatDialog from "./GuestChatDialog";
@@ -79,6 +80,43 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
   const [adding, setAdding] = useState(false);
   const [newForm, setNewForm] = useState({ name: "", phone: "", email: "", telegram: "", status: "confirmed", payment_amount: 0, payment_type: "" });
 
+  // Анонимные брони и общая вместимость события
+  const [anonCount, setAnonCount] = useState<number>(0);
+  const [anonInput, setAnonInput] = useState<string>("0");
+  const [totalSpots, setTotalSpots] = useState<number>(0);
+  const [savingAnon, setSavingAnon] = useState(false);
+
+  const loadEventCapacity = useCallback(async () => {
+    if (!eventId) return;
+    try {
+      const ev = await organizerApi.getEvent(eventId);
+      const total = ev.total_spots ?? 0;
+      const anon = ev.anonymous_count ?? 0;
+      setTotalSpots(total);
+      setAnonCount(anon);
+      setAnonInput(String(anon));
+    } catch (e) {
+      // молча — это не критично для основного функционала диалога
+    }
+  }, [eventId]);
+
+  const saveAnonCount = async () => {
+    const value = Math.max(parseInt(anonInput, 10) || 0, 0);
+    if (value === anonCount) return;
+    setSavingAnon(true);
+    try {
+      await organizerApi.updateEvent({ id: eventId, anonymous_count: value });
+      setAnonCount(value);
+      setAnonInput(String(value));
+      toast.success(value === 0 ? "Доп. брони очищены" : `Доп. броней: ${value}`);
+    } catch (e) {
+      toast.error("Не удалось сохранить: " + String(e));
+      setAnonInput(String(anonCount));
+    } finally {
+      setSavingAnon(false);
+    }
+  };
+
   const load = useCallback(async () => {
     if (!eventId) return;
     setLoading(true);
@@ -98,8 +136,9 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
       setView("guests");
       setSelected(new Set());
       load();
+      loadEventCapacity();
     }
-  }, [open, load]);
+  }, [open, load, loadEventCapacity]);
 
   const filtered = useMemo(() => {
     return guests.filter((g) => {
@@ -312,6 +351,68 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                   <div className="font-bold text-base text-amber-700">{fmtMoney(stats.total_paid)}</div>
                 </CardContent></Card>
               </div>
+
+              {/* Анонимные брони */}
+              <Card className="border-dashed">
+                <CardContent className="p-3 flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                    <Icon name="UserMinus" size={16} className="text-muted-foreground" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">Доп. брони без данных</div>
+                      <div className="text-xs text-muted-foreground">
+                        Учитываются в занятости события, но без личных данных гостей.
+                        {totalSpots > 0 && (
+                          <> Всего мест: <b>{totalSpots}</b> · занято: <b>{stats.total + anonCount}</b> ({stats.total} с данными + {anonCount} анонимных).</>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setAnonInput(String(Math.max(parseInt(anonInput, 10) - 1 || 0, 0)))}
+                      disabled={savingAnon}
+                    >
+                      −
+                    </Button>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={anonInput}
+                      onChange={(e) => setAnonInput(e.target.value)}
+                      onBlur={saveAnonCount}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                      }}
+                      className="h-8 w-16 text-center"
+                      disabled={savingAnon}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-8 p-0"
+                      onClick={() => {
+                        const next = (parseInt(anonInput, 10) || 0) + 1;
+                        if (totalSpots > 0 && stats.total + next > totalSpots) {
+                          toast.error("Превышена вместимость события");
+                          return;
+                        }
+                        setAnonInput(String(next));
+                      }}
+                      disabled={savingAnon}
+                    >
+                      +
+                    </Button>
+                    {parseInt(anonInput, 10) !== anonCount && (
+                      <Button size="sm" onClick={saveAnonCount} disabled={savingAnon} className="h-8">
+                        Сохранить
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Toolbar */}
               <div className="flex items-center gap-2 flex-wrap">

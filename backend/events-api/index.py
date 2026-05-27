@@ -999,11 +999,12 @@ def serialize_event(row, cur=None, schema=None):
 
     if current_count is not None:
         total = d.get('total_spots')
+        anon = int(d.get('anonymous_count') or 0)
         d['signups_count'] = current_count
         if total is not None:
             try:
                 total_int = int(total)
-                d['spots_left'] = max(total_int - current_count, 0)
+                d['spots_left'] = max(total_int - current_count - anon, 0)
             except (TypeError, ValueError):
                 pass
 

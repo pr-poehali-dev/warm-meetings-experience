@@ -45,8 +45,12 @@ export default function LiveEditorCardBody({ fd, set, showSensitive = false }: P
     }
   }
 
-  const spotsLeft = fd.spots_left ?? 0;
   const totalSpots = fd.total_spots ?? 0;
+  const signupsCount = (fd as { signups_count?: number }).signups_count ?? 0;
+  const anonymousCount = (fd as { anonymous_count?: number }).anonymous_count ?? 0;
+  const spotsLeft = totalSpots
+    ? Math.max(totalSpots - signupsCount - anonymousCount, 0)
+    : 0;
   const priceDisplay =
     fd.price_label ||
     (fd.price_amount ? `${fd.price_amount.toLocaleString("ru-RU")} ₽` : "");
@@ -193,39 +197,41 @@ export default function LiveEditorCardBody({ fd, set, showSensitive = false }: P
       </div>
 
       {/* Spots */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="flex items-center gap-2">
           <Icon name="Users" size={14} className="text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Мест:</span>
+          <span className="text-xs text-muted-foreground">Мест всего:</span>
           <input
             type="number"
             value={totalSpots || ""}
+            min={0}
             onChange={(e) => {
-              const v = parseInt(e.target.value) || 0;
-              set({
-                total_spots: v,
-                spots_left: Math.min(fd.spots_left || v, v),
-              });
+              const v = Math.max(parseInt(e.target.value) || 0, 0);
+              set({ total_spots: v });
             }}
             className="w-14 text-sm font-medium bg-transparent border-b border-dashed border-muted-foreground/30 outline-none text-center hover:border-primary focus:border-primary transition-colors"
             placeholder="∞"
           />
         </div>
         {totalSpots > 0 && (
+          <div
+            className="flex items-center gap-2"
+            title="Записалось через сайт + дополнительные брони, добавленные в окне «Управление гостями»"
+          >
+            <span className="text-xs text-muted-foreground">Занято:</span>
+            <span className="text-sm font-medium text-foreground/80">
+              {signupsCount + anonymousCount}
+              {anonymousCount > 0 && (
+                <span className="text-muted-foreground">
+                  {" "}
+                  ({signupsCount}+{anonymousCount})
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+        {totalSpots > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Свободно:</span>
-            <input
-              type="number"
-              value={spotsLeft || ""}
-              min={0}
-              max={totalSpots}
-              onChange={(e) => {
-                const v = Math.min(parseInt(e.target.value) || 0, totalSpots);
-                set({ spots_left: v });
-              }}
-              className="w-14 text-sm font-medium bg-transparent border-b border-dashed border-muted-foreground/30 outline-none text-center hover:border-primary focus:border-primary transition-colors"
-              placeholder="0"
-            />
             <span
               className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${spotsColor(spotsLeft)}`}
             >
@@ -233,7 +239,7 @@ export default function LiveEditorCardBody({ fd, set, showSensitive = false }: P
                 ? "Мест нет"
                 : spotsLeft <= 2
                   ? `Последние ${spotsLeft}`
-                  : `Осталось ${spotsLeft}`}
+                  : `Свободно ${spotsLeft} из ${totalSpots}`}
             </span>
           </div>
         )}

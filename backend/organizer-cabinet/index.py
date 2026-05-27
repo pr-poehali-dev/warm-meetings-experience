@@ -202,7 +202,7 @@ def handle_dashboard(cur, conn, user_id, user, schema, headers):
 
 
 def handle_events(event, method, params, cur, conn, user_id, schema, headers):
-    """CRUD событий организатора"""
+    """CRUD событий организатора. spots_left = max(total_spots - signups_count - anonymous_count, 0)."""
     admin = has_role(cur, schema, user_id, 'admin')
     owner_filter = f"e.organizer_id = {user_id}" if not admin else "1=1"
 
@@ -227,6 +227,9 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             cur.execute(f"SELECT * FROM event_pricing_tiers WHERE event_id = {event_id} ORDER BY sort_order, valid_until NULLS LAST")
             tiers = [dict(t) for t in cur.fetchall()]
             result = dict(row)
+            total = int(result.get('total_spots') or 0)
+            taken = int(result.get('signups_count') or 0) + int(result.get('anonymous_count') or 0)
+            result['spots_left'] = max(total - taken, 0) if total else 0
             result['pricing_tiers'] = tiers
             conn.close()
             return {'statusCode': 200, 'headers': headers, 'body': json.dumps(result, default=str)}
@@ -252,8 +255,15 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             ORDER BY e.event_date DESC, e.start_time DESC
         """)
         rows = cur.fetchall()
+        result_rows = []
+        for r in rows:
+            d = dict(r)
+            total = int(d.get('total_spots') or 0)
+            taken = int(d.get('signups_count') or 0) + int(d.get('anonymous_count') or 0)
+            d['spots_left'] = max(total - taken, 0) if total else 0
+            result_rows.append(d)
         conn.close()
-        return {'statusCode': 200, 'headers': headers, 'body': json.dumps([dict(r) for r in rows], default=str)}
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps(result_rows, default=str)}
 
     if method == 'POST':
         body = json.loads(event.get('body', '{}'))
@@ -423,9 +433,9 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                 sets.append(f"{field} = '{val}'")
         if 'end_date' in body:
             sets.append(f"end_date = {f\"'{body['end_date']}'\" if body['end_date'] else 'NULL'}")
-        for field in ['price_amount','total_spots','spots_left']:
+        for field in ['price_amount','total_spots','anonymous_count']:
             if field in body:
-                sets.append(f"{field} = {int(body[field])}")
+                sets.append(f"{field} = {max(int(body[field]), 0)}")
         for field in ['featured']:
             if field in body:
                 sets.append(f"{field} = {bool(body[field])}")

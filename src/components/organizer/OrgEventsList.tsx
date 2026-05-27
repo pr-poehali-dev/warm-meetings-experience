@@ -251,7 +251,7 @@ export default function OrgEventsList({
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {ev.signups_count}/{ev.total_spots || "∞"} мест
+                    {ev.total_spots ? `${ev.spots_left ?? 0}/${ev.total_spots} свободно` : "∞ мест"}
                   </span>
                 </div>
 

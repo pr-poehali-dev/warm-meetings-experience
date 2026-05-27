@@ -25,6 +25,7 @@ export interface OrgEvent {
   bath_address: string;
   total_spots: number;
   spots_left: number;
+  anonymous_count?: number;
   price_amount: number;
   price_label: string;
   image_url: string;
