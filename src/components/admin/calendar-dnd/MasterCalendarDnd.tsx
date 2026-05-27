@@ -66,7 +66,8 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
     open: boolean;
     start: Date | null;
     end: Date | null;
-  }>({ open: false, start: null, end: null });
+    allDay: boolean;
+  }>({ open: false, start: null, end: null, allDay: false });
 
   const [quick, setQuick] = useState<QuickEvent | null>(null);
   const [quickAnchor, setQuickAnchor] = useState<{ x: number; y: number } | null>(null);
@@ -225,51 +226,82 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
     let start = sel.start;
     let end = sel.end;
 
-    // Если выделение all-day или растянуто на несколько дней — обрезаем до 1 часа в этот день в 12:00
-    const isMultiDay = start.toDateString() !== end.toDateString();
-    if (sel.allDay || isMultiDay) {
-      const base = new Date(start);
-      base.setHours(12, 0, 0, 0);
-      start = base;
-      end = new Date(base.getTime() + 60 * 60_000);
+    if (sel.allDay) {
+      // All-day выделение — захват целого дня (или нескольких дней)
+      const s = new Date(start);
+      s.setHours(0, 0, 0, 0);
+      const e = new Date(end);
+      e.setHours(0, 0, 0, 0);
+      // FullCalendar end эксклюзивен — оставляем как есть
+      start = s;
+      end = e;
+    } else {
+      // Минимум 15 минут
+      if (end.getTime() - start.getTime() < 15 * 60_000) {
+        end = new Date(start.getTime() + 60 * 60_000);
+      }
     }
 
-    // Минимум 15 минут
-    if (end.getTime() - start.getTime() < 15 * 60_000) {
-      end = new Date(start.getTime() + 60 * 60_000);
-    }
-
-    setCreateMode({ open: true, start, end });
+    setCreateMode({ open: true, start, end, allDay: !!sel.allDay });
     sel.view.calendar.unselect();
   };
 
   // Создание
   const handleCreate = async (mode: CreateMode, payload: CreatePayload) => {
     if (!createMode.start || !createMode.end) return;
-    const start = createMode.start;
+    let start = createMode.start;
     let end = createMode.end;
-
-    // Если выбрана процедура — автоподстановка длительности
-    if (mode === "booking" && payload.service_id) {
-      const svc = services.find(s => s.id === payload.service_id);
-      if (svc?.duration_minutes) {
-        end = new Date(start.getTime() + svc.duration_minutes * 60_000);
-      }
-    }
-
-    // Проверка конфликта
-    if (hasConflict(start, end, null)) {
-      toast.error("Это время уже занято");
-      return;
-    }
+    const isAllDay = createMode.allDay;
 
     try {
+      // All-day блок — создаём master_day_blocks (выходной/отпуск)
+      if (isAllDay && mode === "block") {
+        const blockStart = new Date(start);
+        const blockEndExclusive = new Date(end);
+        // end эксклюзивен → последний реально захваченный день = end - 1 день
+        const lastDay = new Date(blockEndExclusive.getTime() - 24 * 60 * 60_000);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        await masterCalendarApi.createBlock({
+          master_id: masterId,
+          block_date: fmt(blockStart),
+          block_end_date: fmt(lastDay),
+          reason: payload.comment || "Выходной",
+        });
+        toast.success("Выходной добавлен");
+        setCreateMode({ open: false, start: null, end: null, allDay: false });
+        loadData();
+        return;
+      }
+
+      // All-day для брони/перерыва — задаём дефолт 12:00–13:00 в первый день
+      if (isAllDay) {
+        const s = new Date(start);
+        s.setHours(12, 0, 0, 0);
+        start = s;
+        end = new Date(s.getTime() + 60 * 60_000);
+      }
+
+      // Если выбрана процедура — автоподстановка длительности
+      if (mode === "booking" && payload.service_id) {
+        const svc = services.find((s) => s.id === payload.service_id);
+        if (svc?.duration_minutes) {
+          end = new Date(start.getTime() + svc.duration_minutes * 60_000);
+        }
+      }
+
+      // Проверка конфликта
+      if (hasConflict(start, end, null)) {
+        toast.error("Это время уже занято");
+        return;
+      }
+
       if (mode === "booking") {
         if (!payload.client_name?.trim()) {
           toast.error("Укажите имя клиента");
           return;
         }
-        const svc = services.find(s => s.id === payload.service_id);
+        const svc = services.find((s) => s.id === payload.service_id);
         await masterBookingsApi.createBooking({
           master_id: masterId,
           client_name: payload.client_name,
@@ -304,7 +336,7 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
         });
         toast.success("Перерыв добавлен");
       }
-      setCreateMode({ open: false, start: null, end: null });
+      setCreateMode({ open: false, start: null, end: null, allDay: false });
       loadData();
     } catch (e) {
       console.error("[Calendar] save failed", e);
@@ -578,7 +610,8 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
         initialView="timeGridWeek"
         locale={ruLocale}
         firstDay={1}
-        allDaySlot={false}
+        allDaySlot={true}
+        allDayText="Весь день"
         nowIndicator
         editable
         selectable
@@ -594,7 +627,8 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
         height="auto"
         events={fcEvents}
         selectAllow={(sel) => {
-          // только в пределах одного дня и не больше 8 часов
+          // В all-day разрешаем любой диапазон дней. В часовом — ограничиваем 1 днём и 8 часами.
+          if (sel.allDay) return true;
           if (sel.start.toDateString() !== sel.end.toDateString()) return false;
           if (sel.end.getTime() - sel.start.getTime() > 8 * 60 * 60_000) return false;
           return true;
@@ -623,8 +657,9 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
         <EventForm
           start={createMode.start}
           end={createMode.end}
+          allDay={createMode.allDay}
           services={services}
-          onCancel={() => setCreateMode({ open: false, start: null, end: null })}
+          onCancel={() => setCreateMode({ open: false, start: null, end: null, allDay: false })}
           onCreate={handleCreate}
         />
       )}

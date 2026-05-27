@@ -19,6 +19,7 @@ export interface CreatePayload {
 interface Props {
   start: Date;
   end: Date;
+  allDay?: boolean;
   services: MasterService[];
   onCancel: () => void;
   onCreate: (mode: CreateMode, payload: CreatePayload) => Promise<void> | void;
@@ -27,9 +28,12 @@ interface Props {
 const fmt = (d: Date) =>
   d.toLocaleString("ru-RU", { weekday: "short", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" });
 
-export default function EventForm({ start, end, services, onCancel, onCreate }: Props) {
+const fmtDay = (d: Date) =>
+  d.toLocaleDateString("ru-RU", { weekday: "short", day: "2-digit", month: "long" });
+
+export default function EventForm({ start, end, allDay, services, onCancel, onCreate }: Props) {
   const [step, setStep] = useState<"choose" | "form">("choose");
-  const [mode, setMode] = useState<CreateMode>("booking");
+  const [mode, setMode] = useState<CreateMode>(allDay ? "block" : "booking");
 
   // Поля формы
   const [clientName, setClientName] = useState("");
@@ -80,7 +84,16 @@ export default function EventForm({ start, end, services, onCancel, onCreate }: 
             {title}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            {fmt(start)} → {fmt(end)}
+            {allDay ? (
+              <>
+                Весь день · {fmtDay(start)}
+                {end.getTime() - start.getTime() > 24 * 60 * 60_000 && (
+                  <> → {fmtDay(new Date(end.getTime() - 24 * 60 * 60_000))}</>
+                )}
+              </>
+            ) : (
+              <>{fmt(start)} → {fmt(end)}</>
+            )}
           </DialogDescription>
         </DialogHeader>
 
