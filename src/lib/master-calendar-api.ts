@@ -253,6 +253,17 @@ export const masterCalendarApi = {
       method: "DELETE",
       body: JSON.stringify({ id, master_id: masterId }),
     }),
+
+  clearCalendar: (data: {
+    master_id: number;
+    scope: "all" | "slots" | "bookings" | "blocks";
+    date_from?: string;
+    date_to?: string;
+  }) =>
+    fetchApi<{ success: boolean; deleted: { bookings: number; slots: number; blocks: number } }>(
+      `${CALENDAR_URL}&sub=clear`,
+      { method: "POST", body: JSON.stringify(data) }
+    ),
 };
 
 const REVIEWS_URL = `${MASTERS_URL}?resource=reviews`;

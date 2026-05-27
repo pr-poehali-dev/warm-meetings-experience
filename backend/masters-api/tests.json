@@ -88,6 +88,15 @@
       "expectedStatus": 200,
       "expectedBody": [],
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Календарь — очистка (для несуществующего мастера)",
+      "method": "POST",
+      "path": "/?resource=calendar&sub=clear",
+      "body": {"master_id": 999999, "scope": "all"},
+      "expectedStatus": 200,
+      "expectedBody": {"success": true},
+      "bodyMatcher": "partial"
     }
   ]
 }

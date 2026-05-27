@@ -5,7 +5,7 @@ from shared import CORS_HEADERS, get_conn, get_schema
 
 
 def handle_calendar(event, method, params, schema, headers):
-    """Маршрутизация подресурсов календаря: slots/services/templates/settings/blocks/apply-template/week-view"""
+    """Маршрутизация подресурсов календаря: slots/services/templates/settings/blocks/apply-template/week-view/clear"""
     sub = params.get('sub') or params.get('subresource') or 'slots'
     if sub == 'slots':
         return handle_slots(event, method, params, schema, headers)
@@ -21,7 +21,59 @@ def handle_calendar(event, method, params, schema, headers):
         return handle_apply_template(event, method, params, schema, headers)
     elif sub == 'week-view':
         return handle_week_view(event, method, params, schema, headers)
+    elif sub == 'clear':
+        return handle_clear(event, method, params, schema, headers)
     return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown calendar sub'})}
+
+
+def handle_clear(event, method, params, schema, headers):
+    """Очистка календаря мастера: удаляет слоты/блокировки/незавершённые брони за период.
+    body: { master_id, date_from?, date_to?, scope: 'all'|'slots'|'bookings'|'blocks' }
+    """
+    if method != 'POST':
+        return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+
+    body = json.loads(event.get('body', '{}'))
+    master_id = int(body.get('master_id', 0))
+    if not master_id:
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'master_id required'})}
+
+    date_from = body.get('date_from')
+    date_to = body.get('date_to')
+    scope = body.get('scope', 'all')
+
+    where_period_slots = ""
+    where_period_bookings = ""
+    where_period_blocks = ""
+    if date_from:
+        where_period_slots += f" AND datetime_start >= '{date_from}'"
+        where_period_bookings += f" AND datetime_start >= '{date_from}'"
+        where_period_blocks += f" AND block_date >= '{date_from[:10]}'"
+    if date_to:
+        where_period_slots += f" AND datetime_start <= '{date_to}'"
+        where_period_bookings += f" AND datetime_start <= '{date_to}'"
+        where_period_blocks += f" AND block_date <= '{date_to[:10]}'"
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    deleted = {'bookings': 0, 'slots': 0, 'blocks': 0}
+
+    try:
+        if scope in ('all', 'bookings'):
+            cur.execute(f"DELETE FROM {schema}.master_bookings WHERE master_id = {master_id}{where_period_bookings}")
+            deleted['bookings'] = cur.rowcount
+        if scope in ('all', 'slots'):
+            cur.execute(f"DELETE FROM {schema}.master_slots WHERE master_id = {master_id}{where_period_slots}")
+            deleted['slots'] = cur.rowcount
+        if scope in ('all', 'blocks'):
+            cur.execute(f"DELETE FROM {schema}.master_day_blocks WHERE master_id = {master_id}{where_period_blocks}")
+            deleted['blocks'] = cur.rowcount
+        conn.commit()
+    finally:
+        conn.close()
+
+    return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'success': True, 'deleted': deleted})}
 
 
 def handle_slots(event, method, params, schema, headers):
@@ -143,7 +195,7 @@ def handle_slots(event, method, params, schema, headers):
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Нельзя удалить слот с записью. Сначала отмените запись.'})}
 
-        cur.execute(f"UPDATE {schema}.master_slots SET status = 'blocked' WHERE id = {int(slot_id)}")
+        cur.execute(f"DELETE FROM {schema}.master_slots WHERE id = {int(slot_id)}")
         conn.commit()
         conn.close()
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'success': True})}

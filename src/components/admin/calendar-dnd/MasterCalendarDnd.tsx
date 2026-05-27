@@ -44,9 +44,13 @@ const fmtDate = (d: Date) =>
   d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long" });
 
 const toISO = (d: Date) => {
-  // local ISO без TZ — backend хранит как timestamp без TZ
+  // local ISO с явным offset — у backend колонки timestamptz, иначе будет UTC-сдвиг
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+  const tzMin = -d.getTimezoneOffset();
+  const sign = tzMin >= 0 ? "+" : "-";
+  const tzH = pad(Math.floor(Math.abs(tzMin) / 60));
+  const tzM = pad(Math.abs(tzMin) % 60);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${sign}${tzH}:${tzM}`;
 };
 
 export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
@@ -71,6 +75,42 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
   const [pendingResize, setPendingResize] = useState<{ event: EventDropArg["event"]; revert: () => void } | null>(null);
 
   const [viewTitle, setViewTitle] = useState<string>("");
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
+
+  const handleClear = async (scope: "all" | "week" | "future") => {
+    setClearing(true);
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let date_from: string | undefined;
+      let date_to: string | undefined;
+      if (scope === "week") {
+        const api = calRef.current?.getApi();
+        if (api) {
+          date_from = toISO(api.view.activeStart);
+          date_to = toISO(api.view.activeEnd);
+        }
+      } else if (scope === "future") {
+        date_from = toISO(today);
+      }
+      const res = await masterCalendarApi.clearCalendar({
+        master_id: masterId,
+        scope: "all",
+        date_from,
+        date_to,
+      });
+      const total = res.deleted.bookings + res.deleted.slots + res.deleted.blocks;
+      toast.success(`Очищено: ${total} элементов (брони ${res.deleted.bookings}, слоты ${res.deleted.slots}, блоки ${res.deleted.blocks})`);
+      setClearOpen(false);
+      loadData();
+    } catch (e) {
+      console.error("[Calendar] clear failed", e);
+      toast.error("Не удалось очистить: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setClearing(false);
+    }
+  };
 
   // Загрузка
   const loadData = useCallback(async (weekStart?: string) => {
@@ -518,6 +558,10 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
           <Button size="sm" variant="outline" onClick={() => calRef.current?.getApi().changeView("timeGridDay")}>День</Button>
           <Button size="sm" variant="outline" onClick={() => calRef.current?.getApi().changeView("timeGridWeek")}>Неделя</Button>
           <Button size="sm" variant="outline" onClick={() => calRef.current?.getApi().changeView("dayGridMonth")}>Месяц</Button>
+          <Button size="sm" variant="outline" className="gap-1.5 text-red-600 hover:text-red-700" onClick={() => setClearOpen(true)}>
+            <Icon name="Trash2" size={14} />
+            Очистить
+          </Button>
           {loading && <Icon name="Loader2" size={16} className="animate-spin text-muted-foreground" />}
         </div>
       </div>
@@ -617,6 +661,77 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
           onCancel={cancelResize}
         />
       )}
+
+      {/* Диалог очистки календаря */}
+      <ClearCalendarDialog
+        open={clearOpen}
+        clearing={clearing}
+        onClose={() => setClearOpen(false)}
+        onClear={handleClear}
+      />
+    </div>
+  );
+}
+
+function ClearCalendarDialog({
+  open, clearing, onClose, onClear,
+}: {
+  open: boolean;
+  clearing: boolean;
+  onClose: () => void;
+  onClear: (scope: "all" | "week" | "future") => void;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div className="bg-card border rounded-2xl shadow-xl p-5 max-w-md w-full space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2">
+          <Icon name="AlertTriangle" size={20} className="text-red-500" />
+          <div className="font-semibold text-lg">Очистить календарь</div>
+        </div>
+        <div className="text-sm text-muted-foreground">
+          Будут удалены все бронирования, слоты и блокировки. Действие необратимо.
+        </div>
+        <div className="grid grid-cols-1 gap-2">
+          <button
+            disabled={clearing}
+            onClick={() => onClear("week")}
+            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors text-left disabled:opacity-50"
+          >
+            <Icon name="Calendar" size={16} />
+            <div className="flex-1">
+              <div className="font-semibold text-sm">Только текущий период</div>
+              <div className="text-xs text-muted-foreground">То, что видно сейчас</div>
+            </div>
+          </button>
+          <button
+            disabled={clearing}
+            onClick={() => onClear("future")}
+            className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors text-left disabled:opacity-50"
+          >
+            <Icon name="CalendarClock" size={16} />
+            <div className="flex-1">
+              <div className="font-semibold text-sm">Сегодня и далее</div>
+              <div className="text-xs text-muted-foreground">История сохранится</div>
+            </div>
+          </button>
+          <button
+            disabled={clearing}
+            onClick={() => onClear("all")}
+            className="flex items-center gap-3 p-3 rounded-lg border border-red-300 hover:bg-red-50 transition-colors text-left text-red-700 disabled:opacity-50"
+          >
+            <Icon name="Trash2" size={16} />
+            <div className="flex-1">
+              <div className="font-semibold text-sm">Полностью весь календарь</div>
+              <div className="text-xs">Включая историю</div>
+            </div>
+          </button>
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="ghost" onClick={onClose} disabled={clearing}>Отмена</Button>
+          {clearing && <Icon name="Loader2" size={16} className="animate-spin self-center" />}
+        </div>
+      </div>
     </div>
   );
 }
