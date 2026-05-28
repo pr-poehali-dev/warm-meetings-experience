@@ -181,3 +181,44 @@
   color: hsl(var(--muted-foreground));
   font-weight: 500;
 }
+
+/* День-блокировка: плашка во "Весь день" */
+.fc-dnd .fc-event.fcb-day-block {
+  background: #ef4444 !important;
+  color: white !important;
+  border: none !important;
+  font-weight: 600 !important;
+  text-align: center;
+  letter-spacing: 0.02em;
+  border-radius: 6px !important;
+  padding: 4px 8px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* День-блокировка: подсветка всей колонки дня (фон) */
+.fc-dnd .fc-bg-event.fcb-day-block-bg {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(239, 68, 68, 0.18),
+    rgba(239, 68, 68, 0.18) 8px,
+    rgba(239, 68, 68, 0.08) 8px,
+    rgba(239, 68, 68, 0.08) 16px
+  ) !important;
+  opacity: 1 !important;
+}
+
+/* Метка "ВЫХОДНОЙ" в шапке заблокированного дня */
+.fcb-day-header-block {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+  padding: 1px 6px;
+  background: #ef4444;
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 4px;
+}

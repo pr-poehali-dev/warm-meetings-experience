@@ -205,16 +205,28 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
     // Блокировки целых дней
     for (const blk of blocks) {
       const startD = new Date(blk.block_date + "T00:00:00");
-      const endD = new Date((blk.block_end_date || blk.block_date) + "T23:59:59");
+      const endExclusive = new Date(((blk.block_end_date || blk.block_date)) + "T00:00:00");
+      endExclusive.setDate(endExclusive.getDate() + 1);
+      // Полоса в "Весь день"
       list.push({
         id: `blk-${blk.id}`,
-        title: blk.reason || "Выходной",
+        title: `🔒 ${blk.reason || "Выходной"}`,
         start: startD,
-        end: endD,
+        end: endExclusive,
         allDay: true,
-        classNames: ["fcb-block"],
+        classNames: ["fcb-day-block"],
         editable: false,
         extendedProps: { kind: "block", raw: blk },
+      });
+      // Заливка фона на всю колонку дня (видно в timeGrid)
+      list.push({
+        id: `blk-bg-${blk.id}`,
+        start: startD,
+        end: endExclusive,
+        allDay: false,
+        display: "background",
+        classNames: ["fcb-day-block-bg"],
+        extendedProps: { kind: "available", raw: blk },
       });
     }
 
@@ -554,18 +566,47 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
     return map;
   }, [fcEvents]);
 
-  // Render day header с прогресс-баром
+  // Множество заблокированных дат (YYYY-MM-DD)
+  const blockedDates = useMemo(() => {
+    const set = new Set<string>();
+    for (const blk of blocks) {
+      const start = new Date(blk.block_date + "T00:00:00");
+      const end = new Date((blk.block_end_date || blk.block_date) + "T00:00:00");
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const pad = (n: number) => String(n).padStart(2, "0");
+        set.add(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+      }
+    }
+    return set;
+  }, [blocks]);
+
+  const dateKey = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
+  // Render day header с прогресс-баром + меткой "выходной"
   const dayHeaderContent = (arg: { date: Date; text: string }) => {
-    const key = arg.date.toISOString().slice(0, 10);
+    const key = dateKey(arg.date);
     const load = dayLoad.get(key);
     const pct = load ? Math.min(100, Math.round((load.busy / load.total) * 100)) : 0;
+    const isBlocked = blockedDates.has(key);
     return (
       <div className="fcb-day-load">
         <div className="text-sm font-semibold capitalize">{arg.text}</div>
-        <div className="fcb-day-load-bar">
-          <div className="fcb-day-load-fill" style={{ width: `${pct}%` }} />
-        </div>
-        <div className="fcb-day-load-label">{pct}%</div>
+        {isBlocked ? (
+          <div className="fcb-day-header-block">
+            <Icon name="Lock" size={9} />
+            Выходной
+          </div>
+        ) : (
+          <>
+            <div className="fcb-day-load-bar">
+              <div className="fcb-day-load-fill" style={{ width: `${pct}%` }} />
+            </div>
+            <div className="fcb-day-load-label">{pct}%</div>
+          </>
+        )}
       </div>
     );
   };
