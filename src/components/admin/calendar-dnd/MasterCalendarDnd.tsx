@@ -76,6 +76,7 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
   const [pendingResize, setPendingResize] = useState<{ event: EventDropArg["event"]; revert: () => void } | null>(null);
 
   const [viewTitle, setViewTitle] = useState<string>("");
+  const [currentView, setCurrentView] = useState<string>("timeGridWeek");
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
 
@@ -114,11 +115,11 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
   };
 
   // Загрузка
-  const loadData = useCallback(async (weekStart?: string) => {
+  const loadData = useCallback(async (dateFrom?: string, dateTo?: string) => {
     setLoading(true);
     try {
       const [wv, srv, st] = await Promise.all([
-        masterCalendarApi.getWeekView(masterId, weekStart),
+        masterCalendarApi.getWeekView(masterId, undefined, dateFrom, dateTo),
         masterCalendarApi.getServices(masterId).catch(() => []),
         masterCalendarApi.getSettings(masterId).catch(() => null),
       ]);
@@ -133,6 +134,17 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
       setLoading(false);
     }
   }, [masterId]);
+
+  // Перезагружаем данные при смене видимого диапазона FullCalendar
+  const handleDatesSet = useCallback((arg: { start: Date; end: Date; view: { type: string; title: string } }) => {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const endInclusive = new Date(arg.end);
+    endInclusive.setDate(endInclusive.getDate() - 1);
+    loadData(fmt(arg.start), fmt(endInclusive));
+    setViewTitle(arg.view.title);
+    setCurrentView(arg.view.type);
+  }, [loadData]);
 
   useEffect(() => {
     loadData();
@@ -630,9 +642,9 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
           <span className="text-base font-semibold capitalize ml-2">{viewTitle}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <Button size="sm" variant="outline" onClick={() => calRef.current?.getApi().changeView("timeGridDay")}>День</Button>
-          <Button size="sm" variant="outline" onClick={() => calRef.current?.getApi().changeView("timeGridWeek")}>Неделя</Button>
-          <Button size="sm" variant="outline" onClick={() => calRef.current?.getApi().changeView("dayGridMonth")}>Месяц</Button>
+          <Button size="sm" variant={currentView === "timeGridDay" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("timeGridDay")}>День</Button>
+          <Button size="sm" variant={currentView === "timeGridWeek" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("timeGridWeek")}>Неделя</Button>
+          <Button size="sm" variant={currentView === "dayGridMonth" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("dayGridMonth")}>Месяц</Button>
           <Button size="sm" variant="outline" className="gap-1.5 text-red-600 hover:text-red-700" onClick={() => setClearOpen(true)}>
             <Icon name="Trash2" size={14} />
             Очистить
@@ -669,6 +681,10 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
         slotMaxTime="23:00:00"
         height="auto"
         events={fcEvents}
+        dayCellClassNames={(arg) => {
+          const key = dateKey(arg.date);
+          return blockedDates.has(key) ? ["fcb-day-cell-blocked"] : [];
+        }}
         selectAllow={(sel) => {
           // В all-day разрешаем любой диапазон дней. В часовом — ограничиваем 1 днём и 8 часами.
           if (sel.allDay) return true;
@@ -681,7 +697,7 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
         eventDrop={handleEventDrop}
         eventResize={handleEventResize}
         dayHeaderContent={dayHeaderContent}
-        datesSet={updateTitle}
+        datesSet={handleDatesSet}
         eventDidMount={(info) => {
           // Добавляем буфер-полосу под бронями
           const buffer = (info.event.extendedProps as FcbEvent["extendedProps"]).buffer || 0;

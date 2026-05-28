@@ -233,3 +233,29 @@
   color: #ef4444;
   opacity: 0.9;
 }
+
+/* Ячейка заблокированного дня (работает и в month, и в week/day) */
+.fc-dnd .fcb-day-cell-blocked {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(239, 68, 68, 0.18),
+    rgba(239, 68, 68, 0.18) 8px,
+    rgba(239, 68, 68, 0.06) 8px,
+    rgba(239, 68, 68, 0.06) 16px
+  ) !important;
+  position: relative;
+}
+.fc-dnd .fcb-day-cell-blocked::after {
+  content: "🔒";
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 11px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+/* В месячном виде число дня делаем красным */
+.fc-dnd .fc-dayGridMonth-view .fcb-day-cell-blocked .fc-daygrid-day-number {
+  color: #ef4444 !important;
+  font-weight: 600;
+}

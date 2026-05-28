@@ -651,14 +651,19 @@ def handle_week_view(event, method, params, schema, headers):
 
     master_id = params.get('master_id', '1')
     week_start = params.get('week_start')
+    date_from = params.get('date_from')
+    date_to = params.get('date_to')
 
-    if week_start:
+    if date_from and date_to:
+        start_d = datetime.strptime(date_from, '%Y-%m-%d').date()
+        end_d = datetime.strptime(date_to, '%Y-%m-%d').date()
+    elif week_start:
         start_d = datetime.strptime(week_start, '%Y-%m-%d').date()
+        end_d = start_d + timedelta(days=6)
     else:
         today = date.today()
         start_d = today - timedelta(days=today.weekday())
-
-    end_d = start_d + timedelta(days=6)
+        end_d = start_d + timedelta(days=6)
 
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)

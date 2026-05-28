@@ -139,9 +139,13 @@ async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export const masterCalendarApi = {
-  getWeekView: (masterId: number, weekStart?: string) => {
+  getWeekView: (masterId: number, weekStart?: string, dateFrom?: string, dateTo?: string) => {
     let url = `${CALENDAR_URL}&sub=week-view&master_id=${masterId}`;
-    if (weekStart) url += `&week_start=${weekStart}`;
+    if (dateFrom && dateTo) {
+      url += `&date_from=${dateFrom}&date_to=${dateTo}`;
+    } else if (weekStart) {
+      url += `&week_start=${weekStart}`;
+    }
     return fetchApi<WeekViewData>(url);
   },
 
