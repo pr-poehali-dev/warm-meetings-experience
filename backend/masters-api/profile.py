@@ -308,7 +308,7 @@ def handle_profile(event, method, params, schema, headers):
         conn = get_conn()
         cur = conn.cursor()
         cur.execute(
-            f"SELECT * FROM {schema}.masters WHERE slug = %s AND is_active = true AND hidden_by_owner = false",
+            f"SELECT * FROM {schema}.masters WHERE slug = %s AND is_active = true AND hidden_by_owner = false AND is_verified = true",
             [params['slug']],
         )
         row = cur.fetchone()
@@ -349,8 +349,9 @@ def handle_profile(event, method, params, schema, headers):
         cur = conn.cursor()
 
         # is_active — управляется админом, hidden_by_owner — самим мастером.
-        # Из публичного каталога убираем оба варианта скрытия.
-        where = ['m.is_active = true', 'm.hidden_by_owner = false']
+        # is_verified — обязательное условие для публикации в каталоге:
+        # неверифицированные профили не показываются клиентам, даже если is_active=true.
+        where = ['m.is_active = true', 'm.hidden_by_owner = false', 'm.is_verified = true']
         args = []
 
         city = params.get('city')
