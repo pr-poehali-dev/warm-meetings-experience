@@ -473,7 +473,7 @@ def handle_bookings(event, method, params, schema, headers):
             return err_resp
 
         # Лочим мастера на время транзакции — защита от гонок.
-        acquire_master_lock(cur, master_id)
+        acquire_master_lock(cur, master_id, schema)
 
         # Единая валидация: выходные дни, буфер, пересечения, заблокированные слоты,
         # и опционально — попадание в рабочий слот (если нет slot_id).
@@ -579,7 +579,7 @@ def handle_bookings(event, method, params, schema, headers):
                 conn.close()
                 return err_resp
 
-            acquire_master_lock(cur, master_id)
+            acquire_master_lock(cur, master_id, schema)
 
             problem = validate_booking_create(
                 cur, schema, master_id, new_start, new_end,
@@ -884,7 +884,7 @@ def handle_public_book(event, method, params, schema, headers):
         }, ensure_ascii=False)}
 
     # Лочим мастера целиком — никто не сможет создать пересекающуюся бронь параллельно.
-    acquire_master_lock(cur, pre['master_id'])
+    acquire_master_lock(cur, pre['master_id'], schema)
 
     # Теперь лочим сам слот.
     cur.execute(f"""

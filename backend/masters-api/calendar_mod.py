@@ -190,7 +190,7 @@ def handle_slots(event, method, params, schema, headers):
         # Если меняется время — валидируем как новую бронь:
         # выходные, пересечения, blocked-слоты, буфер (если внутри есть активная бронь).
         if new_start or new_end:
-            acquire_master_lock(cur, master_id)
+            acquire_master_lock(cur, master_id, schema)
             check_s = new_start or current['datetime_start']
             check_e = new_end or current['datetime_end']
 

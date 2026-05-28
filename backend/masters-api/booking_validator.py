@@ -176,12 +176,20 @@ def _parse_dt(value):
         return None
 
 
-def acquire_master_lock(cur, master_id):
-    """Advisory lock на мастера — снимется на commit/rollback.
-    Гарантирует, что внутри одной транзакции никакой другой
-    конкурентный запрос не сможет создать пересекающиеся брони.
+def acquire_master_lock(cur, master_id, schema=None):
+    """Эксклюзивный lock на мастера в рамках транзакции.
+
+    Раньше использовался pg_advisory_xact_lock, но эта функция запрещена
+    хостинг-провайдером. Заменили на row-level lock через SELECT ... FOR UPDATE
+    по строке мастера в таблице masters. Lock держится до commit/rollback,
+    блокирует параллельные транзакции, которые пытаются взять lock на ту же
+    строку — это даёт ту же гарантию защиты от гонок.
+
+    schema опциональна — если не задана, используем search_path по умолчанию.
     """
-    cur.execute(f"SELECT pg_advisory_xact_lock({int(master_id)})")
+    target = f"{schema}.masters" if schema else "masters"
+    cur.execute(f"SELECT id FROM {target} WHERE id = {int(master_id)} FOR UPDATE")
+    cur.fetchone()
 
 
 def recalc_slot_status(cur, schema, slot_id):
