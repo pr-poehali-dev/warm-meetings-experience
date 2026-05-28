@@ -222,7 +222,7 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                     setSelectedServiceId(active ? null : s.id!);
                   }
                 }}
-                className={`group relative text-left p-4 rounded-2xl transition-all overflow-hidden cursor-pointer ${
+                className={`group relative text-left p-4 rounded-2xl transition-all overflow-hidden cursor-pointer touch-manipulation active:scale-[0.99] ${
                   active
                     ? "border-[1.5px] border-primary shadow-[0_4px_18px_rgba(200,131,74,0.18)] bg-gradient-to-br from-primary/15 to-nature-sage/10"
                     : "border border-border bg-background hover:border-primary/40 hover:shadow-sm"
@@ -273,7 +273,7 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                       e.stopPropagation();
                       setAboutServiceId(s.id!);
                     }}
-                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+                    className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors min-h-[40px] -mx-1 px-1 touch-manipulation"
                   >
                     <Icon name="Info" size={13} />
                     Подробнее о процедуре
@@ -476,17 +476,27 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
             </div>
           ) : (
             <>
-              <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1" style={{ scrollbarWidth: "thin" }}>
+              <div
+                className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory"
+                style={{
+                  scrollbarWidth: "thin",
+                  WebkitOverflowScrolling: "touch",
+                  scrollPadding: "0 16px",
+                }}
+              >
                 {days.map((d) => {
                   const has = (optionsByDay[dayKey(d)] ?? []).length > 0;
                   const isSelected = selectedDate && dayKey(d) === dayKey(selectedDate);
+                  const slotsCount = (optionsByDay[dayKey(d)] ?? []).length;
                   return (
                     <button
                       key={dayKey(d)}
+                      ref={isSelected ? (el) => el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }) : undefined}
                       type="button"
                       disabled={!has}
                       onClick={() => setSelectedDate(d)}
-                      className="flex-shrink-0 flex flex-col items-center px-3 py-2.5 rounded-xl text-xs font-medium transition-all min-w-[58px]"
+                      aria-label={`${format(d, "d MMMM", { locale: ru })}${has ? `, ${slotsCount} свободных слотов` : ', нет свободного времени'}`}
+                      className="snap-start flex-shrink-0 flex flex-col items-center justify-center px-3 py-3 rounded-xl text-xs font-medium transition-all min-w-[64px] min-h-[72px] touch-manipulation active:scale-95"
                       style={{
                         background: isSelected
                           ? "linear-gradient(135deg, var(--c-terra), var(--c-sage))"
@@ -507,8 +517,21 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                       <span className="text-[10px] uppercase opacity-70 text-[#000000]">
                         {format(d, "EEE", { locale: ru })}
                       </span>
-                      <span className="text-base font-bold leading-tight text-orange-500">{format(d, "d")}</span>
+                      <span className="text-lg font-bold leading-tight text-orange-500">{format(d, "d")}</span>
                       <span className="text-[10px] opacity-60 text-[#000000]">{format(d, "MMM", { locale: ru })}</span>
+                      {has && (
+                        <span
+                          className="mt-1 inline-flex items-center justify-center text-[9px] font-bold leading-none rounded-full px-1.5 py-0.5"
+                          style={{
+                            background: isSelected ? "rgba(255,255,255,0.25)" : "var(--c-terra, #c8834a)",
+                            color: "#fff",
+                            minWidth: 16,
+                          }}
+                          aria-hidden="true"
+                        >
+                          {slotsCount}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -527,13 +550,13 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                     Нет свободного времени на эту дату
                   </div>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:flex md:flex-wrap gap-2">
                     {optionsForDay.map((opt, i) => (
-                      <button className="min-h-[44px] px-5 py-2 rounded-xl transition-all text-sm font-semibold hover:-translate-y-0.5 text-orange-600"
+                      <button
                         key={`${opt.slot.id}-${i}`}
                         type="button"
                         onClick={() => onBookSlot(opt, selectedService)}
-                        className="min-h-[44px] px-5 py-2 rounded-xl transition-all text-sm font-semibold hover:-translate-y-0.5"
+                        className="min-h-[48px] px-3 py-2 rounded-xl transition-all text-base font-semibold active:scale-95 md:hover:-translate-y-0.5 touch-manipulation"
                         style={{
                           background: "var(--card-idle)",
                           border: "1px solid var(--card-border)",

@@ -121,11 +121,24 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-background rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-md p-6 max-h-[90vh] overflow-y-auto">
+      <div
+        className="relative bg-background rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-y-auto p-5 sm:p-6"
+        style={{
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 20px)',
+        }}
+      >
+        {/* swipe-handle на мобильных */}
+        <div className="sm:hidden flex justify-center -mt-2 mb-2">
+          <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+        </div>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-bold">Запись к мастеру</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted transition-colors">
-            <Icon name="X" size={20} />
+          <button
+            onClick={onClose}
+            aria-label="Закрыть"
+            className="w-10 h-10 -mr-2 inline-flex items-center justify-center rounded-xl hover:bg-muted transition-colors"
+          >
+            <Icon name="X" size={22} />
           </button>
         </div>
 
@@ -151,45 +164,51 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="text-sm font-medium block mb-1">Ваше имя *</label>
+            <label className="text-sm font-medium block mb-1.5">Ваше имя *</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Иван Иванов"
               required
-              className="w-full px-3 py-2.5 rounded-xl border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/30 transition"
+              autoComplete="name"
+              inputMode="text"
+              className="w-full px-4 py-3 min-h-[48px] rounded-xl border bg-background text-base outline-none focus:ring-2 focus:ring-primary/30 transition"
             />
           </div>
           <div>
-            <label className="text-sm font-medium block mb-1">Телефон *</label>
+            <label className="text-sm font-medium block mb-1.5">Телефон *</label>
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(formatPhone(e.target.value))}
               placeholder="+7(___) ___-__-__"
               required
-              className="w-full px-3 py-2.5 rounded-xl border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/30 transition"
+              autoComplete="tel"
+              inputMode="tel"
+              className="w-full px-4 py-3 min-h-[48px] rounded-xl border bg-background text-base outline-none focus:ring-2 focus:ring-primary/30 transition"
             />
           </div>
           <div>
-            <label className="text-sm font-medium block mb-1">Email</label>
+            <label className="text-sm font-medium block mb-1.5">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
-              className="w-full px-3 py-2.5 rounded-xl border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/30 transition"
+              autoComplete="email"
+              inputMode="email"
+              className="w-full px-4 py-3 min-h-[48px] rounded-xl border bg-background text-base outline-none focus:ring-2 focus:ring-primary/30 transition"
             />
           </div>
           <div>
-            <label className="text-sm font-medium block mb-1">Комментарий</label>
+            <label className="text-sm font-medium block mb-1.5">Комментарий</label>
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Пожелания, вопросы..."
               rows={2}
-              className="w-full px-3 py-2.5 rounded-xl border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/30 transition resize-none"
+              className="w-full px-4 py-3 rounded-xl border bg-background text-base outline-none focus:ring-2 focus:ring-primary/30 transition resize-none"
             />
           </div>
           {hasContraindications && (
@@ -208,12 +227,12 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
                   </li>
                 ))}
               </ul>
-              <label className="flex items-start gap-2 cursor-pointer select-none">
+              <label className="flex items-start gap-3 cursor-pointer select-none -m-1 p-1 rounded-lg active:bg-amber-500/10 touch-manipulation">
                 <input
                   type="checkbox"
                   checked={contraAccepted}
                   onChange={(e) => setContraAccepted(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded border-amber-500/60 text-amber-600 focus:ring-amber-500/40 cursor-pointer shrink-0"
+                  className="mt-0.5 w-5 h-5 rounded border-amber-500/60 text-amber-600 focus:ring-amber-500/40 cursor-pointer shrink-0"
                 />
                 <span className="text-xs text-foreground/90 leading-snug">
                   Я ознакомлен(а) с противопоказаниями и подтверждаю, что они ко мне не относятся. Обязуюсь предупредить мастера о хронических заболеваниях.
@@ -227,11 +246,11 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
           <button
             type="submit"
             disabled={loading || !name.trim() || !isPhoneComplete(phone) || (hasContraindications && !contraAccepted)}
-            className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold text-sm hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-primary text-primary-foreground min-h-[52px] py-3 rounded-xl font-semibold text-base hover:bg-primary/90 active:scale-[0.99] transition disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
-                <Icon name="Loader2" size={16} className="animate-spin" />
+                <Icon name="Loader2" size={18} className="animate-spin" />
                 Отправляем...
               </span>
             ) : (
@@ -771,12 +790,15 @@ export default function MasterDetail() {
 
       {/* Плавающая кнопка «Записаться» на мобильных */}
       {services.length > 0 && (
-        <div className="lg:hidden fixed bottom-6 left-0 right-0 flex justify-center z-40 pointer-events-none px-4">
+        <div
+          className="lg:hidden fixed left-0 right-0 flex justify-center z-40 pointer-events-none px-4"
+          style={{ bottom: 'max(env(safe-area-inset-bottom, 16px), 16px)' }}
+        >
           <button
             onClick={scrollToBooking}
-            className="pointer-events-auto flex items-center gap-2 bg-primary text-primary-foreground px-8 py-3.5 rounded-2xl text-sm font-semibold shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all active:scale-95"
+            className="pointer-events-auto flex items-center gap-2 bg-primary text-primary-foreground px-8 min-h-[52px] py-3.5 rounded-2xl text-base font-semibold shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all active:scale-95 touch-manipulation"
           >
-            <Icon name="CalendarCheck" size={18} />
+            <Icon name="CalendarCheck" size={20} />
             Записаться
           </button>
         </div>
