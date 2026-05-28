@@ -4,7 +4,8 @@ import psycopg2.extras
 from datetime import datetime
 from shared import CORS_HEADERS, get_conn, get_schema, send_email, tg_send, admin_email
 from booking_validator import (
-    acquire_master_lock, validate_booking_create, get_buffer_minutes, require_master_id,
+    acquire_master_lock, validate_booking_create, get_buffer_minutes,
+    require_master_id, recalc_slot_status,
 )
 
 
@@ -419,16 +420,8 @@ def handle_bookings(event, method, params, schema, headers):
         booking = cur.fetchone()
 
         if slot_id:
-            cur.execute(f"""
-                UPDATE {schema}.master_slots SET
-                    booked_count = booked_count + 1,
-                    status = CASE
-                        WHEN booked_count + 1 >= max_clients THEN 'booked'
-                        ELSE '{('confirmed' if auto_confirm else 'pending')}'
-                    END,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = {int(slot_id)}
-            """)
+            # Пересчитываем статус слота по фактическому числу активных броней.
+            recalc_slot_status(cur, schema, slot_id)
 
         conn.commit()
 
@@ -525,36 +518,34 @@ def handle_bookings(event, method, params, schema, headers):
                     status = 'confirmed', confirmed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
                 WHERE id = {int(booking_id)} RETURNING *
             """)
-        elif action == 'cancel':
+        elif action in ('cancel', 'complete', 'no_show'):
+            # Все три статуса завершают активную фазу брони: место в слоте освобождается.
             reason = (body.get('cancel_reason') or '').replace("'", "''")
-            cur.execute(f"""
-                UPDATE {schema}.master_bookings SET
-                    status = 'canceled', canceled_at = CURRENT_TIMESTAMP,
-                    cancel_reason = '{reason}', updated_at = CURRENT_TIMESTAMP
-                WHERE id = {int(booking_id)} RETURNING slot_id
-            """)
-            row = cur.fetchone()
-            if row and row.get('slot_id'):
+            if action == 'cancel':
                 cur.execute(f"""
-                    UPDATE {schema}.master_slots SET
-                        booked_count = GREATEST(booked_count - 1, 0),
-                        status = 'available',
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE id = {int(row['slot_id'])}
+                    UPDATE {schema}.master_bookings SET
+                        status = 'canceled', canceled_at = CURRENT_TIMESTAMP,
+                        cancel_reason = '{reason}', updated_at = CURRENT_TIMESTAMP
+                    WHERE id = {int(booking_id)} RETURNING slot_id
                 """)
+            elif action == 'complete':
+                cur.execute(f"""
+                    UPDATE {schema}.master_bookings SET
+                        status = 'completed', completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = {int(booking_id)} RETURNING slot_id
+                """)
+            else:  # no_show
+                cur.execute(f"""
+                    UPDATE {schema}.master_bookings SET
+                        status = 'no_show', updated_at = CURRENT_TIMESTAMP
+                    WHERE id = {int(booking_id)} RETURNING slot_id
+                """)
+            slot_row = cur.fetchone()
+            # Пересчитываем статус слота по фактическому числу активных броней
+            # (учитывает многоместные слоты — освобождаем только когда никого не осталось).
+            if slot_row and slot_row.get('slot_id'):
+                recalc_slot_status(cur, schema, slot_row['slot_id'])
             cur.execute(f"SELECT * FROM {schema}.master_bookings WHERE id = {int(booking_id)}")
-        elif action == 'complete':
-            cur.execute(f"""
-                UPDATE {schema}.master_bookings SET
-                    status = 'completed', completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                WHERE id = {int(booking_id)} RETURNING *
-            """)
-        elif action == 'no_show':
-            cur.execute(f"""
-                UPDATE {schema}.master_bookings SET
-                    status = 'no_show', updated_at = CURRENT_TIMESTAMP
-                WHERE id = {int(booking_id)} RETURNING *
-            """)
         else:
             updates = []
             if 'client_name' in body:
@@ -789,19 +780,9 @@ def handle_public_book(event, method, params, schema, headers):
     """)
     booking = cur.fetchone()
 
-    # Обновляем счётчик в слоте, но НЕ режем его — само окно остаётся
-    new_slot_status = slot['status']
-    if slot['max_clients'] <= 1 and (dt_start_naive == (slot['datetime_start'].replace(tzinfo=None) if hasattr(slot['datetime_start'], 'tzinfo') and slot['datetime_start'].tzinfo else slot['datetime_start']) and dt_end_naive == (slot['datetime_end'].replace(tzinfo=None) if hasattr(slot['datetime_end'], 'tzinfo') and slot['datetime_end'].tzinfo else slot['datetime_end'])):
-        # Бронь занимает весь интервал — помечаем как booked для индикации
-        new_slot_status = 'booked'
-
-    cur.execute(f"""
-        UPDATE {schema}.master_slots SET
-            booked_count = booked_count + 1,
-            status = '{new_slot_status}',
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = {int(slot_id)}
-    """)
+    # Пересчитываем статус слота по фактическому числу активных броней.
+    # Helper сам решит: 'booked' если все места заняты, иначе 'available'.
+    recalc_slot_status(cur, schema, slot_id)
 
     conn.commit()
 

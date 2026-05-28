@@ -66,6 +66,43 @@ def acquire_master_lock(cur, master_id):
     cur.execute(f"SELECT pg_advisory_xact_lock({int(master_id)})")
 
 
+def recalc_slot_status(cur, schema, slot_id):
+    """Пересчитывает статус и booked_count слота по реально активным броням.
+
+    Активные = pending/confirmed. Завершённые/отменённые/no_show освобождают место.
+    Если active_count >= max_clients → 'booked'.
+    Иначе если slot.status='booked' → 'available' (освобождаем).
+    Slot со status='blocked'/'event' (ручная блокировка/перерыв) НЕ трогаем —
+    у них своя семантика, бронь на них не должна была попасть.
+    """
+    cur.execute(f"""
+        SELECT id, status, max_clients
+        FROM {schema}.master_slots WHERE id = {int(slot_id)}
+    """)
+    s = cur.fetchone()
+    if not s:
+        return
+    if s.get('status') in ('blocked', 'event'):
+        return
+
+    cur.execute(f"""
+        SELECT COUNT(*) AS cnt FROM {schema}.master_bookings
+        WHERE slot_id = {int(slot_id)} AND status IN ('pending', 'confirmed')
+    """)
+    cnt_row = cur.fetchone()
+    active = int(cnt_row.get('cnt') or 0) if cnt_row else 0
+    max_c = int(s.get('max_clients') or 1)
+    new_status = 'booked' if active >= max_c else 'available'
+
+    cur.execute(f"""
+        UPDATE {schema}.master_slots
+        SET booked_count = {active},
+            status = '{new_status}',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = {int(slot_id)}
+    """)
+
+
 def get_buffer_minutes(cur, schema, master_id):
     """Возвращает буфер между сеансами из настроек мастера."""
     cur.execute(f"""
