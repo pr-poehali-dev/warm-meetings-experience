@@ -582,6 +582,17 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
     }
   };
 
+  const handleDeleteBlock = async (blockId: number) => {
+    try {
+      await masterCalendarApi.deleteBlock(blockId, masterId);
+      toast.success("Выходной отменён");
+      handleQuickClose();
+      loadData();
+    } catch (e) {
+      toast.error("Не удалось: " + String(e));
+    }
+  };
+
   // Заголовок периода
   useEffect(() => {
     const api = calRef.current?.getApi();
@@ -756,6 +767,7 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
           onClose={handleQuickClose}
           onCancelBooking={handleCancelBooking}
           onDeleteSlot={handleDeleteSlot}
+          onDeleteBlock={handleDeleteBlock}
         />
       )}
 

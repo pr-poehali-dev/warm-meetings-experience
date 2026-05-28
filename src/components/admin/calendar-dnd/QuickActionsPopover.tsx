@@ -19,6 +19,7 @@ interface Props {
   onClose: () => void;
   onCancelBooking: (bookingId: number) => void;
   onDeleteSlot: (slotId: number) => void;
+  onDeleteBlock?: (blockId: number) => void;
 }
 
 const fmtRange = (s: Date, e: Date) =>
@@ -38,7 +39,7 @@ function useIsMobile() {
   return m;
 }
 
-export default function QuickActionsPopover({ event, anchor, onClose, onCancelBooking, onDeleteSlot }: Props) {
+export default function QuickActionsPopover({ event, anchor, onClose, onCancelBooking, onDeleteSlot, onDeleteBlock }: Props) {
   const isMobile = useIsMobile();
   const booking = event.kind === "booking" ? (event.raw as MasterBooking | undefined) : undefined;
 
@@ -57,9 +58,17 @@ export default function QuickActionsPopover({ event, anchor, onClose, onCancelBo
   const handleCancel = () => {
     if (event.kind === "booking" && booking?.id) {
       onCancelBooking(booking.id);
-    } else {
-      // slot
-      const sid = Number(event.id.replace(/^s-/, ""));
+      return;
+    }
+    // Выходной целого дня (master_day_blocks) — id вида "blk-{id}"
+    if (event.id.startsWith("blk-")) {
+      const bid = Number(event.id.slice(4));
+      if (!Number.isNaN(bid) && onDeleteBlock) onDeleteBlock(bid);
+      return;
+    }
+    // Слот (blocked / event = перерыв) — id вида "s-{id}"
+    if (event.id.startsWith("s-")) {
+      const sid = Number(event.id.slice(2));
       if (!Number.isNaN(sid)) onDeleteSlot(sid);
     }
   };
@@ -87,10 +96,12 @@ export default function QuickActionsPopover({ event, anchor, onClose, onCancelBo
             Написать
           </Button>
         )}
-        <Button size="sm" variant="outline" className="justify-start gap-2" onClick={onClose}>
-          <Icon name="Move" size={14} />
-          Перенести <span className="text-xs text-muted-foreground ml-auto">перетащите блок</span>
-        </Button>
+        {!event.id.startsWith("blk-") && (
+          <Button size="sm" variant="outline" className="justify-start gap-2" onClick={onClose}>
+            <Icon name="Move" size={14} />
+            Перенести <span className="text-xs text-muted-foreground ml-auto">перетащите блок</span>
+          </Button>
+        )}
         <Button size="sm" variant="destructive" className="justify-start gap-2" onClick={handleCancel}>
           <Icon name="X" size={14} />
           {event.kind === "booking" ? "Отменить запись" : "Удалить"}
