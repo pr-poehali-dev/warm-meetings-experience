@@ -32,7 +32,7 @@ const fmtDay = (d: Date) =>
   d.toLocaleDateString("ru-RU", { weekday: "short", day: "2-digit", month: "long" });
 
 export default function EventForm({ start, end, allDay, services, onCancel, onCreate }: Props) {
-  const [step, setStep] = useState<"choose" | "form">("choose");
+  const [step, setStep] = useState<"choose" | "form">(allDay ? "form" : "choose");
   const [mode, setMode] = useState<CreateMode>(allDay ? "block" : "booking");
 
   // Поля формы
@@ -43,12 +43,13 @@ export default function EventForm({ start, end, allDay, services, onCancel, onCr
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setStep("choose");
+    setStep(allDay ? "form" : "choose");
+    setMode(allDay ? "block" : "booking");
     setClientName("");
     setClientPhone("");
     setServiceId("");
     setComment("");
-  }, [start, end]);
+  }, [start, end, allDay]);
 
   const pick = (m: CreateMode) => {
     setMode(m);
