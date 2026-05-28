@@ -532,14 +532,25 @@ def handle_templates(event, method, params, schema, headers):
 
 
 def handle_apply_template(event, method, params, schema, headers):
+    """Применение шаблона расписания на N недель вперёд.
+
+    Поддерживает 3 режима:
+    - dry_run=true → ничего не пишет, возвращает план (created/conflicts/blocked_dates).
+    - force=true → удаляет существующие слоты в диапазоне (с предупреждением, если там есть активные брони).
+    - default → пропускает дни с конфликтами, создаёт остальное.
+    """
     if method != 'POST':
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'POST only'})}
 
     body = json.loads(event.get('body', '{}'))
     template_id = body['template_id']
-    master_id = body.get('master_id', 1)
+    master_id = body.get('master_id')
+    if not master_id:
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'master_id обязателен'})}
     weeks = int(body.get('weeks', 4))
     start_date_str = body.get('start_date')
+    dry_run = bool(body.get('dry_run', False))
+    force = bool(body.get('force', False))
 
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -561,21 +572,55 @@ def handle_apply_template(event, method, params, schema, headers):
         start_d = date.today() + timedelta(days=1)
 
     end_d = start_d + timedelta(weeks=weeks)
-    created_count = 0
-    skipped_count = 0
 
+    # 1. Все выходные дни в диапазоне
     cur.execute(f"""
         SELECT block_date FROM {schema}.master_day_blocks
         WHERE master_id = {int(master_id)}
+          AND COALESCE(reason, '') <> 'removed'
           AND block_date >= '{start_d}' AND block_date <= '{end_d}'
     """)
     blocked_dates = set(row['block_date'] for row in cur.fetchall())
 
+    # 2. Активные брони в диапазоне (нужны для предупреждения при force)
+    cur.execute(f"""
+        SELECT id, datetime_start, datetime_end, client_name, status
+        FROM {schema}.master_bookings
+        WHERE master_id = {int(master_id)}
+          AND status IN ('pending', 'confirmed')
+          AND datetime_start >= '{start_d}'
+          AND datetime_start <= '{end_d}'
+        ORDER BY datetime_start
+    """)
+    active_bookings = cur.fetchall()
+
+    # При force с реальными бронями требуем явное подтверждение через override_bookings=true.
+    override_bookings = bool(body.get('override_bookings', False))
+    if force and active_bookings and not override_bookings and not dry_run:
+        conn.close()
+        return {
+            'statusCode': 409, 'headers': headers,
+            'body': json.dumps({
+                'error': 'has_active_bookings',
+                'message': f'В диапазоне есть {len(active_bookings)} активных записей. '
+                           f'Передайте override_bookings=true, чтобы пересоздать слоты (брони будут отменены).',
+                'conflicts': [
+                    {'id': b['id'], 'datetime_start': str(b['datetime_start']),
+                     'client_name': b.get('client_name'), 'status': b['status']}
+                    for b in active_bookings
+                ],
+            }, default=str, ensure_ascii=False),
+        }
+
+    created_slots = []
+    conflicts = []
+    skipped_blocked = []
     current_d = start_d
     while current_d <= end_d:
         dow = current_d.weekday()
 
         if current_d in blocked_dates:
+            skipped_blocked.append(str(current_d))
             current_d += timedelta(days=1)
             continue
 
@@ -594,15 +639,36 @@ def handle_apply_template(event, method, params, schema, headers):
             dt_end = datetime.combine(current_d, t_end).strftime('%Y-%m-%dT%H:%M:00+03:00')
 
             cur.execute(f"""
-                SELECT id FROM {schema}.master_slots
+                SELECT id, status FROM {schema}.master_slots
                 WHERE master_id = {int(master_id)}
-                  AND status != 'blocked'
                   AND datetime_start < '{dt_end}'
                   AND datetime_end > '{dt_start}'
                 LIMIT 1
             """)
-            if cur.fetchone():
-                skipped_count += 1
+            existing = cur.fetchone()
+            if existing:
+                conflicts.append({
+                    'slot_id': existing['id'], 'status': existing['status'],
+                    'datetime_start': dt_start, 'datetime_end': dt_end,
+                })
+                if not force:
+                    continue
+                # force=true и override_bookings (если нужно): удаляем существующий
+                if not dry_run:
+                    # Отменяем все активные брони привязанные к этому слоту
+                    cur.execute(f"""
+                        UPDATE {schema}.master_bookings
+                        SET status = 'canceled',
+                            canceled_at = CURRENT_TIMESTAMP,
+                            cancel_reason = 'Шаблон расписания заменил слот',
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE slot_id = {int(existing['id'])}
+                          AND status IN ('pending', 'confirmed')
+                    """)
+                    cur.execute(f"DELETE FROM {schema}.master_slots WHERE id = {int(existing['id'])}")
+
+            if dry_run:
+                created_slots.append({'datetime_start': dt_start, 'datetime_end': dt_end})
                 continue
 
             svc_val = f"{int(rule['service_id'])}" if rule['service_id'] else "NULL"
@@ -612,12 +678,17 @@ def handle_apply_template(event, method, params, schema, headers):
                 INSERT INTO {schema}.master_slots
                 (master_id, service_id, datetime_start, datetime_end, max_clients, status, source)
                 VALUES ({int(master_id)}, {svc_val}, '{dt_start}', '{dt_end}', {max_cl}, 'available', 'template')
+                RETURNING id
             """)
-            created_count += 1
+            row = cur.fetchone()
+            created_slots.append({'slot_id': row['id'], 'datetime_start': dt_start, 'datetime_end': dt_end})
 
         current_d += timedelta(days=1)
 
-    conn.commit()
+    if dry_run:
+        conn.rollback()
+    else:
+        conn.commit()
     conn.close()
 
     return {
@@ -625,8 +696,12 @@ def handle_apply_template(event, method, params, schema, headers):
         'headers': headers,
         'body': json.dumps({
             'success': True,
-            'created': created_count,
-            'skipped': skipped_count,
+            'dry_run': dry_run,
+            'created': len(created_slots),
+            'skipped': len(conflicts) if not force else 0,
+            'conflicts': conflicts,
+            'blocked_dates': skipped_blocked,
+            'overridden_bookings': len(active_bookings) if (force and override_bookings and not dry_run) else 0,
             'period': f"{start_d} - {end_d}"
         })
     }
