@@ -5,7 +5,7 @@ from datetime import datetime
 from shared import CORS_HEADERS, get_conn, get_schema, send_email, tg_send, admin_email
 from booking_validator import (
     acquire_master_lock, validate_booking_create, get_buffer_minutes,
-    require_master_id, recalc_slot_status,
+    require_master_id, recalc_slot_status, ensure_master_access,
 )
 
 
@@ -139,10 +139,14 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
 
         status_human = 'подтверждена автоматически' if status == 'confirmed' else 'ожидает подтверждения'
 
+        # Тип события: новая бронь или перенос (меняет заголовки уведомлений)
+        is_reschedule = booking.get('_event') == 'reschedule'
+        subject_prefix = 'Перенос записи' if is_reschedule else 'Новая запись'
+
         # === Email ===
         if m.get('notify_email') and m.get('email'):
             if os.environ.get('UNISENDER_API_KEY') and os.environ.get('UNISENDER_SENDER_EMAIL'):
-                subject = f'Новая запись: {client_name} на {dt_human}'
+                subject = f'{subject_prefix}: {client_name} на {dt_human}'
 
                 # Блок согласия с противопоказаниями
                 contra_block = ''
@@ -378,14 +382,21 @@ def handle_bookings(event, method, params, schema, headers):
         source = body.get('source', 'admin')
         force = bool(body.get('force', False))
 
+        # Проверяем, что админ имеет право создавать бронь у этого мастера.
+        ok, err_resp = ensure_master_access(cur, schema, event, master_id, headers)
+        if not ok:
+            conn.close()
+            return err_resp
+
         # Лочим мастера на время транзакции — защита от гонок.
         acquire_master_lock(cur, master_id)
 
-        # Единая валидация: выходные дни, буфер, пересечения, заблокированные слоты.
-        # ignore_buffer=True если админ явно подтвердил force (например, ставит впритык).
+        # Единая валидация: выходные дни, буфер, пересечения, заблокированные слоты,
+        # и опционально — попадание в рабочий слот (если нет slot_id).
         problem = validate_booking_create(
             cur, schema, master_id, dt_start, dt_end,
             ignore_buffer=force,
+            require_within_slot=(not slot_id),
         )
         if problem:
             conn.close()
@@ -477,6 +488,13 @@ def handle_bookings(event, method, params, schema, headers):
                 })}
 
             master_id = curr_b['master_id']
+
+            # Проверяем доступ — кто может переносить бронь у этого мастера.
+            ok, err_resp = ensure_master_access(cur, schema, event, master_id, headers)
+            if not ok:
+                conn.close()
+                return err_resp
+
             acquire_master_lock(cur, master_id)
 
             problem = validate_booking_create(
@@ -509,6 +527,22 @@ def handle_bookings(event, method, params, schema, headers):
                 """)
 
             conn.commit()
+
+            # Уведомление мастеру о переносе записи.
+            try:
+                svc_name = ''
+                if row.get('service_id'):
+                    cur.execute(f"SELECT name FROM {schema}.master_services WHERE id = {int(row['service_id'])}")
+                    _svc = cur.fetchone()
+                    if _svc:
+                        svc_name = _svc.get('name') or ''
+                notify_payload = dict(row)
+                # Маркер для шаблона письма — это перенос, а не новая запись
+                notify_payload['_event'] = 'reschedule'
+                _notify_master_about_booking(cur, schema, master_id, notify_payload, svc_name)
+            except Exception:
+                pass
+
             conn.close()
             return {'statusCode': 200, 'headers': headers, 'body': json.dumps(row, default=str)}
 
@@ -712,21 +746,39 @@ def handle_public_book(event, method, params, schema, headers):
         booking_service_name = svc['name']
         booking_price = float(svc['price'] or 0)
 
-        if desired_start and desired_end:
-            try:
-                ds = datetime.fromisoformat(str(desired_start).replace('Z', ''))
-                de = datetime.fromisoformat(str(desired_end).replace('Z', ''))
-                slot_s = slot['datetime_start']
-                slot_e = slot['datetime_end']
-                slot_s_naive = slot_s.replace(tzinfo=None) if hasattr(slot_s, 'tzinfo') and slot_s.tzinfo else slot_s
-                slot_e_naive = slot_e.replace(tzinfo=None) if hasattr(slot_e, 'tzinfo') and slot_e.tzinfo else slot_e
-                if ds < slot_s_naive or de > slot_e_naive or de <= ds:
-                    conn.close()
-                    return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Время вне рабочего интервала'})}
-                dt_start = ds
-                dt_end = de
-            except (ValueError, TypeError):
-                pass
+    # Парсим клиентское desired_start/end ВСЕГДА (не только для слотов без услуги).
+    # Корректно обрабатываем TZ (offset или Z), сравниваем в UTC-naive.
+    if desired_start and desired_end:
+        from datetime import timezone as _tz
+        def _to_utc_naive(v):
+            if hasattr(v, 'tzinfo') and v.tzinfo:
+                return v.astimezone(_tz.utc).replace(tzinfo=None)
+            return v
+        try:
+            ds = datetime.fromisoformat(str(desired_start).replace('Z', '+00:00'))
+            de = datetime.fromisoformat(str(desired_end).replace('Z', '+00:00'))
+            ds_n = _to_utc_naive(ds)
+            de_n = _to_utc_naive(de)
+            slot_s_n = _to_utc_naive(slot['datetime_start'])
+            slot_e_n = _to_utc_naive(slot['datetime_end'])
+            if de_n <= ds_n:
+                conn.close()
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+                    'error': 'invalid_range', 'message': 'Конец брони должен быть позже начала'
+                }, ensure_ascii=False)}
+            if ds_n < slot_s_n or de_n > slot_e_n:
+                conn.close()
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+                    'error': 'outside_slot', 'message': 'Выбранное время выходит за пределы рабочего интервала'
+                }, ensure_ascii=False)}
+            # Используем aware-версию для записи в БД (Postgres сам приведёт к timestamptz)
+            dt_start = ds if ds.tzinfo else ds.replace(tzinfo=_tz.utc)
+            dt_end = de if de.tzinfo else de.replace(tzinfo=_tz.utc)
+        except (ValueError, TypeError):
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+                'error': 'invalid_datetime', 'message': 'Неверный формат времени'
+            }, ensure_ascii=False)}
 
     # Настройки
     cur.execute(f"""

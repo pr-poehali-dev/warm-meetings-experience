@@ -14,6 +14,47 @@ import json
 from datetime import datetime, timedelta
 
 
+def ensure_master_access(cur, schema, event, master_id, headers):
+    """Проверяет, что вызывающий имеет право управлять данным master_id.
+    Разрешено: сам владелец (user_id мастера = текущий пользователь) ИЛИ глобальный админ.
+    Возвращает (True, None) при успехе или (False, http_response_dict) при отказе.
+    """
+    from shared import get_user_from_token, verify_admin_token
+    # 1. Глобальный админ — может всё
+    try:
+        if verify_admin_token(event):
+            return True, None
+    except Exception:
+        pass
+
+    # 2. Иначе — должен быть владельцем профиля
+    try:
+        user = get_user_from_token(event)
+    except Exception:
+        user = None
+    if not user:
+        return False, {
+            'statusCode': 401, 'headers': headers,
+            'body': json.dumps({'error': 'Не авторизован'}, ensure_ascii=False),
+        }
+
+    cur.execute(f"""
+        SELECT user_id FROM {schema}.masters WHERE id = {int(master_id)}
+    """)
+    row = cur.fetchone()
+    if not row:
+        return False, {
+            'statusCode': 404, 'headers': headers,
+            'body': json.dumps({'error': 'Мастер не найден'}, ensure_ascii=False),
+        }
+    if row.get('user_id') != user.get('id'):
+        return False, {
+            'statusCode': 403, 'headers': headers,
+            'body': json.dumps({'error': 'Нет доступа к этому мастеру'}, ensure_ascii=False),
+        }
+    return True, None
+
+
 def require_master_id(params, headers):
     """Извлекает обязательный master_id из query-параметров.
     Возвращает (master_id_int, None) при успехе или (None, http_response_dict) при ошибке.
@@ -183,8 +224,27 @@ def check_slot_conflict(cur, schema, master_id, dt_start, dt_end, exclude_slot_i
     return cur.fetchone()
 
 
+def check_inside_working_slot(cur, schema, master_id, dt_start, dt_end):
+    """Проверяет, что интервал [dt_start, dt_end] полностью укладывается
+    в один из рабочих слотов мастера (статус available или booked).
+    Возвращает найденный слот (dict) или None.
+    """
+    cur.execute(f"""
+        SELECT id, status, max_clients, datetime_start, datetime_end
+        FROM {schema}.master_slots
+        WHERE master_id = {int(master_id)}
+          AND status IN ('available', 'booked')
+          AND datetime_start <= '{dt_start}'
+          AND datetime_end >= '{dt_end}'
+        ORDER BY datetime_start
+        LIMIT 1
+    """)
+    return cur.fetchone()
+
+
 def validate_booking_create(cur, schema, master_id, dt_start, dt_end,
-                             exclude_booking_id=None, ignore_buffer=False):
+                             exclude_booking_id=None, ignore_buffer=False,
+                             require_within_slot=False):
     """Универсальная проверка перед созданием/переносом брони.
 
     Returns:
@@ -253,5 +313,14 @@ def validate_booking_create(cur, schema, master_id, dt_start, dt_end,
                 'notes': blk_slot.get('notes'),
             },
         }
+
+    # 6. Опционально: проверить, что время попадает в рабочий слот мастера
+    if require_within_slot:
+        inside = check_inside_working_slot(cur, schema, master_id, dt_start, dt_end)
+        if not inside:
+            return {
+                'error': 'outside_working_hours',
+                'message': 'Это время вне рабочих часов мастера. Сначала создайте рабочий слот.',
+            }
 
     return None

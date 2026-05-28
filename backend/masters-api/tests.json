@@ -140,6 +140,15 @@
       "expectedStatus": 404,
       "expectedBody": {"error": "Бронь не найдена"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Бронь — POST с master_id без токена возвращает 401/403/404",
+      "method": "POST",
+      "path": "/?resource=bookings&sub=bookings",
+      "body": {"master_id": 999999, "client_name": "Тест", "client_phone": "+7", "datetime_start": "2099-01-01T10:00:00+03:00", "datetime_end": "2099-01-01T11:00:00+03:00"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Не авторизован"},
+      "bodyMatcher": "partial"
     }
   ]
 }
