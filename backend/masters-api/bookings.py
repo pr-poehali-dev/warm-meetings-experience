@@ -73,9 +73,11 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                    la.telegram_user_id AS linked_tg,
                    u.tg_chat_id AS user_tg,
                    COALESCE(u.notify_email, true) AS notify_email,
-                   u.notify_telegram AS notify_telegram
+                   u.notify_telegram AS notify_telegram,
+                   COALESCE(mcs.timezone, 'Europe/Moscow') AS master_tz
             FROM {schema}.masters m
             LEFT JOIN {schema}.users u ON u.id = m.user_id
+            LEFT JOIN {schema}.master_calendar_settings mcs ON mcs.master_id = m.id
             LEFT JOIN (
                 SELECT DISTINCT ON (user_id) user_id, telegram_user_id
                 FROM {schema}.tg_linked_accounts
@@ -103,20 +105,33 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
         contra_at_raw = booking.get('contraindications_accepted_at')
         contra_ip = booking.get('contraindications_accepted_ip') or ''
         contra_snapshot = booking.get('contraindications_snapshot') or ''
+        # Часовой пояс мастера (по умолчанию Москва)
+        master_tz_name = m.get('master_tz') or 'Europe/Moscow'
         try:
-            if contra_at_raw:
-                contra_at_dt = datetime.fromisoformat(str(contra_at_raw).replace('Z', '').split('+')[0])
-                contra_at_human = contra_at_dt.strftime('%d.%m.%Y %H:%M')
-            else:
-                contra_at_human = ''
+            from zoneinfo import ZoneInfo
+            master_tz = ZoneInfo(master_tz_name)
         except Exception:
-            contra_at_human = str(contra_at_raw or '')
+            from datetime import timezone, timedelta as _td
+            master_tz = timezone(_td(hours=3))  # fallback МСК
 
-        try:
-            dt = datetime.fromisoformat(str(dt_start).replace('Z', '').split('+')[0])
-            dt_human = dt.strftime('%d.%m.%Y %H:%M')
-        except Exception:
-            dt_human = str(dt_start)
+        def _to_local_human(raw):
+            """Парсит ISO datetime (с TZ или без) и возвращает локальное время мастера в формате '%d.%m.%Y %H:%M'.
+            Без TZ → считаем UTC (так Postgres возвращает timestamptz по умолчанию).
+            """
+            if not raw:
+                return ''
+            s = str(raw)
+            try:
+                dtv = datetime.fromisoformat(s.replace('Z', '+00:00'))
+                if dtv.tzinfo is None:
+                    from datetime import timezone as _tz
+                    dtv = dtv.replace(tzinfo=_tz.utc)
+                return dtv.astimezone(master_tz).strftime('%d.%m.%Y %H:%M')
+            except Exception:
+                return s
+
+        contra_at_human = _to_local_human(contra_at_raw)
+        dt_human = _to_local_human(dt_start) or str(dt_start)
 
         status_human = 'подтверждена автоматически' if status == 'confirmed' else 'ожидает подтверждения'
 
