@@ -117,12 +117,16 @@ export interface BookingStats {
   completed_sessions: number;
   upcoming_sessions: number;
   canceled_sessions: number;
+  no_show_sessions: number;
   total_sessions: number;
   total_revenue: number;
   expected_revenue: number;
+  lost_revenue: number;
   total_slots: number;
   free_slots: number;
   busy_slots: number;
+  total_minutes: number;
+  busy_minutes: number;
   occupancy_percent: number;
 }
 

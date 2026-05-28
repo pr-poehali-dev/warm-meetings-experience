@@ -901,30 +901,53 @@ def handle_stats(event, method, params, schema, headers):
             COUNT(*) FILTER (WHERE status = 'completed') as completed_sessions,
             COUNT(*) FILTER (WHERE status IN ('confirmed', 'pending')) as upcoming_sessions,
             COUNT(*) FILTER (WHERE status = 'canceled') as canceled_sessions,
+            COUNT(*) FILTER (WHERE status = 'no_show') as no_show_sessions,
             COUNT(*) as total_sessions,
             COALESCE(SUM(price) FILTER (WHERE status = 'completed'), 0) as total_revenue,
-            COALESCE(SUM(price) FILTER (WHERE status IN ('confirmed', 'pending')), 0) as expected_revenue
+            COALESCE(SUM(price) FILTER (WHERE status IN ('confirmed', 'pending')), 0) as expected_revenue,
+            COALESCE(SUM(price) FILTER (WHERE status = 'no_show'), 0) as lost_revenue
         FROM {schema}.master_bookings
         WHERE master_id = {int(master_id)}
           AND datetime_start >= CURRENT_DATE - {interval}
     """)
     stats = cur.fetchone()
 
+    # Загрузка считается по реальным минутам, а не штукам слотов:
+    # busy = суммарная длительность активных броней,
+    # total = суммарная длительность всех рабочих слотов (без 'blocked'/'event').
     cur.execute(f"""
-        SELECT COUNT(*) as total_slots,
-               COUNT(*) FILTER (WHERE status = 'available' AND booked_count < max_clients) as free_slots,
-               COUNT(*) FILTER (WHERE status IN ('booked', 'pending')) as busy_slots
-        FROM {schema}.master_slots
-        WHERE master_id = {int(master_id)}
-          AND datetime_start >= CURRENT_DATE
-          AND datetime_start <= CURRENT_DATE + {interval}
-          AND status != 'blocked'
+        WITH active_slots AS (
+            SELECT id,
+                   EXTRACT(EPOCH FROM (datetime_end - datetime_start)) / 60 AS dur_min,
+                   status, booked_count, max_clients
+            FROM {schema}.master_slots
+            WHERE master_id = {int(master_id)}
+              AND datetime_start >= CURRENT_DATE
+              AND datetime_start <= CURRENT_DATE + {interval}
+              AND status NOT IN ('blocked', 'event')
+        ),
+        active_bookings AS (
+            SELECT EXTRACT(EPOCH FROM (datetime_end - datetime_start)) / 60 AS dur_min
+            FROM {schema}.master_bookings
+            WHERE master_id = {int(master_id)}
+              AND status IN ('pending', 'confirmed')
+              AND datetime_start >= CURRENT_DATE
+              AND datetime_start <= CURRENT_DATE + {interval}
+        )
+        SELECT
+            (SELECT COUNT(*) FROM active_slots) AS total_slots,
+            (SELECT COUNT(*) FROM active_slots WHERE status = 'available' AND booked_count < max_clients) AS free_slots,
+            (SELECT COUNT(*) FROM active_slots WHERE status = 'booked' OR booked_count > 0) AS busy_slots,
+            COALESCE((SELECT SUM(dur_min) FROM active_slots), 0) AS total_minutes,
+            COALESCE((SELECT SUM(dur_min) FROM active_bookings), 0) AS busy_minutes
     """)
     slot_stats = cur.fetchone()
 
     occupancy = 0
-    if slot_stats['total_slots'] > 0:
-        occupancy = round(slot_stats['busy_slots'] / slot_stats['total_slots'] * 100)
+    total_min = float(slot_stats.get('total_minutes') or 0)
+    busy_min = float(slot_stats.get('busy_minutes') or 0)
+    if total_min > 0:
+        occupancy = min(100, round(busy_min / total_min * 100))
 
     conn.close()
 
