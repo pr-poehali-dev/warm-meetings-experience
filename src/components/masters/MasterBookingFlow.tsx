@@ -54,9 +54,11 @@ interface MasterBookingFlowProps {
   services: MasterService[];
   onBookSlot: (option: BookingOption, service: MasterService) => void;
   preselectedServiceId?: number | null;
+  /** Меняется родителем после успешной брони — триггерит перезагрузку слотов. */
+  refreshKey?: number;
 }
 
-export default function MasterBookingFlow({ masterId, services, onBookSlot, preselectedServiceId }: MasterBookingFlowProps) {
+export default function MasterBookingFlow({ masterId, services, onBookSlot, preselectedServiceId, refreshKey = 0 }: MasterBookingFlowProps) {
   const activeServices = useMemo(() => services.filter((s) => s.is_active), [services]);
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(preselectedServiceId ?? null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -98,7 +100,7 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
 
   useEffect(() => {
     loadSlots();
-  }, [loadSlots]);
+  }, [loadSlots, refreshKey]);
 
   const selectedService = useMemo(
     () => activeServices.find((s) => s.id === selectedServiceId) ?? null,

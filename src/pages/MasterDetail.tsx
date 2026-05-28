@@ -490,6 +490,7 @@ export default function MasterDetail() {
   const [extVideos, setExtVideos] = useState<VideoItem[]>([]);
   const [selectedServiceForFlow, setSelectedServiceForFlow] = useState<number | null>(null);
   const [bookingVisible, setBookingVisible] = useState(false);
+  const [bookingRefreshKey, setBookingRefreshKey] = useState(0);
 
   // Прячем плавающую кнопку «Записаться», когда виджет бронирования виден.
   useEffect(() => {
@@ -543,6 +544,7 @@ export default function MasterDetail() {
   const handleBookSuccess = () => {
     setBookingState(null);
     setBookingSuccess(true);
+    setBookingRefreshKey((k) => k + 1);
   };
 
   const scrollToBooking = () => {
@@ -668,6 +670,7 @@ export default function MasterDetail() {
                   masterId={master.id}
                   services={services}
                   preselectedServiceId={selectedServiceForFlow}
+                  refreshKey={bookingRefreshKey}
                   onBookSlot={(option, service) => setBookingState({ option, service })}
                 />
               </div>
