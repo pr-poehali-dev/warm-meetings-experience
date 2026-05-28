@@ -1,6 +1,5 @@
 import type { MasterSlot } from "@/lib/master-calendar-api";
 
-export const MASTER_ID = 1;
 export const HOURS_START_DEFAULT = 8;
 export const HOURS_END_DEFAULT = 23;
 // Оставлены для совместимости с другими импортами

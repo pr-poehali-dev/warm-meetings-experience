@@ -177,7 +177,8 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
 
   useEffect(() => {
     fetchServices();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [masterId]);
 
   const fetchServices = async () => {
     setLoading(true);

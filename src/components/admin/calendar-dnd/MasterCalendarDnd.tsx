@@ -19,14 +19,14 @@ import {
   CalendarSettings,
   BookingApiError,
 } from "@/lib/master-calendar-api";
-import { MASTER_ID } from "@/components/admin/calendar/calendarUtils";
+
 
 import EventForm, { CreateMode, CreatePayload } from "./EventForm";
 import QuickActionsPopover, { QuickEvent } from "./QuickActionsPopover";
 import "./styles.css";
 
 interface Props {
-  masterId?: number;
+  masterId: number;
 }
 
 type FcbEvent = EventInput & {
@@ -54,7 +54,7 @@ const toISO = (d: Date) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${sign}${tzH}:${tzM}`;
 };
 
-export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
+export default function MasterCalendarDnd({ masterId }: Props) {
   const calRef = useRef<FullCalendar | null>(null);
   const [loading, setLoading] = useState(false);
   const [bookings, setBookings] = useState<MasterBooking[]>([]);

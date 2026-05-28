@@ -36,11 +36,13 @@ const MasterBookingsList = ({ masterId }: { masterId: number }) => {
     fetchBookings();
     fetchStats();
     fetchServices();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [masterId]);
 
   useEffect(() => {
     fetchBookings();
-  }, [filterStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterStatus, masterId]);
 
   const fetchBookings = async () => {
     setLoading(true);

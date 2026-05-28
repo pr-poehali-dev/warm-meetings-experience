@@ -62,7 +62,8 @@ const MasterTemplates = ({ masterId }: { masterId: number }) => {
   useEffect(() => {
     fetchTemplates();
     fetchServices();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [masterId]);
 
   const fetchTemplates = async () => {
     setLoading(true);
