@@ -293,13 +293,38 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
         const lastDay = new Date(blockEndExclusive.getTime() - 24 * 60 * 60_000);
         const pad = (n: number) => String(n).padStart(2, "0");
         const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-        await masterCalendarApi.createBlock({
+        const blockArgs = {
           master_id: masterId,
           block_date: fmt(blockStart),
           block_end_date: fmt(lastDay),
           reason: payload.comment || "Выходной",
-        });
-        toast.success("Выходной добавлен");
+        };
+        const res = await masterCalendarApi.createBlock(blockArgs);
+        if (res.conflict) {
+          const list = res.conflicts
+            .slice(0, 5)
+            .map((c) => {
+              const dt = new Date(c.datetime_start);
+              const when = `${dt.toLocaleDateString("ru-RU")} ${dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
+              return `• ${when} — ${c.client_name}${c.client_phone ? ", " + c.client_phone : ""}`;
+            })
+            .join("\n");
+          const more = res.conflicts.length > 5 ? `\n…и ещё ${res.conflicts.length - 5}` : "";
+          const ok = window.confirm(
+            `На выбранные дни уже есть ${res.conflicts.length} активных записей:\n\n${list}${more}\n\nЗаблокировать дни и ОТМЕНИТЬ все эти записи?`
+          );
+          if (!ok) {
+            return;
+          }
+          const forced = await masterCalendarApi.createBlock({ ...blockArgs, force: true });
+          if (forced.conflict) {
+            toast.error("Не удалось создать блокировку");
+            return;
+          }
+          toast.success(`Выходной добавлен. Отменено записей: ${forced.canceled_bookings ?? res.conflicts.length}`);
+        } else {
+          toast.success("Выходной добавлен");
+        }
         setCreateMode({ open: false, start: null, end: null, allDay: false });
         loadData();
         return;

@@ -246,11 +246,32 @@ export const masterCalendarApi = {
   getBlocks: (masterId: number) =>
     fetchApi<DayBlock[]>(`${CALENDAR_URL}&sub=blocks&master_id=${masterId}`),
 
-  createBlock: (data: Partial<DayBlock>) =>
-    fetchApi(`${CALENDAR_URL}&sub=blocks`, {
+  createBlock: async (data: Partial<DayBlock> & { force?: boolean }) => {
+    const response = await fetch(`${CALENDAR_URL}&sub=blocks`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
-    }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (response.status === 409 && payload?.error === "has_active_bookings") {
+      return {
+        conflict: true as const,
+        message: payload.message as string,
+        conflicts: (payload.conflicts || []) as Array<{
+          id: number;
+          client_name: string;
+          client_phone: string;
+          datetime_start: string;
+          status: string;
+          service_name?: string;
+        }>,
+      };
+    }
+    if (!response.ok) {
+      throw new Error(payload?.error || `HTTP ${response.status}`);
+    }
+    return { conflict: false as const, ...payload };
+  },
 
   deleteBlock: (id: number, masterId: number) =>
     fetchApi(`${CALENDAR_URL}&sub=blocks`, {

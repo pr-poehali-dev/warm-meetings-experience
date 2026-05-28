@@ -601,6 +601,7 @@ def handle_blocks(event, method, params, schema, headers):
         block_end_date = body.get('block_end_date')
         reason = (body.get('reason') or '').replace("'", "''")
         notes = (body.get('notes') or '').replace("'", "''")
+        force = bool(body.get('force', False))
 
         dates_to_block = []
         start = datetime.strptime(block_date, '%Y-%m-%d').date()
@@ -614,6 +615,54 @@ def handle_blocks(event, method, params, schema, headers):
             dates_to_block.append(d)
             d += timedelta(days=1)
 
+        # Проверяем конфликты с активными бронями в указанном диапазоне
+        cur.execute(f"""
+            SELECT b.id, b.client_name, b.client_phone, b.datetime_start, b.status,
+                   ms.name AS service_name
+            FROM {schema}.master_bookings b
+            LEFT JOIN {schema}.master_services ms ON ms.id = b.service_id
+            WHERE b.master_id = {int(master_id)}
+              AND b.status NOT IN ('canceled', 'no_show', 'completed')
+              AND b.datetime_start::date >= '{start}'
+              AND b.datetime_start::date <= '{end}'
+            ORDER BY b.datetime_start
+        """)
+        conflicts = cur.fetchall()
+
+        if conflicts and not force:
+            conn.close()
+            return {
+                'statusCode': 409,
+                'headers': headers,
+                'body': json.dumps({
+                    'error': 'has_active_bookings',
+                    'message': f'На выбранные дни уже есть {len(conflicts)} активных записей. Отмените их или подтвердите блокировку с переносом.',
+                    'conflicts': [
+                        {
+                            'id': c['id'],
+                            'client_name': c['client_name'],
+                            'client_phone': c['client_phone'],
+                            'datetime_start': str(c['datetime_start']),
+                            'status': c['status'],
+                            'service_name': c.get('service_name'),
+                        } for c in conflicts
+                    ],
+                }, default=str),
+            }
+
+        # Если force=true — отменяем все конфликтующие брони с причиной 'master_blocked_day'
+        canceled_bookings = 0
+        if conflicts and force:
+            ids = ','.join(str(c['id']) for c in conflicts)
+            cur.execute(f"""
+                UPDATE {schema}.master_bookings
+                SET status = 'canceled',
+                    cancel_reason = 'Мастер заблокировал день',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id IN ({ids})
+            """)
+            canceled_bookings = len(conflicts)
+
         created = 0
         for bd in dates_to_block:
             cur.execute(f"""
@@ -626,7 +675,11 @@ def handle_blocks(event, method, params, schema, headers):
 
         conn.commit()
         conn.close()
-        return {'statusCode': 201, 'headers': headers, 'body': json.dumps({'success': True, 'blocked_days': created})}
+        return {'statusCode': 201, 'headers': headers, 'body': json.dumps({
+            'success': True,
+            'blocked_days': created,
+            'canceled_bookings': canceled_bookings,
+        })}
 
     if method == 'DELETE':
         body = json.loads(event.get('body', '{}'))
