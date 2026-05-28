@@ -202,12 +202,19 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
       }
     }
 
-    // Блокировки целых дней
+    // Блокировки целых дней — каждая запись в БД = ровно 1 день
+    // (backend сохраняет отпуск как N записей по 1 дню каждая, поэтому игнорируем block_end_date)
+    const seenBlockDates = new Set<string>();
     for (const blk of blocks) {
+      if (!blk.reason || blk.reason === "removed") continue;
+      if (seenBlockDates.has(blk.block_date)) continue;
+      seenBlockDates.add(blk.block_date);
+
       const startD = new Date(blk.block_date + "T00:00:00");
-      const endExclusive = new Date(((blk.block_end_date || blk.block_date)) + "T00:00:00");
+      const endExclusive = new Date(startD);
       endExclusive.setDate(endExclusive.getDate() + 1);
-      // Полоса в "Весь день"
+
+      // Компактная плашка в "Весь день" (только 1 день, не растягиваем)
       list.push({
         id: `blk-${blk.id}`,
         title: `🔒 ${blk.reason || "Выходной"}`,
@@ -218,7 +225,7 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
         editable: false,
         extendedProps: { kind: "block", raw: blk },
       });
-      // Заливка фона на всю колонку дня (видно в timeGrid)
+      // Заливка фона колонки дня (видна в timeGrid)
       list.push({
         id: `blk-bg-${blk.id}`,
         start: startD,
@@ -566,16 +573,12 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
     return map;
   }, [fcEvents]);
 
-  // Множество заблокированных дат (YYYY-MM-DD)
+  // Множество заблокированных дат (YYYY-MM-DD) — 1 запись = 1 день
   const blockedDates = useMemo(() => {
     const set = new Set<string>();
     for (const blk of blocks) {
-      const start = new Date(blk.block_date + "T00:00:00");
-      const end = new Date((blk.block_end_date || blk.block_date) + "T00:00:00");
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const pad = (n: number) => String(n).padStart(2, "0");
-        set.add(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
-      }
+      if (!blk.reason || blk.reason === "removed") continue;
+      set.add(blk.block_date);
     }
     return set;
   }, [blocks]);
@@ -595,9 +598,8 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
       <div className="fcb-day-load">
         <div className="text-sm font-semibold capitalize">{arg.text}</div>
         {isBlocked ? (
-          <div className="fcb-day-header-block">
-            <Icon name="Lock" size={9} />
-            Выходной
+          <div className="fcb-day-header-block" title="Выходной">
+            <Icon name="Lock" size={11} />
           </div>
         ) : (
           <>
