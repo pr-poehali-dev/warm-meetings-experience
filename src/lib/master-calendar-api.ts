@@ -126,14 +126,29 @@ export interface BookingStats {
   occupancy_percent: number;
 }
 
+export class BookingApiError extends Error {
+  status: number;
+  code?: string;
+  details?: Record<string, unknown>;
+  constructor(status: number, message: string, code?: string, details?: Record<string, unknown>) {
+    super(message);
+    this.status = status;
+    this.code = code;
+    this.details = details;
+  }
+}
+
 async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...options,
     headers: { "Content-Type": "application/json", ...options?.headers },
   });
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: "Что-то пошло не так" }));
-    throw new Error(err.error || `HTTP ${response.status}`);
+    const err = await response.json().catch(() => ({}));
+    // Backend возвращает { error: <code>, message: <human-readable>, details: {...} }
+    // для конфликтов 409. Сохраняем всю структуру, чтобы UI мог показать понятный текст.
+    const message = err.message || err.error || `HTTP ${response.status}`;
+    throw new BookingApiError(response.status, message, err.error, err.details);
   }
   return response.json();
 }

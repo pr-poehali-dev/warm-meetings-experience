@@ -3,6 +3,9 @@ import os
 import psycopg2.extras
 from datetime import datetime
 from shared import CORS_HEADERS, get_conn, get_schema, send_email, tg_send, admin_email
+from booking_validator import (
+    acquire_master_lock, validate_booking_create, get_buffer_minutes, require_master_id,
+)
 
 
 def _log_notification(cur, schema, *, channel, event_type, recipient, status,
@@ -329,7 +332,10 @@ def handle_bookings(event, method, params, schema, headers):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     if method == 'GET':
-        master_id = params.get('master_id', '1')
+        master_id, err = require_master_id(params, headers)
+        if err:
+            conn.close()
+            return err
         status_filter = params.get('status')
         date_from = params.get('date_from')
         date_to = params.get('date_to')
@@ -355,7 +361,10 @@ def handle_bookings(event, method, params, schema, headers):
 
     if method == 'POST':
         body = json.loads(event.get('body', '{}'))
-        master_id = body.get('master_id', 1)
+        master_id = body.get('master_id')
+        if not master_id:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'master_id обязателен'})}
         slot_id = body.get('slot_id')
         client_name = body['client_name'].replace("'", "''")
         client_phone = body['client_phone'].replace("'", "''")
@@ -366,18 +375,24 @@ def handle_bookings(event, method, params, schema, headers):
         price = float(body.get('price', 0))
         comment = (body.get('comment') or '').replace("'", "''")
         source = body.get('source', 'admin')
+        force = bool(body.get('force', False))
 
-        cur.execute(f"""
-            SELECT id FROM {schema}.master_bookings
-            WHERE master_id = {int(master_id)}
-              AND status NOT IN ('canceled')
-              AND datetime_start < '{dt_end}'
-              AND datetime_end > '{dt_start}'
-            LIMIT 1
-        """)
-        if cur.fetchone():
+        # Лочим мастера на время транзакции — защита от гонок.
+        acquire_master_lock(cur, master_id)
+
+        # Единая валидация: выходные дни, буфер, пересечения, заблокированные слоты.
+        # ignore_buffer=True если админ явно подтвердил force (например, ставит впритык).
+        problem = validate_booking_create(
+            cur, schema, master_id, dt_start, dt_end,
+            ignore_buffer=force,
+        )
+        if problem:
             conn.close()
-            return {'statusCode': 409, 'headers': headers, 'body': json.dumps({'error': 'Это время уже занято'})}
+            return {
+                'statusCode': 409,
+                'headers': headers,
+                'body': json.dumps(problem, default=str, ensure_ascii=False),
+            }
 
         slot_val = f"{int(slot_id)}" if slot_id else "NULL"
         svc_val = f"{int(service_id)}" if service_id else "NULL"
@@ -511,7 +526,9 @@ def handle_public_slots(event, method, params, schema, headers):
     if method != 'GET':
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'GET only'})}
 
-    master_id = params.get('master_id', '1')
+    master_id, err = require_master_id(params, headers)
+    if err:
+        return err
     date_from = params.get('date_from')
 
     if not date_from:
@@ -592,7 +609,19 @@ def handle_public_book(event, method, params, schema, headers):
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    # Лочим рабочий интервал
+    # Сначала получаем master_id из слота (без lock), чтобы поставить advisory lock.
+    cur.execute(f"""
+        SELECT master_id FROM {schema}.master_slots WHERE id = {int(slot_id)}
+    """)
+    pre = cur.fetchone()
+    if not pre:
+        conn.close()
+        return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Интервал не найден'})}
+
+    # Лочим мастера целиком — никто не сможет создать пересекающуюся бронь параллельно.
+    acquire_master_lock(cur, pre['master_id'])
+
+    # Теперь лочим сам слот.
     cur.execute(f"""
         SELECT s.*, ms.price as service_price, ms.name as service_name, ms.duration_minutes as svc_duration
         FROM {schema}.master_slots s
@@ -646,33 +675,28 @@ def handle_public_book(event, method, params, schema, headers):
 
     # Настройки
     cur.execute(f"""
-        SELECT auto_confirm, break_between_slots FROM {schema}.master_calendar_settings WHERE master_id = {int(master_id)}
+        SELECT auto_confirm FROM {schema}.master_calendar_settings WHERE master_id = {int(master_id)}
     """)
     settings = cur.fetchone()
     auto_confirm = settings['auto_confirm'] if settings else False
-    buffer_min = int(settings['break_between_slots']) if settings and settings.get('break_between_slots') else 0
     status = 'confirmed' if auto_confirm else 'pending'
 
-    # Проверяем пересечение с активными бронями + буфер
+    # Подготовка значений для проверки (поддержка timestamptz/datetime)
     from datetime import timedelta
     dt_start_naive = dt_start.replace(tzinfo=None) if hasattr(dt_start, 'tzinfo') and dt_start.tzinfo else dt_start
     dt_end_naive = dt_end.replace(tzinfo=None) if hasattr(dt_end, 'tzinfo') and dt_end.tzinfo else dt_end
 
-    # Расширяем диапазон проверки на буфер с обеих сторон
-    check_start = (dt_start_naive - timedelta(minutes=buffer_min)).isoformat()
-    check_end = (dt_end_naive + timedelta(minutes=buffer_min)).isoformat()
-
-    cur.execute(f"""
-        SELECT id FROM {schema}.master_bookings
-        WHERE master_id = {int(master_id)}
-          AND status IN ('pending', 'confirmed')
-          AND datetime_start < '{check_end}'
-          AND datetime_end > '{check_start}'
-        LIMIT 1
-    """)
-    if cur.fetchone():
+    # Универсальная проверка: выходные, буфер, пересечение с бронями, blocked-слоты.
+    problem = validate_booking_create(
+        cur, schema, master_id, dt_start_naive, dt_end_naive,
+    )
+    if problem:
         conn.close()
-        return {'statusCode': 409, 'headers': headers, 'body': json.dumps({'error': 'Это время только что заняли. Выберите другое.'})}
+        return {
+            'statusCode': 409,
+            'headers': headers,
+            'body': json.dumps(problem, default=str, ensure_ascii=False),
+        }
 
     svc_val = f"{int(booking_service_id)}" if booking_service_id else "NULL"
     confirmed_at_val = 'CURRENT_TIMESTAMP' if auto_confirm else 'NULL'
@@ -812,7 +836,9 @@ def handle_stats(event, method, params, schema, headers):
     if method != 'GET':
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'GET only'})}
 
-    master_id = params.get('master_id', '1')
+    master_id, err = require_master_id(params, headers)
+    if err:
+        return err
     period = params.get('period', 'month')
 
     conn = get_conn()

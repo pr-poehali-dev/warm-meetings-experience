@@ -2,6 +2,7 @@ import json
 import psycopg2.extras
 from datetime import datetime, timedelta, date, time
 from shared import CORS_HEADERS, get_conn, get_schema
+from booking_validator import acquire_master_lock, check_day_blocked, require_master_id
 
 
 def handle_calendar(event, method, params, schema, headers):
@@ -81,7 +82,10 @@ def handle_slots(event, method, params, schema, headers):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     if method == 'GET':
-        master_id = params.get('master_id', '1')
+        master_id, err = require_master_id(params, headers)
+        if err:
+            conn.close()
+            return err
         date_from = params.get('date_from', '')
         date_to = params.get('date_to', '')
 
@@ -104,42 +108,59 @@ def handle_slots(event, method, params, schema, headers):
 
     if method == 'POST':
         body = json.loads(event.get('body', '{}'))
-        master_id = body.get('master_id', 1)
+        master_id = body.get('master_id')
+        if not master_id:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'master_id обязателен'})}
         service_id = body.get('service_id')
         dt_start = body['datetime_start']
         dt_end = body['datetime_end']
         max_clients = body.get('max_clients', 1)
         notes = body.get('notes', '')
+        slot_status = body.get('status', 'available')
 
+        # Защита от гонок
+        acquire_master_lock(cur, master_id)
+
+        # Пересечение со ВСЕМИ слотами (включая blocked) — два разных
+        # назначения времени на одну точку недопустимы.
         cur.execute(f"""
-            SELECT id FROM {schema}.master_slots
+            SELECT id, status, notes FROM {schema}.master_slots
             WHERE master_id = {int(master_id)}
-              AND status != 'blocked'
               AND datetime_start < '{dt_end}'
               AND datetime_end > '{dt_start}'
             LIMIT 1
         """)
-        if cur.fetchone():
+        existing = cur.fetchone()
+        if existing:
             conn.close()
-            return {'statusCode': 409, 'headers': headers, 'body': json.dumps({'error': 'Конфликт времени: слот пересекается с существующим'})}
+            label = 'заблокированным временем' if existing.get('status') == 'blocked' else 'другим слотом'
+            return {'statusCode': 409, 'headers': headers, 'body': json.dumps({
+                'error': 'slot_overlap',
+                'message': f'Это время пересекается с {label}',
+                'details': {'slot_id': existing['id'], 'status': existing.get('status')},
+            }, ensure_ascii=False)}
 
-        cur.execute(f"""
-            SELECT id FROM {schema}.master_day_blocks
-            WHERE master_id = {int(master_id)}
-              AND block_date = '{dt_start[:10]}'
-            LIMIT 1
-        """)
-        if cur.fetchone():
+        # Выходной день мастера
+        blocked = check_day_blocked(cur, schema, master_id, dt_start, dt_end)
+        if blocked:
             conn.close()
-            return {'statusCode': 409, 'headers': headers, 'body': json.dumps({'error': 'Этот день заблокирован'})}
+            return {'statusCode': 409, 'headers': headers, 'body': json.dumps({
+                'error': 'day_blocked',
+                'message': f"День {blocked['block_date']} заблокирован: {blocked.get('reason') or 'выходной'}",
+            }, default=str, ensure_ascii=False)}
 
         service_val = f"{int(service_id)}" if service_id else "NULL"
         notes_escaped = notes.replace("'", "''")
 
+        # Допустимые статусы при ручном создании слота админом/мастером.
+        if slot_status not in ('available', 'blocked', 'event'):
+            slot_status = 'available'
+
         cur.execute(f"""
             INSERT INTO {schema}.master_slots
             (master_id, service_id, datetime_start, datetime_end, max_clients, status, source, notes)
-            VALUES ({int(master_id)}, {service_val}, '{dt_start}', '{dt_end}', {int(max_clients)}, 'available', 'manual', '{notes_escaped}')
+            VALUES ({int(master_id)}, {service_val}, '{dt_start}', '{dt_end}', {int(max_clients)}, '{slot_status}', 'manual', '{notes_escaped}')
             RETURNING *
         """)
         row = cur.fetchone()
@@ -209,7 +230,10 @@ def handle_services(event, method, params, schema, headers):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     if method == 'GET':
-        master_id = params.get('master_id', '1')
+        master_id, err = require_master_id(params, headers)
+        if err:
+            conn.close()
+            return err
         cur.execute(f"""
             SELECT * FROM {schema}.master_services
             WHERE master_id = {int(master_id)}
@@ -287,7 +311,10 @@ def handle_templates(event, method, params, schema, headers):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     if method == 'GET':
-        master_id = params.get('master_id', '1')
+        master_id, err = require_master_id(params, headers)
+        if err:
+            conn.close()
+            return err
         cur.execute(f"""
             SELECT t.*, json_agg(
                 json_build_object(
@@ -507,7 +534,10 @@ def handle_settings(event, method, params, schema, headers):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     if method == 'GET':
-        master_id = params.get('master_id', '1')
+        master_id, err = require_master_id(params, headers)
+        if err:
+            conn.close()
+            return err
         cur.execute(f"SELECT * FROM {schema}.master_calendar_settings WHERE master_id = {int(master_id)}")
         row = cur.fetchone()
         conn.close()
@@ -584,7 +614,10 @@ def handle_blocks(event, method, params, schema, headers):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     if method == 'GET':
-        master_id = params.get('master_id', '1')
+        master_id, err = require_master_id(params, headers)
+        if err:
+            conn.close()
+            return err
         cur.execute(f"""
             SELECT * FROM {schema}.master_day_blocks
             WHERE master_id = {int(master_id)}
@@ -702,7 +735,9 @@ def handle_week_view(event, method, params, schema, headers):
     if method != 'GET':
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'GET only'})}
 
-    master_id = params.get('master_id', '1')
+    master_id, err = require_master_id(params, headers)
+    if err:
+        return err
     week_start = params.get('week_start')
     date_from = params.get('date_from')
     date_to = params.get('date_to')
@@ -721,13 +756,24 @@ def handle_week_view(event, method, params, schema, headers):
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+    # Берём TZ мастера, чтобы границы "день" совпадали с локальным временем,
+    # а не UTC. Postgres ::date без AT TIME ZONE считает дату как в UTC.
+    cur.execute(f"""
+        SELECT COALESCE(timezone, 'Europe/Moscow') AS tz
+        FROM {schema}.master_calendar_settings
+        WHERE master_id = {int(master_id)}
+    """)
+    tz_row = cur.fetchone()
+    master_tz = (tz_row.get('tz') if tz_row else 'Europe/Moscow') or 'Europe/Moscow'
+    master_tz = master_tz.replace("'", "''")
+
     cur.execute(f"""
         SELECT s.*, ms.name as service_name, ms.duration_minutes, ms.price as service_price
         FROM {schema}.master_slots s
         LEFT JOIN {schema}.master_services ms ON s.service_id = ms.id
         WHERE s.master_id = {int(master_id)}
-          AND s.datetime_start::date >= '{start_d}'
-          AND s.datetime_start::date <= '{end_d}'
+          AND (s.datetime_start AT TIME ZONE '{master_tz}')::date >= '{start_d}'
+          AND (s.datetime_start AT TIME ZONE '{master_tz}')::date <= '{end_d}'
         ORDER BY s.datetime_start
     """)
     slots = cur.fetchall()
@@ -737,8 +783,8 @@ def handle_week_view(event, method, params, schema, headers):
         FROM {schema}.master_bookings b
         LEFT JOIN {schema}.master_services ms ON b.service_id = ms.id
         WHERE b.master_id = {int(master_id)}
-          AND b.datetime_start::date >= '{start_d}'
-          AND b.datetime_start::date <= '{end_d}'
+          AND (b.datetime_start AT TIME ZONE '{master_tz}')::date >= '{start_d}'
+          AND (b.datetime_start AT TIME ZONE '{master_tz}')::date <= '{end_d}'
           AND b.status NOT IN ('canceled')
         ORDER BY b.datetime_start
     """)

@@ -17,6 +17,7 @@ import {
   DayBlock,
   MasterService,
   CalendarSettings,
+  BookingApiError,
 } from "@/lib/master-calendar-api";
 import { MASTER_ID } from "@/components/admin/calendar/calendarUtils";
 
@@ -396,14 +397,21 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
       loadData();
     } catch (e) {
       console.error("[Calendar] save failed", e);
-      toast.error("Не удалось сохранить: " + (e instanceof Error ? e.message : String(e)));
+      if (e instanceof BookingApiError && e.status === 409) {
+        // Бэк прислал понятное сообщение — показываем его как есть
+        toast.error(e.message);
+      } else {
+        toast.error("Не удалось сохранить: " + (e instanceof Error ? e.message : String(e)));
+      }
     }
   };
 
-  // Конфликт-проверка
+  // Конфликт-проверка с учётом буфера между сеансами (из настроек мастера).
+  // Бэкенд тоже проверяет это, но локально мы предупреждаем сразу — без сетевого round-trip.
   const hasConflict = (start: Date, end: Date, ignoreId: string | null) => {
-    const startMs = start.getTime();
-    const endMs = end.getTime();
+    const bufferMs = ((settings?.break_between_slots) || 0) * 60_000;
+    const startMs = start.getTime() - bufferMs;
+    const endMs = end.getTime() + bufferMs;
     return fcEvents.some(ev => {
       if (ev.extendedProps.kind === "available" || ev.extendedProps.kind === "canceled") return false;
       if (ignoreId && ev.id === ignoreId) return false;
@@ -456,7 +464,11 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
       setPendingMove(null);
       loadData();
     } catch (e) {
-      toast.error("Не удалось перенести: " + String(e));
+      if (e instanceof BookingApiError && e.status === 409) {
+        toast.error(e.message);
+      } else {
+        toast.error("Не удалось перенести: " + (e instanceof Error ? e.message : String(e)));
+      }
       pendingMove.revert();
       setPendingMove(null);
     }
@@ -501,7 +513,11 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
       setPendingResize(null);
       loadData();
     } catch (e) {
-      toast.error("Не удалось: " + String(e));
+      if (e instanceof BookingApiError && e.status === 409) {
+        toast.error(e.message);
+      } else {
+        toast.error("Не удалось: " + (e instanceof Error ? e.message : String(e)));
+      }
       pendingResize.revert();
       setPendingResize(null);
     }
