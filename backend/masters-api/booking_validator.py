@@ -14,6 +14,83 @@ import json
 from datetime import datetime, timedelta
 
 
+def _client_ip(event):
+    """Достаём IP клиента из event. Возвращаем 'unknown' если не нашли."""
+    try:
+        ctx = event.get('requestContext') or {}
+        ident = ctx.get('identity') or {}
+        ip = ident.get('sourceIp')
+        if ip:
+            return str(ip)[:64]
+    except Exception:
+        pass
+    try:
+        h = event.get('headers') or {}
+        xff = h.get('x-forwarded-for') or h.get('X-Forwarded-For') or ''
+        if xff:
+            return str(xff).split(',')[0].strip()[:64]
+    except Exception:
+        pass
+    return 'unknown'
+
+
+# Лимит: N броней в скользящем окне M минут с одного IP.
+RATELIMIT_MAX = 5
+RATELIMIT_WINDOW_MIN = 60
+
+
+def check_public_booking_ratelimit(cur, schema, event, master_id, extra_key=''):
+    """Защита от спама публичных броней.
+
+    Возвращает (True, None) если можно продолжить.
+    Возвращает (False, dict-response 429) если лимит превышен.
+    """
+    ip = _client_ip(event)
+    ident = f"{ip}|{extra_key}" if extra_key else ip
+    ident_safe = ident.replace("'", "''")[:128]
+    mid = int(master_id) if master_id else 0
+
+    cur.execute(f"""
+        SELECT COALESCE(SUM(attempts), 0) AS total
+        FROM {schema}.master_booking_ratelimit
+        WHERE identifier = '{ident_safe}'
+          AND action = 'public_book'
+          AND window_start > NOW() - INTERVAL '{RATELIMIT_WINDOW_MIN} minutes'
+    """)
+    row = cur.fetchone()
+    total = int(row.get('total') or 0) if row else 0
+
+    if total >= RATELIMIT_MAX:
+        return False, {
+            'statusCode': 429,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json',
+                'Retry-After': str(RATELIMIT_WINDOW_MIN * 60),
+            },
+            'body': json.dumps({
+                'error': 'rate_limit_exceeded',
+                'message': f'Слишком много попыток бронирования. Попробуйте через {RATELIMIT_WINDOW_MIN} минут.',
+                'retry_after_minutes': RATELIMIT_WINDOW_MIN,
+            }, ensure_ascii=False),
+        }
+
+    cur.execute(f"""
+        INSERT INTO {schema}.master_booking_ratelimit
+            (identifier, master_id, action, window_start, attempts, last_attempt_at)
+        VALUES ('{ident_safe}', {mid}, 'public_book', NOW(), 1, NOW())
+    """)
+
+    # Подчищаем старьё (старше суток) — раз в 5 попыток
+    if total % 5 == 0:
+        cur.execute(f"""
+            DELETE FROM {schema}.master_booking_ratelimit
+            WHERE window_start < NOW() - INTERVAL '1 day'
+        """)
+
+    return True, None
+
+
 def ensure_master_access(cur, schema, event, master_id, headers):
     """Проверяет, что вызывающий имеет право управлять данным master_id.
     Разрешено: сам владелец (user_id мастера = текущий пользователь) ИЛИ глобальный админ.

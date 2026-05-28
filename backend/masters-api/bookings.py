@@ -6,7 +6,9 @@ from shared import CORS_HEADERS, get_conn, get_schema, send_email, tg_send, admi
 from booking_validator import (
     acquire_master_lock, validate_booking_create, get_buffer_minutes,
     require_master_id, recalc_slot_status, ensure_master_access,
+    check_public_booking_ratelimit,
 )
+import re as _re
 
 
 def _log_notification(cur, schema, *, channel, event_type, recipient, status,
@@ -768,20 +770,74 @@ def handle_public_book(event, method, params, schema, headers):
     if method != 'POST':
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'POST only'})}
 
-    body = json.loads(event.get('body', '{}'))
-    slot_id = body['slot_id']
-    client_name = body['client_name'].replace("'", "''")
-    client_phone = body['client_phone'].replace("'", "''")
-    client_email = (body.get('client_email') or '').replace("'", "''")
-    comment = (body.get('comment') or '').replace("'", "''")
+    try:
+        body = json.loads(event.get('body') or '{}')
+    except (ValueError, TypeError):
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+            'error': 'invalid_json', 'message': 'Тело запроса должно быть JSON'
+        }, ensure_ascii=False)}
+
+    # --- Валидация обязательных полей ---
+    def _need(field, label, max_len=200):
+        raw = body.get(field)
+        if not raw or not str(raw).strip():
+            return None, {
+                'statusCode': 400, 'headers': headers,
+                'body': json.dumps({'error': 'missing_field', 'field': field,
+                                    'message': f'{label} обязательно'}, ensure_ascii=False),
+            }
+        v = str(raw).strip()[:max_len]
+        return v.replace("'", "''"), None
+
+    try:
+        slot_id = int(body.get('slot_id'))
+    except (TypeError, ValueError):
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+            'error': 'missing_slot', 'message': 'slot_id обязателен'
+        }, ensure_ascii=False)}
+
+    client_name, err = _need('client_name', 'Имя', 80)
+    if err: return err
+    client_phone_raw, err = _need('client_phone', 'Телефон', 32)
+    if err: return err
+
+    # Анти-инъекция: имя — только буквы/пробелы/дефисы/точки.
+    if not _re.match(r"^[\w\s\-\.А-яЁё']{1,80}$", client_name, _re.UNICODE):
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+            'error': 'invalid_name', 'message': 'Имя содержит недопустимые символы'
+        }, ensure_ascii=False)}
+
+    # Телефон: оставляем только цифры и +. Минимум 7 цифр.
+    phone_digits = _re.sub(r"[^\d+]", '', client_phone_raw)
+    if len(_re.sub(r"\D", '', phone_digits)) < 7:
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+            'error': 'invalid_phone', 'message': 'Введите корректный телефон'
+        }, ensure_ascii=False)}
+    client_phone = phone_digits.replace("'", "''")[:32]
+
+    # Email опциональный, но если есть — валидируем.
+    client_email_raw = (body.get('client_email') or '').strip()[:120]
+    if client_email_raw and not _re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", client_email_raw):
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+            'error': 'invalid_email', 'message': 'Введите корректный email'
+        }, ensure_ascii=False)}
+    client_email = client_email_raw.replace("'", "''")
+
+    comment = (body.get('comment') or '').strip()[:500].replace("'", "''")
 
     req_service_id = body.get('service_id')
+    if req_service_id is not None:
+        try:
+            req_service_id = int(req_service_id)
+        except (TypeError, ValueError):
+            req_service_id = None
+
     desired_start = body.get('desired_start')
     desired_end = body.get('desired_end')
 
     # Согласие с противопоказаниями (юр. фиксация)
     contra_accepted = bool(body.get('contraindications_accepted', False))
-    contra_snapshot = (body.get('contraindications_snapshot') or '').replace("'", "''")
+    contra_snapshot = (body.get('contraindications_snapshot') or '')[:2000].replace("'", "''")
     client_ip = ''
     try:
         rc = event.get('requestContext') or {}
@@ -801,6 +857,31 @@ def handle_public_book(event, method, params, schema, headers):
     if not pre:
         conn.close()
         return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Интервал не найден'})}
+
+    # Rate-limit: защита от спама с одного IP (или IP+телефон).
+    # Считаем по IP — даже если бот меняет телефон, IP остаётся.
+    ok_rl, rl_err = check_public_booking_ratelimit(
+        cur, schema, event, pre['master_id'],
+        extra_key='',  # глобальный лимит по IP, не привязан к телефону
+    )
+    if not ok_rl:
+        conn.commit()  # фиксируем счётчик попыток
+        conn.close()
+        return rl_err
+
+    # Мастер должен быть активным и не скрытым владельцем — иначе бронь невозможна.
+    cur.execute(f"""
+        SELECT id, is_active, is_verified, hidden_by_owner
+        FROM {schema}.masters WHERE id = {int(pre['master_id'])}
+    """)
+    m_check = cur.fetchone()
+    if (not m_check
+        or not m_check.get('is_active')
+        or m_check.get('hidden_by_owner')):
+        conn.close()
+        return {'statusCode': 404, 'headers': headers, 'body': json.dumps({
+            'error': 'master_unavailable', 'message': 'Мастер недоступен для бронирования'
+        }, ensure_ascii=False)}
 
     # Лочим мастера целиком — никто не сможет создать пересекающуюся бронь параллельно.
     acquire_master_lock(cur, pre['master_id'])

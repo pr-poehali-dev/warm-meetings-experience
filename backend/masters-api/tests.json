@@ -167,6 +167,33 @@
       "expectedStatus": 404,
       "expectedBody": {"error": "Шаблон не найден или пустой"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Public-book — без slot_id возвращает 400",
+      "method": "POST",
+      "path": "/?resource=bookings&sub=public-book",
+      "body": {"client_name": "Иван", "client_phone": "+79991234567"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "missing_slot"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Public-book — короткий телефон возвращает 400",
+      "method": "POST",
+      "path": "/?resource=bookings&sub=public-book",
+      "body": {"slot_id": 999999, "client_name": "Иван", "client_phone": "+7"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "invalid_phone"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Public-book — несуществующий слот возвращает 404",
+      "method": "POST",
+      "path": "/?resource=bookings&sub=public-book",
+      "body": {"slot_id": 999999999, "client_name": "Иван", "client_phone": "+79991234567"},
+      "expectedStatus": 404,
+      "expectedBody": {"error": "Интервал не найден"},
+      "bodyMatcher": "partial"
     }
   ]
 }
