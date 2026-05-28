@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addDays, format, startOfToday } from "date-fns";
 import { ru } from "date-fns/locale";
 import Icon from "@/components/ui/icon";
@@ -187,6 +187,20 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
     const firstAvailable = days.find((d) => (optionsByDay[dayKey(d)] ?? []).length > 0);
     setSelectedDate(firstAvailable ?? null);
   }, [selectedServiceId, optionsByDay, days, selectedService]);
+
+  // Скролл к выбранному дню — только когда selectedDate реально меняется,
+  // а не на каждый ререндер (иначе перехватывает клики).
+  const selectedDayRef = useRef<HTMLButtonElement | null>(null);
+  const selectedDayKey = selectedDate ? dayKey(selectedDate) : null;
+  useEffect(() => {
+    if (!selectedDayKey) return;
+    const el = selectedDayRef.current;
+    if (!el) return;
+    const t = setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [selectedDayKey]);
 
   const optionsForDay = selectedDate ? optionsByDay[dayKey(selectedDate)] ?? [] : [];
   const hasAnyOptions = options.length > 0;
@@ -491,7 +505,7 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                   return (
                     <button
                       key={dayKey(d)}
-                      ref={isSelected ? (el) => el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }) : undefined}
+                      ref={isSelected ? selectedDayRef : undefined}
                       type="button"
                       disabled={!has}
                       onClick={() => setSelectedDate(d)}
@@ -555,7 +569,9 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                       <button
                         key={`${opt.slot.id}-${i}`}
                         type="button"
-                        onClick={() => onBookSlot(opt, selectedService)}
+                        onClick={() => {
+                          if (selectedService) onBookSlot(opt, selectedService);
+                        }}
                         className="min-h-[48px] px-3 py-2 rounded-xl transition-all text-base font-semibold active:scale-95 md:hover:-translate-y-0.5 touch-manipulation"
                         style={{
                           background: "var(--card-idle)",

@@ -489,6 +489,19 @@ export default function MasterDetail() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [extVideos, setExtVideos] = useState<VideoItem[]>([]);
   const [selectedServiceForFlow, setSelectedServiceForFlow] = useState<number | null>(null);
+  const [bookingVisible, setBookingVisible] = useState(false);
+
+  // Прячем плавающую кнопку «Записаться», когда виджет бронирования виден.
+  useEffect(() => {
+    const target = document.querySelector("[data-section='schedule']");
+    if (!target) return;
+    const io = new IntersectionObserver(
+      ([entry]) => setBookingVisible(entry.isIntersecting),
+      { threshold: 0.15 }
+    );
+    io.observe(target);
+    return () => io.disconnect();
+  }, [services.length]);
 
   useEffect(() => {
     if (!slug) return;
@@ -788,10 +801,10 @@ export default function MasterDetail() {
 
       <Footer />
 
-      {/* Плавающая кнопка «Записаться» на мобильных */}
-      {services.length > 0 && (
+      {/* Плавающая кнопка «Записаться» на мобильных — прячется, когда виджет уже виден */}
+      {services.length > 0 && !bookingVisible && !bookingState && (
         <div
-          className="lg:hidden fixed left-0 right-0 flex justify-center z-40 pointer-events-none px-4"
+          className="lg:hidden fixed left-0 right-0 flex justify-center z-40 pointer-events-none px-4 transition-opacity"
           style={{ bottom: 'max(env(safe-area-inset-bottom, 16px), 16px)' }}
         >
           <button
