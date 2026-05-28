@@ -329,6 +329,12 @@ export const masterBookingsApi = {
       body: JSON.stringify(data),
     }),
 
+  rescheduleBooking: (data: { id: number; datetime_start: string; datetime_end: string }) =>
+    fetchApi<MasterBooking>(`${BOOKINGS_URL}&sub=bookings`, {
+      method: "PUT",
+      body: JSON.stringify({ ...data, action: "reschedule" }),
+    }),
+
   getStats: (masterId: number, period?: string) => {
     let url = `${BOOKINGS_URL}&sub=stats&master_id=${masterId}`;
     if (period) url += `&period=${period}`;

@@ -170,37 +170,140 @@ def handle_slots(event, method, params, schema, headers):
 
     if method == 'PUT':
         body = json.loads(event.get('body', '{}'))
-        slot_id = body['id']
+        slot_id = int(body['id'])
+        new_start = body.get('datetime_start')
+        new_end = body.get('datetime_end')
+
+        # Считаем текущее состояние слота — нужно для проверки конфликтов
+        # и для синхронного переноса привязанной брони.
+        cur.execute(f"""
+            SELECT id, master_id, datetime_start, datetime_end, status
+            FROM {schema}.master_slots WHERE id = {slot_id}
+        """)
+        current = cur.fetchone()
+        if not current:
+            conn.close()
+            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Слот не найден'})}
+
+        master_id = current['master_id']
+
+        # Если меняется время — валидируем как новую бронь:
+        # выходные, пересечения, blocked-слоты, буфер (если внутри есть активная бронь).
+        if new_start or new_end:
+            acquire_master_lock(cur, master_id)
+            check_s = new_start or current['datetime_start']
+            check_e = new_end or current['datetime_end']
+
+            # 1) Выходной мастера
+            blocked_day = check_day_blocked(cur, schema, master_id, check_s, check_e)
+            if blocked_day:
+                conn.close()
+                return {'statusCode': 409, 'headers': headers, 'body': json.dumps({
+                    'error': 'day_blocked',
+                    'message': f"День {blocked_day['block_date']} заблокирован: {blocked_day.get('reason') or 'выходной'}",
+                }, default=str, ensure_ascii=False)}
+
+            # 2) Пересечение с другим слотом
+            cur.execute(f"""
+                SELECT id, status FROM {schema}.master_slots
+                WHERE master_id = {int(master_id)}
+                  AND id <> {slot_id}
+                  AND datetime_start < '{check_e}'
+                  AND datetime_end > '{check_s}'
+                LIMIT 1
+            """)
+            other = cur.fetchone()
+            if other:
+                conn.close()
+                return {'statusCode': 409, 'headers': headers, 'body': json.dumps({
+                    'error': 'slot_overlap',
+                    'message': 'Это время пересекается с другим слотом',
+                    'details': {'slot_id': other['id'], 'status': other.get('status')},
+                }, ensure_ascii=False)}
+
+            # 3) Пересечение с чужой активной бронью (свои брони этого слота двигаются вместе).
+            cur.execute(f"""
+                SELECT id, client_name FROM {schema}.master_bookings
+                WHERE master_id = {int(master_id)}
+                  AND status IN ('pending', 'confirmed')
+                  AND (slot_id IS NULL OR slot_id <> {slot_id})
+                  AND datetime_start < '{check_e}'
+                  AND datetime_end > '{check_s}'
+                LIMIT 1
+            """)
+            other_b = cur.fetchone()
+            if other_b:
+                conn.close()
+                return {'statusCode': 409, 'headers': headers, 'body': json.dumps({
+                    'error': 'booking_conflict',
+                    'message': 'Это время уже занято другой записью',
+                    'details': {'conflict_booking_id': other_b['id'], 'client_name': other_b.get('client_name')},
+                }, ensure_ascii=False)}
+
+        # Формируем UPDATE
         updates = []
         if 'service_id' in body:
             svc = body['service_id']
             updates.append(f"service_id = {int(svc) if svc else 'NULL'}")
-        if 'datetime_start' in body:
-            updates.append(f"datetime_start = '{body['datetime_start']}'")
-        if 'datetime_end' in body:
-            updates.append(f"datetime_end = '{body['datetime_end']}'")
+        if new_start:
+            updates.append(f"datetime_start = '{new_start}'")
+        if new_end:
+            updates.append(f"datetime_end = '{new_end}'")
         if 'max_clients' in body:
             updates.append(f"max_clients = {int(body['max_clients'])}")
-        if 'status' in body:
+        if 'status' in body and body['status'] in ('available', 'blocked', 'event', 'booked'):
             updates.append(f"status = '{body['status']}'")
         if 'notes' in body:
             notes_escaped = body['notes'].replace("'", "''")
             updates.append(f"notes = '{notes_escaped}'")
 
-        if updates:
-            updates.append("updated_at = CURRENT_TIMESTAMP")
-            cur.execute(f"""
-                UPDATE {schema}.master_slots SET {', '.join(updates)}
-                WHERE id = {int(slot_id)}
-                RETURNING *
-            """)
-            row = cur.fetchone()
-            conn.commit()
+        if not updates:
             conn.close()
-            return {'statusCode': 200, 'headers': headers, 'body': json.dumps(row, default=str)}
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Nothing to update'})}
 
+        updates.append("updated_at = CURRENT_TIMESTAMP")
+        cur.execute(f"""
+            UPDATE {schema}.master_slots SET {', '.join(updates)}
+            WHERE id = {slot_id}
+            RETURNING *
+        """)
+        row = cur.fetchone()
+
+        # Синхронно двигаем брони, привязанные к этому слоту.
+        # Сдвиг = (новый_старт - старый_старт). Применяется ко всем активным броням.
+        if new_start:
+            try:
+                from datetime import timezone
+                def _to_utc(v):
+                    if hasattr(v, 'tzinfo') and v.tzinfo:
+                        return v.astimezone(timezone.utc).replace(tzinfo=None)
+                    return v
+                ns = datetime.fromisoformat(str(new_start).replace('Z', '+00:00'))
+                ns_naive = _to_utc(ns)
+                old_s = _to_utc(current['datetime_start'])
+                delta_seconds = int((ns_naive - old_s).total_seconds())
+                if delta_seconds != 0:
+                    cur.execute(f"""
+                        UPDATE {schema}.master_bookings
+                        SET datetime_start = datetime_start + interval '{delta_seconds} seconds',
+                            datetime_end   = datetime_end   + interval '{delta_seconds} seconds',
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE slot_id = {slot_id}
+                          AND status IN ('pending', 'confirmed')
+                    """)
+            except Exception as e:
+                # Если что-то пошло не так с парсингом — откатим транзакцию,
+                # иначе слот переедет, а брони останутся на старом месте.
+                conn.rollback()
+                conn.close()
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+                    'error': 'datetime_parse_failed',
+                    'message': f'Не удалось пересчитать сдвиг броней: {e}',
+                })}
+
+        conn.commit()
         conn.close()
-        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Nothing to update'})}
+        return {'statusCode': 200, 'headers': headers, 'body': json.dumps(row, default=str)}
 
     if method == 'DELETE':
         body = json.loads(event.get('body', '{}'))

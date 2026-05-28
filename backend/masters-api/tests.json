@@ -122,6 +122,24 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "master_id обязателен"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Бронь — reschedule без datetime отвечает 400",
+      "method": "PUT",
+      "path": "/?resource=bookings&sub=bookings",
+      "body": {"id": 999999999, "action": "reschedule"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "missing_datetime"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Бронь — reschedule несуществующей возвращает 404",
+      "method": "PUT",
+      "path": "/?resource=bookings&sub=bookings",
+      "body": {"id": 999999999, "action": "reschedule", "datetime_start": "2099-01-01T10:00:00+03:00", "datetime_end": "2099-01-01T11:00:00+03:00"},
+      "expectedStatus": 404,
+      "expectedBody": {"error": "Бронь не найдена"},
+      "bodyMatcher": "partial"
     }
   ]
 }

@@ -528,31 +528,14 @@ export default function MasterCalendarDnd({ masterId = MASTER_ID }: Props) {
     setPendingResize(null);
   };
 
-  // Прямой перенос брони — backend bookings update принимает action. Используем PUT slots если есть slot_id,
-  // иначе fallback на отмену + создание новой (грубовато, но работает).
+  // Прямой перенос брони через action='reschedule'.
+  // Бэк сам валидирует выходные / буфер / пересечения и синхронно двигает привязанный слот.
   const rescheduleBooking = async (bookingId: number, start: Date, end: Date) => {
-    const b = bookings.find(x => x.id === bookingId);
-    if (!b) throw new Error("Бронь не найдена");
-    if (b.slot_id) {
-      await masterCalendarApi.updateSlot({
-        id: b.slot_id,
-        datetime_start: toISO(start),
-        datetime_end: toISO(end),
-      });
-    } else {
-      // нет привязанного слота — создаём новый слот + перепривязываем
-      const newSlot = await masterCalendarApi.createSlot({
-        master_id: masterId,
-        datetime_start: toISO(start),
-        datetime_end: toISO(end),
-        max_clients: 1,
-        status: "booked",
-        service_id: b.service_id || undefined,
-      });
-      // PUT booking с новым slot_id напрямую — у нас нет такого метода, попробуем минимально:
-      // Падать не будем: оставим как есть, в следующей итерации добавим PATCH в backend.
-      console.warn("Booking без slot_id, создан слот", newSlot);
-    }
+    await masterBookingsApi.rescheduleBooking({
+      id: bookingId,
+      datetime_start: toISO(start),
+      datetime_end: toISO(end),
+    });
   };
 
   // Клик по блоку → мини-карточка

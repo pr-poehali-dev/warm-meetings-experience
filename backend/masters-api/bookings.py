@@ -452,8 +452,72 @@ def handle_bookings(event, method, params, schema, headers):
 
     if method == 'PUT':
         body = json.loads(event.get('body', '{}'))
-        booking_id = body['id']
+        booking_id = int(body['id'])
         action = body.get('action', 'update')
+
+        if action == 'reschedule':
+            # Перенос брони на новое время.
+            # Валидируем: выходные мастера, пересечения с другими бронями (учитывая буфер),
+            # blocked-слоты. Если бронь привязана к слоту, слот двигается синхронно.
+            new_start = body.get('datetime_start')
+            new_end = body.get('datetime_end')
+            if not new_start or not new_end:
+                conn.close()
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+                    'error': 'missing_datetime',
+                    'message': 'datetime_start и datetime_end обязательны',
+                })}
+
+            cur.execute(f"""
+                SELECT id, master_id, slot_id, datetime_start, datetime_end, status
+                FROM {schema}.master_bookings WHERE id = {booking_id}
+            """)
+            curr_b = cur.fetchone()
+            if not curr_b:
+                conn.close()
+                return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Бронь не найдена'})}
+            if curr_b['status'] in ('canceled', 'completed', 'no_show'):
+                conn.close()
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+                    'error': 'invalid_status',
+                    'message': 'Нельзя перенести завершённую или отменённую запись',
+                })}
+
+            master_id = curr_b['master_id']
+            acquire_master_lock(cur, master_id)
+
+            problem = validate_booking_create(
+                cur, schema, master_id, new_start, new_end,
+                exclude_booking_id=booking_id,
+            )
+            if problem:
+                conn.close()
+                return {'statusCode': 409, 'headers': headers, 'body': json.dumps(problem, default=str, ensure_ascii=False)}
+
+            # Двигаем саму бронь
+            cur.execute(f"""
+                UPDATE {schema}.master_bookings SET
+                    datetime_start = '{new_start}',
+                    datetime_end = '{new_end}',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = {booking_id}
+                RETURNING *
+            """)
+            row = cur.fetchone()
+
+            # Если есть привязанный слот — двигаем и его (расширяем границы под новое время).
+            if curr_b.get('slot_id'):
+                cur.execute(f"""
+                    UPDATE {schema}.master_slots SET
+                        datetime_start = '{new_start}',
+                        datetime_end = '{new_end}',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = {int(curr_b['slot_id'])}
+                """)
+
+            conn.commit()
+            conn.close()
+            return {'statusCode': 200, 'headers': headers, 'body': json.dumps(row, default=str)}
 
         if action == 'confirm':
             cur.execute(f"""
