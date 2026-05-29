@@ -4,16 +4,18 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta
 
-import bcrypt
-import pyotp
 import psycopg2
 import psycopg2.extras
-import requests
 
 from shared import *
 
+# ВАЖНО: тяжёлые библиотеки (bcrypt, pyotp, requests) импортируются ЛЕНИВО
+# внутри функций, где реально используются. Это сокращает cold start для
+# горячих путей (check/logout/register без email и т.п.).
+
 
 def hash_password(password):
+    import bcrypt
     hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=12))
     return hashed.decode('utf-8')
 
@@ -22,6 +24,7 @@ def verify_password(password, stored_hash):
         return False
     # Плавная миграция: поддержка старых SHA256 хешей
     if stored_hash.startswith('$2b$') or stored_hash.startswith('$2a$'):
+        import bcrypt
         return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
     # Старый SHA256 без соли
     return hashlib.sha256(password.encode()).hexdigest() == stored_hash
@@ -538,6 +541,7 @@ def handle_verify_2fa(body, ip=None, user_agent=''):
         conn.close()
         return respond(400, {'error': 'Недействительный токен или истёк срок'})
 
+    import pyotp
     totp = pyotp.TOTP(row['totp_secret'])
     valid = totp.verify(code, valid_window=1)
 
@@ -708,6 +712,7 @@ def finalize_login_session(cur, schema, user_row, method_used, ip, user_agent, p
 
 
 def send_login_2fa_email(to_email, name, code, ip, ua):
+    import requests
     api_key = os.environ.get('UNISENDER_API_KEY', '')
     sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
     sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
@@ -956,6 +961,7 @@ def handle_login_2fa_start_oauth(body, ip=None, user_agent=''):
 
 
 def exchange_vk_login_code(code, code_verifier, device_id, redirect_uri):
+    import requests
     client_id = os.environ.get('VK_CLIENT_ID', '')
     client_secret = os.environ.get('VK_CLIENT_SECRET', '')
     if not client_id or not client_secret:
@@ -988,6 +994,7 @@ def exchange_vk_login_code(code, code_verifier, device_id, redirect_uri):
 
 
 def exchange_yandex_login_code(code):
+    import requests
     client_id = os.environ.get('YANDEX_CLIENT_ID', '')
     client_secret = os.environ.get('YANDEX_CLIENT_SECRET', '')
     if not client_id or not client_secret:
@@ -1101,6 +1108,7 @@ def handle_login_2fa_verify_oauth(body, ip=None, user_agent=''):
 
 
 def send_welcome_email(to_email, name):
+    import requests
     api_key = os.environ.get('UNISENDER_API_KEY', '')
     sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
     sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
@@ -1157,6 +1165,7 @@ def send_welcome_email(to_email, name):
 
 
 def send_reset_email(to_email, name, token):
+    import requests
     api_key = os.environ.get('UNISENDER_API_KEY', '')
     sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
     sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
@@ -1213,6 +1222,7 @@ def send_reset_email(to_email, name, token):
 
 
 def send_new_device_email(to_email, name, ip, user_agent):
+    import requests
     api_key = os.environ.get('UNISENDER_API_KEY', '')
     sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
     sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
