@@ -44,15 +44,11 @@ const fmtTime = (d: Date) =>
 const fmtDate = (d: Date) =>
   d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long" });
 
-const toISO = (d: Date) => {
-  // local ISO с явным offset — у backend колонки timestamptz, иначе будет UTC-сдвиг
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const tzMin = -d.getTimezoneOffset();
-  const sign = tzMin >= 0 ? "+" : "-";
-  const tzH = pad(Math.floor(Math.abs(tzMin) / 60));
-  const tzM = pad(Math.abs(tzMin) % 60);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${sign}${tzH}:${tzM}`;
-};
+// КАНОН ВРЕМЕНИ: FullCalendar работает в timeZone мастера (см. ниже timeZone=).
+// Поэтому Date-объекты из календаря несут корректный МОМЕНТ времени. Отправляем
+// его в UTC (toISOString) — Postgres timestamptz сам приведёт к нужной зоне.
+// Так отправка НЕ зависит от зоны браузера (раньше был баг getTimezoneOffset).
+const toISO = (d: Date) => d.toISOString();
 
 export default function MasterCalendarDnd({ masterId }: Props) {
   const calRef = useRef<FullCalendar | null>(null);
@@ -223,16 +219,15 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       if (seenBlockDates.has(blk.block_date)) continue;
       seenBlockDates.add(blk.block_date);
 
-      const startD = new Date(blk.block_date + "T00:00:00");
-      const endExclusive = new Date(startD);
-      endExclusive.setDate(endExclusive.getDate() + 1);
+      // Дату блокировки подаём строкой YYYY-MM-DD (allDay) — без new Date,
+      // чтобы день не «уезжал» из-за разницы зон браузера и мастера.
+      const blockDay = String(blk.block_date).slice(0, 10);
 
       // Компактная плашка в "Весь день" (только 1 день, не растягиваем)
       list.push({
         id: `blk-${blk.id}`,
         title: `🔒 ${blk.reason || "Выходной"}`,
-        start: startD,
-        end: endExclusive,
+        start: blockDay,
         allDay: true,
         classNames: ["fcb-day-block"],
         editable: false,
@@ -241,9 +236,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       // Заливка фона колонки дня (видна в timeGrid)
       list.push({
         id: `blk-bg-${blk.id}`,
-        start: startD,
-        end: endExclusive,
-        allDay: false,
+        start: blockDay,
+        allDay: true,
         display: "background",
         classNames: ["fcb-day-block-bg"],
         extendedProps: { kind: "available", raw: blk },
@@ -698,6 +692,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         ref={calRef}
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
+        timeZone={settings?.timezone || "Europe/Moscow"}
         locale={ruLocale}
         firstDay={1}
         allDaySlot={true}

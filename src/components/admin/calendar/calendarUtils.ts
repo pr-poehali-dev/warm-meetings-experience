@@ -1,4 +1,5 @@
 import type { MasterSlot } from "@/lib/master-calendar-api";
+import { slotHoursMinutes } from "@/lib/masterTime";
 
 export const HOURS_START_DEFAULT = 8;
 export const HOURS_END_DEFAULT = 23;
@@ -70,12 +71,8 @@ export const getMonday = (date: Date): Date => {
   return d;
 };
 
-const parseLocalTime = (dateStr: string): { hours: number; minutes: number } => {
-  // Убираем timezone offset чтобы не было сдвига UTC→локальное
-  const clean = dateStr.replace("T", " ").replace(/\+.*$/, "").replace(/Z$/, "").trim();
-  const d = new Date(clean);
-  return { hours: d.getHours(), minutes: d.getMinutes() };
-};
+// Время мастера: «стенные» часы/минуты из ISO с offset (единый канон).
+const parseLocalTime = slotHoursMinutes;
 
 export const getSlotPosition = (slot: MasterSlot, hoursStart: number = HOURS_START_DEFAULT) => {
   const start = parseLocalTime(slot.datetime_start);

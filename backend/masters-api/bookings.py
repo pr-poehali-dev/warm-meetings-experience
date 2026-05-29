@@ -8,6 +8,9 @@ from booking_validator import (
     require_master_id, recalc_slot_status, ensure_master_access,
     check_public_booking_ratelimit,
 )
+from time_utils import (
+    fetch_master_tz, parse_client_dt, to_master_iso, localize_rows,
+)
 import re as _re
 
 
@@ -445,7 +448,9 @@ def handle_bookings(event, method, params, schema, headers):
 
         cur.execute(query)
         rows = cur.fetchall()
+        bk_tz = fetch_master_tz(cur, schema, master_id)
         conn.close()
+        localize_rows(rows, bk_tz)
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps(rows, default=str)}
 
     if method == 'POST':
@@ -459,8 +464,16 @@ def handle_bookings(event, method, params, schema, headers):
         client_phone = body['client_phone'].replace("'", "''")
         client_email = (body.get('client_email') or '').replace("'", "''")
         service_id = body.get('service_id')
-        dt_start = body['datetime_start']
-        dt_end = body['datetime_end']
+        # Канон времени: «голую» строку трактуем как зону мастера, сохраняем с offset.
+        adm_tz = fetch_master_tz(cur, schema, master_id)
+        try:
+            dt_start = to_master_iso(parse_client_dt(body['datetime_start'], adm_tz), adm_tz)
+            dt_end = to_master_iso(parse_client_dt(body['datetime_end'], adm_tz), adm_tz)
+        except (ValueError, TypeError, KeyError):
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+                'error': 'invalid_datetime', 'message': 'Неверный формат времени'
+            }, ensure_ascii=False)}
         price = float(body.get('price', 0))
         comment = (body.get('comment') or '').replace("'", "''")
         source = body.get('source', 'admin')
@@ -748,7 +761,12 @@ def handle_public_slots(event, method, params, schema, headers):
           AND datetime_start <= '{date_from}'::date + interval '30 days'
     """)
     bookings = cur.fetchall()
+
+    # Канон времени: отдаём в таймзоне мастера с явным offset (см. time_utils).
+    master_tz = fetch_master_tz(cur, schema, master_id)
     conn.close()
+    localize_rows(slots, master_tz)
+    localize_rows(bookings, master_tz)
 
     return {
         'statusCode': 200,
@@ -756,6 +774,7 @@ def handle_public_slots(event, method, params, schema, headers):
         'body': json.dumps({
             'slots': slots,
             'bookings': bookings,
+            'timezone': master_tz,
         }, default=str)
     }
 
@@ -923,16 +942,18 @@ def handle_public_book(event, method, params, schema, headers):
         booking_price = float(svc['price'] or 0)
 
     # Парсим клиентское desired_start/end ВСЕГДА (не только для слотов без услуги).
-    # Корректно обрабатываем TZ (offset или Z), сравниваем в UTC-naive.
+    # КАНОН ВРЕМЕНИ: если фронт прислал строку БЕЗ offset — это время МАСТЕРА,
+    # а не UTC (раньше тут вешался UTC, из-за чего бронь «уезжала» на +3 часа).
     if desired_start and desired_end:
         from datetime import timezone as _tz
+        booking_master_tz = fetch_master_tz(cur, schema, master_id)
         def _to_utc_naive(v):
             if hasattr(v, 'tzinfo') and v.tzinfo:
                 return v.astimezone(_tz.utc).replace(tzinfo=None)
             return v
         try:
-            ds = datetime.fromisoformat(str(desired_start).replace('Z', '+00:00'))
-            de = datetime.fromisoformat(str(desired_end).replace('Z', '+00:00'))
+            ds = parse_client_dt(desired_start, booking_master_tz)
+            de = parse_client_dt(desired_end, booking_master_tz)
             ds_n = _to_utc_naive(ds)
             de_n = _to_utc_naive(de)
             slot_s_n = _to_utc_naive(slot['datetime_start'])

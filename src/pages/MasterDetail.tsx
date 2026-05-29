@@ -12,6 +12,7 @@ import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import PageShell from "@/components/ui/page-shell";
 import MasterBookingFlow, { BookingOption } from "@/components/masters/MasterBookingFlow";
 import { parseServiceDescription } from "@/lib/service-description";
+import { formatSlotTime } from "@/lib/masterTime";
 import func2url from "../../backend/func2url.json";
 
 const VIDEOS_API = func2url["media-api"];
@@ -44,14 +45,9 @@ function fmt(n: number) {
   return n.toLocaleString("ru-RU");
 }
 
-function parseLocalISO(iso: string): Date {
-  // Берём дату и время без timezone, чтобы не было сдвига UTC→локальное
-  const clean = iso.replace("T", " ").replace(/\+.*$/, "").replace(/Z$/, "").trim();
-  return new Date(clean);
-}
-
 function fmtTime(iso: string) {
-  return format(parseLocalISO(iso), "HH:mm");
+  // Время мастера: единый канон, см. masterTime.ts
+  return formatSlotTime(iso);
 }
 
 function fmtDuration(min: number) {
@@ -83,6 +79,8 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
   const parsedDesc = parseServiceDescription(service.description);
   const hasContraindications = parsedDesc.contraindications.length > 0;
 
+  // КАНОН: option.start — это «стенное» время мастера. Отправляем строку без
+  // offset — бэкенд (time_utils.parse_client_dt) трактует её как зону мастера.
   const toIsoLocal = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
 

@@ -151,6 +151,8 @@ export default function QuickScheduleSetup({ masterId, onNavigateToServices }: Q
       let failed = 0;
       const promises: Promise<unknown>[] = [];
 
+      // КАНОН: время вводит мастер в своей зоне. Шлём строку без offset —
+      // бэкенд (time_utils.parse_client_dt) трактует её как зону мастера.
       const toIsoLocal = (d: Date) =>
         `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:00`;
 

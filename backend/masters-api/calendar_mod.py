@@ -3,6 +3,9 @@ import psycopg2.extras
 from datetime import datetime, timedelta, date, time
 from shared import CORS_HEADERS, get_conn, get_schema
 from booking_validator import acquire_master_lock, check_day_blocked, require_master_id
+from time_utils import (
+    fetch_master_tz, parse_client_dt, to_master_iso, wall_to_master_iso, localize_rows,
+)
 
 
 def handle_calendar(event, method, params, schema, headers):
@@ -103,7 +106,9 @@ def handle_slots(event, method, params, schema, headers):
 
         cur.execute(query)
         rows = cur.fetchall()
+        slots_tz = fetch_master_tz(cur, schema, master_id)
         conn.close()
+        localize_rows(rows, slots_tz)
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps(rows, default=str)}
 
     if method == 'POST':
@@ -113,8 +118,17 @@ def handle_slots(event, method, params, schema, headers):
             conn.close()
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'master_id обязателен'})}
         service_id = body.get('service_id')
-        dt_start = body['datetime_start']
-        dt_end = body['datetime_end']
+        # Канон времени: «голую» строку без offset трактуем как зону мастера,
+        # затем сохраняем как ISO с явным offset (консистентно с чтением).
+        slot_tz = fetch_master_tz(cur, schema, master_id)
+        try:
+            dt_start = to_master_iso(parse_client_dt(body['datetime_start'], slot_tz), slot_tz)
+            dt_end = to_master_iso(parse_client_dt(body['datetime_end'], slot_tz), slot_tz)
+        except (ValueError, TypeError, KeyError):
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+                'error': 'invalid_datetime', 'message': 'Неверный формат времени'
+            }, ensure_ascii=False)}
         max_clients = body.get('max_clients', 1)
         notes = body.get('notes', '')
         slot_status = body.get('status', 'available')
@@ -166,6 +180,7 @@ def handle_slots(event, method, params, schema, headers):
         row = cur.fetchone()
         conn.commit()
         conn.close()
+        localize_rows([row], slot_tz)
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(row, default=str)}
 
     if method == 'PUT':
@@ -566,6 +581,10 @@ def handle_apply_template(event, method, params, schema, headers):
         conn.close()
         return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Шаблон не найден или пустой'})}
 
+    # Канон времени: слоты шаблона создаём в таймзоне мастера (с учётом DST),
+    # а не с жёстким +03:00.
+    tmpl_tz = fetch_master_tz(cur, schema, master_id)
+
     if start_date_str:
         start_d = datetime.strptime(start_date_str, '%Y-%m-%d').date()
     else:
@@ -635,8 +654,8 @@ def handle_apply_template(event, method, params, schema, headers):
                 h, m = map(int, t_end.split(':')[:2])
                 t_end = time(h, m)
 
-            dt_start = datetime.combine(current_d, t_start).strftime('%Y-%m-%dT%H:%M:00+03:00')
-            dt_end = datetime.combine(current_d, t_end).strftime('%Y-%m-%dT%H:%M:00+03:00')
+            dt_start = wall_to_master_iso(datetime.combine(current_d, t_start), tmpl_tz)
+            dt_end = wall_to_master_iso(datetime.combine(current_d, t_end), tmpl_tz)
 
             cur.execute(f"""
                 SELECT id, status FROM {schema}.master_slots
@@ -979,6 +998,10 @@ def handle_week_view(event, method, params, schema, headers):
 
     conn.close()
 
+    # Канон времени: отдаём слоты и брони в таймзоне мастера с явным offset.
+    localize_rows(slots, master_tz)
+    localize_rows(bookings, master_tz)
+
     return {
         'statusCode': 200,
         'headers': headers,
@@ -987,6 +1010,7 @@ def handle_week_view(event, method, params, schema, headers):
             'week_end': str(end_d),
             'slots': slots,
             'bookings': bookings,
-            'blocks': blocks
+            'blocks': blocks,
+            'timezone': master_tz,
         }, default=str)
     }

@@ -4,6 +4,7 @@ import { ru } from "date-fns/locale";
 import Icon from "@/components/ui/icon";
 import { masterBookingsApi, MasterService, MasterSlot } from "@/lib/master-calendar-api";
 import { parseServiceDescription } from "@/lib/service-description";
+import { slotToWallDate } from "@/lib/masterTime";
 
 const DAYS_AHEAD = 30;
 
@@ -20,10 +21,8 @@ function fmtDuration(min: number) {
   return m ? `${h} ч ${m} мин` : `${h} ч`;
 }
 
-function parseLocalISO(iso: string): Date {
-  const clean = iso.replace("T", " ").replace(/\+.*$/, "").replace(/Z$/, "").trim();
-  return new Date(clean);
-}
+// Время мастера: извлекаем «стенные» часы из ISO с offset (см. masterTime.ts).
+const parseLocalISO = slotToWallDate;
 
 function fmtTime(d: Date) {
   return format(d, "HH:mm");
