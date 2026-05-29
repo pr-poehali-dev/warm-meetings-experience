@@ -223,6 +223,14 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
               <Icon name="Settings" size={15} className="flex-shrink-0" />
               Настройки профиля
             </Link>
+            <Link
+              to="/account?tab=support"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            >
+              <Icon name="LifeBuoy" size={15} className="flex-shrink-0" />
+              Поддержка
+            </Link>
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-destructive hover:bg-destructive/5 transition-colors"
