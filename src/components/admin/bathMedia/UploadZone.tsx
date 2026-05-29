@@ -1,11 +1,9 @@
 import { useState, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
+import { useMediaUpload } from "@/hooks/use-media-upload";
 import { MediaType, MEDIA_CONFIG } from "./bathMediaTypes";
 import PhotoCropEditor from "./PhotoCropEditor";
-import func2url from "../../../../backend/func2url.json";
-
-const MEDIA_API = func2url["media-api"];
 
 interface UploadZoneProps {
   type: MediaType;
@@ -16,35 +14,28 @@ interface UploadZoneProps {
 
 export default function UploadZone({ type, slug, onUploaded, disabled }: UploadZoneProps) {
   const cfg = MEDIA_CONFIG[type];
-  const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const uploadBase64 = async (base64: string, mimeType: string) => {
-    setUploading(true);
-    setProgress(40);
-    try {
-      const res = await fetch(`${MEDIA_API}/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ file: base64, file_type: mimeType, slug, media_type: type }),
-      });
+  const { uploading, uploadBase64: doUpload } = useMediaUpload({
+    maxMb: cfg.maxMb,
+    buildBody: (base64, file) => ({ file: base64, file_type: file.type, slug, media_type: type }),
+    successMessage: null,
+    onUploaded: () => {
       setProgress(90);
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Ошибка загрузки");
-      }
       toast({ title: "Загружено!", description: `${cfg.label} добавлено` });
       onUploaded();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Не удалось загрузить файл";
-      toast({ title: "Ошибка", description: msg, variant: "destructive" });
-    } finally {
-      setUploading(false);
       setProgress(0);
-    }
+    },
+  });
+
+  // Обёртка для совместимости: принимает base64 + mimeType, как раньше.
+  // mime передаём через File-заглушку — buildBody читает file.type.
+  const uploadBase64 = (base64: string, mime: string) => {
+    setProgress(40);
+    return doUpload(base64, new File([], "media", { type: mime }));
   };
 
   const handleFile = (file: File) => {
@@ -58,12 +49,10 @@ export default function UploadZone({ type, slug, onUploaded, disabled }: UploadZ
       reader.onload = (e) => setCropSrc(e.target?.result as string);
       reader.readAsDataURL(file);
     } else {
-      setUploading(true);
       setProgress(10);
       const reader = new FileReader();
       reader.onload = async (e) => {
         const base64 = e.target?.result as string;
-        setProgress(40);
         await uploadBase64(base64, file.type);
       };
       reader.readAsDataURL(file);

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
+import { useMediaUpload } from "@/hooks/use-media-upload";
 import ExternalVideoBlock from "@/components/video/ExternalVideoBlock";
 import func2url from "../../../backend/func2url.json";
 
@@ -19,11 +20,19 @@ interface Props {
 
 export default function EventMediaUpload({ eventId }: Props) {
   const [photos, setPhotos] = useState<MediaItem[]>([]);
-  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const token = localStorage.getItem("user_token") || "";
+
+  const { uploading, uploadFile } = useMediaUpload({
+    endpoint: `${MEDIA_API}/?event_media=1`,
+    maxMb: 10,
+    headers: { "X-Session-Token": token },
+    buildBody: (base64, file) => ({ file: base64, filename: file.name, event_id: eventId }),
+    successMessage: "Фото загружено",
+    onUploaded: () => { loadPhotos(); },
+  });
 
   const loadPhotos = async () => {
     try {
@@ -35,31 +44,7 @@ export default function EventMediaUpload({ eventId }: Props) {
 
   useEffect(() => { loadPhotos(); }, [eventId]);
 
-  const handleFile = (file: File) => {
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "Файл слишком большой", description: "Максимум 10 МБ", variant: "destructive" });
-      return;
-    }
-    setUploading(true);
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = e.target?.result as string;
-      try {
-        const res = await fetch(`${MEDIA_API}/?event_media=1`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Session-Token": token },
-          body: JSON.stringify({ file: base64, filename: file.name, event_id: eventId }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Ошибка загрузки");
-        toast({ title: "Фото загружено" });
-        await loadPhotos();
-      } catch (err: unknown) {
-        toast({ title: "Ошибка", description: err instanceof Error ? err.message : "Не удалось загрузить", variant: "destructive" });
-      } finally { setUploading(false); }
-    };
-    reader.readAsDataURL(file);
-  };
+  const handleFile = (file: File) => { uploadFile(file); };
 
   const handleDelete = async (item: MediaItem) => {
     if (!confirm("Удалить фото?")) return;

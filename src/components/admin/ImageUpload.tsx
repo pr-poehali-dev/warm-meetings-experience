@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
+import { useMediaUpload } from "@/hooks/use-media-upload";
 import PhotoBank, { useRecentPhotos } from "./PhotoBank";
 import func2url from "../../../backend/func2url.json";
 const UPLOAD_URL = func2url["media-api"];
@@ -174,37 +175,22 @@ const ImageUpload = ({
     uploadImage(croppedDataUrl, "cropped.jpg");
   };
 
+  const { uploadBase64 } = useMediaUpload({
+    endpoint: UPLOAD_URL,
+    buildBody: (base64, file) => ({ image: base64, filename: file.name, folder: "events" }),
+    successMessage: "Изображение загружено",
+    onUploaded: (data) => {
+      if (data.url) onImageUploaded(data.url as string);
+    },
+  });
+
   const uploadImage = async (base64Image: string, filename: string) => {
     setUploading(true);
-    try {
-      const response = await fetch(UPLOAD_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: base64Image, filename, folder: "events" }),
-      });
-
-      const text = await response.text();
-      let data: { url?: string; error?: string } = {};
-      try { data = text ? JSON.parse(text) : {}; } catch { /* not json */ }
-
-      if (!response.ok || !data.url) {
-        const msg = data.error || `Ошибка сервера (${response.status})`;
-        throw new Error(msg);
-      }
-
-      onImageUploaded(data.url);
-      toast({ title: "Готово!", description: "Изображение загружено" });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Не удалось загрузить изображение";
-      toast({
-        title: "Ошибка",
-        description: msg,
-        variant: "destructive",
-      });
+    const result = await uploadBase64(base64Image, new File([], filename, { type: "image/jpeg" }));
+    if (!result || !result.url) {
       setPreviewUrl(currentImageUrl);
-    } finally {
-      setUploading(false);
     }
+    setUploading(false);
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
