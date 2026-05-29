@@ -522,11 +522,15 @@ def admin_post_message(cur, conn, schema, ticket_id, body):
         if u:
             if u.get('tg_chat_id') and u.get('notify_telegram'):
                 try:
+                    import os
                     from shared import tg_send
+                    # Чат привязан к АДМИН-боту — шлём через TELEGRAM_BOT_TOKEN,
+                    # а не через бота публикаций (TG_PUBLISH_BOT_TOKEN).
                     tg_send(
                         u['tg_chat_id'],
                         f"💬 Поддержка ответила в обращении #{ticket_id}\n"
-                        f"<b>{t['subject']}</b>\n\nОткройте личный кабинет, чтобы прочитать."
+                        f"<b>{t['subject']}</b>\n\nОткройте личный кабинет, чтобы прочитать.",
+                        token=os.environ.get('TELEGRAM_BOT_TOKEN', '')
                     )
                 except Exception:
                     pass

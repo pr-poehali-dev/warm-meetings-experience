@@ -239,8 +239,14 @@ def tg_send(chat_id, text, token=None, parse_mode='HTML'):
         return False
 
 def tg_notify_admin(text, token=None):
-    """Уведомление администратору (TELEGRAM_CHAT_ID)."""
-    return tg_send(os.environ.get('TELEGRAM_CHAT_ID', ''), text, token=token)
+    """Уведомление администратору (TELEGRAM_CHAT_ID).
+
+    Всегда шлём через АДМИН-бота (TELEGRAM_BOT_TOKEN), а не через бота
+    публикаций (TG_PUBLISH_BOT_TOKEN). Иначе уведомления поддержки уходят
+    от имени бота организатора и могут не доставляться.
+    """
+    admin_token = token or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+    return tg_send(os.environ.get('TELEGRAM_CHAT_ID', ''), text, token=admin_token)
 
 # --- Email (Unisender Go) ---
 
