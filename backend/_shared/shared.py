@@ -265,16 +265,19 @@ def send_email(to_email, subject, body_html, to_name=None, tags=None):
         return False
     recipient = {'email': to_email}
     if to_name:
-        recipient['substitutions'] = {'to_name': to_name}
+        recipient['name'] = to_name
+    # Unisender Go transactional API ждёт from_email/from_name,
+    # а НЕ sender_email/sender_name — иначе запрос отклоняется.
     message = {
         'recipients': [recipient],
-        'sender_email': sender_email,
-        'sender_name': sender_name,
+        'from_email': sender_email,
         'subject': subject,
         'body': {'html': body_html},
         'track_links': 1,
         'track_read': 1,
     }
+    if sender_name:
+        message['from_name'] = sender_name
     if tags:
         message['tags'] = tags if isinstance(tags, list) else [str(tags)]
     payload = json.dumps({'message': message}).encode('utf-8')
