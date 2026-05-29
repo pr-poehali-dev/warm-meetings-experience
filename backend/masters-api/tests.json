@@ -194,6 +194,47 @@
       "expectedStatus": 404,
       "expectedBody": {"error": "Интервал не найден"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Корзина — список (пустые брони для несуществующего мастера)",
+      "method": "GET",
+      "path": "/?resource=calendar&sub=trash&master_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": {"bookings": []},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Корзина — без master_id отвечает 400",
+      "method": "GET",
+      "path": "/?resource=calendar&sub=trash",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "master_id обязателен"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Восстановление — без master_id отвечает 400",
+      "method": "POST",
+      "path": "/?resource=calendar&sub=restore",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "master_id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Восстановление — GET не поддерживается (405)",
+      "method": "GET",
+      "path": "/?resource=calendar&sub=restore&master_id=999999",
+      "expectedStatus": 405,
+      "expectedBody": {"error": "Method not allowed"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Бэкап — GET не поддерживается (405)",
+      "method": "GET",
+      "path": "/?resource=calendar&sub=backup&master_id=999999",
+      "expectedStatus": 405,
+      "expectedBody": {"error": "Method not allowed"},
+      "bodyMatcher": "partial"
     }
   ]
 }

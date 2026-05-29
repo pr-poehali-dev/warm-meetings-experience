@@ -1,8 +1,52 @@
 import json
+import os
+import io
+import csv
 import psycopg2.extras
 from datetime import datetime, timedelta, date, time
 from shared import CORS_HEADERS, get_conn, get_schema
 from booking_validator import acquire_master_lock, check_day_blocked, require_master_id
+
+
+def _backup_bookings_to_s3(cur, schema, master_id, reason, where_extra=""):
+    """Сохраняет снимок записей мастера (CSV) в S3 и регистрирует его в master_backups.
+    Возвращает (file_url, count). Не падает — при ошибке вернёт (None, count)."""
+    cur.execute(f"""
+        SELECT b.*, ms.name AS service_name
+        FROM {schema}.master_bookings b
+        LEFT JOIN {schema}.master_services ms ON ms.id = b.service_id
+        WHERE b.master_id = {int(master_id)} AND b.archived_at IS NULL{where_extra}
+        ORDER BY b.datetime_start
+    """)
+    rows = cur.fetchall()
+    count = len(rows)
+    file_url = None
+    if count > 0:
+        try:
+            import boto3
+            buf = io.StringIO()
+            writer = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
+            writer.writeheader()
+            for r in rows:
+                writer.writerow({k: ('' if v is None else v) for k, v in r.items()})
+            data = buf.getvalue().encode('utf-8')
+            ts = datetime.utcnow().strftime('%Y%m%d-%H%M%S')
+            key = f"master-backups/{master_id}/{ts}-{reason}.csv"
+            s3 = boto3.client(
+                's3', endpoint_url='https://bucket.poehali.dev',
+                aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+                aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+            )
+            s3.put_object(Bucket='files', Key=key, Body=data, ContentType='text/csv')
+            file_url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+        except Exception as ex:
+            print(f'[backup] S3 failed: {type(ex).__name__}: {ex}')
+    cur.execute(f"""
+        INSERT INTO {schema}.master_backups (master_id, reason, bookings_count, file_url)
+        VALUES ({int(master_id)}, '{reason}', {count}, {('NULL' if not file_url else chr(39)+file_url+chr(39))})
+        RETURNING id, created_at
+    """)
+    return file_url, count
 from time_utils import (
     fetch_master_tz, parse_client_dt, to_master_iso, wall_to_master_iso, localize_rows,
 )
@@ -27,7 +71,93 @@ def handle_calendar(event, method, params, schema, headers):
         return handle_week_view(event, method, params, schema, headers)
     elif sub == 'clear':
         return handle_clear(event, method, params, schema, headers)
+    elif sub == 'trash':
+        return handle_trash(event, method, params, schema, headers)
+    elif sub == 'restore':
+        return handle_restore(event, method, params, schema, headers)
+    elif sub == 'backup':
+        return handle_backup(event, method, params, schema, headers)
     return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown calendar sub'})}
+
+
+def handle_trash(event, method, params, schema, headers):
+    """GET — список записей клиентов в корзине (archived_at IS NOT NULL)."""
+    if method != 'GET':
+        return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+    master_id, err = require_master_id(params, headers)
+    if err:
+        return err
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute(f"""
+            SELECT b.*, ms.name AS service_name
+            FROM {schema}.master_bookings b
+            LEFT JOIN {schema}.master_services ms ON ms.id = b.service_id
+            WHERE b.master_id = {int(master_id)} AND b.archived_at IS NOT NULL
+            ORDER BY b.archived_at DESC
+        """)
+        rows = cur.fetchall()
+        cur.execute(f"""
+            SELECT id, reason, bookings_count, file_url, created_at
+            FROM {schema}.master_backups
+            WHERE master_id = {int(master_id)}
+            ORDER BY created_at DESC LIMIT 50
+        """)
+        backups = cur.fetchall()
+    finally:
+        conn.close()
+    return {'statusCode': 200, 'headers': headers, 'body': json.dumps({
+        'bookings': rows, 'backups': backups
+    }, default=str)}
+
+
+def handle_restore(event, method, params, schema, headers):
+    """POST — восстановить записи из корзины. body: { master_id, ids?: [..] }.
+    Если ids не переданы — восстанавливаются все архивные записи мастера."""
+    if method != 'POST':
+        return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+    body = json.loads(event.get('body', '{}'))
+    master_id = int(body.get('master_id', 0))
+    if not master_id:
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'master_id required'})}
+    ids = body.get('ids') or []
+    where_ids = ""
+    if ids:
+        safe = ','.join(str(int(i)) for i in ids)
+        where_ids = f" AND id IN ({safe})"
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute(
+            f"UPDATE {schema}.master_bookings SET archived_at = NULL, updated_at = CURRENT_TIMESTAMP "
+            f"WHERE master_id = {master_id} AND archived_at IS NOT NULL{where_ids}"
+        )
+        restored = cur.rowcount
+        conn.commit()
+    finally:
+        conn.close()
+    return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'success': True, 'restored': restored})}
+
+
+def handle_backup(event, method, params, schema, headers):
+    """POST — создать резервную копию записей мастера прямо сейчас. body: { master_id }."""
+    if method != 'POST':
+        return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+    body = json.loads(event.get('body', '{}'))
+    master_id = int(body.get('master_id', 0))
+    if not master_id:
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'master_id required'})}
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        file_url, count = _backup_bookings_to_s3(cur, schema, master_id, 'manual')
+        conn.commit()
+    finally:
+        conn.close()
+    return {'statusCode': 200, 'headers': headers, 'body': json.dumps({
+        'success': True, 'backup_url': file_url, 'bookings_count': count
+    })}
 
 
 def handle_clear(event, method, params, schema, headers):
@@ -62,10 +192,18 @@ def handle_clear(event, method, params, schema, headers):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     deleted = {'bookings': 0, 'slots': 0, 'blocks': 0}
+    backup_url = None
 
     try:
         if scope in ('all', 'bookings'):
-            cur.execute(f"DELETE FROM {schema}.master_bookings WHERE master_id = {master_id}{where_period_bookings}")
+            # Сначала резервная копия записей клиентов, затем — мягкое скрытие в корзину.
+            backup_url, _ = _backup_bookings_to_s3(
+                cur, schema, master_id, 'clear', where_extra=where_period_bookings.replace('datetime_start', 'b.datetime_start')
+            )
+            cur.execute(
+                f"UPDATE {schema}.master_bookings SET archived_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP "
+                f"WHERE master_id = {master_id} AND archived_at IS NULL{where_period_bookings}"
+            )
             deleted['bookings'] = cur.rowcount
         if scope in ('all', 'slots'):
             cur.execute(f"DELETE FROM {schema}.master_slots WHERE master_id = {master_id}{where_period_slots}")
@@ -77,7 +215,10 @@ def handle_clear(event, method, params, schema, headers):
     finally:
         conn.close()
 
-    return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'success': True, 'deleted': deleted})}
+    return {'statusCode': 200, 'headers': headers, 'body': json.dumps({
+        'success': True, 'deleted': deleted, 'backup_url': backup_url,
+        'note': 'Записи клиентов перемещены в корзину и сохранены в резервную копию.'
+    })}
 
 
 def handle_slots(event, method, params, schema, headers):
@@ -852,6 +993,7 @@ def handle_blocks(event, method, params, schema, headers):
             FROM {schema}.master_bookings b
             LEFT JOIN {schema}.master_services ms ON ms.id = b.service_id
             WHERE b.master_id = {int(master_id)}
+              AND b.archived_at IS NULL
               AND b.status NOT IN ('canceled', 'no_show', 'completed')
               AND b.datetime_start::date >= '{start}'
               AND b.datetime_start::date <= '{end}'
@@ -980,6 +1122,7 @@ def handle_week_view(event, method, params, schema, headers):
         FROM {schema}.master_bookings b
         LEFT JOIN {schema}.master_services ms ON b.service_id = ms.id
         WHERE b.master_id = {int(master_id)}
+          AND b.archived_at IS NULL
           AND (b.datetime_start AT TIME ZONE '{master_tz}')::date >= '{start_d}'
           AND (b.datetime_start AT TIME ZONE '{master_tz}')::date <= '{end_d}'
           AND b.status NOT IN ('canceled')

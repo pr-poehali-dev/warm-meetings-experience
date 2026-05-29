@@ -304,11 +304,39 @@ export const masterCalendarApi = {
     date_from?: string;
     date_to?: string;
   }) =>
-    fetchApi<{ success: boolean; deleted: { bookings: number; slots: number; blocks: number } }>(
+    fetchApi<{ success: boolean; deleted: { bookings: number; slots: number; blocks: number }; backup_url?: string | null }>(
       `${CALENDAR_URL}&sub=clear`,
       { method: "POST", body: JSON.stringify(data) }
     ),
+
+  // Корзина: список заархивированных записей и резервных копий
+  getTrash: (masterId: number) =>
+    fetchApi<{ bookings: MasterBooking[]; backups: MasterBackup[] }>(
+      `${CALENDAR_URL}&sub=trash&master_id=${masterId}`
+    ),
+
+  // Восстановить записи из корзины (ids — конкретные, либо пусто = все)
+  restoreBookings: (masterId: number, ids?: number[]) =>
+    fetchApi<{ success: boolean; restored: number }>(
+      `${CALENDAR_URL}&sub=restore`,
+      { method: "POST", body: JSON.stringify({ master_id: masterId, ids: ids || [] }) }
+    ),
+
+  // Создать резервную копию записей прямо сейчас
+  createBackup: (masterId: number) =>
+    fetchApi<{ success: boolean; backup_url?: string | null; bookings_count: number }>(
+      `${CALENDAR_URL}&sub=backup`,
+      { method: "POST", body: JSON.stringify({ master_id: masterId }) }
+    ),
 };
+
+export interface MasterBackup {
+  id: number;
+  reason: string;
+  bookings_count: number;
+  file_url: string | null;
+  created_at: string;
+}
 
 const REVIEWS_URL = `${MASTERS_URL}?resource=reviews`;
 

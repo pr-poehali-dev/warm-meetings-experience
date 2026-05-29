@@ -437,6 +437,7 @@ def handle_bookings(event, method, params, schema, headers):
             FROM {schema}.master_bookings b
             LEFT JOIN {schema}.master_services ms ON b.service_id = ms.id
             WHERE b.master_id = {int(master_id)}
+              AND b.archived_at IS NULL
         """
         if status_filter and status_filter != 'all':
             query += f" AND b.status = '{status_filter}'"
@@ -756,6 +757,7 @@ def handle_public_slots(event, method, params, schema, headers):
         SELECT id, slot_id, datetime_start, datetime_end, status
         FROM {schema}.master_bookings
         WHERE master_id = {int(master_id)}
+          AND archived_at IS NULL
           AND status IN ('pending', 'confirmed')
           AND datetime_start >= '{date_from}'
           AND datetime_start <= '{date_from}'::date + interval '30 days'
@@ -1157,6 +1159,7 @@ def handle_stats(event, method, params, schema, headers):
             COALESCE(SUM(price) FILTER (WHERE status = 'no_show'), 0) as lost_revenue
         FROM {schema}.master_bookings
         WHERE master_id = {int(master_id)}
+          AND archived_at IS NULL
           AND datetime_start >= CURRENT_DATE - {interval}
     """)
     stats = cur.fetchone()
@@ -1179,6 +1182,7 @@ def handle_stats(event, method, params, schema, headers):
             SELECT EXTRACT(EPOCH FROM (datetime_end - datetime_start)) / 60 AS dur_min
             FROM {schema}.master_bookings
             WHERE master_id = {int(master_id)}
+              AND archived_at IS NULL
               AND status IN ('pending', 'confirmed')
               AND datetime_start >= CURRENT_DATE
               AND datetime_start <= CURRENT_DATE + {interval}

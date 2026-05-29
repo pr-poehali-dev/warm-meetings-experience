@@ -214,6 +214,7 @@ def recalc_slot_status(cur, schema, slot_id):
     cur.execute(f"""
         SELECT COUNT(*) AS cnt FROM {schema}.master_bookings
         WHERE slot_id = {int(slot_id)} AND status IN ('pending', 'confirmed')
+          AND archived_at IS NULL
     """)
     cnt_row = cur.fetchone()
     active = int(cnt_row.get('cnt') or 0) if cnt_row else 0
@@ -280,6 +281,7 @@ def check_booking_conflict(cur, schema, master_id, dt_start, dt_end,
         SELECT id, client_name, client_phone, datetime_start, datetime_end, status
         FROM {schema}.master_bookings
         WHERE master_id = {int(master_id)}
+          AND archived_at IS NULL
           AND status IN ('pending', 'confirmed')
           AND datetime_start < '{check_e}'
           AND datetime_end > '{check_s}'
