@@ -15,6 +15,7 @@ import os
 import re
 import time
 import urllib.request
+import urllib.error
 
 import psycopg2
 import psycopg2.extras
@@ -237,6 +238,8 @@ def send_email(to_email, subject, body_html, to_name=None, tags=None):
     sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
     sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
     if not api_key or not sender_email or not to_email:
+        print(f'[send_email] SKIP: missing config '
+              f'(api_key={bool(api_key)}, sender={bool(sender_email)}, to={bool(to_email)})')
         return False
     recipient = {'email': to_email}
     if to_name:
@@ -259,9 +262,27 @@ def send_email(to_email, subject, body_html, to_name=None, tags=None):
         headers={'X-API-KEY': api_key, 'Content-Type': 'application/json'},
     )
     try:
-        urllib.request.urlopen(req, timeout=10)
+        resp = urllib.request.urlopen(req, timeout=10)
+        raw = resp.read().decode('utf-8', 'replace')
+        try:
+            data = json.loads(raw)
+        except Exception:
+            data = {}
+        failed = data.get('failed_emails') or {}
+        if data.get('status') == 'error' or failed:
+            print(f'[send_email] FAIL to={to_email}: provider_resp={raw[:500]}')
+            return False
         return True
-    except Exception:
+    except urllib.error.HTTPError as e:
+        body = ''
+        try:
+            body = e.read().decode('utf-8', 'replace')[:500]
+        except Exception:
+            pass
+        print(f'[send_email] HTTP {e.code} to={to_email}: {body}')
+        return False
+    except Exception as e:
+        print(f'[send_email] EXC to={to_email}: {type(e).__name__}: {e}')
         return False
 
 def admin_email():
