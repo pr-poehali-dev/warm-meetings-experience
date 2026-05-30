@@ -5,7 +5,7 @@ import csv
 import psycopg2.extras
 from datetime import datetime, timedelta, date, time
 from shared import CORS_HEADERS, get_conn, get_schema
-from booking_validator import acquire_master_lock, check_day_blocked, require_master_id
+from booking_validator import acquire_master_lock, check_day_blocked, require_master_id, ensure_master_access
 
 
 def _backup_bookings_to_s3(cur, schema, master_id, reason, where_extra=""):
@@ -77,6 +77,10 @@ def handle_calendar(event, method, params, schema, headers):
         return handle_restore(event, method, params, schema, headers)
     elif sub == 'backup':
         return handle_backup(event, method, params, schema, headers)
+    elif sub == 'addresses':
+        return handle_addresses(event, method, params, schema, headers)
+    elif sub == 'set-primary-address':
+        return handle_set_primary_address(event, method, params, schema, headers)
     return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown calendar sub'})}
 
 
@@ -273,6 +277,7 @@ def handle_slots(event, method, params, schema, headers):
         max_clients = body.get('max_clients', 1)
         notes = body.get('notes', '')
         slot_status = body.get('status', 'available')
+        address_id = body.get('address_id')
 
         # Защита от гонок
         acquire_master_lock(cur, master_id)
@@ -306,6 +311,7 @@ def handle_slots(event, method, params, schema, headers):
             }, default=str, ensure_ascii=False)}
 
         service_val = f"{int(service_id)}" if service_id else "NULL"
+        addr_val = f"{int(address_id)}" if address_id else "NULL"
         notes_escaped = notes.replace("'", "''")
 
         # Допустимые статусы при ручном создании слота админом/мастером.
@@ -314,8 +320,8 @@ def handle_slots(event, method, params, schema, headers):
 
         cur.execute(f"""
             INSERT INTO {schema}.master_slots
-            (master_id, service_id, datetime_start, datetime_end, max_clients, status, source, notes)
-            VALUES ({int(master_id)}, {service_val}, '{dt_start}', '{dt_end}', {int(max_clients)}, '{slot_status}', 'manual', '{notes_escaped}')
+            (master_id, service_id, datetime_start, datetime_end, max_clients, status, source, notes, address_id)
+            VALUES ({int(master_id)}, {service_val}, '{dt_start}', '{dt_end}', {int(max_clients)}, '{slot_status}', 'manual', '{notes_escaped}', {addr_val})
             RETURNING *
         """)
         row = cur.fetchone()
@@ -412,6 +418,9 @@ def handle_slots(event, method, params, schema, headers):
         if 'notes' in body:
             notes_escaped = body['notes'].replace("'", "''")
             updates.append(f"notes = '{notes_escaped}'")
+        if 'address_id' in body:
+            addr = body['address_id']
+            updates.append(f"address_id = {int(addr) if addr else 'NULL'}")
 
         if not updates:
             conn.close()
@@ -583,7 +592,8 @@ def handle_templates(event, method, params, schema, headers):
                     'time_end', r.time_end,
                     'service_id', r.service_id,
                     'max_clients', r.max_clients,
-                    'is_day_off', r.is_day_off
+                    'is_day_off', r.is_day_off,
+                    'address_id', r.address_id
                 ) ORDER BY r.day_of_week, r.time_start
             ) FILTER (WHERE r.id IS NOT NULL) as rules
             FROM {schema}.master_schedule_templates t
@@ -617,11 +627,13 @@ def handle_templates(event, method, params, schema, headers):
             t_end = rule.get('time_end', '18:00')
             max_cl = int(rule.get('max_clients', 1))
             dow = int(rule['day_of_week'])
+            addr = rule.get('address_id')
+            addr_val = f"{int(addr)}" if addr else "NULL"
 
             cur.execute(f"""
                 INSERT INTO {schema}.master_template_rules
-                (template_id, day_of_week, time_start, time_end, service_id, max_clients, is_day_off)
-                VALUES ({tmpl_id}, {dow}, '{t_start}', '{t_end}', {svc_val}, {max_cl}, {is_off})
+                (template_id, day_of_week, time_start, time_end, service_id, max_clients, is_day_off, address_id)
+                VALUES ({tmpl_id}, {dow}, '{t_start}', '{t_end}', {svc_val}, {max_cl}, {is_off}, {addr_val})
             """)
 
         conn.commit()
@@ -635,7 +647,8 @@ def handle_templates(event, method, params, schema, headers):
                     'time_end', r.time_end,
                     'service_id', r.service_id,
                     'max_clients', r.max_clients,
-                    'is_day_off', r.is_day_off
+                    'is_day_off', r.is_day_off,
+                    'address_id', r.address_id
                 ) ORDER BY r.day_of_week, r.time_start
             ) FILTER (WHERE r.id IS NOT NULL) as rules
             FROM {schema}.master_schedule_templates t
@@ -664,11 +677,13 @@ def handle_templates(event, method, params, schema, headers):
                 t_end = rule.get('time_end', '18:00')
                 max_cl = int(rule.get('max_clients', 1))
                 dow = int(rule['day_of_week'])
+                addr = rule.get('address_id')
+                addr_val = f"{int(addr)}" if addr else "NULL"
 
                 cur.execute(f"""
                     INSERT INTO {schema}.master_template_rules
-                    (template_id, day_of_week, time_start, time_end, service_id, max_clients, is_day_off)
-                    VALUES ({int(tmpl_id)}, {dow}, '{t_start}', '{t_end}', {svc_val}, {max_cl}, {is_off})
+                    (template_id, day_of_week, time_start, time_end, service_id, max_clients, is_day_off, address_id)
+                    VALUES ({int(tmpl_id)}, {dow}, '{t_start}', '{t_end}', {svc_val}, {max_cl}, {is_off}, {addr_val})
                 """)
 
         conn.commit()
@@ -833,11 +848,12 @@ def handle_apply_template(event, method, params, schema, headers):
 
             svc_val = f"{int(rule['service_id'])}" if rule['service_id'] else "NULL"
             max_cl = int(rule['max_clients'])
+            addr_val = f"{int(rule['address_id'])}" if rule.get('address_id') else "NULL"
 
             cur.execute(f"""
                 INSERT INTO {schema}.master_slots
-                (master_id, service_id, datetime_start, datetime_end, max_clients, status, source)
-                VALUES ({int(master_id)}, {svc_val}, '{dt_start}', '{dt_end}', {max_cl}, 'available', 'template')
+                (master_id, service_id, datetime_start, datetime_end, max_clients, status, source, address_id)
+                VALUES ({int(master_id)}, {svc_val}, '{dt_start}', '{dt_end}', {max_cl}, 'available', 'template', {addr_val})
                 RETURNING id
             """)
             row = cur.fetchone()
@@ -865,6 +881,212 @@ def handle_apply_template(event, method, params, schema, headers):
             'period': f"{start_d} - {end_d}"
         })
     }
+
+
+# ─── Адреса мастера ──────────────────────────────────────────────────────────
+
+MAX_ADDRESSES_PER_MASTER = 10
+ALLOWED_ADDRESS_TYPES = {'home', 'studio', 'partner', 'other'}
+
+
+def _address_to_dict(row):
+    """Приводит строку master_addresses к JSON-сериализуемому виду."""
+    return {
+        'id': row['id'],
+        'master_id': row['master_id'],
+        'address_text': row['address_text'],
+        'latitude': float(row['latitude']) if row.get('latitude') is not None else None,
+        'longitude': float(row['longitude']) if row.get('longitude') is not None else None,
+        'is_primary': bool(row['is_primary']),
+        'address_type': row['address_type'],
+        'created_at': str(row['created_at']) if row.get('created_at') else None,
+        'updated_at': str(row['updated_at']) if row.get('updated_at') else None,
+    }
+
+
+def handle_addresses(event, method, params, schema, headers):
+    """CRUD адресов мастера.
+
+    GET    ?sub=addresses&master_id=X          — список адресов мастера
+    POST   ?sub=addresses                      — добавить адрес (body: master_id, address_text, latitude, longitude, address_type, is_primary)
+    PUT    ?sub=addresses                      — обновить адрес (body: id, master_id, ...)
+    DELETE ?sub=addresses                      — удалить адрес (body: id, master_id) — только если не привязан к слотам/правилам шаблона
+    """
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        if method == 'GET':
+            master_id, err = require_master_id(params, headers)
+            if err:
+                return err
+            cur.execute(f"""
+                SELECT * FROM {schema}.master_addresses
+                WHERE master_id = {int(master_id)}
+                ORDER BY is_primary DESC, id
+            """)
+            rows = cur.fetchall()
+            return {'statusCode': 200, 'headers': headers,
+                    'body': json.dumps([_address_to_dict(r) for r in rows], ensure_ascii=False)}
+
+        body = json.loads(event.get('body') or '{}')
+        master_id = int(body.get('master_id', 0))
+        if not master_id:
+            return {'statusCode': 400, 'headers': headers,
+                    'body': json.dumps({'error': 'master_id обязателен'}, ensure_ascii=False)}
+
+        ok, deny = ensure_master_access(cur, schema, event, master_id, headers)
+        if not ok:
+            return deny
+
+        if method == 'POST':
+            address_text = (body.get('address_text') or '').strip()
+            if not address_text:
+                return {'statusCode': 400, 'headers': headers,
+                        'body': json.dumps({'error': 'Укажите адрес'}, ensure_ascii=False)}
+
+            cur.execute(f"SELECT COUNT(*) AS cnt FROM {schema}.master_addresses WHERE master_id = {master_id}")
+            cnt = int(cur.fetchone()['cnt'])
+            if cnt >= MAX_ADDRESSES_PER_MASTER:
+                return {'statusCode': 400, 'headers': headers,
+                        'body': json.dumps({'error': f'Можно добавить не более {MAX_ADDRESSES_PER_MASTER} адресов'}, ensure_ascii=False)}
+
+            addr_type = body.get('address_type') or 'other'
+            if addr_type not in ALLOWED_ADDRESS_TYPES:
+                addr_type = 'other'
+            lat = body.get('latitude')
+            lon = body.get('longitude')
+            lat_val = f"{float(lat)}" if lat is not None else "NULL"
+            lon_val = f"{float(lon)}" if lon is not None else "NULL"
+            # Первый адрес мастера автоматически становится основным.
+            is_primary = bool(body.get('is_primary')) or cnt == 0
+            addr_safe = address_text.replace("'", "''")
+
+            if is_primary:
+                cur.execute(f"UPDATE {schema}.master_addresses SET is_primary = false WHERE master_id = {master_id}")
+
+            cur.execute(f"""
+                INSERT INTO {schema}.master_addresses
+                    (master_id, address_text, latitude, longitude, is_primary, address_type)
+                VALUES ({master_id}, '{addr_safe}', {lat_val}, {lon_val}, {'true' if is_primary else 'false'}, '{addr_type}')
+                RETURNING *
+            """)
+            row = cur.fetchone()
+            conn.commit()
+            return {'statusCode': 201, 'headers': headers,
+                    'body': json.dumps(_address_to_dict(row), ensure_ascii=False)}
+
+        if method == 'PUT':
+            addr_id = int(body.get('id', 0))
+            if not addr_id:
+                return {'statusCode': 400, 'headers': headers,
+                        'body': json.dumps({'error': 'id обязателен'}, ensure_ascii=False)}
+            cur.execute(f"SELECT master_id FROM {schema}.master_addresses WHERE id = {addr_id}")
+            owner = cur.fetchone()
+            if not owner or owner['master_id'] != master_id:
+                return {'statusCode': 404, 'headers': headers,
+                        'body': json.dumps({'error': 'Адрес не найден'}, ensure_ascii=False)}
+
+            updates = []
+            if 'address_text' in body:
+                txt = (body.get('address_text') or '').strip()
+                if not txt:
+                    return {'statusCode': 400, 'headers': headers,
+                            'body': json.dumps({'error': 'Укажите адрес'}, ensure_ascii=False)}
+                updates.append(f"address_text = '{txt.replace(chr(39), chr(39)+chr(39))}'")
+            if 'latitude' in body:
+                lat = body.get('latitude')
+                updates.append(f"latitude = {float(lat) if lat is not None else 'NULL'}")
+            if 'longitude' in body:
+                lon = body.get('longitude')
+                updates.append(f"longitude = {float(lon) if lon is not None else 'NULL'}")
+            if 'address_type' in body:
+                at = body.get('address_type') or 'other'
+                if at not in ALLOWED_ADDRESS_TYPES:
+                    at = 'other'
+                updates.append(f"address_type = '{at}'")
+            if not updates:
+                return {'statusCode': 400, 'headers': headers,
+                        'body': json.dumps({'error': 'Нечего обновлять'}, ensure_ascii=False)}
+            updates.append("updated_at = CURRENT_TIMESTAMP")
+            cur.execute(f"""
+                UPDATE {schema}.master_addresses SET {', '.join(updates)}
+                WHERE id = {addr_id} RETURNING *
+            """)
+            row = cur.fetchone()
+            conn.commit()
+            return {'statusCode': 200, 'headers': headers,
+                    'body': json.dumps(_address_to_dict(row), ensure_ascii=False)}
+
+        if method == 'DELETE':
+            addr_id = int(body.get('id') or params.get('id') or 0)
+            if not addr_id:
+                return {'statusCode': 400, 'headers': headers,
+                        'body': json.dumps({'error': 'id обязателен'}, ensure_ascii=False)}
+            cur.execute(f"SELECT master_id, is_primary FROM {schema}.master_addresses WHERE id = {addr_id}")
+            owner = cur.fetchone()
+            if not owner or owner['master_id'] != master_id:
+                return {'statusCode': 404, 'headers': headers,
+                        'body': json.dumps({'error': 'Адрес не найден'}, ensure_ascii=False)}
+
+            cur.execute(f"SELECT COUNT(*) AS cnt FROM {schema}.master_slots WHERE address_id = {addr_id}")
+            slots_cnt = int(cur.fetchone()['cnt'])
+            cur.execute(f"SELECT COUNT(*) AS cnt FROM {schema}.master_template_rules WHERE address_id = {addr_id}")
+            rules_cnt = int(cur.fetchone()['cnt'])
+            if slots_cnt > 0 or rules_cnt > 0:
+                return {'statusCode': 409, 'headers': headers,
+                        'body': json.dumps({
+                            'error': 'address_in_use',
+                            'message': 'Адрес используется в расписании или слотах. Сначала отвяжите его.',
+                            'slots': slots_cnt, 'rules': rules_cnt,
+                        }, ensure_ascii=False)}
+
+            cur.execute(f"UPDATE {schema}.master_addresses SET is_primary = false WHERE id = {addr_id}")
+            cur.execute(f"DELETE FROM {schema}.master_addresses WHERE id = {addr_id}")
+            conn.commit()
+            return {'statusCode': 200, 'headers': headers,
+                    'body': json.dumps({'success': True}, ensure_ascii=False)}
+
+        return {'statusCode': 405, 'headers': headers,
+                'body': json.dumps({'error': 'Method not allowed'}, ensure_ascii=False)}
+    finally:
+        conn.close()
+
+
+def handle_set_primary_address(event, method, params, schema, headers):
+    """POST ?sub=set-primary-address — сделать адрес основным (снять флаг с других).
+    body: { id, master_id }
+    """
+    if method != 'POST':
+        return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'POST only'})}
+    body = json.loads(event.get('body') or '{}')
+    master_id = int(body.get('master_id', 0))
+    addr_id = int(body.get('id', 0))
+    if not master_id or not addr_id:
+        return {'statusCode': 400, 'headers': headers,
+                'body': json.dumps({'error': 'id и master_id обязательны'}, ensure_ascii=False)}
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        ok, deny = ensure_master_access(cur, schema, event, master_id, headers)
+        if not ok:
+            return deny
+        cur.execute(f"SELECT master_id FROM {schema}.master_addresses WHERE id = {addr_id}")
+        owner = cur.fetchone()
+        if not owner or owner['master_id'] != master_id:
+            return {'statusCode': 404, 'headers': headers,
+                    'body': json.dumps({'error': 'Адрес не найден'}, ensure_ascii=False)}
+        cur.execute(f"UPDATE {schema}.master_addresses SET is_primary = false WHERE master_id = {master_id}")
+        cur.execute(f"""
+            UPDATE {schema}.master_addresses
+            SET is_primary = true, updated_at = CURRENT_TIMESTAMP
+            WHERE id = {addr_id} RETURNING *
+        """)
+        row = cur.fetchone()
+        conn.commit()
+        return {'statusCode': 200, 'headers': headers,
+                'body': json.dumps(_address_to_dict(row), ensure_ascii=False)}
+    finally:
+        conn.close()
 
 
 def handle_settings(event, method, params, schema, headers):

@@ -18,6 +18,20 @@ export interface MasterService {
   updated_at?: string;
 }
 
+export type AddressType = "home" | "studio" | "partner" | "other";
+
+export interface MasterAddress {
+  id?: number;
+  master_id: number;
+  address_text: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  is_primary: boolean;
+  address_type: AddressType;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface MasterSlot {
   id?: number;
   master_id: number;
@@ -32,6 +46,7 @@ export interface MasterSlot {
   service_name?: string;
   duration_minutes?: number;
   service_price?: number;
+  address_id?: number | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -44,6 +59,7 @@ export interface TemplateRule {
   service_id?: number | null;
   max_clients: number;
   is_day_off: boolean;
+  address_id?: number | null;
 }
 
 export interface ScheduleTemplate {
@@ -224,6 +240,33 @@ export const masterCalendarApi = {
     fetchApi(`${CALENDAR_URL}&sub=services`, {
       method: "DELETE",
       body: JSON.stringify({ id }),
+    }),
+
+  getAddresses: (masterId: number) =>
+    fetchApi<MasterAddress[]>(`${CALENDAR_URL}&sub=addresses&master_id=${masterId}`),
+
+  createAddress: (data: Partial<MasterAddress> & { master_id: number }) =>
+    fetchApi<MasterAddress>(`${CALENDAR_URL}&sub=addresses`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateAddress: (data: Partial<MasterAddress> & { id: number; master_id: number }) =>
+    fetchApi<MasterAddress>(`${CALENDAR_URL}&sub=addresses`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteAddress: (id: number, masterId: number) =>
+    fetchApi(`${CALENDAR_URL}&sub=addresses`, {
+      method: "DELETE",
+      body: JSON.stringify({ id, master_id: masterId }),
+    }),
+
+  setPrimaryAddress: (id: number, masterId: number) =>
+    fetchApi<MasterAddress>(`${CALENDAR_URL}&sub=set-primary-address`, {
+      method: "POST",
+      body: JSON.stringify({ id, master_id: masterId }),
     }),
 
   getTemplates: (masterId: number) =>

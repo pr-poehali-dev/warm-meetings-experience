@@ -235,6 +235,39 @@
       "expectedStatus": 405,
       "expectedBody": {"error": "Method not allowed"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Адреса — список (пустой для несуществующего мастера)",
+      "method": "GET",
+      "path": "/?resource=calendar&sub=addresses&master_id=999999",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Адреса — GET без master_id отвечает 400",
+      "method": "GET",
+      "path": "/?resource=calendar&sub=addresses",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "master_id обязателен"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Адреса — POST с master_id без токена отвечает 401",
+      "method": "POST",
+      "path": "/?resource=calendar&sub=addresses",
+      "body": {"master_id": 999999, "address_text": "ул. Ленина, 10"},
+      "expectedStatus": 401,
+      "expectedBody": {"error": "Не авторизован"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Адрес основной — GET не поддерживается (405)",
+      "method": "GET",
+      "path": "/?resource=calendar&sub=set-primary-address",
+      "expectedStatus": 405,
+      "expectedBody": {"error": "POST only"},
+      "bodyMatcher": "partial"
     }
   ]
 }
