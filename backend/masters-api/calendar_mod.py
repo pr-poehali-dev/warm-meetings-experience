@@ -81,7 +81,16 @@ def handle_calendar(event, method, params, schema, headers):
         return handle_addresses(event, method, params, schema, headers)
     elif sub == 'set-primary-address':
         return handle_set_primary_address(event, method, params, schema, headers)
+    elif sub == 'maps-key':
+        return handle_maps_key(event, method, params, schema, headers)
     return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown calendar sub'})}
+
+
+def handle_maps_key(event, method, params, schema, headers):
+    """GET — публичный ключ Яндекс.Карт для фронтенда (JS API)."""
+    key = os.environ.get('YANDEX_MAPS_API_KEY', '')
+    return {'statusCode': 200, 'headers': headers,
+            'body': json.dumps({'apikey': key}, ensure_ascii=False)}
 
 
 def handle_trash(event, method, params, schema, headers):

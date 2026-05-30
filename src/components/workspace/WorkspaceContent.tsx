@@ -26,6 +26,7 @@ import {
   MasterFinancesSection,
   MasterNotificationsSection,
 } from "./MasterSections";
+import MasterAddresses from "@/components/master/addresses/MasterAddresses";
 import { RoleTab, MasterSection, OrgView, PartnerView } from "./workspace-types";
 
 interface WorkspaceContentProps {
@@ -175,6 +176,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     switch (masterSection) {
       case "dashboard": return <MasterDashboardSection masterId={masterId} />;
       case "profile": return <MasterProfileSection masterId={masterId} />;
+      case "addresses": return <div className="space-y-4"><MasterAddresses masterId={masterId} /></div>;
       case "schedule": return <MasterScheduleSection masterId={masterId} />;
       case "bookings": return <MasterBookingsSection masterId={masterId} />;
       case "reviews": return <MasterReviewsSection masterId={masterId} />;

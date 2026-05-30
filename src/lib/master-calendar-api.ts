@@ -269,6 +269,9 @@ export const masterCalendarApi = {
       body: JSON.stringify({ id, master_id: masterId }),
     }),
 
+  getMapsKey: () =>
+    fetchApi<{ apikey: string }>(`${CALENDAR_URL}&sub=maps-key`),
+
   getTemplates: (masterId: number) =>
     fetchApi<ScheduleTemplate[]>(`${CALENDAR_URL}&sub=templates&master_id=${masterId}`),
 
