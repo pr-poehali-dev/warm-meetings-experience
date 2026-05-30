@@ -341,7 +341,11 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button onClick={handleSave} disabled={saving} className="gap-2">
         {saving ? <Icon name="Loader2" size={15} className="animate-spin" /> : null}
-        {saved ? "Сохранено!" : "Сохранить профиль"}
+        {saved
+          ? "Сохранено!"
+          : !master?.verification_requested_at
+          ? "Отправить на проверку"
+          : "Сохранить профиль"}
       </Button>
 
       {/* Фото профиля */}
