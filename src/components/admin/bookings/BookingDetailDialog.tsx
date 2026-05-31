@@ -85,6 +85,35 @@ const BookingDetailDialog = ({ open, onOpenChange, booking, saving, onAction }: 
               <span className="text-lg font-bold text-gray-900">{formatPrice(booking.price)}</span>
             </div>
 
+            {(booking.meeting_latitude != null && booking.meeting_longitude != null) && (
+              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                <div className="flex items-start gap-2">
+                  <Icon name="Car" size={16} className="text-blue-600 mt-0.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs text-blue-700 font-semibold block">
+                      Место встречи (выезд к гостю)
+                    </span>
+                    {booking.meeting_address && (
+                      <p className="text-sm text-gray-900 mt-1">{booking.meeting_address}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Координаты: {Number(booking.meeting_latitude).toFixed(5)},{" "}
+                      {Number(booking.meeting_longitude).toFixed(5)}
+                    </p>
+                    <a
+                      href={`https://yandex.ru/maps/?rtext=~${booking.meeting_latitude},${booking.meeting_longitude}&rtt=auto`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      <Icon name="Navigation" size={14} />
+                      Открыть на карте
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {booking.comment && (
               <div>
                 <span className="text-xs text-gray-500">Комментарий</span>

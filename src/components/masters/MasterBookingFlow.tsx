@@ -277,6 +277,18 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
                         </span>
                       )}
                     </div>
+                    {s.service_format === "at_home" && (
+                      <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[10px] font-semibold text-blue-700">
+                        <Icon name="Car" size={11} />
+                        Мастер приедет к вам
+                      </span>
+                    )}
+                    {s.service_format === "by_agreement" && (
+                      <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full bg-muted border border-border text-[10px] font-semibold text-muted-foreground">
+                        <Icon name="MessagesSquare" size={11} />
+                        Место по согласованию
+                      </span>
+                    )}
                   </div>
                 </div>
 
