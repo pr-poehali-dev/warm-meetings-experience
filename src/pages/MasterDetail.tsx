@@ -11,6 +11,7 @@ import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
 import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import PageShell from "@/components/ui/page-shell";
 import MasterBookingFlow, { BookingOption } from "@/components/masters/MasterBookingFlow";
+import MeetingLocationPicker, { MeetingLocation } from "@/components/masters/MeetingLocationPicker";
 import { parseServiceDescription } from "@/lib/service-description";
 import { formatSlotTime } from "@/lib/masterTime";
 import func2url from "../../backend/func2url.json";
@@ -75,9 +76,17 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [contraAccepted, setContraAccepted] = useState(false);
+  const [meeting, setMeeting] = useState<MeetingLocation>({
+    address: "",
+    latitude: null,
+    longitude: null,
+  });
 
   const parsedDesc = parseServiceDescription(service.description);
   const hasContraindications = parsedDesc.contraindications.length > 0;
+  const isAtHome = service.service_format === "at_home";
+  const meetingFilled =
+    meeting.latitude != null && meeting.longitude != null && !!meeting.address.trim();
 
   // КАНОН: option.start — это «стенное» время мастера. Отправляем строку без
   // offset — бэкенд (time_utils.parse_client_dt) трактует её как зону мастера.
@@ -89,6 +98,10 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
     if (!name.trim() || !phone.trim()) return;
     if (hasContraindications && !contraAccepted) {
       setError("Подтвердите, что ознакомились с противопоказаниями");
+      return;
+    }
+    if (isAtHome && !meetingFilled) {
+      setError("Укажите место проведения встречи на карте");
       return;
     }
     setLoading(true);
@@ -107,6 +120,9 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
         contraindications_snapshot: hasContraindications
           ? parsedDesc.contraindications.join("; ")
           : undefined,
+        meeting_address: isAtHome ? meeting.address.trim() : undefined,
+        meeting_latitude: isAtHome && meeting.latitude != null ? meeting.latitude : undefined,
+        meeting_longitude: isAtHome && meeting.longitude != null ? meeting.longitude : undefined,
       });
       onSuccess();
     } catch (err: unknown) {
@@ -209,6 +225,9 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
               className="w-full px-4 py-3 rounded-xl border bg-background text-base outline-none focus:ring-2 focus:ring-primary/30 transition resize-none"
             />
           </div>
+          {isAtHome && (
+            <MeetingLocationPicker value={meeting} onChange={setMeeting} />
+          )}
           {hasContraindications && (
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
               <div className="flex items-start gap-2 mb-2">
@@ -243,7 +262,7 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
           )}
           <button
             type="submit"
-            disabled={loading || !name.trim() || !isPhoneComplete(phone) || (hasContraindications && !contraAccepted)}
+            disabled={loading || !name.trim() || !isPhoneComplete(phone) || (hasContraindications && !contraAccepted) || (isAtHome && !meetingFilled)}
             className="w-full bg-primary text-primary-foreground min-h-[52px] py-3 rounded-xl font-semibold text-base hover:bg-primary/90 active:scale-[0.99] transition disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
           >
             {loading ? (

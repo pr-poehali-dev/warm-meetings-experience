@@ -588,11 +588,16 @@ def handle_services(event, method, params, schema, headers):
         duration = int(body.get('duration_minutes', 60))
         price = float(body.get('price', 0))
         max_cl = int(body.get('max_clients', 1))
+        fmt = body.get('service_format') or 'on_site'
+        if fmt not in ('on_site', 'at_home', 'by_agreement'):
+            fmt = 'on_site'
+        dep_addr = body.get('departure_address_id')
+        dep_val = f"{int(dep_addr)}" if dep_addr else "NULL"
 
         cur.execute(f"""
             INSERT INTO {schema}.master_services
-            (master_id, name, description, duration_minutes, price, max_clients)
-            VALUES ({int(master_id)}, '{name}', '{desc}', {duration}, {price}, {max_cl})
+            (master_id, name, description, duration_minutes, price, max_clients, service_format, departure_address_id)
+            VALUES ({int(master_id)}, '{name}', '{desc}', {duration}, {price}, {max_cl}, '{fmt}', {dep_val})
             RETURNING *
         """)
         row = cur.fetchone()
@@ -616,6 +621,14 @@ def handle_services(event, method, params, schema, headers):
             updates.append(f"max_clients = {int(body['max_clients'])}")
         if 'is_active' in body:
             updates.append(f"is_active = {'true' if body['is_active'] else 'false'}")
+        if 'service_format' in body:
+            fmt = body.get('service_format') or 'on_site'
+            if fmt not in ('on_site', 'at_home', 'by_agreement'):
+                fmt = 'on_site'
+            updates.append(f"service_format = '{fmt}'")
+        if 'departure_address_id' in body:
+            dep = body.get('departure_address_id')
+            updates.append(f"departure_address_id = {int(dep) if dep else 'NULL'}")
 
         if updates:
             updates.append("updated_at = CURRENT_TIMESTAMP")

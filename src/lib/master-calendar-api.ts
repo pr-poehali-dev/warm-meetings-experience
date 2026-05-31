@@ -4,6 +4,8 @@ const MASTERS_URL = FUNC_URLS["masters-api"];
 const CALENDAR_URL = `${MASTERS_URL}?resource=calendar`;
 const BOOKINGS_URL = `${MASTERS_URL}?resource=bookings`;
 
+export type ServiceFormat = "on_site" | "at_home" | "by_agreement";
+
 export interface MasterService {
   id?: number;
   master_id: number;
@@ -14,6 +16,8 @@ export interface MasterService {
   max_clients: number;
   is_active: boolean;
   sort_order?: number;
+  service_format?: ServiceFormat;
+  departure_address_id?: number | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -114,6 +118,9 @@ export interface MasterBooking {
   cancel_reason?: string;
   service_name?: string;
   duration_minutes?: number;
+  meeting_address?: string | null;
+  meeting_latitude?: number | null;
+  meeting_longitude?: number | null;
   created_at?: string;
   updated_at?: string;
   confirmed_at?: string;
@@ -461,6 +468,9 @@ export const masterBookingsApi = {
     comment?: string;
     contraindications_accepted?: boolean;
     contraindications_snapshot?: string;
+    meeting_address?: string;
+    meeting_latitude?: number;
+    meeting_longitude?: number;
   }) =>
     fetchApi(`${BOOKINGS_URL}&sub=public-book`, {
       method: "POST",

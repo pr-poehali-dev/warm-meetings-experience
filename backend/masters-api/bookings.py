@@ -479,6 +479,18 @@ def handle_bookings(event, method, params, schema, headers):
         comment = (body.get('comment') or '').replace("'", "''")
         source = body.get('source', 'admin')
         force = bool(body.get('force', False))
+        # Место встречи (для выездных услуг)
+        meeting_address = (body.get('meeting_address') or '').strip()[:500].replace("'", "''")
+        _m_lat = body.get('meeting_latitude')
+        _m_lng = body.get('meeting_longitude')
+        try:
+            _m_lat = float(_m_lat) if _m_lat is not None else None
+            _m_lng = float(_m_lng) if _m_lng is not None else None
+        except (TypeError, ValueError):
+            _m_lat = _m_lng = None
+        meeting_address_sql = f"'{meeting_address}'" if meeting_address else 'NULL'
+        meeting_lat_sql = f"{_m_lat}" if _m_lat is not None else 'NULL'
+        meeting_lng_sql = f"{_m_lng}" if _m_lng is not None else 'NULL'
 
         # Проверяем, что админ имеет право создавать бронь у этого мастера.
         ok, err_resp = ensure_master_access(cur, schema, event, master_id, headers)
@@ -520,10 +532,12 @@ def handle_bookings(event, method, params, schema, headers):
             INSERT INTO {schema}.master_bookings
             (slot_id, master_id, client_name, client_phone, client_email, service_id,
              datetime_start, datetime_end, price, status, source, comment,
-             confirmed_at)
+             confirmed_at,
+             meeting_address, meeting_latitude, meeting_longitude)
             VALUES ({slot_val}, {int(master_id)}, '{client_name}', '{client_phone}', '{client_email}',
              {svc_val}, '{dt_start}', '{dt_end}', {price}, '{status}', '{source}', '{comment}',
-             {confirmed_at_val})
+             {confirmed_at_val},
+             {meeting_address_sql}, {meeting_lat_sql}, {meeting_lng_sql})
             RETURNING *
         """)
         booking = cur.fetchone()
@@ -856,6 +870,16 @@ def handle_public_book(event, method, params, schema, headers):
     desired_start = body.get('desired_start')
     desired_end = body.get('desired_end')
 
+    # Место встречи (для выездных услуг «Пригласить в гости»)
+    meeting_address = (body.get('meeting_address') or '').strip()[:500].replace("'", "''")
+    meeting_lat = body.get('meeting_latitude')
+    meeting_lng = body.get('meeting_longitude')
+    try:
+        meeting_lat = float(meeting_lat) if meeting_lat is not None else None
+        meeting_lng = float(meeting_lng) if meeting_lng is not None else None
+    except (TypeError, ValueError):
+        meeting_lat = meeting_lng = None
+
     # Согласие с противопоказаниями (юр. фиксация)
     contra_accepted = bool(body.get('contraindications_accepted', False))
     contra_snapshot = (body.get('contraindications_snapshot') or '')[:2000].replace("'", "''")
@@ -1015,18 +1039,24 @@ def handle_public_book(event, method, params, schema, headers):
     contra_ip_sql = f"'{client_ip}'" if (contra_accepted and client_ip) else 'NULL'
     contra_snapshot_sql = f"'{contra_snapshot}'" if (contra_accepted and contra_snapshot) else 'NULL'
 
+    meeting_address_sql = f"'{meeting_address}'" if meeting_address else 'NULL'
+    meeting_lat_sql = f"{meeting_lat}" if meeting_lat is not None else 'NULL'
+    meeting_lng_sql = f"{meeting_lng}" if meeting_lng is not None else 'NULL'
+
     cur.execute(f"""
         INSERT INTO {schema}.master_bookings
         (slot_id, master_id, client_name, client_phone, client_email, service_id,
          datetime_start, datetime_end, price, status, source, comment,
          confirmed_at,
          contraindications_accepted, contraindications_accepted_at,
-         contraindications_accepted_ip, contraindications_snapshot)
+         contraindications_accepted_ip, contraindications_snapshot,
+         meeting_address, meeting_latitude, meeting_longitude)
         VALUES ({int(slot_id)}, {int(master_id)}, '{client_name}', '{client_phone}', '{client_email}',
          {svc_val}, '{dt_start_str}', '{dt_end_str}', {booking_price}, '{status}', 'public', '{comment}',
          {confirmed_at_val},
          {contra_accepted_sql}, {contra_accepted_at_sql},
-         {contra_ip_sql}, {contra_snapshot_sql})
+         {contra_ip_sql}, {contra_snapshot_sql},
+         {meeting_address_sql}, {meeting_lat_sql}, {meeting_lng_sql})
         RETURNING *
     """)
     booking = cur.fetchone()

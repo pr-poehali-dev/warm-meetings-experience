@@ -15,7 +15,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { masterCalendarApi } from "@/lib/master-calendar-api";
-import type { MasterService } from "@/lib/master-calendar-api";
+import type { MasterService, ServiceFormat, MasterAddress } from "@/lib/master-calendar-api";
 import { parseServiceDescription, buildServiceDescription } from "@/lib/service-description";
 
 interface ServiceFormData {
@@ -28,7 +28,30 @@ interface ServiceFormData {
   price: string;
   max_clients: string;
   is_active: boolean;
+  service_format: ServiceFormat;
+  departure_address_id: string;
 }
+
+const FORMAT_OPTIONS: { value: ServiceFormat; title: string; desc: string; icon: string }[] = [
+  {
+    value: "on_site",
+    title: "На месте у мастера",
+    desc: "Гость приезжает к мастеру. Адрес гостя не запрашивается.",
+    icon: "Home",
+  },
+  {
+    value: "at_home",
+    title: "Выезд к гостю (пригласить в гости)",
+    desc: "Мастер приезжает к гостю. Гость указывает место на карте при записи.",
+    icon: "Car",
+  },
+  {
+    value: "by_agreement",
+    title: "По согласованию",
+    desc: "Мастер и гость договариваются о месте сами.",
+    icon: "MessagesSquare",
+  },
+];
 
 const DEFAULT_CONTRA = [
   "Беременность",
@@ -47,6 +70,8 @@ const emptyForm: ServiceFormData = {
   price: "",
   max_clients: "1",
   is_active: true,
+  service_format: "on_site",
+  departure_address_id: "",
 };
 
 const formatPrice = (price: number): string => {
@@ -172,11 +197,16 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
   const [editingService, setEditingService] = useState<MasterService | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [form, setForm] = useState<ServiceFormData>({ ...emptyForm });
+  const [addresses, setAddresses] = useState<MasterAddress[]>([]);
 
   const { toast } = useToast();
 
   useEffect(() => {
     fetchServices();
+    masterCalendarApi
+      .getAddresses(masterId)
+      .then(setAddresses)
+      .catch(() => setAddresses([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [masterId]);
 
@@ -215,6 +245,8 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
       price: String(service.price),
       max_clients: String(service.max_clients),
       is_active: service.is_active,
+      service_format: service.service_format || "on_site",
+      departure_address_id: service.departure_address_id ? String(service.departure_address_id) : "",
     });
     setIsDialogOpen(true);
   };
@@ -241,6 +273,10 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
         bring: form.bring.map((x) => x.trim()).filter(Boolean),
         contraindications: form.contraindications.map((x) => x.trim()).filter(Boolean),
       });
+      const departureAddressId =
+        form.service_format === "at_home" && form.departure_address_id
+          ? Number(form.departure_address_id)
+          : null;
       if (editingService?.id) {
         await masterCalendarApi.updateService({
           id: editingService.id,
@@ -251,6 +287,8 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
           price: Number(form.price),
           max_clients: Number(form.max_clients) || 1,
           is_active: form.is_active,
+          service_format: form.service_format,
+          departure_address_id: departureAddressId,
         });
         toast({ title: "Готово", description: "Услуга обновлена" });
       } else {
@@ -262,6 +300,8 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
           price: Number(form.price),
           max_clients: Number(form.max_clients) || 1,
           is_active: form.is_active,
+          service_format: form.service_format,
+          departure_address_id: departureAddressId,
         });
         toast({ title: "Готово", description: "Услуга создана" });
       }
@@ -480,6 +520,65 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
                 className="mt-1"
               />
             </div>
+            <div>
+              <Label className="flex items-center gap-1.5 mb-2">
+                <Icon name="MapPinned" size={14} className="text-nature-forest" />
+                Формат оказания
+              </Label>
+              <div className="space-y-2">
+                {FORMAT_OPTIONS.map((opt) => {
+                  const active = form.service_format === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setForm({ ...form, service_format: opt.value })}
+                      className={`w-full text-left flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+                        active
+                          ? "border-nature-forest bg-nature-forest/5"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <Icon
+                        name={opt.icon}
+                        size={18}
+                        className={active ? "text-nature-forest mt-0.5" : "text-gray-400 mt-0.5"}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{opt.title}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
+                      </div>
+                      {active && <Icon name="Check" size={16} className="text-nature-forest mt-0.5" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {form.service_format === "at_home" && (
+                <div className="mt-3">
+                  <Label className="text-sm">Адрес отправления мастера</Label>
+                  {addresses.length === 0 ? (
+                    <p className="text-xs text-gray-400 mt-1">
+                      У вас пока нет сохранённых адресов. Можно добавить их в разделе «Мои адреса» — мастер уточнит место позже.
+                    </p>
+                  ) : (
+                    <select
+                      value={form.departure_address_id}
+                      onChange={(e) => setForm({ ...form, departure_address_id: e.target.value })}
+                      className="mt-1 w-full h-10 rounded-md border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-nature-forest/30"
+                    >
+                      <option value="">Не выбран (уточню позже)</option>
+                      {addresses.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.address_text}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div>
               <Label>Краткое описание</Label>
               <Textarea
