@@ -12,11 +12,13 @@ import {
 } from "@/components/ui/dialog";
 import type { MasterBooking } from "@/lib/master-calendar-api";
 import { getStatusColor, getStatusLabel, formatDateTime, formatPrice } from "./bookingUtils";
+import MasterBookingChat from "./MasterBookingChat";
 
 interface BookingDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   booking: MasterBooking | null;
+  masterId: number;
   saving: boolean;
   onAction: (
     id: number,
@@ -32,9 +34,10 @@ const CANCEL_REASONS = [
   "Другое",
 ];
 
-const BookingDetailDialog = ({ open, onOpenChange, booking, saving, onAction }: BookingDetailDialogProps) => {
+const BookingDetailDialog = ({ open, onOpenChange, booking, masterId, saving, onAction }: BookingDetailDialogProps) => {
   const [cancelMode, setCancelMode] = useState(false);
   const [reason, setReason] = useState("");
+  const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -295,6 +298,17 @@ const BookingDetailDialog = ({ open, onOpenChange, booking, saving, onAction }: 
                   </Button>
                 </>
               )}
+              {booking?.id && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-primary border-primary/30 hover:bg-primary/5"
+                  onClick={() => setChatOpen(true)}
+                >
+                  <Icon name="MessageCircle" size={14} />
+                  Чат с гостем
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -307,6 +321,14 @@ const BookingDetailDialog = ({ open, onOpenChange, booking, saving, onAction }: 
           </DialogFooter>
         )}
       </DialogContent>
+
+      <MasterBookingChat
+        open={chatOpen}
+        masterId={masterId}
+        bookingId={booking?.id ?? null}
+        guestName={booking?.client_name || "Гость"}
+        onClose={() => setChatOpen(false)}
+      />
     </Dialog>
   );
 };

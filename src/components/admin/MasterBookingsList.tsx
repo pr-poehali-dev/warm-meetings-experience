@@ -272,6 +272,7 @@ const MasterBookingsList = ({ masterId }: { masterId: number }) => {
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
         booking={selectedBooking}
+        masterId={masterId}
         saving={saving}
         onAction={handleAction}
       />

@@ -1084,7 +1084,8 @@ def handle_public_book(event, method, params, schema, headers):
             'service_name': booking_service_name,
             'datetime_start': dt_start_str,
             'datetime_end': dt_end_str,
-            'price': booking_price
+            'price': booking_price,
+            'chat_token': booking.get('reply_token'),
         })
     }
 

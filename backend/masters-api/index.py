@@ -3,6 +3,7 @@ from shared import CORS_HEADERS, options_response, get_schema
 from profile import handle_profile
 from calendar_mod import handle_calendar
 from bookings import handle_bookings_root, handle_reviews
+from chat_mod import handle_chat
 
 
 def handler(event, context):
@@ -25,6 +26,8 @@ def handler(event, context):
             return handle_bookings_root(event, method, params, schema, headers)
         if resource == 'reviews':
             return handle_reviews(event, method, params, schema, headers)
+        if resource == 'chat':
+            return handle_chat(event, method, params, schema, headers)
         # profile / без resource — старое поведение
         return handle_profile(event, method, params, schema, headers)
     except Exception as e:

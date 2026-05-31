@@ -496,4 +496,65 @@ export interface MasterReview {
   created_at: string;
 }
 
-export default { masterCalendarApi, masterBookingsApi };
+// ─── Чат мастер↔гость ───────────────────────────────────────────────
+const CHAT_URL = `${MASTERS_URL}?resource=chat`;
+
+export interface ChatMessage {
+  id: number;
+  direction: "in" | "out";
+  channel: string;
+  body: string;
+  delivered: boolean | null;
+  created_at: string;
+  read_at?: string | null;
+}
+
+export interface ChatDialog {
+  booking_id: number;
+  client_name: string;
+  client_phone: string;
+  status: string;
+  datetime_start: string;
+  reply_token: string;
+  service_name?: string | null;
+  last_body?: string | null;
+  last_direction?: "in" | "out" | null;
+  last_at?: string | null;
+  unread_count: number;
+  messages_count: number;
+}
+
+export const masterChatApi = {
+  getDialogs: (masterId: number) =>
+    fetchApi<{ dialogs: ChatDialog[] }>(`${CHAT_URL}&sub=dialogs&master_id=${masterId}`),
+
+  getMessages: (bookingId: number) =>
+    fetchApi<{ messages: ChatMessage[]; client_name: string }>(
+      `${CHAT_URL}&sub=messages&booking_id=${bookingId}`
+    ),
+
+  send: (masterId: number, bookingId: number, message: string) =>
+    fetchApi<{ ok: boolean; message: ChatMessage }>(`${CHAT_URL}&sub=send`, {
+      method: "POST",
+      body: JSON.stringify({ master_id: masterId, booking_id: bookingId, message }),
+    }),
+
+  // Публичный чат гостя по токену (без авторизации)
+  getPublic: (token: string) =>
+    fetchApi<{
+      guest_name: string;
+      master_name: string;
+      service_name?: string | null;
+      status: string;
+      datetime_start?: string | null;
+      messages: ChatMessage[];
+    }>(`${CHAT_URL}&sub=public&token=${encodeURIComponent(token)}`),
+
+  sendPublic: (token: string, message: string) =>
+    fetchApi<{ ok: boolean; message: ChatMessage }>(`${CHAT_URL}&sub=public`, {
+      method: "POST",
+      body: JSON.stringify({ token, message }),
+    }),
+};
+
+export default { masterCalendarApi, masterBookingsApi, masterChatApi };

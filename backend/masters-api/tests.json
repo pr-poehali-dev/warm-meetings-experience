@@ -9,6 +9,30 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Чат — диалоги без master_id отвечают 400",
+      "method": "GET",
+      "path": "/?resource=chat&sub=dialogs",
+      "expectedStatus": 400,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Чат — публичный по неверному токену 400",
+      "method": "GET",
+      "path": "/?resource=chat&sub=public&token=!!!",
+      "expectedStatus": 400,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Чат — публичный несуществующий токен 404",
+      "method": "GET",
+      "path": "/?resource=chat&sub=public&token=deadbeefdeadbeefdeadbeefdeadbeef",
+      "expectedStatus": 404,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Список специализаций",
       "method": "GET",
       "path": "/?specializations=1",
