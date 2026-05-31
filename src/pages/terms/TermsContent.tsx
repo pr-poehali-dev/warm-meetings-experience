@@ -338,7 +338,28 @@ export default function TermsContent({ onOpenAppendix }: Props) {
         </div>
       </section>
 
-      {/* ЧАСТЬ VIII */}
+      {/* ЧАСТЬ VIII — Яндекс.Карты */}
+      <section id="part8a">
+        <h2 className="text-2xl font-bold text-foreground mb-6 pb-2 border-b border-border">
+          Использование картографического сервиса «Яндекс.Карты»
+        </h2>
+        <div className="space-y-8">
+          <div className="space-y-3 text-sm">
+            <p><strong>1.</strong> На Сайте используется картографический сервис «Яндекс.Карты» (далее — Сервис), предоставляемый компанией ООО «ЯНДЕКС». Использование Сервиса регулируется настоящими условиями, а также следующими документами компании «ЯНДЕКС»:</p>
+            <ul className="list-disc list-outside ml-5 space-y-1">
+              <li>Пользовательское соглашение сервисов Яндекса: <a href="https://yandex.ru/legal/rules" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80">https://yandex.ru/legal/rules</a></li>
+              <li>Политика конфиденциальности: <a href="https://yandex.ru/legal/confidential" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80">https://yandex.ru/legal/confidential</a></li>
+              <li>Условия использования сервиса «Яндекс.Карты»: <a href="https://yandex.ru/legal/maps_termsofuse" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80">https://yandex.ru/legal/maps_termsofuse</a></li>
+              <li>Условия использования отдельных сервисов «Яндекс Карт»: <a href="https://yandex.ru/legal/maps_api" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80">https://yandex.ru/legal/maps_api</a></li>
+            </ul>
+            <p><strong>2.</strong> Сервис используется для отображения интерактивной карты, позволяющей Пользователям (Гостям) выбирать и отмечать место проведения услуги с помощью графического маркера. В рамках этой функциональности Сервис может обрабатывать данные о геолокации (координатах) выбранного места.</p>
+            <p><strong>3.</strong> Используя функциональность карты на Сайте, Пользователь подтверждает, что ознакомлен и согласен с условиями использования Сервиса, указанными в п. 1 настоящего раздела, а также даёт согласие на обработку своих данных (включая IP-адрес, данные об используемом браузере и сведения о геолокации) компанией «ЯНДЕКС» в целях и порядке, определённых Политикой конфиденциальности Яндекса.</p>
+            <p><strong>4.</strong> Администрация Сайта не осуществляет сбор, обработку или хранение координат, выбранных Пользователем с помощью Сервиса. Указанные данные передаются напрямую в «ЯНДЕКС» и используются исключительно для отображения карты и маркера. Пользователь самостоятельно несёт ответственность за достоверность выбранного им места проведения услуги.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ЧАСТЬ IX */}
       <section id="part8">
         <h2 className="text-2xl font-bold text-foreground mb-6 pb-2 border-b border-border">
           Часть VIII. Заключительные положения
