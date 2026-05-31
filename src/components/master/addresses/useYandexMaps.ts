@@ -14,7 +14,7 @@ declare global {
   }
 }
 
-async function loadYandexMaps(): Promise<unknown> {
+export async function loadYandexMaps(): Promise<unknown> {
   if (window.ymaps) {
     return new Promise((resolve) => window.ymaps!.ready(() => resolve(window.ymaps)));
   }
