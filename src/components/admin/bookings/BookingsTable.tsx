@@ -6,7 +6,11 @@ import { getStatusColor, getStatusLabel, formatDateTime, formatPrice } from "./b
 interface BookingsTableProps {
   bookings: MasterBooking[];
   saving: boolean;
-  onAction: (id: number, action: "confirm" | "cancel" | "complete" | "no_show") => void;
+  onAction: (
+    id: number,
+    action: "confirm" | "cancel" | "complete" | "no_show",
+    cancelReason?: string,
+  ) => void;
   onOpenDetail: (booking: MasterBooking) => void;
 }
 
@@ -64,9 +68,10 @@ const BookingsTable = ({ bookings, saving, onAction, onOpenDetail }: BookingsTab
                             <Icon name="Check" size={16} />
                           </button>
                           <button
-                            onClick={() => onAction(booking.id!, "cancel")}
+                            onClick={() => onOpenDetail(booking)}
                             className="p-1.5 text-red-500 hover:text-red-700 rounded hover:bg-red-50 transition-colors"
                             disabled={saving}
+                            title="Отклонить с указанием причины"
                           >
                             <Icon name="X" size={16} />
                           </button>
@@ -82,9 +87,10 @@ const BookingsTable = ({ bookings, saving, onAction, onOpenDetail }: BookingsTab
                             <Icon name="CheckCircle" size={16} />
                           </button>
                           <button
-                            onClick={() => onAction(booking.id!, "cancel")}
+                            onClick={() => onOpenDetail(booking)}
                             className="p-1.5 text-red-500 hover:text-red-700 rounded hover:bg-red-50 transition-colors"
                             disabled={saving}
+                            title="Отменить с указанием причины"
                           >
                             <Icon name="X" size={16} />
                           </button>
@@ -152,7 +158,7 @@ const BookingsTable = ({ bookings, saving, onAction, onOpenDetail }: BookingsTab
                     size="sm"
                     variant="outline"
                     className="text-red-600 border-red-200 hover:bg-red-50"
-                    onClick={() => onAction(booking.id!, "cancel")}
+                    onClick={() => onOpenDetail(booking)}
                     disabled={saving}
                   >
                     <Icon name="X" size={14} />
@@ -173,7 +179,7 @@ const BookingsTable = ({ bookings, saving, onAction, onOpenDetail }: BookingsTab
                     size="sm"
                     variant="outline"
                     className="text-red-600 border-red-200 hover:bg-red-50"
-                    onClick={() => onAction(booking.id!, "cancel")}
+                    onClick={() => onOpenDetail(booking)}
                     disabled={saving}
                   >
                     <Icon name="X" size={14} />

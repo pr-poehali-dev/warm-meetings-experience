@@ -79,10 +79,14 @@ const MasterBookingsList = ({ masterId }: { masterId: number }) => {
     }
   };
 
-  const handleAction = async (id: number, action: "confirm" | "cancel" | "complete" | "no_show") => {
+  const handleAction = async (
+    id: number,
+    action: "confirm" | "cancel" | "complete" | "no_show",
+    cancelReason?: string,
+  ) => {
     setSaving(true);
     try {
-      await masterBookingsApi.updateBooking({ id, action });
+      await masterBookingsApi.updateBooking({ id, action, cancel_reason: cancelReason });
       const actionLabels: Record<string, string> = {
         confirm: "подтверждена",
         cancel: "отменена",

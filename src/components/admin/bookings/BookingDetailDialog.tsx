@@ -1,5 +1,8 @@
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -15,10 +18,36 @@ interface BookingDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   booking: MasterBooking | null;
   saving: boolean;
-  onAction: (id: number, action: "confirm" | "cancel" | "complete" | "no_show") => void;
+  onAction: (
+    id: number,
+    action: "confirm" | "cancel" | "complete" | "no_show",
+    cancelReason?: string,
+  ) => void;
 }
 
+const CANCEL_REASONS = [
+  "Слишком далеко для выезда",
+  "Занят в это время",
+  "Не оказываю эту услугу",
+  "Другое",
+];
+
 const BookingDetailDialog = ({ open, onOpenChange, booking, saving, onAction }: BookingDetailDialogProps) => {
+  const [cancelMode, setCancelMode] = useState(false);
+  const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    if (!open) {
+      setCancelMode(false);
+      setReason("");
+    }
+  }, [open]);
+
+  const submitCancel = () => {
+    if (!booking?.id || !reason.trim()) return;
+    onAction(booking.id, "cancel", reason.trim());
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[520px] flex flex-col">
@@ -151,76 +180,132 @@ const BookingDetailDialog = ({ open, onOpenChange, booking, saving, onAction }: 
             </div>
           </div>
         )}
-        <DialogFooter className="flex-shrink-0 pt-2 border-t">
-          <div className="flex w-full gap-2 flex-wrap">
-            {booking?.status === "pending" && booking.id && (
-              <>
-                <Button
-                  size="sm"
-                  className="bg-nature-forest hover:bg-nature-forest/90 text-white"
-                  onClick={() => onAction(booking.id!, "confirm")}
-                  disabled={saving}
-                >
-                  {saving && <Icon name="Loader2" size={14} className="animate-spin" />}
-                  <Icon name="Check" size={14} />
-                  Подтвердить
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={() => onAction(booking.id!, "cancel")}
-                  disabled={saving}
-                >
-                  <Icon name="X" size={14} />
-                  Отменить
-                </Button>
-              </>
-            )}
-            {booking?.status === "confirmed" && booking.id && (
-              <>
-                <Button
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                  onClick={() => onAction(booking.id!, "complete")}
-                  disabled={saving}
-                >
-                  {saving && <Icon name="Loader2" size={14} className="animate-spin" />}
-                  <Icon name="CheckCircle" size={14} />
-                  Завершить
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={() => onAction(booking.id!, "cancel")}
-                  disabled={saving}
-                >
-                  <Icon name="X" size={14} />
-                  Отменить
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                  onClick={() => onAction(booking.id!, "no_show")}
-                  disabled={saving}
-                >
-                  <Icon name="UserX" size={14} />
-                  Неявка
-                </Button>
-              </>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="ml-auto"
-            >
-              Закрыть
-            </Button>
+        {cancelMode && booking?.id ? (
+          <div className="flex-shrink-0 pt-3 border-t space-y-3">
+            <div>
+              <Label className="text-sm font-medium text-gray-900">
+                Причина отклонения <span className="text-red-500">*</span>
+              </Label>
+              <p className="text-xs text-gray-500 mt-0.5 mb-2">
+                Гость увидит её в уведомлении об отмене.
+              </p>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {CANCEL_REASONS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setReason(r === "Другое" ? "" : r)}
+                    className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                      reason === r
+                        ? "bg-red-50 border-red-300 text-red-700"
+                        : "border-gray-200 text-gray-600 hover:border-gray-300"
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+              <Textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Опишите причину отказа…"
+                rows={2}
+                maxLength={500}
+                autoFocus
+              />
+            </div>
+            <div className="flex w-full gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setCancelMode(false)}
+                disabled={saving}
+              >
+                Назад
+              </Button>
+              <Button
+                size="sm"
+                className="bg-red-600 hover:bg-red-700 text-white ml-auto"
+                onClick={submitCancel}
+                disabled={saving || !reason.trim()}
+              >
+                {saving && <Icon name="Loader2" size={14} className="animate-spin" />}
+                Отклонить запись
+              </Button>
+            </div>
           </div>
-        </DialogFooter>
+        ) : (
+          <DialogFooter className="flex-shrink-0 pt-2 border-t">
+            <div className="flex w-full gap-2 flex-wrap">
+              {booking?.status === "pending" && booking.id && (
+                <>
+                  <Button
+                    size="sm"
+                    className="bg-nature-forest hover:bg-nature-forest/90 text-white"
+                    onClick={() => onAction(booking.id!, "confirm")}
+                    disabled={saving}
+                  >
+                    {saving && <Icon name="Loader2" size={14} className="animate-spin" />}
+                    <Icon name="Check" size={14} />
+                    Подтвердить
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => setCancelMode(true)}
+                    disabled={saving}
+                  >
+                    <Icon name="X" size={14} />
+                    Отклонить
+                  </Button>
+                </>
+              )}
+              {booking?.status === "confirmed" && booking.id && (
+                <>
+                  <Button
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => onAction(booking.id!, "complete")}
+                    disabled={saving}
+                  >
+                    {saving && <Icon name="Loader2" size={14} className="animate-spin" />}
+                    <Icon name="CheckCircle" size={14} />
+                    Завершить
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => setCancelMode(true)}
+                    disabled={saving}
+                  >
+                    <Icon name="X" size={14} />
+                    Отменить
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                    onClick={() => onAction(booking.id!, "no_show")}
+                    disabled={saving}
+                  >
+                    <Icon name="UserX" size={14} />
+                    Неявка
+                  </Button>
+                </>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+                className="ml-auto"
+              >
+                Закрыть
+              </Button>
+            </div>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
