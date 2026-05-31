@@ -83,6 +83,8 @@ def handle_calendar(event, method, params, schema, headers):
         return handle_set_primary_address(event, method, params, schema, headers)
     elif sub == 'maps-key':
         return handle_maps_key(event, method, params, schema, headers)
+    elif sub == 'geocode':
+        return handle_geocode(event, method, params, schema, headers)
     return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown calendar sub'})}
 
 
@@ -91,6 +93,63 @@ def handle_maps_key(event, method, params, schema, headers):
     key = os.environ.get('YANDEX_MAPS_API_KEY', '')
     return {'statusCode': 200, 'headers': headers,
             'body': json.dumps({'apikey': key}, ensure_ascii=False)}
+
+
+def handle_geocode(event, method, params, schema, headers):
+    """GET — геокодирование через Яндекс HTTP Геокодер.
+    Параметры: ?q=<текст адреса>  ИЛИ  ?lat=..&lng=.. (обратный геокодинг).
+    Возвращает: { results: [ { address, lat, lng } ] }.
+    """
+    import urllib.request
+    import urllib.parse
+
+    q = (params.get('q') or '').strip()
+    lat = params.get('lat')
+    lng = params.get('lng')
+
+    if lat and lng:
+        geocode = f"{lng},{lat}"  # Яндекс ждёт долготу,широту
+    elif q:
+        geocode = q
+    else:
+        return {'statusCode': 400, 'headers': headers,
+                'body': json.dumps({'error': 'q или lat/lng обязательны'}, ensure_ascii=False)}
+
+    key = os.environ.get('YANDEX_GEOCODER_API_KEY', '')
+    if not key:
+        return {'statusCode': 200, 'headers': headers,
+                'body': json.dumps({'results': [], 'error': 'no_key'}, ensure_ascii=False)}
+
+    url = 'https://geocode-maps.yandex.ru/1.x/?' + urllib.parse.urlencode({
+        'apikey': key, 'geocode': geocode, 'format': 'json', 'results': 5, 'lang': 'ru_RU',
+    })
+
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'sparcom-masters'})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+    except Exception as e:
+        return {'statusCode': 200, 'headers': headers,
+                'body': json.dumps({'results': [], 'error': 'geocoder_failed',
+                                    'detail': f'{type(e).__name__}: {e}'}, ensure_ascii=False)}
+
+    results = []
+    try:
+        members = data['response']['GeoObjectCollection']['featureMember']
+        for m in members:
+            obj = m['GeoObject']
+            pos = obj['Point']['pos'].split()  # "lng lat"
+            results.append({
+                'address': obj.get('metaDataProperty', {}).get('GeocoderMetaData', {}).get('text')
+                           or obj.get('name', ''),
+                'lat': float(pos[1]),
+                'lng': float(pos[0]),
+            })
+    except (KeyError, IndexError, ValueError):
+        pass
+
+    return {'statusCode': 200, 'headers': headers,
+            'body': json.dumps({'results': results}, ensure_ascii=False)}
 
 
 def handle_trash(event, method, params, schema, headers):

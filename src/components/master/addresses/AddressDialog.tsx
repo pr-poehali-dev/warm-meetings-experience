@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
 import AddressMapPicker from "./AddressMapPicker";
+import { geocodeAddress } from "./geocode";
 import type { AddressType, MasterAddress } from "@/lib/master-calendar-api";
 
 export interface AddressFormData {
@@ -65,27 +66,24 @@ const AddressDialog = ({ open, onOpenChange, editing, saving, onSave }: Props) =
     }
   }, [open, editing]);
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     const query = search.trim();
-    if (!query || !window.ymaps) return;
+    if (!query) return;
     setSearching(true);
-    (window.ymaps as any)
-      .geocode(query, { results: 1 })
-      .then((res: any) => {
-        const obj = res.geoObjects.get(0);
-        if (obj) {
-          const coords = obj.geometry.getCoordinates();
-          const address = obj.getAddressLine();
-          setForm((p) => ({
-            ...p,
-            latitude: coords[0],
-            longitude: coords[1],
-            address_text: address,
-          }));
-          setSearch(address);
-        }
-      })
-      .finally(() => setSearching(false));
+    try {
+      const found = await geocodeAddress(query);
+      if (found) {
+        setForm((p) => ({
+          ...p,
+          latitude: found.lat,
+          longitude: found.lng,
+          address_text: found.address,
+        }));
+        setSearch(found.address);
+      }
+    } finally {
+      setSearching(false);
+    }
   };
 
   const handlePick = (c: { lat: number; lng: number; address?: string }) => {

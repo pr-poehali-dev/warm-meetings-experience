@@ -272,6 +272,16 @@ export const masterCalendarApi = {
   getMapsKey: () =>
     fetchApi<{ apikey: string }>(`${CALENDAR_URL}&sub=maps-key`),
 
+  geocode: (query: string) =>
+    fetchApi<{ results: { address: string; lat: number; lng: number }[] }>(
+      `${CALENDAR_URL}&sub=geocode&q=${encodeURIComponent(query)}`
+    ),
+
+  reverseGeocode: (lat: number, lng: number) =>
+    fetchApi<{ results: { address: string; lat: number; lng: number }[] }>(
+      `${CALENDAR_URL}&sub=geocode&lat=${lat}&lng=${lng}`
+    ),
+
   getTemplates: (masterId: number) =>
     fetchApi<ScheduleTemplate[]>(`${CALENDAR_URL}&sub=templates&master_id=${masterId}`),
 

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef } from "react";
 import { useYandexMaps } from "./useYandexMaps";
+import { reverseGeocode } from "./geocode";
 import Icon from "@/components/ui/icon";
 
 interface Props {
@@ -33,14 +34,14 @@ const AddressMapPicker = ({ lat, lng, onPick }: Props) => {
     });
     mapRef.current = map;
 
-    const reverseGeocode = (coords: number[]) => {
-      ymaps.geocode(coords, { results: 1 }).then((res: any) => {
-        const obj = res.geoObjects.get(0);
-        const address = obj ? obj.getAddressLine() : undefined;
-        onPickRef.current({ lat: coords[0], lng: coords[1], address });
-      }).catch(() => {
-        onPickRef.current({ lat: coords[0], lng: coords[1] });
-      });
+    const resolveAddress = (coords: number[]) => {
+      reverseGeocode(coords[0], coords[1])
+        .then((address) => {
+          onPickRef.current({ lat: coords[0], lng: coords[1], address });
+        })
+        .catch(() => {
+          onPickRef.current({ lat: coords[0], lng: coords[1] });
+        });
     };
 
     const setPlacemark = (coords: number[]) => {
@@ -53,7 +54,7 @@ const AddressMapPicker = ({ lat, lng, onPick }: Props) => {
         });
         pm.events.add("dragend", () => {
           const c = pm.geometry.getCoordinates();
-          reverseGeocode(c);
+          resolveAddress(c);
         });
         map.geoObjects.add(pm);
         placemarkRef.current = pm;
@@ -65,7 +66,7 @@ const AddressMapPicker = ({ lat, lng, onPick }: Props) => {
     map.events.add("click", (e: any) => {
       const coords = e.get("coords");
       setPlacemark(coords);
-      reverseGeocode(coords);
+      resolveAddress(coords);
     });
 
     return () => {
@@ -92,10 +93,9 @@ const AddressMapPicker = ({ lat, lng, onPick }: Props) => {
       });
       pm.events.add("dragend", () => {
         const c = pm.geometry.getCoordinates();
-        ymaps.geocode(c, { results: 1 }).then((res: any) => {
-          const obj = res.geoObjects.get(0);
-          onPickRef.current({ lat: c[0], lng: c[1], address: obj ? obj.getAddressLine() : undefined });
-        });
+        reverseGeocode(c[0], c[1])
+          .then((address) => onPickRef.current({ lat: c[0], lng: c[1], address }))
+          .catch(() => onPickRef.current({ lat: c[0], lng: c[1] }));
       });
       mapRef.current.geoObjects.add(pm);
       placemarkRef.current = pm;

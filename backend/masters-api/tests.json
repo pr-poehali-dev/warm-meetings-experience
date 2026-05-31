@@ -276,6 +276,14 @@
       "expectedStatus": 200,
       "expectedBody": {"apikey": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Геокодер — без q и координат отвечает 400",
+      "method": "GET",
+      "path": "/?resource=calendar&sub=geocode",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "q или lat/lng обязательны"},
+      "bodyMatcher": "partial"
     }
   ]
 }
