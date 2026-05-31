@@ -115,7 +115,8 @@ def handle_geocode(event, method, params, schema, headers):
         return {'statusCode': 400, 'headers': headers,
                 'body': json.dumps({'error': 'q или lat/lng обязательны'}, ensure_ascii=False)}
 
-    key = os.environ.get('YANDEX_GEOCODER_API_KEY', '')
+    # У ключа карт подключены оба API (JS + Геокодер), поэтому он основной для геокодера.
+    key = os.environ.get('YANDEX_MAPS_API_KEY') or os.environ.get('YANDEX_GEOCODER_API_KEY', '')
     if not key:
         return {'statusCode': 200, 'headers': headers,
                 'body': json.dumps({'results': [], 'error': 'no_key'}, ensure_ascii=False)}
