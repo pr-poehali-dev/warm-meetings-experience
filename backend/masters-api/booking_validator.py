@@ -96,17 +96,21 @@ def ensure_master_access(cur, schema, event, master_id, headers):
     Разрешено: сам владелец (user_id мастера = текущий пользователь) ИЛИ глобальный админ.
     Возвращает (True, None) при успехе или (False, http_response_dict) при отказе.
     """
-    from shared import get_user_from_token, verify_admin_token
+    from shared import get_user_from_token, verify_admin_token, get_token
+    headers_in = event.get('headers') or {}
+    admin_token = headers_in.get('X-Admin-Token') or headers_in.get('x-admin-token') or ''
+    token = get_token(event)
+
     # 1. Глобальный админ — может всё
     try:
-        if verify_admin_token(event):
+        if admin_token and verify_admin_token(admin_token):
             return True, None
     except Exception:
         pass
 
     # 2. Иначе — должен быть владельцем профиля
     try:
-        user = get_user_from_token(event)
+        user = get_user_from_token(cur, schema, token)
     except Exception:
         user = None
     if not user:

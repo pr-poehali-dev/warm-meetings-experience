@@ -159,9 +159,16 @@ export class BookingApiError extends Error {
 }
 
 async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = localStorage.getItem("user_token") || "";
+  const adminToken = localStorage.getItem("admin_token") || "";
   const response = await fetch(url, {
     ...options,
-    headers: { "Content-Type": "application/json", ...options?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "X-Session-Token": token } : {}),
+      ...(adminToken ? { "X-Admin-Token": adminToken } : {}),
+      ...options?.headers,
+    },
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
