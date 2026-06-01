@@ -41,6 +41,32 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Обращение — без полей отвечает 400",
+      "method": "POST",
+      "path": "/?resource=inquiry&sub=create",
+      "body": {"master_id": 1},
+      "expectedStatus": 400,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Обращение — неверный email отвечает 400",
+      "method": "POST",
+      "path": "/?resource=inquiry&sub=create",
+      "body": {"master_id": 1, "name": "Тест", "contact": "bad", "contact_type": "email", "message": "Здравствуйте, вопрос"},
+      "expectedStatus": 400,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Чат — публичный токен обращения 404 для несуществующего",
+      "method": "GET",
+      "path": "/?resource=chat&sub=public&token=abcabcabcabcabcabcabcabcabcabc01",
+      "expectedStatus": 404,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Список специализаций",
       "method": "GET",
       "path": "/?specializations=1",

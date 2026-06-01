@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
-import { masterChatApi, ChatMessage } from "@/lib/master-calendar-api";
+import { masterChatApi, ChatMessage, ChatSource } from "@/lib/master-calendar-api";
 
 interface Props {
   open: boolean;
   masterId: number;
   bookingId: number | null;
   guestName: string;
+  source?: ChatSource;
   onClose: () => void;
 }
 
@@ -27,7 +28,7 @@ function fmtTime(iso: string) {
   }
 }
 
-const MasterBookingChat = ({ open, masterId, bookingId, guestName, onClose }: Props) => {
+const MasterBookingChat = ({ open, masterId, bookingId, guestName, source = "booking", onClose }: Props) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [text, setText] = useState("");
@@ -37,14 +38,14 @@ const MasterBookingChat = ({ open, masterId, bookingId, guestName, onClose }: Pr
   const load = useCallback(async () => {
     if (!bookingId) return;
     try {
-      const r = await masterChatApi.getMessages(bookingId);
+      const r = await masterChatApi.getMessages(bookingId, source);
       setMessages(r.messages || []);
     } catch (e) {
       toast.error("Не удалось загрузить переписку: " + String(e));
     } finally {
       setLoading(false);
     }
-  }, [bookingId]);
+  }, [bookingId, source]);
 
   useEffect(() => {
     if (open && bookingId) {
@@ -71,7 +72,7 @@ const MasterBookingChat = ({ open, masterId, bookingId, guestName, onClose }: Pr
     if (!body) return;
     setSending(true);
     try {
-      await masterChatApi.send(masterId, bookingId, body);
+      await masterChatApi.send(masterId, bookingId, body, source);
       setText("");
       await load();
     } catch (e) {

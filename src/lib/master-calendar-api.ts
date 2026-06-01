@@ -509,12 +509,16 @@ export interface ChatMessage {
   read_at?: string | null;
 }
 
+export type ChatSource = "booking" | "inquiry";
+
 export interface ChatDialog {
+  source: ChatSource;
+  id: number;
   booking_id: number;
   client_name: string;
   client_phone: string;
   status: string;
-  datetime_start: string;
+  datetime_start: string | null;
   reply_token: string;
   service_name?: string | null;
   last_body?: string | null;
@@ -531,15 +535,15 @@ export const masterChatApi = {
   getUnreadCount: (masterId: number) =>
     fetchApi<{ unread: number }>(`${CHAT_URL}&sub=unread_count&master_id=${masterId}`),
 
-  getMessages: (bookingId: number) =>
+  getMessages: (threadId: number, source: ChatSource = "booking") =>
     fetchApi<{ messages: ChatMessage[]; client_name: string }>(
-      `${CHAT_URL}&sub=messages&booking_id=${bookingId}`
+      `${CHAT_URL}&sub=messages&booking_id=${threadId}&source=${source}`
     ),
 
-  send: (masterId: number, bookingId: number, message: string) =>
+  send: (masterId: number, threadId: number, message: string, source: ChatSource = "booking") =>
     fetchApi<{ ok: boolean; message: ChatMessage }>(`${CHAT_URL}&sub=send`, {
       method: "POST",
-      body: JSON.stringify({ master_id: masterId, booking_id: bookingId, message }),
+      body: JSON.stringify({ master_id: masterId, booking_id: threadId, source, message }),
     }),
 
   // Публичный чат гостя по токену (без авторизации)
@@ -558,6 +562,19 @@ export const masterChatApi = {
       method: "POST",
       body: JSON.stringify({ token, message }),
     }),
+
+  // Публичное обращение к мастеру (вопрос без брони)
+  createInquiry: (data: {
+    master_id: number;
+    name: string;
+    contact: string;
+    contact_type: "email" | "phone" | "telegram";
+    message: string;
+  }) =>
+    fetchApi<{ ok: boolean; inquiry_id: number; chat_token: string }>(
+      `${MASTERS_URL}?resource=inquiry&sub=create`,
+      { method: "POST", body: JSON.stringify(data) }
+    ),
 };
 
 export default { masterCalendarApi, masterBookingsApi, masterChatApi };

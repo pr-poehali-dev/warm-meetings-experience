@@ -12,6 +12,7 @@ import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import PageShell from "@/components/ui/page-shell";
 import MasterBookingFlow, { BookingOption } from "@/components/masters/MasterBookingFlow";
 import MeetingLocationPicker, { MeetingLocation } from "@/components/masters/MeetingLocationPicker";
+import AskMasterModal from "@/components/master/AskMasterModal";
 import { parseServiceDescription } from "@/lib/service-description";
 import { formatSlotTime } from "@/lib/masterTime";
 import func2url from "../../backend/func2url.json";
@@ -516,6 +517,7 @@ export default function MasterDetail() {
   const [bookingState, setBookingState] = useState<{ option: BookingOption; service: MasterService } | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingChatToken, setBookingChatToken] = useState<string | undefined>(undefined);
+  const [askOpen, setAskOpen] = useState(false);
   const [extVideos, setExtVideos] = useState<VideoItem[]>([]);
   const [selectedServiceForFlow, setSelectedServiceForFlow] = useState<number | null>(null);
   const [bookingVisible, setBookingVisible] = useState(false);
@@ -790,15 +792,13 @@ export default function MasterDetail() {
               {/* Контакты */}
               <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-3">Связаться</p>
-                {services.length > 0 && (
-                  <button
-                    onClick={scrollToBooking}
-                    className="flex items-center gap-3 w-full bg-primary/10 text-primary px-4 py-3 rounded-xl text-sm font-medium hover:bg-primary/15 transition-colors"
-                  >
-                    <Icon name="MessageCircle" size={16} />
-                    Написать мастеру
-                  </button>
-                )}
+                <button
+                  onClick={() => setAskOpen(true)}
+                  className="flex items-center gap-3 w-full bg-primary/10 text-primary px-4 py-3 rounded-xl text-sm font-medium hover:bg-primary/15 transition-colors"
+                >
+                  <Icon name="MessageCircleQuestion" size={16} />
+                  Задать вопрос мастеру
+                </button>
                 {master.phone && (
                   <a
                     href={`tel:${master.phone}`}
@@ -877,6 +877,14 @@ export default function MasterDetail() {
           chatToken={bookingChatToken}
         />
       )}
+
+      {/* Вопрос мастеру */}
+      <AskMasterModal
+        open={askOpen}
+        masterId={master.id}
+        masterName={master.name}
+        onClose={() => setAskOpen(false)}
+      />
     </PageShell>
   );
 }

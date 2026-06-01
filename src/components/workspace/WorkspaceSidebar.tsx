@@ -118,7 +118,7 @@ export default function WorkspaceSidebar({
               onClick={() => switchMasterSection(n.id)}
               icon={n.icon}
               label={n.label}
-              badge={n.id === "bookings" ? unreadMessages || undefined : undefined}
+              badge={n.id === "messages" ? unreadMessages || undefined : undefined}
             />
           ))}
         </CollapsibleSection>

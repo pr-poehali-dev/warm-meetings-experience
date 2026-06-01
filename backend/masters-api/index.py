@@ -4,6 +4,7 @@ from profile import handle_profile
 from calendar_mod import handle_calendar
 from bookings import handle_bookings_root, handle_reviews
 from chat_mod import handle_chat
+from inquiries import handle_inquiry_create
 
 
 def handler(event, context):
@@ -28,6 +29,8 @@ def handler(event, context):
             return handle_reviews(event, method, params, schema, headers)
         if resource == 'chat':
             return handle_chat(event, method, params, schema, headers)
+        if resource == 'inquiry':
+            return handle_inquiry_create(event, method, params, schema, headers)
         # profile / без resource — старое поведение
         return handle_profile(event, method, params, schema, headers)
     except Exception as e:
