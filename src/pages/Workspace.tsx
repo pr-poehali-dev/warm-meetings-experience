@@ -8,6 +8,7 @@ import CabinetHeader from "@/components/CabinetHeader";
 
 import { organizerApi, OrgEvent, DashboardData } from "@/lib/organizer-api";
 import { partnerApi, PartnerBath } from "@/lib/partner-api";
+import { masterChatApi } from "@/lib/master-calendar-api";
 import { useToast } from "@/hooks/use-toast";
 
 import WorkspaceSidebar from "@/components/workspace/WorkspaceSidebar";
@@ -95,6 +96,22 @@ export default function Workspace() {
   const tgLinked = tgLinkedOverride ?? !!tgInfo?.tg_linked;
   const tgChannelsCount = tgChannelsCountOverride ?? Number(tgInfo?.tg_channels_count ?? 0);
   const loadTgInfo = useCallback(async () => { await refetchTgInfo(); }, [refetchTgInfo]);
+
+  // Непрочитанные сообщения от гостей (для бейджа в разделе «Записи»)
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  useEffect(() => {
+    if (!isMaster || !user?.id) return;
+    let cancelled = false;
+    const loadUnread = () => {
+      masterChatApi
+        .getUnreadCount(user.id)
+        .then((r) => { if (!cancelled) setUnreadMessages(r.unread || 0); })
+        .catch(() => {});
+    };
+    loadUnread();
+    const t = setInterval(loadUnread, 30000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [isMaster, user?.id, masterSection]);
 
   // Organizer state
   const [orgDashboard, setOrgDashboard] = useState<DashboardData | null>(null);
@@ -197,6 +214,7 @@ export default function Workspace() {
       eventsCount={events.length}
       tgChannelsCount={tgChannelsCount}
       unreadQuestions={orgDashboard?.unread_questions ?? orgDashboard?.stats?.unread_questions ?? 0}
+      unreadMessages={unreadMessages}
       openSections={openSections}
       toggleSection={toggleSection}
       switchRoleTab={switchRoleTab}

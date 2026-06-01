@@ -14,6 +14,7 @@ interface WorkspaceSidebarProps {
   eventsCount: number;
   tgChannelsCount?: number;
   unreadQuestions?: number;
+  unreadMessages?: number;
   openSections: Record<string, boolean>;
   toggleSection: (key: string) => void;
   switchRoleTab: (tab: RoleTab) => void;
@@ -36,6 +37,7 @@ export default function WorkspaceSidebar({
   eventsCount,
   tgChannelsCount,
   unreadQuestions,
+  unreadMessages,
   openSections,
   toggleSection,
   switchRoleTab,
@@ -116,6 +118,7 @@ export default function WorkspaceSidebar({
               onClick={() => switchMasterSection(n.id)}
               icon={n.icon}
               label={n.label}
+              badge={n.id === "bookings" ? unreadMessages || undefined : undefined}
             />
           ))}
         </CollapsibleSection>

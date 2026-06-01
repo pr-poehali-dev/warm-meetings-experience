@@ -33,6 +33,14 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Чат — unread_count без master_id отвечает 400",
+      "method": "GET",
+      "path": "/?resource=chat&sub=unread_count",
+      "expectedStatus": 400,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Список специализаций",
       "method": "GET",
       "path": "/?specializations=1",

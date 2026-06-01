@@ -528,6 +528,9 @@ export const masterChatApi = {
   getDialogs: (masterId: number) =>
     fetchApi<{ dialogs: ChatDialog[] }>(`${CHAT_URL}&sub=dialogs&master_id=${masterId}`),
 
+  getUnreadCount: (masterId: number) =>
+    fetchApi<{ unread: number }>(`${CHAT_URL}&sub=unread_count&master_id=${masterId}`),
+
   getMessages: (bookingId: number) =>
     fetchApi<{ messages: ChatMessage[]; client_name: string }>(
       `${CHAT_URL}&sub=messages&booking_id=${bookingId}`

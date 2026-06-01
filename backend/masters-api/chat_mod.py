@@ -1,11 +1,73 @@
 import json
+import os
 import psycopg2.extras
-from shared import get_conn
+from shared import get_conn, send_email, tg_send
 from booking_validator import ensure_master_access
 
 
 def _esc(v):
     return (v or '').replace("'", "''")
+
+
+def _notify_master_about_message(cur, schema, booking_id, guest_name, text):
+    """Уведомляет мастера (email + Telegram) о новом сообщении от гостя.
+    Все ошибки молча проглатываются — уведомление не должно ломать отправку.
+    """
+    try:
+        cur.execute(f"""
+            SELECT m.id AS master_id, m.name AS master_name, m.slug, m.user_id,
+                   u.email,
+                   COALESCE(u.notify_email, true) AS notify_email,
+                   u.notify_telegram AS notify_telegram,
+                   u.tg_chat_id AS user_tg,
+                   la.telegram_user_id AS linked_tg
+            FROM {schema}.master_bookings b
+            JOIN {schema}.masters m ON m.id = b.master_id
+            LEFT JOIN {schema}.users u ON u.id = m.user_id
+            LEFT JOIN (
+                SELECT DISTINCT ON (user_id) user_id, telegram_user_id
+                FROM {schema}.tg_linked_accounts
+                ORDER BY user_id, linked_at DESC
+            ) la ON la.user_id = m.user_id
+            WHERE b.id = {int(booking_id)}
+        """)
+        m = cur.fetchone()
+        if not m:
+            return
+
+        base = (os.environ.get('SITE_URL') or 'https://sparcom.ru').rstrip('/')
+        cabinet_link = f'{base}/workspace?tab=master'
+        preview = text if len(text) <= 300 else text[:300] + '…'
+        guest = guest_name or 'Гость'
+
+        # Email
+        if m.get('email') and m.get('notify_email') is not False:
+            subject = f'Новое сообщение от {guest}'
+            body_html = f"""
+            <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #2d2318;">
+                <h2 style="color: #0f172a;">Новое сообщение в чате</h2>
+                <p><b>{guest}</b> написал(а) вам:</p>
+                <p style="margin: 16px 0; padding: 12px 14px; background: #f1f5f9;
+                          border-radius: 10px; white-space: pre-wrap;">{preview}</p>
+                <p style="margin-top: 20px;"><a href="{cabinet_link}"
+                   style="display: inline-block; padding: 10px 18px; background: #0ea5e9;
+                   color: #fff; border-radius: 8px; text-decoration: none;">Ответить в кабинете</a></p>
+            </div>
+            """.strip()
+            send_email(m['email'], subject, body_html, tags=['master-chat-message'])
+
+        # Telegram
+        tg_chat_id = m.get('linked_tg') or m.get('user_tg')
+        tg_disabled = m.get('notify_telegram') is False and not m.get('linked_tg')
+        if tg_chat_id and not tg_disabled:
+            tg_text = (
+                f'💬 <b>Новое сообщение от {guest}</b>\n\n'
+                f'{preview}\n\n'
+                f'<i>Ответьте в кабинете мастера.</i>'
+            )
+            tg_send(tg_chat_id, tg_text)
+    except Exception:
+        pass
 
 
 def handle_chat(event, method, params, schema, headers):
@@ -29,8 +91,39 @@ def handle_chat(event, method, params, schema, headers):
         return handle_messages(event, method, params, schema, headers)
     if sub == 'send':
         return handle_send(event, method, params, schema, headers)
+    if sub == 'unread_count':
+        return handle_unread_count(event, method, params, schema, headers)
     return {'statusCode': 400, 'headers': headers,
             'body': json.dumps({'error': 'Unknown chat sub'}, ensure_ascii=False)}
+
+
+def handle_unread_count(event, method, params, schema, headers):
+    """Количество непрочитанных сообщений от гостей по всем бронированиям мастера."""
+    if method != 'GET':
+        return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'GET only'})}
+    master_id = params.get('master_id')
+    if not master_id:
+        return {'statusCode': 400, 'headers': headers,
+                'body': json.dumps({'error': 'master_id обязателен'}, ensure_ascii=False)}
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        ok, deny = ensure_master_access(cur, schema, event, master_id, headers)
+        if not ok:
+            return deny
+        cur.execute(f"""
+            SELECT COUNT(*) AS cnt
+            FROM {schema}.client_messages cm
+            JOIN {schema}.master_bookings b ON b.id = cm.source_id
+            WHERE cm.source_type = 'master_booking'
+              AND cm.direction = 'in' AND cm.read_at IS NULL
+              AND b.master_id = {int(master_id)}
+        """)
+        row = cur.fetchone()
+        return {'statusCode': 200, 'headers': headers,
+                'body': json.dumps({'unread': int(row['cnt']) if row else 0}, ensure_ascii=False)}
+    finally:
+        conn.close()
 
 
 def handle_dialogs(event, method, params, schema, headers):
@@ -245,6 +338,7 @@ def handle_public(event, method, params, schema, headers):
             """)
             new_msg = cur.fetchone()
             conn.commit()
+            _notify_master_about_message(cur, schema, booking_id, row.get('client_name'), text)
             return {'statusCode': 200, 'headers': headers,
                     'body': json.dumps({'ok': True, 'message': dict(new_msg)},
                                        default=str, ensure_ascii=False)}
