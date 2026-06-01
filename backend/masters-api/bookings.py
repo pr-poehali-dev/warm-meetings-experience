@@ -343,14 +343,26 @@ def _notify_client_about_cancellation(cur, schema, master_id, booking, cancel_re
                 f'<b>Причина:</b> {cancel_reason}</p>'
             )
 
+        base = (os.environ.get('SITE_URL') or 'https://sparcom.ru').rstrip('/')
         rebook_block = ''
         if master_slug:
-            base = os.environ.get('PUBLIC_BASE_URL', '').rstrip('/')
-            link = f'{base}/master/{master_slug}' if base else f'/master/{master_slug}'
+            link = f'{base}/master/{master_slug}'
             rebook_block = (
                 f'<p style="margin-top: 20px;"><a href="{link}" '
                 f'style="display: inline-block; padding: 10px 18px; background: #0ea5e9; '
                 f'color: #fff; border-radius: 8px; text-decoration: none;">Выбрать другое время</a></p>'
+            )
+
+        # Ссылка на личный чат с мастером (по персональному токену брони)
+        chat_block = ''
+        reply_token = booking.get('reply_token')
+        if reply_token:
+            chat_link = f'{base}/m/{reply_token}'
+            chat_block = (
+                f'<p style="margin-top: 12px;"><a href="{chat_link}" '
+                f'style="display: inline-block; padding: 10px 18px; background: #f1f5f9; '
+                f'color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px; '
+                f'text-decoration: none;">Написать мастеру</a></p>'
             )
 
         subject = f'Отмена записи на {dt_human}'
@@ -361,12 +373,85 @@ def _notify_client_about_cancellation(cur, schema, master_id, booking, cancel_re
             {reason_block}
             <p>Приносим извинения за неудобства.</p>
             {rebook_block}
+            {chat_block}
         </div>
         """.strip()
 
         ok = send_email(client_email, subject, body_html, tags=['booking-cancel'])
         _log_notification(cur, schema,
             channel='email', event_type='client_booking_canceled',
+            recipient=client_email, subject=subject,
+            status='success' if ok else 'failed',
+            related_id=booking.get('id'),
+            payload={'master_id': master_id, 'client_name': client_name})
+    except Exception:
+        pass
+
+
+def _notify_client_about_confirmation(cur, schema, master_id, booking):
+    """Шлёт клиенту email о подтверждении брони мастером + ссылку на чат.
+    Ошибки молча проглатываются — флоу confirm не должен ломаться.
+    """
+    try:
+        client_email = (booking.get('client_email') or '').strip()
+        client_name = (booking.get('client_name') or '').strip() or 'клиент'
+        if not client_email:
+            return
+        if not (os.environ.get('UNISENDER_API_KEY') and os.environ.get('UNISENDER_SENDER_EMAIL')):
+            return
+
+        cur.execute(f"""
+            SELECT m.name AS master_name,
+                   COALESCE(mcs.timezone, 'Europe/Moscow') AS tz
+            FROM {schema}.masters m
+            LEFT JOIN {schema}.master_calendar_settings mcs ON mcs.master_id = m.id
+            WHERE m.id = {int(master_id)}
+        """)
+        m = cur.fetchone() or {}
+        master_name = m.get('master_name') or 'мастер'
+        tz_name = m.get('tz') or 'Europe/Moscow'
+
+        try:
+            from zoneinfo import ZoneInfo
+            local_tz = ZoneInfo(tz_name)
+        except Exception:
+            from datetime import timezone as _tz, timedelta as _td
+            local_tz = _tz(_td(hours=3))
+
+        dt_raw = booking.get('datetime_start')
+        try:
+            dtv = datetime.fromisoformat(str(dt_raw).replace('Z', '+00:00'))
+            if dtv.tzinfo is None:
+                from datetime import timezone as _tz
+                dtv = dtv.replace(tzinfo=_tz.utc)
+            dt_human = dtv.astimezone(local_tz).strftime('%d.%m.%Y в %H:%M')
+        except Exception:
+            dt_human = str(dt_raw)
+
+        base = (os.environ.get('SITE_URL') or 'https://sparcom.ru').rstrip('/')
+        chat_block = ''
+        reply_token = booking.get('reply_token')
+        if reply_token:
+            chat_link = f'{base}/m/{reply_token}'
+            chat_block = (
+                f'<p style="margin-top: 20px;"><a href="{chat_link}" '
+                f'style="display: inline-block; padding: 10px 18px; background: #0ea5e9; '
+                f'color: #fff; border-radius: 8px; text-decoration: none;">Написать мастеру</a></p>'
+            )
+
+        subject = f'Запись на {dt_human} подтверждена'
+        body_html = f"""
+        <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #2d2318;">
+            <h2 style="color: #0f172a;">Здравствуйте, {client_name}!</h2>
+            <p>Мастер <b>{master_name}</b> подтвердил вашу запись на <b>{dt_human}</b>.</p>
+            <p>Если нужно уточнить детали встречи — напишите мастеру в чат.</p>
+            {chat_block}
+        </div>
+        """.strip()
+
+        ok = send_email(client_email, subject, body_html, tags=['booking-confirm'])
+        _log_notification(cur, schema,
+            channel='email', event_type='client_booking_confirmed',
             recipient=client_email, subject=subject,
             status='success' if ok else 'failed',
             related_id=booking.get('id'),
@@ -664,6 +749,16 @@ def handle_bookings(event, method, params, schema, headers):
                     status = 'confirmed', confirmed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
                 WHERE id = {int(booking_id)} RETURNING *
             """)
+            confirmed_row = cur.fetchone()
+            if confirmed_row:
+                try:
+                    _notify_client_about_confirmation(
+                        cur, schema, confirmed_row['master_id'], dict(confirmed_row),
+                    )
+                except Exception:
+                    pass
+                # Возвращаем курсор к строке для общего return ниже
+                cur.execute(f"SELECT * FROM {schema}.master_bookings WHERE id = {int(booking_id)}")
         elif action in ('cancel', 'complete', 'no_show'):
             # Все три статуса завершают активную фазу брони: место в слоте освобождается.
             reason = (body.get('cancel_reason') or '').replace("'", "''")
