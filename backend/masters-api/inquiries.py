@@ -2,7 +2,7 @@ import json
 import os
 import re
 import psycopg2.extras
-from shared import get_conn, send_email, tg_send
+from shared import get_conn, send_email, tg_send, vk_send
 from booking_validator import _client_ip
 
 
@@ -39,7 +39,9 @@ def _notify_master_about_inquiry(cur, schema, master_id, guest_name, guest_conta
                    COALESCE(u.notify_email, true) AS notify_email,
                    u.notify_telegram AS notify_telegram,
                    u.tg_chat_id AS user_tg,
-                   la.telegram_user_id AS linked_tg
+                   la.telegram_user_id AS linked_tg,
+                   u.vk_id AS vk_id,
+                   COALESCE(u.notify_vk, false) AS notify_vk
             FROM {schema}.masters m
             LEFT JOIN {schema}.users u ON u.id = m.user_id
             LEFT JOIN (
@@ -85,6 +87,16 @@ def _notify_master_about_inquiry(cur, schema, master_id, guest_name, guest_conta
                 f'<i>Ответьте в кабинете мастера.</i>'
             )
             tg_send(tg_chat_id, tg_text)
+
+        # VK
+        vk_id = m.get('vk_id')
+        if vk_id and m.get('notify_vk'):
+            vk_send(vk_id,
+                f'❓ Новый вопрос от {guest}\n\n'
+                f'{preview}\n\n'
+                f'{ct_label}: {guest_contact}\n'
+                f'Ответьте в кабинете мастера: {cabinet_link}'
+            )
     except Exception:
         pass
 

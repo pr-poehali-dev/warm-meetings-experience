@@ -2,7 +2,7 @@ import json
 import os
 import psycopg2.extras
 from datetime import datetime
-from shared import CORS_HEADERS, get_conn, get_schema, send_email, tg_send, admin_email
+from shared import CORS_HEADERS, get_conn, get_schema, send_email, tg_send, vk_send, admin_email
 from booking_validator import (
     acquire_master_lock, validate_booking_create, get_buffer_minutes,
     require_master_id, recalc_slot_status, ensure_master_access,
@@ -83,6 +83,8 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                    u.tg_chat_id AS user_tg,
                    COALESCE(u.notify_email, true) AS notify_email,
                    u.notify_telegram AS notify_telegram,
+                   u.vk_id AS vk_id,
+                   COALESCE(u.notify_vk, false) AS notify_vk,
                    COALESCE(mcs.timezone, 'Europe/Moscow') AS master_tz
             FROM {schema}.masters m
             LEFT JOIN {schema}.users u ON u.id = m.user_id
@@ -305,6 +307,39 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                 _alert_admin_critical('telegram', 'send_failed',
                                       'shared.tg_send returned False',
                                       recipient=str(tg_chat_id or ''))
+
+        # === VK ===
+        vk_id = m.get('vk_id')
+        if vk_id and m.get('notify_vk'):
+            vk_lines = [
+                f'🎫 Новая запись на сеанс',
+                '',
+                f'📌 {service_name or "Услуга"}',
+                f'📅 {dt_human}',
+                f'💰 {int(float(price))} ₽',
+                '',
+                f'👤 {client_name}',
+                f'📞 {client_phone}',
+            ]
+            if client_email:
+                vk_lines.append(f'✉️ {client_email}')
+            if comment:
+                vk_lines.append(f'💬 {comment}')
+            if meeting_address:
+                vk_lines.append(f'📍 Выезд: {meeting_address}')
+            if maps_url:
+                vk_lines.append(f'🗺 На карте: {maps_url}')
+            vk_lines.append('')
+            vk_lines.append(f'Статус: {status_human}')
+            ok_vk = vk_send(vk_id, '\n'.join(vk_lines))
+            _log_notification(cur, schema,
+                channel='vk', event_type='master_booking_new',
+                recipient=str(vk_id), subject='Новая запись на сеанс',
+                status='success' if ok_vk else 'failed',
+                error_code=None if ok_vk else 'send_failed',
+                user_id=m.get('user_id'), related_id=booking.get('id'),
+                payload={'master_id': master_id, 'client_name': client_name})
+
     except Exception:
         # Любые проблемы с уведомлениями не должны ломать бронь
         pass

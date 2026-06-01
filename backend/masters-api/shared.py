@@ -227,6 +227,38 @@ def tg_notify_admin(text, token=None):
     """Уведомление администратору (TELEGRAM_CHAT_ID)."""
     return tg_send(os.environ.get('TELEGRAM_CHAT_ID', ''), text, token=token)
 
+# --- VK ---
+
+def vk_send(vk_user_id, text):
+    """Отправляет личное сообщение пользователю ВКонтакте от имени сообщества.
+    Требует VK_COMMUNITY_TOKEN и VK_COMMUNITY_ID в окружении.
+    Возвращает True при успехе, False при любой ошибке — не падает.
+    """
+    token = os.environ.get('VK_COMMUNITY_TOKEN', '')
+    community_id = os.environ.get('VK_COMMUNITY_ID', '0')
+    if not token or not vk_user_id:
+        return False
+    import random as _random
+    payload = json.dumps({
+        'peer_id': int(vk_user_id),
+        'message': text,
+        'random_id': _random.randint(1, 2 ** 31),
+        'group_id': int(community_id) if community_id and community_id != '0' else 0,
+        'access_token': token,
+        'v': '5.199',
+    }).encode('utf-8')
+    req = urllib.request.Request(
+        'https://api.vk.com/method/messages.send',
+        data=payload,
+        headers={'Content-Type': 'application/json'},
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=6)
+        result = json.loads(resp.read().decode('utf-8'))
+        return 'error' not in result
+    except Exception:
+        return False
+
 # --- Email (Unisender Go) ---
 
 def send_email(to_email, subject, body_html, to_name=None, tags=None):
