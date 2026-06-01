@@ -65,7 +65,7 @@ interface BookingModalProps {
   service: MasterService;
   masterName: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (chatToken?: string) => void;
 }
 
 function BookingModal({ option, service, masterName, onClose, onSuccess }: BookingModalProps) {
@@ -107,7 +107,7 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
     setLoading(true);
     setError("");
     try {
-      await masterBookingsApi.publicBook({
+      const res = (await masterBookingsApi.publicBook({
         slot_id: option.slot.id!,
         service_id: service.id,
         desired_start: toIsoLocal(option.start),
@@ -123,8 +123,8 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
         meeting_address: isAtHome ? meeting.address.trim() : undefined,
         meeting_latitude: isAtHome && meeting.latitude != null ? meeting.latitude : undefined,
         meeting_longitude: isAtHome && meeting.longitude != null ? meeting.longitude : undefined,
-      });
-      onSuccess();
+      })) as { chat_token?: string };
+      onSuccess(res?.chat_token);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ошибка при бронировании");
     } finally {
@@ -282,7 +282,7 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
 
 // ─── Успех бронирования ────────────────────────────────────────────────────────
 
-function BookingSuccess({ onClose }: { onClose: () => void }) {
+function BookingSuccess({ onClose, chatToken }: { onClose: () => void; chatToken?: string }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -294,6 +294,17 @@ function BookingSuccess({ onClose }: { onClose: () => void }) {
         <p className="text-muted-foreground text-sm mb-5">
           Мастер свяжется с вами для подтверждения записи.
         </p>
+        {chatToken && (
+          <a
+            href={`/m/${chatToken}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full mb-2 inline-flex items-center justify-center gap-2 border border-primary text-primary py-2.5 rounded-xl font-semibold text-sm hover:bg-primary/5 transition"
+          >
+            <Icon name="MessageCircle" size={16} />
+            Написать мастеру
+          </a>
+        )}
         <button
           onClick={onClose}
           className="w-full bg-primary text-primary-foreground py-2.5 rounded-xl font-semibold text-sm hover:bg-primary/90 transition"
@@ -504,6 +515,7 @@ export default function MasterDetail() {
   const [activePhoto, setActivePhoto] = useState(0);
   const [bookingState, setBookingState] = useState<{ option: BookingOption; service: MasterService } | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingChatToken, setBookingChatToken] = useState<string | undefined>(undefined);
   const [extVideos, setExtVideos] = useState<VideoItem[]>([]);
   const [selectedServiceForFlow, setSelectedServiceForFlow] = useState<number | null>(null);
   const [bookingVisible, setBookingVisible] = useState(false);
@@ -558,8 +570,9 @@ export default function MasterDetail() {
 
   const portfolio = master.portfolio || [];
 
-  const handleBookSuccess = () => {
+  const handleBookSuccess = (chatToken?: string) => {
     setBookingState(null);
+    setBookingChatToken(chatToken);
     setBookingSuccess(true);
     setBookingRefreshKey((k) => k + 1);
   };
@@ -777,6 +790,15 @@ export default function MasterDetail() {
               {/* Контакты */}
               <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-3">Связаться</p>
+                {services.length > 0 && (
+                  <button
+                    onClick={scrollToBooking}
+                    className="flex items-center gap-3 w-full bg-primary/10 text-primary px-4 py-3 rounded-xl text-sm font-medium hover:bg-primary/15 transition-colors"
+                  >
+                    <Icon name="MessageCircle" size={16} />
+                    Написать мастеру
+                  </button>
+                )}
                 {master.phone && (
                   <a
                     href={`tel:${master.phone}`}
@@ -850,7 +872,10 @@ export default function MasterDetail() {
 
       {/* Успех */}
       {bookingSuccess && (
-        <BookingSuccess onClose={() => setBookingSuccess(false)} />
+        <BookingSuccess
+          onClose={() => setBookingSuccess(false)}
+          chatToken={bookingChatToken}
+        />
       )}
     </PageShell>
   );

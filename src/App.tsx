@@ -48,6 +48,7 @@ const VkCallback = lazy(() => import("./pages/VkCallback"));
 const YandexCallback = lazy(() => import("./pages/YandexCallback"));
 const EventShortLink = lazy(() => import("./pages/EventShortLink"));
 const GuestChat = lazy(() => import("./pages/GuestChat"));
+const MasterChat = lazy(() => import("./pages/MasterChat"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const Functional = lazy(() => import("./pages/Functional"));
 const AccountDemo = lazy(() => import("./pages/AccountDemo"));
@@ -91,6 +92,7 @@ const AppContent = () => {
           <Route path="/events/:slug" element={<EventDetail />} />
           <Route path="/e/:code" element={<EventShortLink />} />
           <Route path="/g/:token" element={<GuestChat />} />
+          <Route path="/m/:token" element={<MasterChat />} />
           <Route path="/login" element={<Login />} />
           <Route path="/auth/vk/callback" element={<VkCallback />} />
           <Route path="/auth/yandex/callback" element={<YandexCallback />} />
