@@ -109,6 +109,14 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
         status = booking.get('status', 'pending')
         comment = booking.get('comment', '') or ''
 
+        # Место встречи (выезд мастера на дом): адрес + координаты
+        meeting_address = (booking.get('meeting_address') or '').strip()
+        meeting_lat = booking.get('meeting_latitude')
+        meeting_lng = booking.get('meeting_longitude')
+        maps_url = ''
+        if meeting_lat is not None and meeting_lng is not None:
+            maps_url = f'https://yandex.ru/maps/?pt={meeting_lng},{meeting_lat}&z=17&l=map'
+
         # Согласие клиента с противопоказаниями
         contra_accepted = bool(booking.get('contraindications_accepted', False))
         contra_at_raw = booking.get('contraindications_accepted_at')
@@ -203,6 +211,9 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                             <tr><td style="color: #666; padding: 4px 0;">Телефон:</td><td><a href="tel:{client_phone}" style="color: #C8834A; text-decoration: none;">{client_phone}</a></td></tr>
                             {f'<tr><td style="color: #666; padding: 4px 0;">Email:</td><td><a href="mailto:{client_email}" style="color: #C8834A; text-decoration: none;">{client_email}</a></td></tr>' if client_email else ''}
                             {f'<tr><td style="color: #666; padding: 4px 0; vertical-align: top;">Комментарий:</td><td>{comment}</td></tr>' if comment else ''}
+                            {f'<tr><td colspan="2" style="padding-top: 12px; border-top: 1px solid #eee;"></td></tr>' if meeting_address or maps_url else ''}
+                            {f'<tr><td style="color: #666; padding: 4px 0; vertical-align: top;">📍 Адрес выезда:</td><td style="font-weight: 600;">{meeting_address}</td></tr>' if meeting_address else ''}
+                            {f'<tr><td style="color: #666; padding: 4px 0;">На карте:</td><td><a href="{maps_url}" style="color: #C8834A; text-decoration: none;">Открыть в Яндекс.Картах →</a></td></tr>' if maps_url else ''}
                         </table>
                         {contra_block}
                         <p style="margin: 20px 0 0; font-size: 13px; color: #888;">Управляйте записями в личном кабинете → «Записи».</p>
@@ -258,6 +269,12 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                 lines.append(f'✉️ {client_email}')
             if comment:
                 lines.append(f'💬 {comment}')
+            if meeting_address or maps_url:
+                lines.append('')
+                if meeting_address:
+                    lines.append(f'📍 <b>Выезд:</b> {meeting_address}')
+                if maps_url:
+                    lines.append(f'🗺 <a href="{maps_url}">Открыть на карте</a>')
             if contra_accepted:
                 when = contra_at_human or 'только что'
                 ip_part = f' · IP {contra_ip}' if contra_ip else ''
