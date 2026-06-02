@@ -7,6 +7,7 @@ from datetime import datetime
 
 import boto3
 import psycopg2
+import psycopg2.extras
 
 from shared import (
     get_conn, get_schema, options_response, ok, err,
@@ -201,7 +202,7 @@ def _event_media_upload(event: dict, user_token: str) -> dict:
     if not user_token:
         return err('Не авторизован', 401)
     schema = get_schema()
-    conn = get_conn(); cur = conn.cursor()
+    conn = get_conn(); cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     user = get_user_from_token(cur, schema, user_token)
     if not user:
         conn.close(); return err('Не авторизован', 401)
@@ -217,7 +218,7 @@ def _event_media_upload(event: dict, user_token: str) -> dict:
     if not ev_row:
         conn.close(); return err('Событие не найдено', 404)
     is_admin = has_role(cur, schema, user['id'], 'admin')
-    if not is_admin and ev_row[0] != user['id']:
+    if not is_admin and ev_row['organizer_id'] != user['id']:
         conn.close(); return err('Нет прав', 403)
 
     # Загружаем файл в S3 (переиспользуем _upload_file логику)
