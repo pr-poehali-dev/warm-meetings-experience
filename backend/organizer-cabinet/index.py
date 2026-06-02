@@ -615,7 +615,7 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
                     f"VALUES ({event_id}, '{snap_text_sql}'::jsonb, {user_id}, 'approve')"
                 )
             if is_private_event:
-                cur.execute(f"UPDATE {schema}.events SET status = 'private', is_visible = false, has_pending_changes = false, pending_changed_fields = NULL, last_moderated_at = CURRENT_TIMESTAMP WHERE id = {event_id}")
+                cur.execute(f"UPDATE {schema}.events SET status = 'private', is_visible = true, has_pending_changes = false, pending_changed_fields = NULL, last_moderated_at = CURRENT_TIMESTAMP WHERE id = {event_id}")
                 tg_notify_admin(
                     f"🔒 <b>Событие одобрено (приватное)</b>\n\n"
                     f"🎪 <b>{ev['title']}</b>\n"
@@ -1091,6 +1091,8 @@ def handle_user_search(event, method, params, cur, conn, user_id, schema, header
         FROM {schema}.users u
         LEFT JOIN {schema}.organizer_profiles op ON op.user_id = u.id
         WHERE u.id != {user_id}
+          AND u.is_active = true
+          AND u.email NOT LIKE '%.blocked.%'
           AND (
             u.name ILIKE '%{query}%'
             OR u.email ILIKE '%{query}%'
