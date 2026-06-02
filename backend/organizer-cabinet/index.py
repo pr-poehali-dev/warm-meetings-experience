@@ -73,12 +73,12 @@ def handler(event, context):
 
     # join_by_invite и verify_invite доступны любому авторизованному пользователю
     if resource == 'co_organizers' and method == 'POST':
-        body_raw = json.loads(event.get('body', '{}'))
+        body_raw = json.loads(event.get('body') or '{}')
         if body_raw.get('action') == 'join_by_invite':
             return handle_join_by_invite(body_raw, cur, conn, user_id, schema, headers)
 
     if resource == 'verify_invite' and method == 'POST':
-        body_raw = json.loads(event.get('body', '{}'))
+        body_raw = json.loads(event.get('body') or '{}')
         return handle_verify_invite(body_raw, cur, conn, user_id, schema, headers)
 
     if not has_role(cur, schema, user_id, 'organizer', 'admin'):
@@ -842,6 +842,7 @@ def handle_profile(event, method, cur, conn, user_id, schema, headers):
 def handle_co_organizers(event, method, params, cur, conn, user_id, schema, headers):
     """Соорганизаторы события: GET список, POST добавить, DELETE удалить"""
     admin = has_role(cur, schema, user_id, 'admin')
+    print(f"[co_organizers] method={method} params={params} user_id={user_id}")
 
     def check_event_owner(event_id):
         cur.execute(f"SELECT organizer_id FROM {schema}.events WHERE id = {event_id}")
@@ -876,8 +877,9 @@ def handle_co_organizers(event, method, params, cur, conn, user_id, schema, head
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps([dict(r) for r in rows], default=str)}
 
     if method == 'POST':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         action = body.get('action')
+        print(f"[co_organizers POST] action={action} event_id={body.get('event_id')} user_id={body.get('user_id')}")
 
         # Пользователь добавляет себя по инвайт-ссылке
         if action == 'join_by_invite':
