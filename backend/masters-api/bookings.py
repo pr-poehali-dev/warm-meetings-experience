@@ -100,7 +100,7 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
         if not m:
             print(f"[notify_master] master_id={master_id} not found")
             return
-        print(f"[notify_master] master_id={master_id} email={m.get('email')} linked_tg={m.get('linked_tg')} user_tg={m.get('user_tg')} notify_email={m.get('notify_email')} notify_telegram={m.get('notify_telegram')}")
+        print(f"[notify_master] master_id={master_id} email={m.get('email')} linked_tg={m.get('linked_tg')} user_tg={m.get('user_tg')} notify_email={m.get('notify_email')} notify_telegram={m.get('notify_telegram')} vk_id={m.get('vk_id')} notify_vk={m.get('notify_vk')}")
 
         client_name = booking.get('client_name', '')
         client_phone = booking.get('client_phone', '')

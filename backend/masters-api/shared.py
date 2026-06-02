@@ -239,24 +239,31 @@ def vk_send(vk_user_id, text):
     if not token or not vk_user_id:
         return False
     import random as _random
-    payload = json.dumps({
-        'peer_id': int(vk_user_id),
+    import urllib.parse as _urlparse
+    params = {
+        'peer_id': str(int(vk_user_id)),
         'message': text,
-        'random_id': _random.randint(1, 2 ** 31),
-        'group_id': int(community_id) if community_id and community_id != '0' else 0,
+        'random_id': str(_random.randint(1, 2 ** 31)),
         'access_token': token,
         'v': '5.199',
-    }).encode('utf-8')
+    }
+    if community_id and community_id != '0':
+        params['group_id'] = str(int(community_id))
+    payload = _urlparse.urlencode(params).encode('utf-8')
     req = urllib.request.Request(
         'https://api.vk.com/method/messages.send',
         data=payload,
-        headers={'Content-Type': 'application/json'},
+        headers={'Content-Type': 'application/x-www-form-urlencoded'},
     )
     try:
         resp = urllib.request.urlopen(req, timeout=6)
         result = json.loads(resp.read().decode('utf-8'))
-        return 'error' not in result
-    except Exception:
+        if 'error' in result:
+            print(f'[vk_send] error vk_id={vk_user_id}: {result["error"]}')
+            return False
+        return True
+    except Exception as e:
+        print(f'[vk_send] exception vk_id={vk_user_id}: {e}')
         return False
 
 # --- Email (Unisender Go) ---
