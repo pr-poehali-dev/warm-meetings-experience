@@ -174,6 +174,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
   }
 
   if (roleTab === "master" && isMaster) {
+    if (!masterId) return <div className="flex justify-center py-16"><Icon name="Loader2" size={28} className="animate-spin text-muted-foreground" /></div>;
     switch (masterSection) {
       case "dashboard": return <MasterDashboardSection masterId={masterId} />;
       case "profile": return <MasterProfileSection masterId={masterId} />;

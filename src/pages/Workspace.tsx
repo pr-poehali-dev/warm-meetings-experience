@@ -9,6 +9,7 @@ import CabinetHeader from "@/components/CabinetHeader";
 import { organizerApi, OrgEvent, DashboardData } from "@/lib/organizer-api";
 import { partnerApi, PartnerBath } from "@/lib/partner-api";
 import { masterChatApi } from "@/lib/master-calendar-api";
+import { mastersApi } from "@/lib/masters-api";
 import { useToast } from "@/hooks/use-toast";
 
 import WorkspaceSidebar from "@/components/workspace/WorkspaceSidebar";
@@ -97,21 +98,28 @@ export default function Workspace() {
   const tgChannelsCount = tgChannelsCountOverride ?? Number(tgInfo?.tg_channels_count ?? 0);
   const loadTgInfo = useCallback(async () => { await refetchTgInfo(); }, [refetchTgInfo]);
 
-  // Непрочитанные сообщения от гостей (для бейджа в разделе «Записи»)
+  // Реальный masters.id (не user.id)
+  const [masterId, setMasterId] = useState<number>(0);
+  useEffect(() => {
+    if (!isMaster) return;
+    mastersApi.getMyProfile().then((m) => setMasterId(m.id)).catch(() => {});
+  }, [isMaster]);
+
+  // Непрочитанные сообщения от гостей (для бейджа в разделе «Сообщения»)
   const [unreadMessages, setUnreadMessages] = useState(0);
   useEffect(() => {
-    if (!isMaster || !user?.id) return;
+    if (!isMaster || !masterId) return;
     let cancelled = false;
     const loadUnread = () => {
       masterChatApi
-        .getUnreadCount(user.id)
+        .getUnreadCount(masterId)
         .then((r) => { if (!cancelled) setUnreadMessages(r.unread || 0); })
         .catch(() => {});
     };
     loadUnread();
     const t = setInterval(loadUnread, 30000);
     return () => { cancelled = true; clearInterval(t); };
-  }, [isMaster, user?.id, masterSection]);
+  }, [isMaster, masterId, masterSection]);
 
   // Organizer state
   const [orgDashboard, setOrgDashboard] = useState<DashboardData | null>(null);
@@ -174,8 +182,6 @@ export default function Workspace() {
   };
 
   if (authLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" /></div>;
-
-  const masterId = user!.id;
 
   // Текущее название раздела в шапке
   const currentLabel = () => {
