@@ -158,8 +158,17 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
         is_reschedule = booking.get('_event') == 'reschedule'
         subject_prefix = 'Перенос записи' if is_reschedule else 'Новая запись'
 
+        # Синтетические VK-адреса не являются реальными почтами — отправлять на них нельзя
+        raw_email = m.get('email') or ''
+        is_fake_email = raw_email.endswith('.vk.local') or raw_email.endswith('@vk.local')
+
+        # Если мастер вошёл через VK и у него нет реального email — VK-уведомление
+        # включаем автоматически, даже если он не нажал галочку вручную
+        vk_id = m.get('vk_id')
+        notify_vk_effective = m.get('notify_vk') or (bool(vk_id) and is_fake_email)
+
         # === Email ===
-        if m.get('notify_email') and m.get('email'):
+        if m.get('notify_email') and raw_email and not is_fake_email:
             if os.environ.get('UNISENDER_API_KEY') and os.environ.get('UNISENDER_SENDER_EMAIL'):
                 subject = f'{subject_prefix}: {client_name} на {dt_human}'
 
@@ -309,8 +318,7 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                                       recipient=str(tg_chat_id or ''))
 
         # === VK ===
-        vk_id = m.get('vk_id')
-        if vk_id and m.get('notify_vk'):
+        if vk_id and notify_vk_effective:
             vk_lines = [
                 f'🎫 Новая запись на сеанс',
                 '',

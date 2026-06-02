@@ -61,7 +61,12 @@ def _notify_master_about_inquiry(cur, schema, master_id, guest_name, guest_conta
         guest = guest_name or 'Гость'
         ct_label = {'email': 'Email', 'phone': 'Телефон', 'telegram': 'Telegram'}.get(contact_type, 'Контакт')
 
-        if m.get('email') and m.get('notify_email') is not False:
+        raw_email = m.get('email') or ''
+        is_fake_email = raw_email.endswith('.vk.local') or raw_email.endswith('@vk.local')
+        vk_id = m.get('vk_id')
+        notify_vk_effective = m.get('notify_vk') or (bool(vk_id) and is_fake_email)
+
+        if raw_email and not is_fake_email and m.get('notify_email') is not False:
             subject = f'Новый вопрос от {guest}'
             body_html = f"""
             <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #2d2318;">
@@ -75,7 +80,7 @@ def _notify_master_about_inquiry(cur, schema, master_id, guest_name, guest_conta
                    color: #fff; border-radius: 8px; text-decoration: none;">Ответить в кабинете</a></p>
             </div>
             """.strip()
-            send_email(m['email'], subject, body_html, tags=['master-inquiry'])
+            send_email(raw_email, subject, body_html, tags=['master-inquiry'])
 
         tg_chat_id = m.get('linked_tg') or m.get('user_tg')
         tg_disabled = m.get('notify_telegram') is False and not m.get('linked_tg')
@@ -89,8 +94,7 @@ def _notify_master_about_inquiry(cur, schema, master_id, guest_name, guest_conta
             tg_send(tg_chat_id, tg_text)
 
         # VK
-        vk_id = m.get('vk_id')
-        if vk_id and m.get('notify_vk'):
+        if vk_id and notify_vk_effective:
             vk_send(vk_id,
                 f'❓ Новый вопрос от {guest}\n\n'
                 f'{preview}\n\n'
