@@ -2,18 +2,43 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import AddressMapPicker from "@/components/master/addresses/AddressMapPicker";
 import { geocodeAddress } from "@/components/master/addresses/geocode";
+import func2url from "../../../../backend/func2url.json";
+import { authenticatedRequest } from "@/lib/http";
+
+const EVENTS_API = func2url["events-api"];
 
 interface Props {
   address: string;
   latitude?: number | null;
   longitude?: number | null;
+  eventId?: number | null;
   onChange: (data: { address: string; latitude: number | null; longitude: number | null }) => void;
   onClose: () => void;
 }
 
-export default function EventLocationPicker({ address, latitude, longitude, onChange, onClose }: Props) {
+export default function EventLocationPicker({ address, latitude, longitude, eventId, onChange, onClose }: Props) {
   const [search, setSearch] = useState(address || "");
   const [searching, setSearching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const saveCoords = async (lat: number | null, lng: number | null) => {
+    if (!eventId || lat == null || lng == null) return;
+    setSaving(true);
+    try {
+      await authenticatedRequest(`${EVENTS_API}/?resource=events`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: eventId, latitude: lat, longitude: lng }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch {
+      // тихая ошибка — координаты всё равно записаны в fd
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSearch = async () => {
     const q = search.trim();
@@ -24,16 +49,18 @@ export default function EventLocationPicker({ address, latitude, longitude, onCh
       if (found) {
         onChange({ address: found.address, latitude: found.lat, longitude: found.lng });
         setSearch(found.address);
+        await saveCoords(found.lat, found.lng);
       }
     } finally {
       setSearching(false);
     }
   };
 
-  const handlePick = (c: { lat: number; lng: number; address?: string }) => {
+  const handlePick = async (c: { lat: number; lng: number; address?: string }) => {
     const newAddress = c.address || search;
     onChange({ address: newAddress, latitude: c.lat, longitude: c.lng });
     if (c.address) setSearch(c.address);
+    await saveCoords(c.lat, c.lng);
   };
 
   return (
@@ -78,8 +105,14 @@ export default function EventLocationPicker({ address, latitude, longitude, onCh
 
       {latitude != null && longitude != null && (
         <p className="text-xs text-muted-foreground flex items-center gap-1">
-          <Icon name="CheckCircle" size={12} className="text-green-500" />
-          Координаты сохранены: {latitude.toFixed(5)}, {longitude.toFixed(5)}
+          {saving ? (
+            <Icon name="Loader2" size={12} className="animate-spin text-muted-foreground" />
+          ) : saved ? (
+            <Icon name="CheckCircle2" size={12} className="text-green-500" />
+          ) : (
+            <Icon name="CheckCircle" size={12} className="text-green-500" />
+          )}
+          {saving ? "Сохранение…" : saved ? "Сохранено!" : `Метка: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`}
         </p>
       )}
     </div>

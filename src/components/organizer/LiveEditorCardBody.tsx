@@ -213,6 +213,7 @@ export default function LiveEditorCardBody({ fd, set, showSensitive = false }: P
               address={fd.bath_address || ""}
               latitude={fd.latitude}
               longitude={fd.longitude}
+              eventId={fd.id ?? null}
               onChange={({ address, latitude, longitude }) => {
                 set({ bath_address: address, latitude, longitude });
               }}

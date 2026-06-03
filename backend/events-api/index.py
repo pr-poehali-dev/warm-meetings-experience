@@ -256,6 +256,13 @@ def handle_events(event, method, params, schema, headers):
             if field in body:
                 sets.append(f"{field} = {int(body[field])}")
 
+        for field in ['latitude', 'longitude']:
+            if field in body:
+                try:
+                    sets.append(f"{field} = {float(body[field])}" if body[field] is not None else f"{field} = NULL")
+                except (TypeError, ValueError):
+                    sets.append(f"{field} = NULL")
+
         for field in ['featured', 'is_visible']:
             if field in body:
                 sets.append(f"{field} = {bool(body[field])}")
