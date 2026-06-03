@@ -14,6 +14,7 @@ import CrowdfundWidget from "@/components/events/CrowdfundWidget";
 import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
 import PageShell from "@/components/ui/page-shell";
 import func2url from "../../backend/func2url.json";
+import EventMapView from "@/components/events/EventMapView";
 
 const MEDIA_API = func2url["media-api"];
 
@@ -121,6 +122,15 @@ export default function EventDetail() {
                 <MetaItem icon="Users" label={`${event.totalSpots} мест`} sub={spotsLabel} subColor={event.spotsLeft === 0 ? "text-red-500" : event.spotsLeft <= 2 ? "text-orange-500" : "text-green-600"} />
               )}
             </div>
+
+            {/* Карта места */}
+            {event.latitude != null && event.longitude != null && (
+              <EventMapView
+                lat={event.latitude}
+                lng={event.longitude}
+                label={event.bathName || event.bathAddress}
+              />
+            )}
 
             {/* Описание */}
             {event.fullDescription && (
@@ -266,6 +276,9 @@ export default function EventDetail() {
                 timeStart={event.timeStart}
                 timeEnd={event.timeEnd}
                 bathName={event.bathName}
+                bathAddress={event.bathAddress}
+                latitude={event.latitude}
+                longitude={event.longitude}
                 totalSpots={event.totalSpots}
                 crowdfundFee={
                   event.pricingMode === "crowdfund" ? event.cf?.club_fee : undefined
@@ -381,6 +394,9 @@ function SidebarCard({ event, spotsColor, spotsLabel, priceDisplay, dateObj }: {
                 timeStart={event.timeStart}
                 timeEnd={event.timeEnd}
                 bathName={event.bathName}
+                bathAddress={event.bathAddress}
+                latitude={event.latitude}
+                longitude={event.longitude}
                 totalSpots={event.totalSpots}
                 crowdfundFee={
                   event.pricingMode === "crowdfund" ? event.cf?.club_fee : undefined

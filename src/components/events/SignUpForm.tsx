@@ -30,6 +30,9 @@ interface SignUpFormProps {
   timeStart?: string;
   timeEnd?: string;
   bathName?: string;
+  bathAddress?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   totalSpots?: number;
   crowdfundFee?: number;
   crowdfundAfterFreeze?: boolean;
@@ -51,6 +54,9 @@ export default function SignUpForm({
   timeStart,
   timeEnd,
   bathName,
+  bathAddress,
+  latitude,
+  longitude,
   totalSpots,
   crowdfundFee,
   crowdfundAfterFreeze,
@@ -269,7 +275,14 @@ export default function SignUpForm({
         <DialogContent className="sm:max-w-lg p-0 gap-0 flex flex-col">
 
           {screen === "success" && (
-            <SignUpSuccessScreen email={email} onClose={() => handleClose(false)} />
+            <SignUpSuccessScreen
+              email={email}
+              onClose={() => handleClose(false)}
+              bathName={bathName}
+              bathAddress={bathAddress}
+              latitude={latitude}
+              longitude={longitude}
+            />
           )}
 
           {screen === "already_registered" && (
@@ -278,6 +291,9 @@ export default function SignUpForm({
               dateLabel={dateLabel}
               timeLabel={timeLabel}
               bathName={bathName}
+              bathAddress={bathAddress}
+              latitude={latitude}
+              longitude={longitude}
               onClose={() => handleClose(false)}
             />
           )}

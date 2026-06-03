@@ -20,6 +20,8 @@ export interface EventFromAPI {
   occupancy: string;
   bath_name: string;
   bath_address: string;
+  latitude?: number | null;
+  longitude?: number | null;
   image_url: string;
   price: string;
   price_amount: number;

@@ -13,6 +13,8 @@ export interface EventItem {
   typeIcon: string;
   bathName: string;
   bathAddress: string;
+  latitude?: number | null;
+  longitude?: number | null;
   image: string;
   description: string;
   fullDescription: string;
@@ -109,6 +111,8 @@ export function mapApiEvent(e: EventFromAPI): EventItem {
     typeIcon: e.event_type_icon || "Users",
     bathName: e.bath_name || "",
     bathAddress: e.bath_address || "",
+    latitude: e.latitude ?? null,
+    longitude: e.longitude ?? null,
     image: e.image_url || "",
     description: e.short_description || e.description || "",
     fullDescription: e.full_description || e.description || "",
