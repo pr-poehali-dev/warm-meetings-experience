@@ -3,6 +3,7 @@ import { organizerApi, OrgEvent } from "@/lib/organizer-api";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { SENSITIVE_LABELS } from "@/lib/moderation-fields";
+import { useToast } from "@/hooks/use-toast";
 
 type EventWithMeta = OrgEvent & { organizer_name?: string; organizer_email?: string };
 
@@ -194,6 +195,7 @@ export default function AdminEventModeration() {
   const [rejectReason, setRejectReason] = useState("");
   const [tgToggles, setTgToggles] = useState<Record<number, boolean>>({});
   const [detailEvent, setDetailEvent] = useState<EventWithMeta | null>(null);
+  const { toast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -217,6 +219,9 @@ export default function AdminEventModeration() {
     try {
       await organizerApi.moderateEvent(ev.id, "approve", undefined, tgToggles[ev.id] ?? true);
       setEvents((prev) => prev.filter((e) => e.id !== ev.id));
+      toast({ title: "Событие одобрено" });
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : "Ошибка при одобрении", variant: "destructive" });
     } finally {
       setActionLoading(null);
     }
@@ -230,6 +235,9 @@ export default function AdminEventModeration() {
       setEvents((prev) => prev.filter((e) => e.id !== rejectTarget.id));
       setRejectTarget(null);
       setRejectReason("");
+      toast({ title: "Событие отклонено" });
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : "Ошибка при отклонении", variant: "destructive" });
     } finally {
       setActionLoading(null);
     }
