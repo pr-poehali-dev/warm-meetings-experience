@@ -1,0 +1,49 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Missing credentials returns 500",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "amount": 500,
+        "user_email": "test@example.com",
+        "return_url": "https://example.com/return",
+        "description": "Тест"
+      },
+      "expectedStatus": 500,
+      "expectedBody": {"error": "YooKassa credentials not configured"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Invalid email returns 400",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "amount": 500,
+        "user_email": "not-an-email",
+        "return_url": "https://example.com/return"
+      },
+      "expectedStatus": 400,
+      "expectedBody": {"error": "Valid email is required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Invalid amount returns 400",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "amount": 0,
+        "user_email": "test@example.com",
+        "return_url": "https://example.com/return"
+      },
+      "expectedStatus": 400,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
