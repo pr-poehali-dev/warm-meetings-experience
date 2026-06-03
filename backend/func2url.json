@@ -1,8 +1,8 @@
 {
+  "yookassa-yookassa": "https://functions.poehali.dev/6a6dd242-fee5-4b7d-a8dc-676e8adfd2f9",
+  "yookassa-yookassa-webhook": "https://functions.poehali.dev/98b262ed-7477-4e39-96c5-3c35c32afad0",
   "crm-api": "https://functions.poehali.dev/ceabf12a-ab18-40fd-8265-60883f655b47",
   "guests-api": "https://functions.poehali.dev/7faf1d56-662a-4864-b752-0e8cabfcb78c",
-  "robokassa-robokassa-webhook": "https://functions.poehali.dev/3f95bff8-6115-4233-8db9-14aeb3f59653",
-  "robokassa-robokassa": "https://functions.poehali.dev/0330b6c2-df84-4726-bde5-3c83f007ccdd",
   "crowdfund-freezer": "https://functions.poehali.dev/edde4eed-3a61-4681-9daa-9ce1e9ed5620",
   "audit-log": "https://functions.poehali.dev/b0f875d7-7795-4fec-b376-4d479d4204c5",
   "support": "https://functions.poehali.dev/a0a86024-792f-4be0-8a06-30173c46b07a",
