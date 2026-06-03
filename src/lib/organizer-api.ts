@@ -23,6 +23,8 @@ export interface OrgEvent {
   end_time: string;
   bath_name: string;
   bath_address: string;
+  latitude?: number | null;
+  longitude?: number | null;
   total_spots: number;
   spots_left: number;
   anonymous_count?: number;

@@ -475,6 +475,12 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                 sets.append(f"{field} = {float(body[field])}")
         if 'cf_fee_mode' in body and body['cf_fee_mode'] in ('fixed', 'percent'):
             sets.append(f"cf_fee_mode = '{body['cf_fee_mode']}'")
+        for field in ['latitude', 'longitude']:
+            if field in body:
+                try:
+                    sets.append(f"{field} = {float(body[field])}" if body[field] is not None else f"{field} = NULL")
+                except (TypeError, ValueError):
+                    sets.append(f"{field} = NULL")
         sets.append("updated_at = CURRENT_TIMESTAMP")
 
         try:

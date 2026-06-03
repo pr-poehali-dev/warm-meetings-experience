@@ -1,5 +1,6 @@
 import { useState } from "react";
 import EventMediaUpload from "./EventMediaUpload";
+import EventLocationPicker from "./EventLocationPicker";
 import { OrgEvent, PricingTier } from "@/lib/organizer-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,7 @@ interface Props {
 
 export default function LiveEditorCardBody({ fd, set, showSensitive = false }: Props) {
   const [showPricingPanel, setShowPricingPanel] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   const hasDate = fd.event_date && fd.event_date.length >= 10;
   let dateObj: Date | null = null;
@@ -192,7 +194,31 @@ export default function LiveEditorCardBody({ fd, set, showSensitive = false }: P
               />
             </div>
             {showSensitive && <SensitiveFieldBadge />}
+            <button
+              type="button"
+              onClick={() => setShowMapPicker((v) => !v)}
+              title={fd.latitude ? "Геопозиция установлена" : "Указать на карте"}
+              className={`flex-shrink-0 flex items-center gap-1 text-xs px-2 py-0.5 rounded-md border transition-colors ${
+                fd.latitude
+                  ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
+                  : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <Icon name={fd.latitude ? "MapPinCheck" : "MapPin"} size={12} />
+              {fd.latitude ? "На карте" : "Карта"}
+            </button>
           </div>
+          {showMapPicker && (
+            <EventLocationPicker
+              address={fd.bath_address || ""}
+              latitude={fd.latitude}
+              longitude={fd.longitude}
+              onChange={({ address, latitude, longitude }) => {
+                set({ bath_address: address, latitude, longitude });
+              }}
+              onClose={() => setShowMapPicker(false)}
+            />
+          )}
         </div>
       </div>
 
