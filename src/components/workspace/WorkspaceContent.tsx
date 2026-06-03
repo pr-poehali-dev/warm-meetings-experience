@@ -337,7 +337,9 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                   }
                   await Promise.all([loadOrgDashboard(), loadOrgEvents()]);
                 } catch (e: unknown) {
-                  toast({ title: "Ошибка", description: e instanceof Error ? e.message : "Не удалось сохранить", variant: "destructive" });
+                  const msg = e instanceof Error ? e.message : "Не удалось сохранить";
+                  console.error("[EventSave] error:", e);
+                  toast({ title: msg, variant: "destructive" });
                 } finally {
                   setOrgFormLoading(false);
                 }
