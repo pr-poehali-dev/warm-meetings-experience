@@ -1,3 +1,4 @@
+# v3 — latitude/longitude hotfix
 import json
 import os
 import random
