@@ -434,7 +434,8 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                 val = str(body[field]).replace("'", "''")
                 sets.append(f"{field} = '{val}'")
         if 'end_date' in body:
-            sets.append(f"end_date = {f\"'{body['end_date']}'\" if body['end_date'] else 'NULL'}")
+            end_date_val = f"'{body['end_date']}'" if body['end_date'] else 'NULL'
+            sets.append(f"end_date = {end_date_val}")
         for field in ['price_amount','total_spots','anonymous_count']:
             if field in body:
                 sets.append(f"{field} = {max(int(body[field]), 0)}")
