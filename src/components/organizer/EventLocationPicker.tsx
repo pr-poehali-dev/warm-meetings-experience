@@ -112,7 +112,7 @@ export default function EventLocationPicker({ address, latitude, longitude, even
           ) : (
             <Icon name="CheckCircle" size={12} className="text-green-500" />
           )}
-          {saving ? "Сохранение…" : saved ? "Сохранено!" : `Метка: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`}
+          {saving ? "Сохранение…" : saved ? "Сохранено!" : `Метка: ${Number(latitude).toFixed(5)}, ${Number(longitude).toFixed(5)}`}
         </p>
       )}
     </div>
