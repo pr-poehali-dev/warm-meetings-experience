@@ -9,9 +9,73 @@ interface SuccessScreenProps {
   bathAddress?: string;
   latitude?: number | null;
   longitude?: number | null;
+  preferredChannel?: string;
+  preferredContactValue?: string;
 }
 
-export function SignUpSuccessScreen({ email, onClose, bathName, bathAddress, latitude, longitude }: SuccessScreenProps) {
+function ContactHint({ email, preferredChannel, preferredContactValue }: {
+  email: string;
+  preferredChannel?: string;
+  preferredContactValue?: string;
+}) {
+  const isVkEmail = email?.endsWith("@vk.local") || email?.endsWith("@vkid.ru");
+
+  if (preferredChannel === "vk" && preferredContactValue) {
+    const vkUrl = preferredContactValue.startsWith("http")
+      ? preferredContactValue
+      : `https://${preferredContactValue}`;
+    return (
+      <a
+        href={vkUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:underline"
+      >
+        <Icon name="ExternalLink" size={12} />
+        Организатор напишет вам в VK
+      </a>
+    );
+  }
+
+  if (preferredChannel === "telegram" && preferredContactValue) {
+    const tgHandle = preferredContactValue.replace("@", "");
+    return (
+      <p className="text-xs text-muted-foreground">
+        Организатор напишет вам в{" "}
+        <a
+          href={`https://t.me/${tgHandle}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline"
+        >
+          Telegram
+        </a>
+      </p>
+    );
+  }
+
+  if (!isVkEmail && email) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Подтверждение отправлено на{" "}
+        <span className="font-medium">{email}</span>
+      </p>
+    );
+  }
+
+  return null;
+}
+
+export function SignUpSuccessScreen({
+  email,
+  onClose,
+  bathName,
+  bathAddress,
+  latitude,
+  longitude,
+  preferredChannel,
+  preferredContactValue,
+}: SuccessScreenProps) {
   const hasMap = latitude != null && longitude != null;
   return (
     <div className="px-6 py-8 space-y-4">
@@ -25,11 +89,11 @@ export function SignUpSuccessScreen({ email, onClose, bathName, bathAddress, lat
             Организатор получил вашу заявку и свяжется с вами для подтверждения.
           </p>
         </div>
-        {email && (
-          <p className="text-xs text-muted-foreground">
-            Подтверждение отправлено на <span className="font-medium">{email}</span>
-          </p>
-        )}
+        <ContactHint
+          email={email}
+          preferredChannel={preferredChannel}
+          preferredContactValue={preferredContactValue}
+        />
       </div>
 
       {(bathName || bathAddress) && (

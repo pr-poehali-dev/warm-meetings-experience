@@ -282,6 +282,13 @@ export default function SignUpForm({
               bathAddress={bathAddress}
               latitude={latitude}
               longitude={longitude}
+              preferredChannel={preferredChannel}
+              preferredContactValue={
+                preferredChannel === "telegram" ? telegram :
+                preferredChannel === "vk" ? vkContact :
+                preferredChannel === "email" ? email :
+                phone
+              }
             />
           )}
 
