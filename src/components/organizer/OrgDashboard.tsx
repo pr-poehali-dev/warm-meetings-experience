@@ -83,9 +83,10 @@ export default function OrgDashboard({
   const filtered = events.filter((e) => {
     const matchesSearch = !search || e.title.toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
-    if (filter === "active") return e.event_date >= now && e.is_visible;
+    const isPrivate = e.status === "private";
+    if (filter === "active") return e.event_date >= now && (e.is_visible || isPrivate);
     if (filter === "past") return e.event_date < now;
-    if (filter === "drafts") return !e.is_visible;
+    if (filter === "drafts") return !e.is_visible && !isPrivate;
     return true;
   });
 
