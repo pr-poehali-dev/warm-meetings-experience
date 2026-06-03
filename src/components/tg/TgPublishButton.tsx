@@ -4,14 +4,15 @@ import Icon from "@/components/ui/icon";
 import { tgPublishApi, TgChannel, ContentType, PublishResult } from "@/lib/tg-publish-api";
 
 const TG_TEMPLATE_VARS = [
-  { key: "{{event_title}}", label: "Название события" },
-  { key: "{{event_date}}", label: "Дата события" },
-  { key: "{{event_time}}", label: "Время события" },
-  { key: "{{place}}", label: "Место проведения" },
-  { key: "{{price}}", label: "Стоимость" },
-  { key: "{{spots_left}}", label: "Осталось мест" },
-  { key: "{{description_short}}", label: "Описание" },
-  { key: "{{url}}", label: "Ссылка на событие" },
+  { key: "{title}", label: "Название события" },
+  { key: "{date}", label: "Дата события" },
+  { key: "{time}", label: "Время события" },
+  { key: "{place}", label: "Место проведения" },
+  { key: "{price}", label: "Стоимость" },
+  { key: "{spots_left}", label: "Осталось мест" },
+  { key: "{description_short}", label: "Описание" },
+  { key: "{url}", label: "Ссылка на событие" },
+  { key: "{address_line}", label: "Адрес" },
 ];
 
 interface TgPublishButtonProps {
