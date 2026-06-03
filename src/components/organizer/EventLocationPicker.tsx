@@ -2,10 +2,10 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import AddressMapPicker from "@/components/master/addresses/AddressMapPicker";
 import { geocodeAddress } from "@/components/master/addresses/geocode";
-import func2url from "../../../../backend/func2url.json";
+import func2url from "@/../backend/func2url.json";
 import { authenticatedRequest } from "@/lib/http";
 
-const EVENTS_API = func2url["events-api"];
+const EVENTS_API = (func2url as Record<string, string>)["events-api"];
 
 interface Props {
   address: string;
