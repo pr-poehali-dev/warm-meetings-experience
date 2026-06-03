@@ -265,17 +265,17 @@ def _event_media_upload(event: dict, user_token: str) -> dict:
     media_type = 'video' if is_video else 'photo'
 
     cur.execute(
-        f"SELECT COALESCE(MAX(sort_order), -1) + 1 FROM {schema}.event_media WHERE event_id = %s",
+        f"SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM {schema}.event_media WHERE event_id = %s",
         [int(event_id)],
     )
-    sort_order = cur.fetchone()[0]
+    sort_order = (cur.fetchone() or {}).get('next_order', 0)
 
     cur.execute(
         f"INSERT INTO {schema}.event_media (event_id, s3_key, url, media_type, mime_type, sort_order) "
         f"VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
         [int(event_id), key, url, media_type, file_type, sort_order],
     )
-    new_id = cur.fetchone()[0]
+    new_id = (cur.fetchone() or {}).get('id')
     conn.commit(); cur.close(); conn.close()
     return ok({'ok': True, 'id': new_id, 'url': url, 'key': key, 'media_type': media_type})
 
@@ -288,7 +288,7 @@ def _event_media_delete(params: dict, user_token: str) -> dict:
     if not media_id:
         return err('Не указан media_id')
     schema = get_schema()
-    conn = get_conn(); cur = conn.cursor()
+    conn = get_conn(); cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     user = get_user_from_token(cur, schema, user_token)
     if not user:
         conn.close(); return err('Не авторизован', 401)
@@ -301,7 +301,7 @@ def _event_media_delete(params: dict, user_token: str) -> dict:
     row = cur.fetchone()
     if not row:
         conn.close(); return err('Файл не найден', 404)
-    s3_key, organizer_id = row
+    s3_key, organizer_id = row['s3_key'], row['organizer_id']
     is_admin = has_role(cur, schema, user['id'], 'admin')
     if not is_admin and organizer_id != user['id']:
         conn.close(); return err('Нет прав', 403)
