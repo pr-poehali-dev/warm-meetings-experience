@@ -52,7 +52,6 @@ const MasterChat = lazy(() => import("./pages/MasterChat"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const Functional = lazy(() => import("./pages/Functional"));
 const AccountDemo = lazy(() => import("./pages/AccountDemo"));
-const EventsGlassDemo = lazy(() => import("./pages/EventsGlassDemo"));
 const IndexGlass = lazy(() => import("./pages/IndexGlass"));
 const IndexNew = lazy(() => import("./pages/IndexNew"));
 const FunctionalDescription = lazy(() => import("./pages/FunctionalDescription"));
@@ -124,7 +123,6 @@ const AppContent = () => {
           <Route path="/functional" element={<Functional />} />
           <Route path="/features" element={<FunctionalDescription />} />
           <Route path="/account-demo" element={<AccountDemo />} />
-          <Route path="/events-glass" element={<EventsGlassDemo />} />
           <Route path="/index-glass" element={<IndexGlass />} />
           <Route path="/home-new" element={<IndexNew />} />
           <Route path="/privacy" element={<Navigate to="/documents?tab=privacy" replace />} />
