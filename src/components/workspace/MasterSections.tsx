@@ -14,6 +14,7 @@ import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import func2url from "../../../backend/func2url.json";
 import ExternalVideoBlock from "@/components/video/ExternalVideoBlock";
+import NotifyChannels from "@/components/workspace/NotifyChannels";
 
 const UPLOAD_URL = func2url["media-api"];
 
@@ -627,21 +628,34 @@ export function MasterNotificationsSection({ masterId }: { masterId: number }) {
   return (
     <div className="space-y-5 max-w-xl">
       <h2 className="text-xl font-bold">Уведомления</h2>
-      <div className="space-y-2">
-        {toggles.map((t) => (
-          <div key={t.key} className="flex items-center justify-between gap-4 bg-card border rounded-2xl p-4">
-            <div><div className="font-medium text-sm">{t.label}</div><div className="text-xs text-muted-foreground mt-0.5">{t.desc}</div></div>
-            <button onClick={() => setSettings((p) => ({ ...p, [t.key]: !p[t.key] }))}
-              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${settings[t.key] ? "bg-primary" : "bg-muted"}`}>
-              <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${settings[t.key] ? "translate-x-5" : "translate-x-0"}`} />
-            </button>
-          </div>
-        ))}
+
+      {/* О чём уведомлять */}
+      <div className="space-y-3">
+        <div>
+          <p className="font-semibold text-sm">О чём уведомлять</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Выберите события, о которых хотите получать оповещения</p>
+        </div>
+        <div className="space-y-2">
+          {toggles.map((t) => (
+            <div key={t.key} className="flex items-center justify-between gap-4 bg-card border rounded-2xl p-4">
+              <div><div className="font-medium text-sm">{t.label}</div><div className="text-xs text-muted-foreground mt-0.5">{t.desc}</div></div>
+              <button onClick={() => setSettings((p) => ({ ...p, [t.key]: !p[t.key] }))}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${settings[t.key] ? "bg-primary" : "bg-muted"}`}>
+                <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${settings[t.key] ? "translate-x-5" : "translate-x-0"}`} />
+              </button>
+            </div>
+          ))}
+        </div>
+        <Button onClick={handleSave} disabled={saving} size="sm">
+          {saving ? <Icon name="Loader2" size={14} className="animate-spin mr-1" /> : null}
+          {saved ? "Сохранено!" : "Сохранить"}
+        </Button>
       </div>
-      <Button onClick={handleSave} disabled={saving} size="sm">
-        {saving ? <Icon name="Loader2" size={14} className="animate-spin mr-1" /> : null}
-        {saved ? "Сохранено!" : "Сохранить"}
-      </Button>
+
+      {/* Куда присылать уведомления (каналы) */}
+      <div className="border-t pt-5">
+        <NotifyChannels />
+      </div>
     </div>
   );
 }
