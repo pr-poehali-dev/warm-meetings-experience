@@ -254,7 +254,7 @@ export default function Account() {
                     </div>
                     <p className="text-xs text-muted-foreground">Пармастер, управляющий, организатор и другие роли</p>
                     <Link to="/account?tab=roles" className="mt-auto">
-                      <Button size="sm" variant="outline" className="w-full">Выбрать</Button>
+                      <Button size="sm" variant="outline" className="w-full">Добавить</Button>
                     </Link>
                   </CardContent>
                 </Card>
