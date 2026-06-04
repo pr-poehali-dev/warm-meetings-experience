@@ -65,6 +65,7 @@ interface WorkspaceContentProps {
 
   // Role tab switcher (used by dashboard cards)
   switchRoleTab: (t: RoleTab) => void;
+  switchMasterSection: (s: MasterSection) => void;
 
   // Telegram info (общий для всех ролей)
   tgLinked: boolean;
@@ -104,6 +105,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     loadOrgEvents,
     toast,
     switchRoleTab,
+    switchMasterSection,
     tgLinked,
     tgChannelsCount,
     refreshTgInfo,
@@ -167,8 +169,9 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
       <WorkspaceDashboard
         isMaster={isMaster}
         isOrganizer={isOrganizer}
-        onGoToMaster={() => switchRoleTab("master")}
-        onGoToOrganizer={() => switchRoleTab("organizer")}
+        onGoToMasterSection={(s) => { switchRoleTab("master"); props.switchMasterSection(s); }}
+        onGoToOrgView={(v) => { switchRoleTab("organizer"); setOrgView(v); }}
+        onCreateEvent={() => { switchRoleTab("organizer"); setOrgView("create"); }}
       />
     );
   }

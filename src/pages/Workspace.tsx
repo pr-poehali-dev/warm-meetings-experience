@@ -325,6 +325,7 @@ export default function Workspace() {
               loadOrgEvents={loadOrgEvents}
               toast={toast}
               switchRoleTab={switchRoleTab}
+              switchMasterSection={switchMasterSection}
               tgLinked={tgLinked}
               tgChannelsCount={tgChannelsCount}
               refreshTgInfo={loadTgInfo}

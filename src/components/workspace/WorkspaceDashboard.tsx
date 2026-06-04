@@ -7,15 +7,45 @@ import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
+import { MasterSection, OrgView } from "./workspace-types";
 
 interface WorkspaceDashboardProps {
   isMaster: boolean;
   isOrganizer: boolean;
-  onGoToMaster: () => void;
-  onGoToOrganizer: () => void;
+  onGoToMasterSection: (s: MasterSection) => void;
+  onGoToOrgView: (v: OrgView) => void;
+  onCreateEvent: () => void;
 }
 
-export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster, onGoToOrganizer }: WorkspaceDashboardProps) {
+function StatCard({
+  icon, color, bg, value, label, hint, onClick,
+}: {
+  icon: string; color: string; bg: string;
+  value: string | number; label: string; hint: string;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick} className="text-left w-full group">
+      <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full">
+        <CardContent className="p-4">
+          <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center mb-2`}>
+            <Icon name={icon} size={15} className={color} />
+          </div>
+          <div className="text-xl font-bold text-foreground">{value}</div>
+          <div className="text-xs text-muted-foreground">{label}</div>
+          <div className="text-[11px] text-primary mt-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+            {hint} <Icon name="ArrowRight" size={10} />
+          </div>
+        </CardContent>
+      </Card>
+    </button>
+  );
+}
+
+export default function WorkspaceDashboard({
+  isMaster, isOrganizer,
+  onGoToMasterSection, onGoToOrgView, onCreateEvent,
+}: WorkspaceDashboardProps) {
   const { user } = useAuth();
 
   const [masterData, setMasterData] = useState<{
@@ -29,7 +59,6 @@ export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster
 
   useEffect(() => {
     const tasks: Promise<void>[] = [];
-
     if (isMaster) {
       tasks.push(
         mastersApi.getMyProfile()
@@ -48,15 +77,9 @@ export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster
           .catch(() => {})
       );
     }
-
     if (isOrganizer) {
-      tasks.push(
-        organizerApi.getDashboard()
-          .then(setOrgData)
-          .catch(() => {})
-      );
+      tasks.push(organizerApi.getDashboard().then(setOrgData).catch(() => {}));
     }
-
     Promise.all(tasks).finally(() => setLoading(false));
   }, [isMaster, isOrganizer]);
 
@@ -90,47 +113,49 @@ export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster
   const upcomingEvents = orgData?.upcoming_events ?? [];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Приветствие */}
       <div>
         <h1 className="text-xl font-bold text-foreground">{greeting()}, {user?.name?.split(" ")[0]}!</h1>
         <p className="text-sm text-muted-foreground">Рабочий кабинет</p>
       </div>
 
-      {/* МАСТЕР — метрики */}
+      {/* МАСТЕР */}
       {isMaster && masterData.stats && (
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Icon name="Flame" size={15} className="text-orange-500" />
-              Как мастер
-            </h2>
-            <button onClick={onGoToMaster} className="text-xs text-primary hover:underline">Перейти →</button>
-          </div>
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+            <Icon name="Flame" size={15} className="text-orange-500" />
+            Мастер-услуги
+          </h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { label: "Предстоящих записей", value: masterData.stats.upcoming_sessions, icon: "CalendarCheck", color: "text-primary", bg: "bg-primary/10" },
-              { label: "Проведено сеансов", value: masterData.stats.completed_sessions, icon: "CheckCircle2", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/15" },
-              { label: "Доход за месяц", value: `${masterData.stats.total_revenue.toLocaleString("ru-RU")} ₽`, icon: "TrendingUp", color: "text-green-600 dark:text-green-400", bg: "bg-green-500/15" },
-              { label: "Загруженность", value: `${masterData.stats.occupancy_percent}%`, icon: "BarChart2", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/15" },
-            ].map((m) => (
-              <button
-                key={m.label}
-                type="button"
-                onClick={onGoToMaster}
-                className="text-left"
-              >
-                <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full">
-                  <CardContent className="p-4">
-                    <div className={`w-8 h-8 rounded-lg ${m.bg} flex items-center justify-center mb-2`}>
-                      <Icon name={m.icon} size={15} className={m.color} />
-                    </div>
-                    <div className="text-xl font-bold text-foreground">{m.value}</div>
-                    <div className="text-xs text-muted-foreground">{m.label}</div>
-                  </CardContent>
-                </Card>
-              </button>
-            ))}
+            <StatCard
+              icon="CalendarCheck" color="text-primary" bg="bg-primary/10"
+              value={masterData.stats.upcoming_sessions}
+              label="Предстоящих записей"
+              hint="Открыть записи"
+              onClick={() => onGoToMasterSection("bookings")}
+            />
+            <StatCard
+              icon="CalendarDays" color="text-blue-600 dark:text-blue-400" bg="bg-blue-500/15"
+              value=""
+              label="Расписание"
+              hint="Открыть расписание"
+              onClick={() => onGoToMasterSection("schedule")}
+            />
+            <StatCard
+              icon="TrendingUp" color="text-green-600 dark:text-green-400" bg="bg-green-500/15"
+              value={`${masterData.stats.total_revenue.toLocaleString("ru-RU")} ₽`}
+              label="Доход за месяц"
+              hint="Открыть финансы"
+              onClick={() => onGoToMasterSection("finances")}
+            />
+            <StatCard
+              icon="User" color="text-violet-600 dark:text-violet-400" bg="bg-violet-500/15"
+              value=""
+              label="Профиль и услуги"
+              hint="Открыть профиль"
+              onClick={() => onGoToMasterSection("profile")}
+            />
           </div>
         </div>
       )}
@@ -139,13 +164,26 @@ export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster
       {isMaster && masterData.upcoming.length > 0 && (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <Icon name="Clock" size={14} className="text-primary" />
-              Ближайшие сеансы
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Icon name="Clock" size={14} className="text-primary" />
+                Ближайшие сеансы
+              </h3>
+              <button
+                onClick={() => onGoToMasterSection("bookings")}
+                className="text-xs text-primary hover:underline flex items-center gap-0.5"
+              >
+                Все записи <Icon name="ArrowRight" size={12} />
+              </button>
+            </div>
             <div className="space-y-2">
               {masterData.upcoming.map((b) => (
-                <div key={b.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => onGoToMasterSection("bookings")}
+                  className="w-full flex items-center gap-3 py-2 border-b border-border/50 last:border-0 hover:bg-muted/40 rounded-lg px-1 transition-colors text-left"
+                >
                   <div className="w-8 h-8 rounded-full bg-orange-500/15 flex items-center justify-center flex-shrink-0 text-sm font-bold text-orange-600 dark:text-orange-400">
                     {b.client_name[0].toUpperCase()}
                   </div>
@@ -159,47 +197,49 @@ export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster
                     </p>
                     <p className="text-xs text-muted-foreground">{b.price.toLocaleString()} ₽</p>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* ОРГАНИЗАТОР — метрики и события */}
+      {/* ОРГАНИЗАТОР */}
       {isOrganizer && orgData && (
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Icon name="CalendarDays" size={15} className="text-emerald-600" />
-              Как организатор
-            </h2>
-            <button onClick={onGoToOrganizer} className="text-xs text-primary hover:underline">Перейти →</button>
-          </div>
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+            <Icon name="CalendarDays" size={15} className="text-emerald-600" />
+            Мероприятия
+          </h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { label: "Предстоящих событий", value: upcomingEvents.length, icon: "CalendarDays", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/15" },
-              { label: "Всего событий", value: orgData.stats.total_events ?? 0, icon: "Layers", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/15" },
-              { label: "Участников всего", value: orgData.stats.total_participants ?? 0, icon: "Users", color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-500/15" },
-              { label: "Черновики", value: orgData.stats.drafts ?? 0, icon: "FileEdit", color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/15" },
-            ].map((m) => (
-              <button
-                key={m.label}
-                type="button"
-                onClick={onGoToOrganizer}
-                className="text-left"
-              >
-                <Card className="border-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full">
-                  <CardContent className="p-4">
-                    <div className={`w-8 h-8 rounded-lg ${m.bg} flex items-center justify-center mb-2`}>
-                      <Icon name={m.icon} size={15} className={m.color} />
-                    </div>
-                    <div className="text-xl font-bold text-foreground">{m.value}</div>
-                    <div className="text-xs text-muted-foreground">{m.label}</div>
-                  </CardContent>
-                </Card>
-              </button>
-            ))}
+            <StatCard
+              icon="CalendarDays" color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-500/15"
+              value={upcomingEvents.length}
+              label="Предстоящих событий"
+              hint="Мои события"
+              onClick={() => onGoToOrgView("dashboard")}
+            />
+            <StatCard
+              icon="Users" color="text-violet-600 dark:text-violet-400" bg="bg-violet-500/15"
+              value={orgData.stats.total_participants ?? 0}
+              label="Участников всего"
+              hint="Открыть события"
+              onClick={() => onGoToOrgView("dashboard")}
+            />
+            <StatCard
+              icon="FileEdit" color="text-amber-600 dark:text-amber-400" bg="bg-amber-500/15"
+              value={orgData.stats.drafts ?? 0}
+              label="Черновики"
+              hint="Создать событие"
+              onClick={onCreateEvent}
+            />
+            <StatCard
+              icon="MessageCircleQuestion" color="text-blue-600 dark:text-blue-400" bg="bg-blue-500/15"
+              value={orgData.stats.unread_questions ?? 0}
+              label="Вопросов без ответа"
+              hint="Открыть вопросы"
+              onClick={() => onGoToOrgView("questions")}
+            />
           </div>
         </div>
       )}
@@ -208,13 +248,26 @@ export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster
       {isOrganizer && upcomingEvents.length > 0 && (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <Icon name="CalendarCheck" size={14} className="text-emerald-600" />
-              Ближайшие события
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Icon name="CalendarCheck" size={14} className="text-emerald-600" />
+                Ближайшие события
+              </h3>
+              <button
+                onClick={() => onGoToOrgView("dashboard")}
+                className="text-xs text-primary hover:underline flex items-center gap-0.5"
+              >
+                Все события <Icon name="ArrowRight" size={12} />
+              </button>
+            </div>
             <div className="space-y-2">
               {upcomingEvents.slice(0, 5).map((ev) => (
-                <div key={ev.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
+                <button
+                  key={ev.id}
+                  type="button"
+                  onClick={() => onGoToOrgView("dashboard")}
+                  className="w-full flex items-center gap-3 py-2 border-b border-border/50 last:border-0 hover:bg-muted/40 rounded-lg px-1 transition-colors text-left"
+                >
                   <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
                     <Icon name="Calendar" size={14} className="text-emerald-600 dark:text-emerald-400" />
                   </div>
@@ -228,7 +281,7 @@ export default function WorkspaceDashboard({ isMaster, isOrganizer, onGoToMaster
                     </p>
                     <p className="text-xs text-muted-foreground">{ev.signups_count ?? 0} уч.</p>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </CardContent>
