@@ -417,7 +417,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id required'})}
 
         admin = has_role(cur, schema, user_id, 'admin')
-        cur.execute(f"SELECT organizer_id, is_visible, status, title, event_date, bath_name, bath_address, price_amount, price_label, image_url, short_description, full_description, description, pricing_lines, end_date FROM {schema}.events WHERE id = {event_id}")
+        cur.execute(f"SELECT organizer_id, is_visible, status, title, event_date, bath_name, bath_address, price_amount, price_label, image_url, short_description, full_description, description, pricing_lines, end_date, pending_changed_fields FROM {schema}.events WHERE id = {event_id}")
         existing = cur.fetchone()
         if not existing:
             conn.close()
@@ -497,11 +497,11 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
                 })}
             return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': err})}
         row = cur.fetchone()
-        conn.commit()
-        conn.close()
         updated = dict(row)
 
-        # Уведомление модератора при изменении чувствительных полей опубликованного события
+        # Отметка повторной модерации при изменении чувствительных полей опубликованного события.
+        # ВАЖНО: выполняем до commit/close, в той же транзакции.
+        notify_changed = []
         if was_published and not admin:
             _SENSITIVE = ['title', 'short_description', 'full_description', 'description',
                           'event_date', 'end_date', 'bath_name', 'bath_address',
@@ -516,28 +516,29 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             }
             changed_fields = [f for f in _SENSITIVE
                               if f in body and str(body.get(f, '')) != str(existing.get(f, '') or '')]
-            changed = [_LABELS[f] for f in changed_fields]
             if changed_fields:
                 # Объединяем с уже ожидающими полями (если организатор правил несколько раз подряд)
-                cur2 = conn.cursor()
-                cur2.execute(f"SELECT pending_changed_fields FROM {schema}.events WHERE id = {event_id}")
-                _prev = cur2.fetchone()
-                prev_fields = list(_prev[0] or []) if _prev else []
-                merged = list(set(prev_fields) | set(changed_fields))
+                prev_fields = list(existing.get('pending_changed_fields') or [])
+                merged = sorted(set(prev_fields) | set(changed_fields))
                 arr_sql = 'ARRAY[' + ','.join("'" + f.replace("'", "''") + "'" for f in merged) + ']::text[]'
-                cur2.execute(f"UPDATE {schema}.events SET has_pending_changes = true, pending_changed_fields = {arr_sql} WHERE id = {event_id}")
-                conn.commit()
-                tg_notify_admin(
-                    f"✏️ <b>Правки в опубликованном событии</b>\n\n"
-                    f"🎪 <b>{updated.get('title', '—')}</b>\n"
-                    f"📅 {updated.get('event_date', '—')}\n"
-                    f"📍 {updated.get('bath_name', '—')}\n"
-                    f"👤 Организатор ID: {user_id}\n\n"
-                    f"Изменено: {', '.join(changed)}\n\n"
-                    f"Откройте Админ-панель → Модерация для проверки."
-                )
+                cur.execute(f"UPDATE {schema}.events SET has_pending_changes = true, pending_changed_fields = {arr_sql} WHERE id = {event_id}")
                 updated['has_pending_changes'] = True
                 updated['pending_changed_fields'] = merged
+                notify_changed = [_LABELS[f] for f in changed_fields]
+
+        conn.commit()
+        conn.close()
+
+        if notify_changed:
+            tg_notify_admin(
+                f"✏️ <b>Правки в опубликованном событии</b>\n\n"
+                f"🎪 <b>{updated.get('title', '—')}</b>\n"
+                f"📅 {updated.get('event_date', '—')}\n"
+                f"📍 {updated.get('bath_name', '—')}\n"
+                f"👤 Организатор ID: {user_id}\n\n"
+                f"Изменено: {', '.join(notify_changed)}\n\n"
+                f"Откройте Админ-панель → Модерация для проверки."
+            )
 
         if was_hidden and updated.get('is_visible'):
             trigger_tg_publish(event_id, updated.get('organizer_id') or user_id)
