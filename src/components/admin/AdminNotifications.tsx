@@ -69,7 +69,9 @@ const CHANNEL_LABEL: Record<string, { label: string; icon: string; color: string
 };
 
 const EVENT_LABEL: Record<string, string> = {
-  master_booking_new: "Запись к мастеру",
+  master_booking_new: "Новая запись к мастеру",
+  client_booking_confirmed: "Подтверждение записи",
+  client_booking_canceled: "Отмена записи",
   event_signup: "Запись на событие",
   organizer_alert: "Уведомление организатору",
 };
@@ -124,7 +126,7 @@ export default function AdminNotifications() {
         <Icon name="Bell" size={28} className="text-amber-600" />
         <div>
           <h1 className="text-2xl font-bold">Уведомления</h1>
-          <p className="text-sm text-gray-500">Журнал отправок email и Telegram</p>
+          <p className="text-sm text-gray-500">Журнал отправок email, Telegram и VK</p>
         </div>
       </div>
 
