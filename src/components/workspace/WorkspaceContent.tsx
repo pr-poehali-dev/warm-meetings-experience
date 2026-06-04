@@ -178,16 +178,25 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
 
   if (roleTab === "master" && isMaster) {
     if (!masterId) return <div className="flex justify-center py-16"><Icon name="Loader2" size={28} className="animate-spin text-muted-foreground" /></div>;
+    const backBtn = masterSection !== "dashboard" && (
+      <button
+        onClick={() => switchRoleTab("dashboard")}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-1"
+      >
+        <Icon name="ArrowLeft" size={15} />
+        На главную
+      </button>
+    );
     switch (masterSection) {
       case "dashboard": return <MasterDashboardSection masterId={masterId} />;
-      case "profile": return <MasterProfileSection masterId={masterId} />;
-      case "addresses": return <div className="space-y-4"><MasterAddresses masterId={masterId} /></div>;
-      case "schedule": return <MasterScheduleSection masterId={masterId} />;
-      case "bookings": return <MasterBookingsSection masterId={masterId} />;
-      case "messages": return <MasterMessages masterId={masterId} />;
-      case "reviews": return <MasterReviewsSection masterId={masterId} />;
-      case "finances": return <MasterFinancesSection masterId={masterId} />;
-      case "notifications": return <MasterNotificationsSection masterId={masterId} />;
+      case "profile": return <>{backBtn}<MasterProfileSection masterId={masterId} /></>;
+      case "addresses": return <>{backBtn}<div className="space-y-4"><MasterAddresses masterId={masterId} /></div></>;
+      case "schedule": return <>{backBtn}<MasterScheduleSection masterId={masterId} /></>;
+      case "bookings": return <>{backBtn}<MasterBookingsSection masterId={masterId} /></>;
+      case "messages": return <>{backBtn}<MasterMessages masterId={masterId} /></>;
+      case "reviews": return <>{backBtn}<MasterReviewsSection masterId={masterId} /></>;
+      case "finances": return <>{backBtn}<MasterFinancesSection masterId={masterId} /></>;
+      case "notifications": return <>{backBtn}<MasterNotificationsSection masterId={masterId} /></>;
     }
   }
 
