@@ -1002,6 +1002,16 @@ CONTENT_TEMPLATES = {
 }
 
 
+def _apply_vars(text, tpl_vars):
+    """Подставляет переменные {key} в произвольный текст. Неизвестные переменные оставляет как есть."""
+    if not text:
+        return text
+    result = text
+    for key, value in (tpl_vars or {}).items():
+        result = result.replace('{' + key + '}', str(value))
+    return result
+
+
 def _format_content(content_type, data, channel_template=None):
     """Форматирует текст поста по типу контента и данным."""
     months = ['января','февраля','марта','апреля','мая','июня',
@@ -1081,7 +1091,7 @@ def _format_content(content_type, data, channel_template=None):
         photo_url = art.get('image_url')
 
     else:
-        return None, None
+        return None, None, {}
 
     default_tpl = CONTENT_TEMPLATES.get(content_type, '')
     template = channel_template or default_tpl
@@ -1089,7 +1099,7 @@ def _format_content(content_type, data, channel_template=None):
         text = template.format(**vars_)
     except (KeyError, IndexError):
         text = default_tpl.format(**vars_)
-    return text, photo_url
+    return text, photo_url, vars_
 
 
 def handle_get_channels(body):
@@ -1175,7 +1185,7 @@ def handle_preview_content(body):
 
     conn.close()
 
-    text, photo_url = _format_content(content_type, data)
+    text, photo_url, tpl_vars = _format_content(content_type, data)
 
     # Сериализуем datetime/date объекты
     def safe_str(v):
@@ -1192,6 +1202,7 @@ def handle_preview_content(body):
         'content_type': content_type,
         'content_id': content_id,
         'meta': safe_data,
+        'vars': tpl_vars or {},
     })
 
 
@@ -1314,10 +1325,10 @@ def handle_publish_content(body):
                 continue
 
         if custom_text:
-            _, photo_url = _format_content(content_type, data, ch.get('template'))
-            text = custom_text
+            _, photo_url, tpl_vars = _format_content(content_type, data, ch.get('template'))
+            text = _apply_vars(custom_text, tpl_vars)
         else:
-            text, photo_url = _format_content(content_type, data, ch.get('template'))
+            text, photo_url, _ = _format_content(content_type, data, ch.get('template'))
 
         pub_type_safe = pub_type.replace("'", "''")
         published_by_sql = str(int(published_by)) if published_by else 'NULL'
@@ -1430,7 +1441,7 @@ def handle_flush_scheduled(body):
             continue
         data = dict(r)
 
-        text, photo_url = _format_content(content_type, data, row.get('template'))
+        text, photo_url, _ = _format_content(content_type, data, row.get('template'))
 
         result = None
         if photo_url and row.get('include_photo'):

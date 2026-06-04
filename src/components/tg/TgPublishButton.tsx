@@ -58,6 +58,7 @@ export default function TgPublishButton({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewText, setPreviewText] = useState("");
   const [previewPhoto, setPreviewPhoto] = useState("");
+  const [templateVars, setTemplateVars] = useState<Record<string, string>>({});
   const [editedText, setEditedText] = useState("");
   const [hashtags, setHashtags] = useState("");
   const [previewError, setPreviewError] = useState("");
@@ -77,6 +78,7 @@ export default function TgPublishButton({
     setStep("preview");
     setPreviewText("");
     setEditedText("");
+    setTemplateVars({});
     setHashtags("");
     setPreviewError("");
     setResult(null);
@@ -92,6 +94,7 @@ export default function TgPublishButton({
         setPreviewText(text);
         setEditedText(text);
         setPreviewPhoto(res.photo_url || "");
+        setTemplateVars(res.vars || {});
       })
       .catch(() => setPreviewError("Не удалось загрузить предпросмотр"))
       .finally(() => setPreviewLoading(false));
@@ -116,7 +119,16 @@ export default function TgPublishButton({
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
 
+  const applyVars = (text: string) => {
+    let result = text;
+    for (const [key, value] of Object.entries(templateVars)) {
+      result = result.split(`{${key}}`).join(String(value));
+    }
+    return result;
+  };
+
   const finalText = [editedText.trim(), hashtags.trim()].filter(Boolean).join("\n\n");
+  const previewRendered = applyVars(finalText || previewText);
 
   const handlePublish = async () => {
     if (selected.length === 0) {
@@ -261,7 +273,7 @@ export default function TgPublishButton({
                       />
                     )}
                     <pre className="text-xs whitespace-pre-wrap font-sans text-foreground leading-relaxed">
-                      {finalText || previewText}
+                      {previewRendered}
                     </pre>
                   </div>
 

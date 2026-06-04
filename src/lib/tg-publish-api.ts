@@ -31,6 +31,7 @@ export interface PreviewResult {
   content_type: ContentType;
   content_id: number;
   meta: Record<string, unknown>;
+  vars: Record<string, string>;
 }
 
 export const tgPublishApi = {
