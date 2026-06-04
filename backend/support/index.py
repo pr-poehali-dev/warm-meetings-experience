@@ -453,7 +453,7 @@ def admin_list_tickets(cur, schema, params):
         WHERE {where_sql}
         ORDER BY
           CASE t.status WHEN 'open' THEN 0 WHEN 'in_progress' THEN 1
-                        WHEN 'awaiting_reply' THEN 2 ELSE 3 END,
+                        WHEN 'awaiting_reply' THEN 1 ELSE 3 END,
           t.updated_at DESC
         LIMIT 200
     """)
@@ -660,7 +660,7 @@ def admin_stats(cur, schema):
     last7 = cur.fetchone()['c']
     return ok({
         'by_status': by_status,
-        'open_count': by_status.get('open', 0) + by_status.get('in_progress', 0),
+        'open_count': by_status.get('open', 0) + by_status.get('in_progress', 0) + by_status.get('awaiting_reply', 0),
         'last7': last7,
     })
 
