@@ -1,0 +1,8 @@
+{
+  "tests": [
+    {"name": "OPTIONS preflight", "method": "OPTIONS", "path": "/", "expectedStatus": 200},
+    {"name": "detect без vk_user_id", "method": "GET", "path": "/?action=detect", "expectedStatus": 400, "expectedBody": {"error": "string"}, "bodyMatcher": "partial"},
+    {"name": "admin_list без токена", "method": "GET", "path": "/?action=admin_list", "expectedStatus": 403, "expectedBody": {"error": "string"}, "bodyMatcher": "partial"},
+    {"name": "unknown action", "method": "GET", "path": "/?action=unknown", "expectedStatus": 404, "expectedBody": {"error": "string"}, "bodyMatcher": "partial"}
+  ]
+}

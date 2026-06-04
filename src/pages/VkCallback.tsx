@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { rolesApi } from "@/lib/roles-api";
 import { userAuthApi2FA } from "@/lib/user-api";
+import MergeAccountModal, { MergeHint } from "@/components/admin/MergeAccountModal";
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 const USER_AUTH_URL = "https://functions.poehali.dev/d5d9f568-ba92-4605-9b95-646ba409fd8d";
@@ -34,6 +35,8 @@ function clearLogin2FAStorage() {
 export default function VkCallback() {
   const navigate = useNavigate();
   const { updateUser, loginWithToken } = useAuth();
+  const [mergeHint, setMergeHint] = useState<MergeHint | null>(null);
+  const [pendingNav, setPendingNav] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -187,6 +190,18 @@ export default function VkCallback() {
 
         toast.success("Вы вошли через ВКонтакте");
 
+        // 4. Если VK-auth вернул merge_hint — показываем предложение объединить
+        const hint = vkData.merge_hint;
+        if (hint && hint.source_user_id && hint.target_user_id) {
+          const signupReturnUrl2 = sessionStorage.getItem("signup_return_url");
+          const destUrl = (signupReturnUrl2 && sessionStorage.getItem("signup_login_provider") === "vk")
+            ? signupReturnUrl2
+            : "/account";
+          setPendingNav(destUrl);
+          setMergeHint(hint);
+          return;
+        }
+
         const signupReturnUrl = sessionStorage.getItem("signup_return_url");
         if (signupReturnUrl && sessionStorage.getItem("signup_login_provider") === "vk") {
           sessionStorage.removeItem("signup_return_url");
@@ -202,12 +217,38 @@ export default function VkCallback() {
     })();
   }, []);
 
+  const handleMerged = () => {
+    setMergeHint(null);
+    sessionStorage.removeItem("signup_return_url");
+    sessionStorage.removeItem("signup_login_provider");
+    if (pendingNav) window.location.replace(pendingNav);
+    else navigate("/account", { replace: true });
+  };
+
+  const handleSkipMerge = () => {
+    setMergeHint(null);
+    sessionStorage.removeItem("signup_return_url");
+    sessionStorage.removeItem("signup_login_provider");
+    if (pendingNav) window.location.replace(pendingNav);
+    else navigate("/account", { replace: true });
+  };
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center space-y-3">
-        <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground mx-auto" />
-        <p className="text-muted-foreground text-sm">Авторизация через ВКонтакте...</p>
+    <>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground mx-auto" />
+          <p className="text-muted-foreground text-sm">Авторизация через ВКонтакте...</p>
+        </div>
       </div>
-    </div>
+      {mergeHint && (
+        <MergeAccountModal
+          open={!!mergeHint}
+          hint={mergeHint}
+          onMerged={handleMerged}
+          onSkip={handleSkipMerge}
+        />
+      )}
+    </>
   );
 }

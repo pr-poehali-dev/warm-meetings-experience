@@ -20,7 +20,9 @@ export type ViewType =
   | "moderation"
   | "videos"
   | "support"
-  | "event-types";
+  | "event-types"
+  | "notifications"
+  | "merge-accounts";
 
 export interface AdminEvent {
   id?: number;

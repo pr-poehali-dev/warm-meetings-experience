@@ -418,6 +418,60 @@ def handle_callback(event: dict, origin: str) -> dict:
 
             conn.commit()
 
+            # --- Обнаружение дубля для предложения слияния ---
+            # Если у пользователя email-заглушка @vk.local — ищем аккаунт с реальным email.
+            # Приоритет: по vk_email из VK API, затем по совпадению имени.
+            merge_hint = None
+            try:
+                if email and email.lower().endswith('@vk.local'):
+                    candidate = None
+                    reason = None
+
+                    # 1. По реальному email из VK API
+                    if vk_email:
+                        safe_ve = vk_email.replace("'", "''")
+                        cur.execute(f"""
+                            SELECT id, name, email FROM {S}users
+                            WHERE LOWER(email) = LOWER('{safe_ve}')
+                              AND is_active = true AND id != {user_id}
+                            LIMIT 1
+                        """)
+                        candidate = cur.fetchone()
+                        if candidate:
+                            reason = 'email_match'
+
+                    # 2. По совпадению имени (только если имя не дефолтное)
+                    if not candidate and (name or full_name):
+                        safe_n = (name or full_name).replace("'", "''")
+                        cur.execute(f"""
+                            SELECT id, name, email FROM {S}users
+                            WHERE LOWER(name) = LOWER('{safe_n}')
+                              AND email NOT LIKE '%@vk.local'
+                              AND is_active = true AND id != {user_id}
+                            LIMIT 1
+                        """)
+                        candidate = cur.fetchone()
+                        if candidate:
+                            reason = 'name_match'
+
+                    if candidate:
+                        cand_email = candidate['email'] if isinstance(candidate, dict) else candidate[2]
+                        cand_name  = candidate['name']  if isinstance(candidate, dict) else candidate[1]
+                        cand_id    = candidate['id']    if isinstance(candidate, dict) else candidate[0]
+                        # Маскируем email
+                        local_part, domain = cand_email.split('@', 1) if '@' in cand_email else (cand_email, '')
+                        masked = (local_part[0] + '***@' + domain) if local_part else cand_email
+                        merge_hint = {
+                            'source_user_id': user_id,
+                            'target_user_id': cand_id,
+                            'target_email_masked': masked,
+                            'target_name': cand_name,
+                            'reason': reason,
+                        }
+                        print(f"[VK-AUTH] merge_hint found: source={user_id} target={cand_id} reason={reason}")
+            except Exception as mh_exc:
+                print(f"[VK-AUTH] merge_hint detection error (non-fatal): {mh_exc}")
+
             return response(200, {
                 'access_token': access_token,
                 'refresh_token': refresh_token,
@@ -428,7 +482,8 @@ def handle_callback(event: dict, origin: str) -> dict:
                     'name': name or full_name,
                     'avatar_url': photo_url,
                     'vk_id': str(vk_user_id)
-                }
+                },
+                'merge_hint': merge_hint,
             }, origin)
 
         except Exception as db_exc:

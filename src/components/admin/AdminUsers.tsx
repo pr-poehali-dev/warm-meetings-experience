@@ -11,9 +11,12 @@ import ConsentPhotoBadge from "@/components/ui/ConsentPhotoBadge";
 import { useStickyFilters } from "@/hooks/useStickyFilters";
 import { formatPhone } from "@/hooks/usePhoneMask";
 import AuditLogPanel from "@/components/admin/AuditLogPanel";
+import MergeAccountModal, { MergeHint } from "@/components/admin/MergeAccountModal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 const ADMIN_USERS_API = "https://functions.poehali.dev/3048e78f-8bfe-4300-b910-2752590fa3ab";
+const MERGE_API = "https://functions.poehali.dev/832b8fe2-55d9-4f1c-9d1e-4647ff305f32";
 
 interface UserRole {
   id: number;
@@ -58,6 +61,143 @@ async function adminPost(body: object) {
   return data;
 }
 
+function AdminMergeFromUserDialog({
+  open, sourceId, sourceName, onDone, onClose,
+}: { open: boolean; sourceId: number; sourceName: string; onDone: () => void; onClose: () => void }) {
+  const [q, setQ] = useState("");
+  const [candidates, setCandidates] = useState<{ id: number; name: string; email: string }[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [target, setTarget] = useState<{ id: number; name: string; email: string } | null>(null);
+  const [merging, setMerging] = useState(false);
+  const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
+
+  const search = async () => {
+    if (!q.trim()) return;
+    setSearching(true);
+    try {
+      const res = await fetch(`${ADMIN_USERS_API}?search=${encodeURIComponent(q)}&per_page=5`, {
+        headers: { "X-Admin-Token": getAdminToken() },
+      });
+      const data = await res.json();
+      setCandidates((data.users || []).filter((u: { id: number }) => u.id !== sourceId));
+    } catch { toast.error("Ошибка поиска"); }
+    finally { setSearching(false); }
+  };
+
+  const doMerge = async () => {
+    if (!target) return;
+    if (!confirm(`Объединить #${sourceId} (${sourceName}) → #${target.id} (${target.name})? Необратимо.`)) return;
+    setMerging(true);
+    try {
+      const res = await fetch(`${MERGE_API}/?action=admin_merge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Token": getAdminToken() },
+        body: JSON.stringify({ source_user_id: sourceId, target_user_id: target.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error || "Ошибка"); return; }
+      setSummary(data.summary);
+      toast.success("Аккаунты объединены!");
+      setTimeout(onDone, 1800);
+    } catch { toast.error("Ошибка соединения"); }
+    finally { setMerging(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Icon name="GitMerge" size={18} className="text-orange-500" />
+            Объединить аккаунт #{sourceId}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl text-sm">
+            <span className="font-medium text-orange-700">Дубль (будет деактивирован):</span>
+            <br />#{sourceId} · {sourceName} · <span className="font-mono text-xs">@vk.local</span>
+          </div>
+
+          {summary ? (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-sm space-y-1">
+              <div className="font-medium text-green-700">Слияние выполнено!</div>
+              <div className="text-muted-foreground">
+                Записей: {String(summary.signups_moved ?? 0)} · Бронирований: {String(summary.bookings_moved ?? 0)} ·
+                Ролей: {String(summary.roles_moved ?? 0)} · VK привязан: {summary.vk_linked ? "да" : "нет"}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Найти основной аккаунт</label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Имя, email или ID"
+                    value={q}
+                    onChange={(e) => { setQ(e.target.value); setCandidates([]); setTarget(null); }}
+                    onKeyDown={(e) => e.key === "Enter" && search()}
+                    autoFocus
+                  />
+                  <Button size="sm" variant="outline" onClick={search} disabled={searching}>
+                    {searching ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Search" size={14} />}
+                  </Button>
+                </div>
+              </div>
+
+              {candidates.length > 0 && !target && (
+                <div className="space-y-1">
+                  {candidates.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setTarget(c)}
+                      className="w-full flex items-center gap-2 p-2.5 bg-muted/40 hover:bg-muted rounded-xl text-sm text-left transition-colors"
+                    >
+                      <Icon name="User" size={14} className="text-muted-foreground shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">#{c.id} {c.name}</div>
+                        <div className="text-xs text-muted-foreground truncate">{c.email}</div>
+                      </div>
+                      <Icon name="ArrowRight" size={12} className="ml-auto text-muted-foreground" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {candidates.length === 0 && q && !searching && (
+                <p className="text-xs text-muted-foreground text-center py-2">Ничего не найдено</p>
+              )}
+
+              {target && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-sm">
+                  <span className="font-medium text-green-700">Основной аккаунт:</span>
+                  <br />#{target.id} · {target.name} · {target.email}
+                  <button onClick={() => setTarget(null)} className="ml-2 text-muted-foreground hover:text-foreground">
+                    <Icon name="X" size={12} />
+                  </button>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <Button
+                  onClick={doMerge}
+                  disabled={!target || merging}
+                  variant="destructive"
+                  className="flex-1 gap-1.5"
+                >
+                  {merging
+                    ? <><Icon name="Loader2" size={14} className="animate-spin" />Объединяем...</>
+                    : <><Icon name="GitMerge" size={14} />Объединить</>}
+                </Button>
+                <Button variant="ghost" onClick={onClose}>Отмена</Button>
+              </div>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [allRoles, setAllRoles] = useState<AllRole[]>([]);
@@ -78,6 +218,7 @@ export default function AdminUsers() {
   const [draft, setDraft] = useState<{ name: string; phone: string; telegram: string }>({ name: "", phone: "", telegram: "" });
   const [saving, setSaving] = useState(false);
   const [blockDialog, setBlockDialog] = useState(false);
+  const [mergeHint, setMergeHint] = useState<MergeHint | null>(null);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -264,7 +405,17 @@ export default function AdminUsers() {
                     >
                       <td className="py-3 pr-4 text-gray-400">#{user.id}</td>
                       <td className="py-3 pr-4 font-medium text-gray-900">{user.name}</td>
-                      <td className="py-3 pr-4 text-gray-600">{user.email}</td>
+                      <td className="py-3 pr-4 text-gray-600">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span>{user.email}</span>
+                          {user.email?.endsWith("@vk.local") && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-orange-500 border-orange-300 gap-1">
+                              <Icon name="GitMerge" size={9} />
+                              дубль VK
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-3 pr-4 text-gray-600">{user.phone || "—"}</td>
                       <td className="py-3 pr-4">
                         <div className="flex flex-wrap gap-1">
@@ -451,6 +602,23 @@ export default function AdminUsers() {
                   <Icon name="Pencil" size={14} className="mr-1.5" />
                   Редактировать
                 </Button>
+                {selected?.email?.endsWith("@vk.local") && selected.is_active && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setMergeHint({
+                      source_user_id: selected.id,
+                      target_user_id: 0,
+                      target_email_masked: "",
+                      target_name: selected.name,
+                      reason: "name_match",
+                    })}
+                    className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 border-orange-200 gap-1.5"
+                    title="Этот аккаунт создан при входе через ВКонтакте без email. Объединить с основным аккаунтом."
+                  >
+                    <Icon name="GitMerge" size={14} />
+                    Объединить
+                  </Button>
+                )}
               </>
             )}
           </SheetFooter>
@@ -485,6 +653,25 @@ export default function AdminUsers() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Окно объединения аккаунтов для vk.local дублей */}
+      {mergeHint && mergeHint.target_user_id !== 0 && (
+        <MergeAccountModal
+          open
+          hint={mergeHint}
+          onMerged={() => { setMergeHint(null); closeDialog(); loadUsers(); }}
+          onSkip={() => setMergeHint(null)}
+        />
+      )}
+      {mergeHint && mergeHint.target_user_id === 0 && (
+        <AdminMergeFromUserDialog
+          open
+          sourceId={mergeHint.source_user_id}
+          sourceName={mergeHint.target_name}
+          onDone={() => { setMergeHint(null); closeDialog(); loadUsers(); }}
+          onClose={() => setMergeHint(null)}
+        />
+      )}
     </div>
   );
 }

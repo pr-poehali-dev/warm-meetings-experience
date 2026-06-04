@@ -98,6 +98,12 @@ const NAV: NavGroup[] = [
         icon: "Bell",
         hint: "Журнал отправок email/Telegram",
       },
+      {
+        view: "merge-accounts",
+        label: "Объединение аккаунтов",
+        icon: "GitMerge",
+        hint: "Дубли VK-аккаунтов",
+      },
     ],
   },
   {
