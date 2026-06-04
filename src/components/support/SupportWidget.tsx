@@ -139,6 +139,18 @@ export default function SupportWidget() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Открытие виджета извне (со страницы /support и т.п.)
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent<{ tab?: Tab; role?: string }>).detail;
+      if (detail?.tab) setTab(detail.tab);
+      if (detail?.role) setRole(detail.role);
+      setOpen(true);
+    };
+    window.addEventListener("open-support", onOpen);
+    return () => window.removeEventListener("open-support", onOpen);
+  }, []);
+
   if (hideOnPath) return null;
 
   return (

@@ -23,6 +23,7 @@ const COLUMNS = [
       { label: "Войти", to: "/login" },
       { label: "Регистрация", to: "/register" },
       { label: "Личный кабинет", to: "/account" },
+      { label: "Поддержка", to: "/support" },
       { label: "Расписание в Telegram", to: TELEGRAM_URL, external: true },
     ],
   },

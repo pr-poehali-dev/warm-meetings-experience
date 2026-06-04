@@ -52,6 +52,7 @@ const MasterChat = lazy(() => import("./pages/MasterChat"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const Functional = lazy(() => import("./pages/Functional"));
 const FunctionalDescription = lazy(() => import("./pages/FunctionalDescription"));
+const Support = lazy(() => import("./pages/Support"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -117,6 +118,7 @@ const AppContent = () => {
           <Route path="/blog/category/:slug" element={<BlogCategory />} />
           <Route path="/blog/:slug" element={<BlogArticle />} />
           <Route path="/documents" element={<Documents />} />
+          <Route path="/support" element={<Support />} />
           <Route path="/functional" element={<Functional />} />
           <Route path="/features" element={<FunctionalDescription />} />
           <Route path="/privacy" element={<Navigate to="/documents?tab=privacy" replace />} />
