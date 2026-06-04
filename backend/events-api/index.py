@@ -151,7 +151,10 @@ def handle_events(event, method, params, schema, headers):
             return {'statusCode': 200, 'headers': headers, 'body': json.dumps(event_data, default=str)}
 
         only_visible = params.get('visible', 'true')
-        where = f"WHERE is_visible = true" if only_visible == 'true' else ""
+        if only_visible == 'true':
+            where = "WHERE is_visible = true AND (is_private = false OR is_private IS NULL)"
+        else:
+            where = ""
         order = "ORDER BY event_date ASC, start_time ASC"
         cur.execute(f"SELECT * FROM {schema}.events {where} {order}")
         rows = cur.fetchall()
