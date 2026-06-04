@@ -6,8 +6,23 @@ export class HttpError extends Error {
   }
 }
 
+async function fetchWithRetry(url: string, options?: RequestInit, retries = 2): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fetch(url, options);
+    } catch (e) {
+      lastError = e;
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
+}
+
 export async function request(url: string, options?: RequestInit) {
-  const res = await fetch(url, options);
+  const res = await fetchWithRetry(url, options);
   const data = await res.json();
   if (!res.ok) throw new HttpError(data.error || "Что-то пошло не так", res.status);
   return data;
@@ -30,7 +45,7 @@ function handleUnauthorized(scope: "user" | "admin") {
 
 export async function authenticatedRequest(url: string, options?: RequestInit) {
   const token = localStorage.getItem("user_token") || "";
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     ...options,
     headers: {
       ...options?.headers,
@@ -51,7 +66,7 @@ export async function adminModerationRequest(url: string, options?: RequestInit)
   const adminToken = localStorage.getItem("admin_token") || "";
   const userToken = localStorage.getItem("user_token") || "";
   const usingAdmin = !!adminToken;
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     ...options,
     headers: {
       ...options?.headers,
