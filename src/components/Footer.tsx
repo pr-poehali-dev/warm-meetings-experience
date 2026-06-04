@@ -83,9 +83,7 @@ export default function Footer() {
               <img src={LOGO_ON_LIGHT} alt="СПАРКОМ" className="h-8 w-auto object-contain block dark:hidden" />
               <img src={LOGO_ON_DARK} alt="СПАРКОМ" className="h-8 w-auto object-contain hidden dark:block" />
             </Link>
-            <p className="text-sm leading-relaxed mb-5 text-muted-foreground">
-              Банный агрегатор событий Москвы. Встречи у пара, огня и тепла — без алкоголя, с уважением к каждому.
-            </p>
+            <p className="text-sm leading-relaxed mb-5 text-muted-foreground">Банный агрегатор событий. Встречи у пара, огня и тепла — без алкоголя, с уважением к каждому.</p>
 
             {/* Соцсети */}
             <div className="flex items-center gap-2">
