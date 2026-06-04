@@ -317,8 +317,8 @@ def _event_media_delete(params: dict, user_token: str) -> dict:
 # ═══════════════════════════════════════════════════════════════
 
 VK_PATTERNS = [
-    re.compile(r'(?:vk\.com|vkvideo\.ru)/video(-?\d+)_(\d+)'),
-    re.compile(r'(?:vk\.com)/clip(-?\d+)_(\d+)'),
+    re.compile(r'(?:vk\.com|vk\.ru|vkvideo\.ru)/video(-?\d+)_(\d+)'),
+    re.compile(r'(?:vk\.com|vk\.ru|vkvideo\.ru)/clip(-?\d+)_(\d+)'),
 ]
 RUTUBE_PATTERN = re.compile(r'rutube\.ru/video/([a-zA-Z0-9]+)')
 DIRECT_PATTERN = re.compile(r'https?://.+\.mp4(\?.*)?$', re.IGNORECASE)

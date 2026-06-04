@@ -14,6 +14,7 @@ interface ExternalVideoBlockProps {
 
 const PROVIDER_HINTS = [
   { label: "VK Video", example: "https://vk.com/video-123456_789" },
+  { label: "VK Клип", example: "https://vk.ru/clip-123456_789" },
   { label: "RuTube", example: "https://rutube.ru/video/abc123..." },
   { label: "Прямая .mp4", example: "https://example.com/video.mp4" },
 ];
@@ -129,7 +130,7 @@ export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: Ex
       <div className="flex items-center justify-between mb-3">
         <div>
           <h3 className="text-sm font-semibold">Видео</h3>
-          <p className="text-xs text-muted-foreground">VK Video, RuTube, прямые .mp4 ссылки</p>
+          <p className="text-xs text-muted-foreground">VK Video и Клипы, RuTube, прямые .mp4 ссылки</p>
         </div>
         <Button
           size="sm"
