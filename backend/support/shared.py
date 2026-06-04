@@ -204,8 +204,12 @@ def slugify(text, max_length=80, fallback='item'):
 
 def tg_send(chat_id, text, token=None, parse_mode='HTML'):
     """Отправляет сообщение в Telegram. Не падает при ошибках."""
-    bot_token = token or os.environ.get('TG_PUBLISH_BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN', '')
-    if not bot_token or not chat_id:
+    bot_token = token or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+    if not bot_token:
+        print(f'[tg_send] SKIP: TELEGRAM_BOT_TOKEN not set')
+        return False
+    if not chat_id:
+        print(f'[tg_send] SKIP: chat_id is empty')
         return False
     payload = json.dumps({
         'chat_id': int(chat_id) if str(chat_id).lstrip('-').isdigit() else chat_id,
@@ -220,12 +224,30 @@ def tg_send(chat_id, text, token=None, parse_mode='HTML'):
     try:
         urllib.request.urlopen(req, timeout=6)
         return True
-    except Exception:
+    except urllib.error.HTTPError as e:
+        body = ''
+        try:
+            body = e.read().decode('utf-8', 'replace')[:300]
+        except Exception:
+            pass
+        print(f'[tg_send] HTTP {e.code} chat_id={chat_id}: {body}')
+        return False
+    except Exception as e:
+        print(f'[tg_send] EXC chat_id={chat_id}: {type(e).__name__}: {e}')
         return False
 
 def tg_notify_admin(text, token=None):
-    """Уведомление администратору (TELEGRAM_CHAT_ID)."""
-    return tg_send(os.environ.get('TELEGRAM_CHAT_ID', ''), text, token=token)
+    """Уведомление администратору (TELEGRAM_CHAT_ID).
+
+    Всегда шлём через АДМИН-бота (TELEGRAM_BOT_TOKEN), а не через бота
+    публикаций (TG_PUBLISH_BOT_TOKEN).
+    """
+    admin_token = token or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID', '')
+    if not chat_id:
+        print(f'[tg_notify_admin] SKIP: TELEGRAM_CHAT_ID not set')
+        return False
+    return tg_send(chat_id, text, token=admin_token)
 
 # --- Email (Unisender Go) ---
 
