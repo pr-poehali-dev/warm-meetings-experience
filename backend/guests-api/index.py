@@ -103,8 +103,25 @@ def handler(event: dict, context) -> dict:
     if resource == 'messages':
         return handle_messages(event, method, params, cur, conn, user_id, schema, admin, token)
 
+    if resource == 'unread_count':
+        return handle_unread_count(cur, conn, user_id, schema, admin)
+
     conn.close()
     return respond(404, {'error': 'Resource not found'})
+
+
+def handle_unread_count(cur, conn, user_id, schema, admin):
+    """Количество непрочитанных входящих сообщений от гостей по всем событиям организатора."""
+    cur.execute(f"""
+        SELECT COUNT(*) AS cnt
+        FROM {schema}.guest_messages gm
+        JOIN {schema}.events e ON e.id = gm.event_id
+        WHERE gm.direction = 'in' AND gm.read_at IS NULL
+          AND (e.organizer_id = {user_id} {'OR 1=1' if admin else ''})
+    """)
+    row = cur.fetchone()
+    conn.close()
+    return respond(200, {'unread': int((row or {}).get('cnt') or 0)})
 
 
 def handle_guests(event, method, params, cur, conn, user_id, schema, admin):
@@ -207,12 +224,24 @@ def handle_messages(event, method, params, cur, conn, user_id, schema, admin, se
         if not signup_id:
             conn.close()
             return respond(400, {'error': 'signup_id required'})
+        sid = int(signup_id)
+        # Помечаем входящие сообщения этого диалога как прочитанные (если организатор владеет событием)
         cur.execute(f"""
-            SELECT gm.id, gm.direction, gm.channel, gm.body, gm.delivered, gm.created_at
+            UPDATE {schema}.guest_messages gm
+            SET read_at = NOW()
+            FROM {schema}.events e
+            WHERE gm.event_id = e.id
+              AND gm.signup_id = {sid}
+              AND gm.direction = 'in' AND gm.read_at IS NULL
+              AND (e.organizer_id = {user_id} {'OR 1=1' if admin else ''})
+        """)
+        conn.commit()
+        cur.execute(f"""
+            SELECT gm.id, gm.direction, gm.channel, gm.body, gm.delivered, gm.created_at, gm.read_at
             FROM {schema}.guest_messages gm
             JOIN {schema}.event_signups s ON s.id = gm.signup_id
             JOIN {schema}.events e ON e.id = s.event_id
-            WHERE gm.signup_id = {signup_id}
+            WHERE gm.signup_id = {sid}
               AND (e.organizer_id = {user_id} {'OR 1=1' if admin else ''})
             ORDER BY gm.created_at ASC
         """)

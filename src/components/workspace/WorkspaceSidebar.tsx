@@ -15,6 +15,7 @@ interface WorkspaceSidebarProps {
   tgChannelsCount?: number;
   unreadQuestions?: number;
   unreadMessages?: number;
+  unreadGuestMessages?: number;
   openSections: Record<string, boolean>;
   toggleSection: (key: string) => void;
   switchRoleTab: (tab: RoleTab) => void;
@@ -38,6 +39,7 @@ export default function WorkspaceSidebar({
   tgChannelsCount,
   unreadQuestions,
   unreadMessages,
+  unreadGuestMessages,
   openSections,
   toggleSection,
   switchRoleTab,
@@ -47,7 +49,7 @@ export default function WorkspaceSidebar({
   onCreateOrgEvent,
   logout,
 }: WorkspaceSidebarProps) {
-  const NavItem = ({ active, onClick, icon, label, accent, badge }: { active: boolean; onClick: () => void; icon: string; label: string; accent?: string; badge?: string | number }) => (
+  const NavItem = ({ active, onClick, icon, label, accent, badge, badgeUrgent }: { active: boolean; onClick: () => void; icon: string; label: string; accent?: string; badge?: string | number; badgeUrgent?: boolean }) => (
     <button
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all ${
@@ -59,7 +61,7 @@ export default function WorkspaceSidebar({
       <Icon name={icon} size={16} className={active ? "" : accent || ""} />
       <span className="flex-1 text-left truncate">{label}</span>
       {badge !== undefined && badge !== 0 && badge !== "" && (
-        <span className="text-[10px] font-semibold bg-primary/15 text-primary rounded-full px-1.5 py-0.5 min-w-[18px] text-center">{badge}</span>
+        <span className={`text-[10px] font-semibold rounded-full px-1.5 py-0.5 min-w-[18px] text-center ${badgeUrgent ? "bg-rose-500 text-white" : "bg-primary/15 text-primary"}`}>{badge}</span>
       )}
     </button>
   );
@@ -132,7 +134,8 @@ export default function WorkspaceSidebar({
             onClick={() => switchOrgView("dashboard")}
             icon="LayoutGrid"
             label="Мои события"
-            badge={eventsCount || undefined}
+            badge={unreadGuestMessages || eventsCount || undefined}
+            badgeUrgent={!!unreadGuestMessages}
           />
           <NavItem
             active={roleTab === "organizer" && (orgView === "create" || orgView === "edit")}

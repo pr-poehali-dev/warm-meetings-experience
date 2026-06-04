@@ -130,6 +130,22 @@ export default function Workspace() {
     return () => { cancelled = true; clearInterval(t); };
   }, [isMaster, masterId, masterSection]);
 
+  // Непрочитанные сообщения от гостей у организатора (бейдж в разделе «Мои события»)
+  const [unreadGuestMessages, setUnreadGuestMessages] = useState(0);
+  useEffect(() => {
+    if (!isOrganizer) return;
+    let cancelled = false;
+    const loadUnread = () => {
+      organizerApi
+        .getGuestsUnreadCount()
+        .then((r) => { if (!cancelled) setUnreadGuestMessages(r.unread || 0); })
+        .catch(() => {});
+    };
+    loadUnread();
+    const t = setInterval(loadUnread, 30000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [isOrganizer, orgView]);
+
   // Organizer state
   const [orgDashboard, setOrgDashboard] = useState<DashboardData | null>(null);
   const [events, setEvents] = useState<OrgEvent[]>([]);
@@ -234,6 +250,7 @@ export default function Workspace() {
       tgChannelsCount={tgChannelsCount}
       unreadQuestions={orgDashboard?.unread_questions ?? orgDashboard?.stats?.unread_questions ?? 0}
       unreadMessages={unreadMessages}
+      unreadGuestMessages={unreadGuestMessages}
       openSections={openSections}
       toggleSection={toggleSection}
       switchRoleTab={switchRoleTab}

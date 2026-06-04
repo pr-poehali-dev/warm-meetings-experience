@@ -166,6 +166,7 @@ export interface GuestMessage {
   body: string;
   delivered: boolean | null;
   created_at: string;
+  read_at?: string | null;
 }
 
 export const organizerApi = {
@@ -294,6 +295,9 @@ export const organizerApi = {
 
   getMessages: (signupId: number): Promise<{ messages: GuestMessage[] }> =>
     authenticatedRequest(`${GUESTS_BASE}/?resource=messages&signup_id=${signupId}`),
+
+  getGuestsUnreadCount: (): Promise<{ unread: number }> =>
+    authenticatedRequest(`${GUESTS_BASE}/?resource=unread_count`),
 
   sendMessages: (signupIds: number[], message: string): Promise<{
     ok: boolean;
