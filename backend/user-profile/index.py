@@ -43,7 +43,7 @@ def verify_password(password, stored_hash):
     return hashlib.sha256(password.encode()).hexdigest() == stored_hash
 
 
-_PROFILE_EXTRA_FIELDS = 'u.vk_id, u.yandex_id, u.password_hash, u.totp_enabled, u.login_2fa_method, u.consent_photo, u.email_verified, u.created_at, u.avatar_url'
+_PROFILE_EXTRA_FIELDS = 'u.vk_id, u.yandex_id, u.password_hash, u.totp_enabled, u.login_2fa_method, u.consent_photo, u.email_verified, u.created_at, u.avatar_url, u.onboarding_account_at, u.onboarding_workspace_at'
 
 
 def handler(event, context):
@@ -87,11 +87,17 @@ def handler(event, context):
             user_data = dict(user)
             user_data['has_password'] = bool(user_data.pop('password_hash', None))
             user_data['email_verified'] = bool(user_data.get('email_verified'))
+            user_data['onboarding_account_done'] = bool(user_data.pop('onboarding_account_at', None))
+            user_data['onboarding_workspace_done'] = bool(user_data.pop('onboarding_workspace_at', None))
             user_data['roles'] = roles
             return respond(200, {'user': user_data})
         if method == 'PUT':
             body = json.loads(event.get('body', '{}'))
             return handle_update_profile(cur, conn, schema, user, body, ip)
+
+    if resource == 'onboarding':
+        body = json.loads(event.get('body', '{}')) if event.get('body') else {}
+        return handle_onboarding(cur, conn, schema, user, method, body)
 
     if resource == 'signups':
         if method == 'GET':
@@ -196,6 +202,31 @@ def handler(event, context):
 
     conn.close()
     return respond(400, {'error': 'Unknown resource'})
+
+
+# =============================================================================
+# ONBOARDING (обучающий тур по кабинетам)
+# =============================================================================
+
+_ONBOARDING_COLUMNS = {
+    'account': 'onboarding_account_at',
+    'workspace': 'onboarding_workspace_at',
+}
+
+
+def handle_onboarding(cur, conn, schema, user, method, body):
+    """Отметка прохождения обучающего тура. POST — пройдено, DELETE — сбросить (повторить обучение)."""
+    cabinet = (body.get('cabinet') or '').strip().lower()
+    column = _ONBOARDING_COLUMNS.get(cabinet)
+    if not column:
+        conn.close()
+        return respond(400, {'error': 'cabinet должен быть account или workspace'})
+
+    value = 'CURRENT_TIMESTAMP' if method == 'POST' else 'NULL'
+    cur.execute(f"UPDATE {schema}.users SET {column} = {value} WHERE id = {user['id']}")
+    conn.commit()
+    conn.close()
+    return respond(200, {'ok': True, 'cabinet': cabinet, 'done': method == 'POST'})
 
 
 # =============================================================================

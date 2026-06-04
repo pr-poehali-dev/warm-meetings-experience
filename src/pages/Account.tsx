@@ -26,6 +26,15 @@ import WalletSection from "@/components/account/WalletSection";
 import ReferralsSection from "@/components/account/ReferralsSection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import OnboardingTour, { TourStep } from "@/components/onboarding/OnboardingTour";
+import { useOnboardingTour } from "@/hooks/useOnboardingTour";
+
+const ACCOUNT_TOUR_STEPS: TourStep[] = [
+  { title: "Добро пожаловать в личный кабинет!", description: "Покажем за минуту, что здесь есть. Можно пропустить в любой момент.", icon: "Sparkles" },
+  { target: '[data-tour="account-tabs"]', title: "Разделы кабинета", description: "Профиль, ваши события, уведомления и безопасность — переключайтесь между вкладками здесь.", icon: "LayoutGrid" },
+  { target: '[data-tour="account-profile"]', title: "Ваш профиль", description: "Здесь можно изменить имя, контакты и привязать соцсети для входа.", icon: "User" },
+  { target: '[data-tour="account-links"]', title: "Быстрые разделы", description: "Кошелёк, приглашение друзей, ваши записи и избранное — всё под рукой.", icon: "Wallet" },
+];
 
 type Tab = "main" | "articles" | "calendar" | "my-data" | "favorites" | "wallet" | "referrals" | "support" | "roles";
 type MainTab = "profile" | "signups" | "notify" | "security";
@@ -92,6 +101,9 @@ export default function Account() {
     handleDeleteAccount,
   } = useAccount();
 
+  const tourReady = !authLoading && !!user && tab === "main" && mainTab === "profile";
+  const tour = useOnboardingTour("account", tourReady);
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -109,6 +121,7 @@ export default function Account() {
 
   return (
     <div className="min-h-screen bg-background">
+      <OnboardingTour steps={ACCOUNT_TOUR_STEPS} open={tour.open} onClose={tour.close} onFinish={tour.finish} />
       <AccountHeader handleLogout={handleLogout} />
 
       {tab === "main" && (
@@ -129,7 +142,7 @@ export default function Account() {
           )}
 
           {/* Вкладки в стиле мобильных приложений */}
-          <div className="flex gap-1 bg-muted rounded-xl p-1 sticky top-2 z-10">
+          <div data-tour="account-tabs" className="flex gap-1 bg-muted rounded-xl p-1 sticky top-2 z-10">
             {MAIN_TABS.map((t) => (
               <button
                 key={t.key}
@@ -152,6 +165,7 @@ export default function Account() {
           {/* Профиль */}
           {mainTab === "profile" && (
             <div className="space-y-4">
+              <div data-tour="account-profile">
               <ProfileCard
                 user={user}
                 editing={editing}
@@ -178,12 +192,13 @@ export default function Account() {
                 onYandexLinked={(yandexId) => authUser && updateUser({ ...authUser, yandex_id: yandexId })}
                 onYandexUnlinked={() => authUser && updateUser({ ...authUser, yandex_id: null })}
               />
+              </div>
 
               <GrowthSection />
               <BadgesSection />
 
               {/* Быстрые ссылки на остальные разделы */}
-              <div className="grid grid-cols-2 gap-3">
+              <div data-tour="account-links" className="grid grid-cols-2 gap-3">
                 <Card className="border-0 shadow-sm">
                   <CardContent className="p-4 flex flex-col gap-2 h-full">
                     <div className="flex items-center gap-2">
@@ -273,6 +288,10 @@ export default function Account() {
                   <Icon name="FileText" size={11} />
                   Мои статьи
                 </Link>
+                <button onClick={tour.restart} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                  <Icon name="GraduationCap" size={11} />
+                  Пройти обучение заново
+                </button>
               </div>
             </div>
           )}

@@ -14,6 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 
 import WorkspaceSidebar from "@/components/workspace/WorkspaceSidebar";
 import WorkspaceContent from "@/components/workspace/WorkspaceContent";
+import OnboardingTour, { TourStep } from "@/components/onboarding/OnboardingTour";
+import { useOnboardingTour } from "@/hooks/useOnboardingTour";
 import {
   RoleTab,
   MasterSection,
@@ -22,6 +24,13 @@ import {
   MASTER_NAV,
   ORG_NAV,
 } from "@/components/workspace/workspace-types";
+
+const WORKSPACE_TOUR_STEPS: TourStep[] = [
+  { title: "Это ваш банный кабинет", description: "Здесь вы управляете услугами, событиями и банями. Покажем главное за минуту.", icon: "Briefcase" },
+  { target: '[data-tour="ws-sidebar"]', title: "Меню разделов", description: "Слева — все ваши инструменты по ролям: мастер-услуги, мероприятия, управление банями.", icon: "Menu" },
+  { target: '[data-tour="ws-content"]', title: "Рабочая область", description: "Здесь открывается выбранный раздел: записи, расписание, статистика и настройки.", icon: "LayoutDashboard" },
+  { target: '[data-tour="ws-create"]', title: "Создавайте события", description: "Нажмите, чтобы добавить новое мероприятие и опубликовать его для гостей.", icon: "Plus" },
+];
 
 // ─── Главная страница ─────────────────────────────────────────────────────────
 
@@ -181,6 +190,10 @@ export default function Workspace() {
     setSidebarOpen(false);
   };
 
+  const tourReady = !authLoading && !!user && (isMaster || isOrganizer || isPartner);
+  const tour = useOnboardingTour("workspace", tourReady);
+  const tourSteps = isOrganizer ? WORKSPACE_TOUR_STEPS : WORKSPACE_TOUR_STEPS.filter((s) => s.target !== '[data-tour="ws-create"]');
+
   if (authLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" /></div>;
 
   // Текущее название раздела в шапке
@@ -234,6 +247,7 @@ export default function Workspace() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <OnboardingTour steps={tourSteps} open={tour.open} onClose={tour.close} onFinish={tour.finish} />
       {/* Шапка */}
       <CabinetHeader
         icon="Briefcase"
@@ -244,6 +258,7 @@ export default function Workspace() {
         actions={
           isOrganizer ? (
             <Button
+              data-tour="ws-create"
               size="sm"
               onClick={() => { setSelectedEvent(null); setFormData({} as OrgEvent); switchOrgView("create"); }}
               className="gap-1.5 h-9 hidden sm:inline-flex"
@@ -267,13 +282,20 @@ export default function Workspace() {
       {/* Основной layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Десктопный сайдбар */}
-        <aside className="hidden lg:block w-56 flex-shrink-0 border-r bg-card p-3 overflow-y-auto sticky top-14 h-[calc(100vh-56px)]">
+        <aside data-tour="ws-sidebar" className="hidden lg:block w-56 flex-shrink-0 border-r bg-card p-3 overflow-y-auto sticky top-14 h-[calc(100vh-56px)]">
           {sidebarNode}
+          <button
+            onClick={tour.restart}
+            className="mt-3 w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all"
+          >
+            <Icon name="GraduationCap" size={14} />
+            Пройти обучение заново
+          </button>
         </aside>
 
         {/* Контент */}
         <main className="flex-1 overflow-y-auto">
-          <div className="p-4 sm:p-6 max-w-5xl mx-auto">
+          <div data-tour="ws-content" className="p-4 sm:p-6 max-w-5xl mx-auto">
             <WorkspaceContent
               roleTab={roleTab}
               masterSection={masterSection}

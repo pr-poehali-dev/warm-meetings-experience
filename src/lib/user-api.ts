@@ -29,7 +29,11 @@ export interface User {
   created_at: string;
   avatar_url?: string | null;
   roles?: UserRole[];
+  onboarding_account_done?: boolean;
+  onboarding_workspace_done?: boolean;
 }
+
+export type OnboardingCabinet = "account" | "workspace";
 
 export interface UserSignup {
   id: number;
@@ -75,6 +79,12 @@ export const userProfileApi = {
 
   updateProfile: (data: { name?: string; phone?: string; telegram?: string; email?: string }): Promise<{ user: User }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=profile`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
+
+  completeOnboarding: (cabinet: OnboardingCabinet): Promise<{ ok: boolean }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=onboarding`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cabinet }) }),
+
+  resetOnboarding: (cabinet: OnboardingCabinet): Promise<{ ok: boolean }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=onboarding`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cabinet }) }),
 
   getSignups: (): Promise<{ signups: UserSignup[] }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=signups`),
