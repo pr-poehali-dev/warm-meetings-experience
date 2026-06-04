@@ -1075,24 +1075,13 @@ def handle_admin_grant(cur, conn, schema, body):
 
 
 def send_telegram_notification(user, role, message):
-    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
-    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
-    if not bot_token or not chat_id:
-        return
-
     text = (
-        f"📋 Заявка на роль\n\n"
+        f"📋 <b>Новая заявка на роль</b>\n\n"
         f"👤 {user['name']} ({user['email']})\n"
         f"🎭 Роль: {role['name']}\n"
     )
     if message:
         text += f"💬 Сообщение: {message}\n"
-
-    try:
-        requests.post(
-            f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            json={'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'},
-            timeout=5
-        )
-    except Exception:
-        pass
+    ok = tg_notify_admin(text)
+    if not ok:
+        print(f"[send_telegram_notification] failed to send TG notification for user={user.get('id')} role={role.get('name')}")
