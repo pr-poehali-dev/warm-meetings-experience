@@ -222,6 +222,7 @@ def tg_send(chat_id, text, token=None, parse_mode='HTML'):
     """Отправляет сообщение в Telegram. Не падает при ошибках."""
     bot_token = token or os.environ.get('TG_PUBLISH_BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN', '')
     if not bot_token or not chat_id:
+        print(f'[tg_send] SKIP: bot_token={bool(bot_token)} chat_id={bool(chat_id)}')
         return False
     payload = json.dumps({
         'chat_id': int(chat_id) if str(chat_id).lstrip('-').isdigit() else chat_id,
@@ -236,7 +237,15 @@ def tg_send(chat_id, text, token=None, parse_mode='HTML'):
     try:
         urllib.request.urlopen(req, timeout=6)
         return True
-    except Exception:
+    except urllib.error.HTTPError as e:
+        try:
+            err_body = e.read().decode('utf-8')
+        except Exception:
+            err_body = ''
+        print(f'[tg_send] HTTP {e.code}: {err_body}')
+        return False
+    except Exception as e:
+        print(f'[tg_send] ERROR: {e}')
         return False
 
 def tg_notify_admin(text, token=None):
