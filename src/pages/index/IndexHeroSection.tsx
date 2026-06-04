@@ -46,10 +46,7 @@ export default function IndexHeroSection({
         <div
           className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm mb-6"
           style={{ background: "rgba(200,131,74,0.15)", border: "1px solid rgba(200,131,74,0.3)", color: "var(--c-terra)" }}
-        >
-          <Icon name="Flame" size={14} />
-          Банный агрегатор событий Москвы
-        </div>
+        >Банный агрегатор событий</div>
 
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.08] tracking-tight mb-4">
           <span style={{ background: "linear-gradient(135deg, var(--hero-text-from) 15%, #C8834A 55%, #8FA89A 90%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
