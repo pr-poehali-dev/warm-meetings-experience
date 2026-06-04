@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import {
   masterCalendarApi,
   MasterService,
+  TemplateRule,
 } from "@/lib/master-calendar-api";
 
 interface QuickScheduleSetupProps {
@@ -49,6 +50,7 @@ export default function QuickScheduleSetup({ masterId, onNavigateToServices }: Q
   const [bufferMinutes, setBufferMinutes] = useState(0);
   const [savingBuffer, setSavingBuffer] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   // Превью существующих слотов
   const [existingCount, setExistingCount] = useState<number | null>(null);
@@ -199,6 +201,46 @@ export default function QuickScheduleSetup({ masterId, onNavigateToServices }: Q
       toast.error(e instanceof Error ? e.message : "Ошибка генерации");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  // Сохранить текущие параметры как переиспользуемый шаблон
+  const handleSaveAsTemplate = async () => {
+    if (selectedDays.size === 0) {
+      toast.error("Выберите хотя бы один день недели");
+      return;
+    }
+    const [sh, sm] = startTime.split(":").map(Number);
+    const [eh, em] = endTime.split(":").map(Number);
+    if (eh * 60 + em <= sh * 60 + sm) {
+      toast.error("Время окончания должно быть позже начала");
+      return;
+    }
+
+    const name = prompt("Название шаблона:", `Рабочая неделя ${startTime}–${endTime}`);
+    if (!name || !name.trim()) return;
+
+    const rules: TemplateRule[] = WEEK_DAYS.map((d) => ({
+      day_of_week: d.idx,
+      time_start: startTime,
+      time_end: endTime,
+      service_id: null,
+      max_clients: 1,
+      is_day_off: !selectedDays.has(d.idx),
+    }));
+
+    setSavingTemplate(true);
+    try {
+      await masterCalendarApi.createTemplate({
+        master_id: masterId,
+        name: name.trim(),
+        rules,
+      });
+      toast.success("Шаблон сохранён — найдёшь его во вкладке «Шаблоны»");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Не удалось сохранить шаблон");
+    } finally {
+      setSavingTemplate(false);
     }
   };
 
@@ -412,23 +454,43 @@ export default function QuickScheduleSetup({ masterId, onNavigateToServices }: Q
                 <span className="text-muted-foreground">Выбери дни и часы</span>
               )}
             </div>
-            <Button
-              onClick={handleGenerate}
-              disabled={generating || windowsCount === 0}
-              className="gap-1.5"
-            >
-              {generating ? (
-                <>
-                  <Icon name="Loader2" size={14} className="animate-spin" />
-                  Создаём...
-                </>
-              ) : (
-                <>
-                  <Icon name="Wand2" size={14} />
-                  Сгенерировать расписание
-                </>
-              )}
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                onClick={handleSaveAsTemplate}
+                disabled={savingTemplate || windowsCount === 0}
+                className="gap-1.5"
+              >
+                {savingTemplate ? (
+                  <>
+                    <Icon name="Loader2" size={14} className="animate-spin" />
+                    Сохраняем...
+                  </>
+                ) : (
+                  <>
+                    <Icon name="Copy" size={14} />
+                    Сохранить как шаблон
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={handleGenerate}
+                disabled={generating || windowsCount === 0}
+                className="gap-1.5"
+              >
+                {generating ? (
+                  <>
+                    <Icon name="Loader2" size={14} className="animate-spin" />
+                    Создаём...
+                  </>
+                ) : (
+                  <>
+                    <Icon name="Wand2" size={14} />
+                    Сгенерировать расписание
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 
