@@ -48,6 +48,7 @@ export default function TicketsView() {
             (t) =>
               t.status === "open" ||
               t.status === "in_progress" ||
+              t.status === "awaiting_reply" ||
               t.priority === "high",
           )
         : list;
