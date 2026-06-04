@@ -207,6 +207,13 @@ export default function WorkspaceSidebar({
           label="Гости"
           accent="text-rose-500"
         />
+        <NavItem
+          active={roleTab === "notifications"}
+          onClick={() => switchRoleTab("notifications")}
+          icon="Bell"
+          label="Уведомления"
+          accent="text-yellow-500"
+        />
       </div>
 
       {/* Низ: личный кабинет + выход */}

@@ -1,4 +1,4 @@
-export type RoleTab = "dashboard" | "master" | "organizer" | "partner" | "telegram" | "landing" | "notify" | "blog";
+export type RoleTab = "dashboard" | "master" | "organizer" | "partner" | "telegram" | "landing" | "notify" | "blog" | "notifications";
 export type MasterSection = "dashboard" | "profile" | "addresses" | "schedule" | "bookings" | "messages" | "reviews" | "finances" | "notifications";
 export type OrgView = "dashboard" | "create" | "edit" | "participants" | "calculator" | "notify" | "blog" | "questions";
 export type PartnerView = "dashboard" | "baths" | "add" | "edit";
@@ -12,7 +12,6 @@ export const MASTER_NAV: { id: MasterSection; label: string; icon: string }[] = 
   { id: "messages", label: "Сообщения", icon: "MessageCircle" },
   { id: "reviews", label: "Отзывы", icon: "Star" },
   { id: "finances", label: "Финансы", icon: "Wallet" },
-  { id: "notifications", label: "Уведомления", icon: "Bell" },
 ];
 
 export const ORG_NAV: { id: OrgView; label: string; icon: string }[] = [

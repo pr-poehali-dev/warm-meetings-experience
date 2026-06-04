@@ -148,6 +148,15 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     );
   }
 
+  // ─── Уведомления — общий раздел для всех коммерческих ролей ────────────────
+  if (roleTab === "notifications") {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <MasterNotificationsSection masterId={masterId} />
+      </div>
+    );
+  }
+
   // ─── Универсальный раздел Telegram для всех коммерческих ролей ──────────────
   if (roleTab === "telegram") {
     const userRole = isOrganizer ? "organizer" : isMaster ? "master" : isPartner ? "partner" : "organizer";
@@ -196,7 +205,6 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
       case "messages": return <>{backBtn}<MasterMessages masterId={masterId} /></>;
       case "reviews": return <>{backBtn}<MasterReviewsSection masterId={masterId} /></>;
       case "finances": return <>{backBtn}<MasterFinancesSection masterId={masterId} /></>;
-      case "notifications": return <>{backBtn}<MasterNotificationsSection masterId={masterId} /></>;
     }
   }
 
