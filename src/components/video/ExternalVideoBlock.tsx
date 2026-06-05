@@ -154,9 +154,9 @@ export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: Ex
               onChange={(e) => setUrl(e.target.value)}
               className="w-full px-3 py-2 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className="flex flex-col gap-1 mt-2 sm:flex-row sm:flex-wrap sm:gap-2">
               {PROVIDER_HINTS.map((h) => (
-                <span key={h.label} className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-lg">
+                <span key={h.label} className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-lg truncate">
                   {h.label}: <span className="font-mono opacity-70">{h.example}</span>
                 </span>
               ))}
@@ -191,7 +191,7 @@ export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: Ex
         </div>
       ) : videos.length === 0 ? (
         !showForm && (
-          <div className="border-2 border-dashed border-border rounded-2xl p-8 text-center text-muted-foreground text-sm">
+          <div className="border-2 border-dashed border-border rounded-2xl p-4 sm:p-8 text-center text-muted-foreground text-sm">
             <Icon name="Video" size={28} className="mx-auto mb-2 opacity-40" />
             Добавьте видео из VK, RuTube или по прямой ссылке
           </div>
@@ -222,7 +222,7 @@ export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: Ex
                 )}
                 <p className="text-xs text-muted-foreground truncate mt-0.5">{v.embed_url}</p>
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 {i > 0 && (
                   <button
                     onClick={() => handleMoveUp(i)}

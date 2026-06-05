@@ -269,7 +269,7 @@ function BlockEditor({ id, data, updateField, onAvatarUpload, onPhotoUpload, onA
   if (id === "portfolio") {
     return (
       <div className="space-y-2">
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {(data.portfolio || []).map((item, i) => (
             <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-muted group">
               {item.type === "image" ? (
@@ -277,8 +277,8 @@ function BlockEditor({ id, data, updateField, onAvatarUpload, onPhotoUpload, onA
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-black/80"><Icon name="Play" size={20} className="text-white" /></div>
               )}
-              <button onClick={() => onRemovePortfolio(i)} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center">
-                <Icon name="X" size={12} />
+              <button onClick={() => onRemovePortfolio(i)} className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/60 text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center">
+                <Icon name="X" size={13} />
               </button>
             </div>
           ))}
