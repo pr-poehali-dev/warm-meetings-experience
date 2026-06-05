@@ -27,18 +27,22 @@ interface Props {
 }
 
 export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, dismissKey }: Props) {
+  const isLinked = Boolean(vkId);
+
+  // Крестик работает только если VK уже привязан (сценарий «написать сообществу»).
+  // Пока VK не привязан — баннер не скрывается, чтобы пользователь не потерял возможность подключить.
+  const effectiveDismissKey = isLinked ? dismissKey : undefined;
+
   const [dismissed, setDismissed] = useState(() => {
-    if (!dismissKey) return false;
-    return localStorage.getItem(dismissKey) === "1";
+    if (!effectiveDismissKey) return false;
+    return localStorage.getItem(effectiveDismissKey) === "1";
   });
   const [loading, setLoading] = useState(false);
 
   if (dismissed) return null;
 
-  const isLinked = Boolean(vkId);
-
   const handleDismiss = () => {
-    if (dismissKey) localStorage.setItem(dismissKey, "1");
+    if (effectiveDismissKey) localStorage.setItem(effectiveDismissKey, "1");
     setDismissed(true);
     onDismiss?.();
   };
