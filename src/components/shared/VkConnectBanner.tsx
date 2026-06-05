@@ -115,49 +115,37 @@ export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, d
   }
 
   return (
-    <div className="relative bg-gradient-to-br from-[#e8f0fc] to-[#dce9ff] dark:from-blue-950/50 dark:to-blue-900/30 border border-[#b8cff7] dark:border-blue-800 rounded-2xl p-5">
-      {onDismiss && (
+    <div className="bg-gradient-to-br from-[#e8f0fc] to-[#dce9ff] dark:from-blue-950/50 dark:to-blue-900/30 border border-[#b8cff7] dark:border-blue-800 rounded-2xl p-5">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-9 h-9 rounded-xl bg-[#0077FF] flex items-center justify-center flex-shrink-0 shadow-sm">
+          <Icon name={isLinked ? "MessageCircle" : "Link"} size={18} className="text-white" />
+        </div>
+        <h3 className="font-semibold text-[#0d1b4b] dark:text-blue-100 text-base leading-tight">
+          {title}
+        </h3>
+      </div>
+      <p className="text-sm text-[#4a5c8a] dark:text-blue-300 leading-relaxed mb-4">
+        {description}
+      </p>
+      <div className="flex items-center gap-3">
         <button
-          onClick={handleDismiss}
-          className="absolute top-3 right-3 text-[#7a8fb5] hover:text-[#0d1b4b] dark:hover:text-white transition-colors"
-          title="Не сейчас"
+          onClick={handleClick}
+          disabled={loading}
+          className="inline-flex items-center gap-2 bg-[#0077FF] hover:bg-[#005fcc] disabled:opacity-60 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
         >
-          <Icon name="X" size={16} />
+          {loading
+            ? <><Icon name="Loader2" size={15} className="animate-spin" />Загрузка...</>
+            : <><Icon name={isLinked ? "ExternalLink" : "LogIn"} size={15} />{btnLabel}</>
+          }
         </button>
-      )}
-      <div className="flex items-start gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-[#0077FF] flex items-center justify-center flex-shrink-0 shadow-md">
-          <Icon name={isLinked ? "MessageCircle" : "Link"} size={22} className="text-white" />
-        </div>
-        <div className="flex-1">
-          <h3 className="font-semibold text-[#0d1b4b] dark:text-blue-100 text-base leading-tight">
-            {title}
-          </h3>
-          <p className="text-sm text-[#4a5c8a] dark:text-blue-300 mt-1 leading-relaxed">
-            {description}
-          </p>
-          <div className="flex items-center gap-3 mt-4">
-            <button
-              onClick={handleClick}
-              disabled={loading}
-              className="inline-flex items-center gap-2 bg-[#0077FF] hover:bg-[#005fcc] disabled:opacity-60 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors shadow-sm"
-            >
-              {loading
-                ? <><Icon name="Loader2" size={15} className="animate-spin" />Загрузка...</>
-                : <><Icon name={isLinked ? "ExternalLink" : "LogIn"} size={15} />{btnLabel}</>
-              }
-            </button>
-            {onDismiss && (
-              <button
-                onClick={handleDismiss}
-                className="text-sm text-[#7a8fb5] hover:text-[#4a5c8a] dark:hover:text-blue-300 transition-colors"
-              >
-                Не сейчас
-              </button>
-            )}
-          </div>
-          <p className="text-[11px] text-[#7a8fb5] dark:text-blue-400 mt-3">{hint}</p>
-        </div>
+        {effectiveDismissKey && onDismiss && (
+          <button
+            onClick={handleDismiss}
+            className="text-sm text-[#7a8fb5] hover:text-[#4a5c8a] dark:hover:text-blue-300 transition-colors"
+          >
+            Не сейчас
+          </button>
+        )}
       </div>
     </div>
   );
