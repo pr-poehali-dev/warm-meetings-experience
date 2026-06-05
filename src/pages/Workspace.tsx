@@ -311,8 +311,8 @@ export default function Workspace() {
         </aside>
 
         {/* Контент */}
-        <main className="flex-1 overflow-y-auto">
-          <div data-tour="ws-content" className="p-4 sm:p-6 max-w-5xl mx-auto">
+        <main className="flex-1 overflow-y-auto min-h-0">
+          <div data-tour="ws-content" className="p-4 sm:p-6 pb-24 max-w-5xl mx-auto">
             <WorkspaceContent
               roleTab={roleTab}
               masterSection={masterSection}
