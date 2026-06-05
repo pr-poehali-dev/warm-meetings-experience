@@ -13,6 +13,7 @@ import {
 
 interface QuickScheduleSetupProps {
   masterId: number;
+  masterSlug?: string;
   onNavigateToServices?: () => void;
 }
 
@@ -37,7 +38,7 @@ function fmtDuration(min: number) {
   return m ? `${h} ч ${m} мин` : `${h} ч`;
 }
 
-export default function QuickScheduleSetup({ masterId, onNavigateToServices }: QuickScheduleSetupProps) {
+export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToServices }: QuickScheduleSetupProps) {
   // Услуги
   const [services, setServices] = useState<MasterService[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
@@ -501,14 +502,25 @@ export default function QuickScheduleSetup({ masterId, onNavigateToServices }: Q
 
       {/* Ссылка на превью */}
       <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 flex items-start gap-3">
-        <Icon name="Eye" size={18} className="text-emerald-600 dark:text-emerald-400 mt-0.5" />
-        <div className="text-sm">
+        <Icon name="Eye" size={18} className="text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+        <div className="text-sm flex-1">
           <div className="font-semibold text-emerald-900 dark:text-emerald-200">
             Что увидит гость
           </div>
           <div className="text-emerald-800/80 dark:text-emerald-300/80 text-xs mt-0.5">
-            Гости увидят твои услуги и доступное время на странице мастера. Чтобы посмотреть как это выглядит, открой свою публичную страницу.
+            Гости увидят твои услуги и доступное время на странице мастера.
           </div>
+          {masterSlug && (
+            <a
+              href={`/masters/${masterSlug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mt-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-200 transition-colors"
+            >
+              <Icon name="ExternalLink" size={12} />
+              Открыть публичную страницу
+            </a>
+          )}
         </div>
       </div>
     </div>

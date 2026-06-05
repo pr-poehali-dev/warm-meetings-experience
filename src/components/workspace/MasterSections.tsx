@@ -477,7 +477,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
 
 // ─── Мастер: Расписание ───────────────────────────────────────────────────────
 
-export function MasterScheduleSection({ masterId }: { masterId: number }) {
+export function MasterScheduleSection({ masterId, masterSlug }: { masterId: number; masterSlug: string }) {
   const [tab, setTab] = useState<"quick" | "calendar" | "services" | "templates" | "settings">("quick");
   const tabs = [
     { id: "quick", label: "Быстрый старт", icon: "Zap" },
@@ -512,7 +512,7 @@ export function MasterScheduleSection({ masterId }: { masterId: number }) {
           </button>
         ))}
       </div>
-      {tab === "quick" && <QuickScheduleSetup masterId={masterId} onNavigateToServices={() => setTab("services")} />}
+      {tab === "quick" && <QuickScheduleSetup masterId={masterId} masterSlug={masterSlug} onNavigateToServices={() => setTab("services")} />}
       {tab === "calendar" && <MasterCalendar masterId={masterId} />}
       {tab === "services" && <MasterServices masterId={masterId} />}
       {tab === "templates" && <MasterTemplates masterId={masterId} />}

@@ -39,6 +39,7 @@ interface WorkspaceContentProps {
   isOrganizer: boolean;
   isPartner: boolean;
   masterId: number;
+  masterSlug: string;
 
   // Partner
   baths: PartnerBath[];
@@ -85,6 +86,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     isOrganizer,
     isPartner,
     masterId,
+    masterSlug,
     baths,
     bathsLoading,
     editingBath,
@@ -200,7 +202,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
       case "dashboard": return <MasterDashboardSection masterId={masterId} />;
       case "profile": return <>{backBtn}<MasterProfileSection masterId={masterId} /></>;
       case "addresses": return <>{backBtn}<div className="space-y-4"><MasterAddresses masterId={masterId} /></div></>;
-      case "schedule": return <>{backBtn}<MasterScheduleSection masterId={masterId} /></>;
+      case "schedule": return <>{backBtn}<MasterScheduleSection masterId={masterId} masterSlug={masterSlug} /></>;
       case "bookings": return <>{backBtn}<MasterBookingsSection masterId={masterId} /></>;
       case "messages": return <>{backBtn}<MasterMessages masterId={masterId} /></>;
       case "reviews": return <>{backBtn}<MasterReviewsSection masterId={masterId} /></>;

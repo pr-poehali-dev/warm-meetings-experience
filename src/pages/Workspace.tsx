@@ -109,9 +109,10 @@ export default function Workspace() {
 
   // Реальный masters.id (не user.id)
   const [masterId, setMasterId] = useState<number>(0);
+  const [masterSlug, setMasterSlug] = useState<string>("");
   useEffect(() => {
     if (!isMaster) return;
-    mastersApi.getMyProfile().then((m) => setMasterId(m.id)).catch(() => {});
+    mastersApi.getMyProfile().then((m) => { setMasterId(m.id); setMasterSlug(m.slug); }).catch(() => {});
   }, [isMaster]);
 
   // Непрочитанные сообщения от гостей (для бейджа в разделе «Сообщения»)
@@ -322,6 +323,7 @@ export default function Workspace() {
               isOrganizer={isOrganizer}
               isPartner={isPartner}
               masterId={masterId}
+              masterSlug={masterSlug}
               baths={baths}
               bathsLoading={bathsLoading}
               editingBath={editingBath}
