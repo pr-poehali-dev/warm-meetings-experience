@@ -16,6 +16,7 @@ import AskMasterModal from "@/components/master/AskMasterModal";
 import { parseServiceDescription } from "@/lib/service-description";
 import { formatSlotTime } from "@/lib/masterTime";
 import func2url from "../../backend/func2url.json";
+import VkConnectBanner from "@/components/shared/VkConnectBanner";
 
 const VIDEOS_API = func2url["media-api"];
 
@@ -66,7 +67,7 @@ interface BookingModalProps {
   service: MasterService;
   masterName: string;
   onClose: () => void;
-  onSuccess: (chatToken?: string) => void;
+  onSuccess: (chatToken?: string, clientEmail?: string) => void;
 }
 
 function BookingModal({ option, service, masterName, onClose, onSuccess }: BookingModalProps) {
@@ -125,7 +126,7 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
         meeting_latitude: isAtHome && meeting.latitude != null ? meeting.latitude : undefined,
         meeting_longitude: isAtHome && meeting.longitude != null ? meeting.longitude : undefined,
       })) as { chat_token?: string };
-      onSuccess(res?.chat_token);
+      onSuccess(res?.chat_token, email.trim() || undefined);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ошибка при бронировании");
     } finally {
@@ -283,18 +284,23 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
 
 // ─── Успех бронирования ────────────────────────────────────────────────────────
 
-function BookingSuccess({ onClose, chatToken }: { onClose: () => void; chatToken?: string }) {
+function BookingSuccess({ onClose, chatToken, clientEmail }: { onClose: () => void; chatToken?: string; clientEmail?: string }) {
+  const hasEmail = clientEmail && !clientEmail.endsWith(".vk.local") && !clientEmail.endsWith("@vk.local");
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-background rounded-2xl shadow-xl p-8 text-center max-w-sm mx-4">
+      <div className="relative bg-background rounded-2xl shadow-xl p-8 text-center max-w-sm mx-4 w-full">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Icon name="Check" size={32} className="text-green-600" />
         </div>
         <h2 className="text-xl font-bold mb-2">Заявка принята!</h2>
         <p className="text-muted-foreground text-sm mb-5">
           Мастер свяжется с вами для подтверждения записи.
+          {hasEmail && <> Подтверждение отправлено на {clientEmail}.</>}
         </p>
+        <div className="text-left mb-4">
+          <VkConnectBanner variant="inline" dismissKey="vk_banner_booking" onDismiss={() => {}} />
+        </div>
         {chatToken && (
           <a
             href={`/m/${chatToken}`}
@@ -517,6 +523,7 @@ export default function MasterDetail() {
   const [bookingState, setBookingState] = useState<{ option: BookingOption; service: MasterService } | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingChatToken, setBookingChatToken] = useState<string | undefined>(undefined);
+  const [bookingClientEmail, setBookingClientEmail] = useState<string | undefined>(undefined);
   const [askOpen, setAskOpen] = useState(false);
   const [extVideos, setExtVideos] = useState<VideoItem[]>([]);
   const [selectedServiceForFlow, setSelectedServiceForFlow] = useState<number | null>(null);
@@ -572,9 +579,10 @@ export default function MasterDetail() {
 
   const portfolio = master.portfolio || [];
 
-  const handleBookSuccess = (chatToken?: string) => {
+  const handleBookSuccess = (chatToken?: string, clientEmail?: string) => {
     setBookingState(null);
     setBookingChatToken(chatToken);
+    setBookingClientEmail(clientEmail);
     setBookingSuccess(true);
     setBookingRefreshKey((k) => k + 1);
   };
@@ -875,6 +883,7 @@ export default function MasterDetail() {
         <BookingSuccess
           onClose={() => setBookingSuccess(false)}
           chatToken={bookingChatToken}
+          clientEmail={bookingClientEmail}
         />
       )}
 

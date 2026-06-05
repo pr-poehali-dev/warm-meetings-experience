@@ -12,12 +12,15 @@ import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
 import AppendixLinkModal from "@/components/AppendixLinkModal";
 import BathCaptcha, { useBathCaptcha } from "@/components/BathCaptcha";
+import VkConnectBanner from "@/components/shared/VkConnectBanner";
 
 export default function Register() {
   const { user, loading: authLoading, register } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/account";
+  const [registered, setRegistered] = useState(false);
+  const [registeredName, setRegisteredName] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -59,7 +62,8 @@ export default function Register() {
     setSubmitting(true);
     try {
       await register({ email, name, phone, password, consent_pd: consentPd, consent_photo: consentPhoto });
-      navigate(redirectTo);
+      setRegisteredName(name);
+      setRegistered(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Ошибка регистрации");
     } finally {
@@ -71,6 +75,30 @@ export default function Register() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (registered) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="w-full max-w-md space-y-5 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+            <Icon name="Check" size={32} className="text-green-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Добро пожаловать{registeredName ? `, ${registeredName}` : ""}!</h1>
+            <p className="text-muted-foreground mt-1 text-sm">Аккаунт создан. Теперь вы можете записываться к мастерам и участвовать в событиях.</p>
+          </div>
+          <VkConnectBanner
+            variant="banner"
+            dismissKey="vk_banner_register"
+            onDismiss={() => navigate(redirectTo)}
+          />
+          <Button className="w-full" onClick={() => navigate(redirectTo)}>
+            Перейти в личный кабинет
+          </Button>
+        </div>
       </div>
     );
   }

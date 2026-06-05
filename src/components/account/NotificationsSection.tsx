@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { notificationsApi, ChannelInfo, ChannelPrefs, NotificationChannels } from "@/lib/user-api";
 import { toast } from "sonner";
+import VkConnectBanner from "@/components/shared/VkConnectBanner";
 
 const CHANNELS = [
   {
@@ -218,6 +219,14 @@ export default function NotificationsSection() {
                 onPrefToggle={(key, val) => handlePrefToggle(meta.key, key, val)}
               />
             ))}
+
+            {!channels.vk.connected && (
+              <VkConnectBanner
+                variant="inline"
+                dismissKey="vk_banner_notifications"
+                onDismiss={() => {}}
+              />
+            )}
 
             <p className="text-xs text-muted-foreground pt-1">
               Email всегда используется как резервный канал для срочных уведомлений.

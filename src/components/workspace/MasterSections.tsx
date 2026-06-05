@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import VkConnectBanner from "@/components/shared/VkConnectBanner";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -463,6 +464,11 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
           />
         </div>
       )}
+
+      {/* Уведомления в ВК */}
+      <div className="pt-2">
+        <VkConnectBanner variant="banner" dismissKey="vk_banner_master_profile" onDismiss={() => {}} />
+      </div>
     </div>
   );
 }
