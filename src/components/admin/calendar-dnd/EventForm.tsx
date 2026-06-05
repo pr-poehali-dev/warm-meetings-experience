@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Icon from "@/components/ui/icon";
 import { MasterService } from "@/lib/master-calendar-api";
 
-export type CreateMode = "booking" | "block" | "break";
+export type CreateMode = "booking" | "block" | "break" | "work";
 
 export interface CreatePayload {
   client_name?: string;
@@ -74,6 +74,7 @@ export default function EventForm({ start, end, allDay, services, onCancel, onCr
     step === "choose" ? "Что создать?" :
     mode === "booking" ? "Новая бронь" :
     mode === "block" ? "Заблокировать время" :
+    mode === "work" ? "Рабочее время" :
     "Перерыв";
 
   return (
@@ -81,7 +82,7 @@ export default function EventForm({ start, end, allDay, services, onCancel, onCr
       <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Icon name={mode === "booking" ? "Calendar" : mode === "block" ? "Lock" : "Coffee"} size={18} />
+            <Icon name={mode === "booking" ? "Calendar" : mode === "block" ? "Lock" : mode === "work" ? "Clock" : "Coffee"} size={18} />
             {title}
           </DialogTitle>
           <DialogDescription className="text-xs">
@@ -100,6 +101,17 @@ export default function EventForm({ start, end, allDay, services, onCancel, onCr
 
         {step === "choose" ? (
           <div className="grid grid-cols-1 gap-2 mt-2">
+            <button
+              onClick={() => pick("work")}
+              className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors text-left"
+            >
+              <div className="w-3 h-3 rounded-full" style={{ background: "#2196F3" }} />
+              <div className="flex-1">
+                <div className="font-semibold text-sm">Рабочее время</div>
+                <div className="text-xs text-muted-foreground">Открыть время для записи клиентов</div>
+              </div>
+              <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+            </button>
             <button
               onClick={() => pick("booking")}
               className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors text-left"
@@ -170,6 +182,11 @@ export default function EventForm({ start, end, allDay, services, onCancel, onCr
                   rows={2}
                 />
               </>
+            )}
+            {mode === "work" && (
+              <p className="text-xs text-muted-foreground">
+                В этот интервал клиенты смогут записываться на ваши услуги.
+              </p>
             )}
             {(mode === "block" || mode === "break") && (
               <Input

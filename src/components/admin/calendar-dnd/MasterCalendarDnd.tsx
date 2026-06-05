@@ -371,8 +371,16 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         return;
       }
 
-      // All-day для брони/перерыва — задаём дефолт 12:00–13:00 в первый день
-      if (isAllDay) {
+      // All-day для рабочего времени — открываем стандартный день 9:00–18:00
+      if (isAllDay && mode === "work") {
+        const s = new Date(start);
+        s.setHours(9, 0, 0, 0);
+        const e = new Date(start);
+        e.setHours(18, 0, 0, 0);
+        start = s;
+        end = e;
+      } else if (isAllDay) {
+        // All-day для брони/перерыва — задаём дефолт 12:00–13:00 в первый день
         const s = new Date(start);
         s.setHours(12, 0, 0, 0);
         start = s;
@@ -387,13 +395,23 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         }
       }
 
-      // Проверка конфликта
-      if (hasConflict(start, end, null)) {
+      // Проверка конфликта (для рабочего времени не нужна — оно может охватывать брони)
+      if (mode !== "work" && hasConflict(start, end, null)) {
         toast.error("Это время уже занято");
         return;
       }
 
-      if (mode === "booking") {
+      if (mode === "work") {
+        await masterCalendarApi.createSlot({
+          master_id: masterId,
+          datetime_start: toISO(start),
+          datetime_end: toISO(end),
+          max_clients: 1,
+          status: "available",
+          notes: "",
+        });
+        toast.success("Рабочее время добавлено");
+      } else if (mode === "booking") {
         if (!payload.client_name?.trim()) {
           toast.error("Укажите имя клиента");
           return;
