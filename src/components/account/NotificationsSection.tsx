@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { notificationsApi, ChannelInfo, ChannelPrefs, NotificationChannels } from "@/lib/user-api";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import VkConnectBanner from "@/components/shared/VkConnectBanner";
 
 const CHANNELS = [
@@ -127,6 +128,7 @@ function ChannelRow({ channelKey, info, meta, onToggle, onPrefToggle }: ChannelR
 }
 
 export default function NotificationsSection() {
+  const { user } = useAuth();
   const [channels, setChannels] = useState<NotificationChannels | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -222,6 +224,7 @@ export default function NotificationsSection() {
 
             {!channels.vk.connected && (
               <VkConnectBanner
+                vkId={user?.vk_id}
                 variant="inline"
                 dismissKey="vk_banner_notifications"
                 onDismiss={() => {}}

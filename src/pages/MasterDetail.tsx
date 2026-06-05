@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { format, addDays, startOfToday, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -284,7 +285,7 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
 
 // ─── Успех бронирования ────────────────────────────────────────────────────────
 
-function BookingSuccess({ onClose, chatToken, clientEmail }: { onClose: () => void; chatToken?: string; clientEmail?: string }) {
+function BookingSuccess({ onClose, chatToken, clientEmail, vkId }: { onClose: () => void; chatToken?: string; clientEmail?: string; vkId?: string | null }) {
   const hasEmail = clientEmail && !clientEmail.endsWith(".vk.local") && !clientEmail.endsWith("@vk.local");
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -299,7 +300,7 @@ function BookingSuccess({ onClose, chatToken, clientEmail }: { onClose: () => vo
           {hasEmail && <> Подтверждение отправлено на {clientEmail}.</>}
         </p>
         <div className="text-left mb-4">
-          <VkConnectBanner variant="inline" dismissKey="vk_banner_booking" onDismiss={() => {}} />
+          <VkConnectBanner vkId={vkId} variant="inline" dismissKey="vk_banner_booking" onDismiss={() => {}} />
         </div>
         {chatToken && (
           <a
@@ -514,6 +515,7 @@ function ReviewsBlock({ masterId, rating }: { masterId: number; rating: number; 
 // ─── Главная страница ─────────────────────────────────────────────────────────
 
 export default function MasterDetail() {
+  const { user } = useAuth();
   const { slug } = useParams<{ slug: string }>();
   const [master, setMaster] = useState<Master | null>(null);
   const [services, setServices] = useState<MasterService[]>([]);
@@ -884,6 +886,7 @@ export default function MasterDetail() {
           onClose={() => setBookingSuccess(false)}
           chatToken={bookingChatToken}
           clientEmail={bookingClientEmail}
+          vkId={user?.vk_id}
         />
       )}
 

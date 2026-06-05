@@ -91,6 +91,7 @@ export default function Register() {
             <p className="text-muted-foreground mt-1 text-sm">Аккаунт создан. Теперь вы можете записываться к мастерам и участвовать в событиях.</p>
           </div>
           <VkConnectBanner
+            vkId={user?.vk_id}
             variant="banner"
             dismissKey="vk_banner_register"
             onDismiss={() => navigate(redirectTo)}

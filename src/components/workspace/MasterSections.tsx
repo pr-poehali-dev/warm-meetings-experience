@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import VkConnectBanner from "@/components/shared/VkConnectBanner";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -167,6 +168,7 @@ function VisibilityToggle({
 // ─── Мастер: Профиль ──────────────────────────────────────────────────────────
 
 export function MasterProfileSection({ masterId: _masterId }: { masterId: number }) {
+  const { user } = useAuth();
   const [master, setMaster] = useState<Master | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -467,7 +469,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
 
       {/* Уведомления в ВК */}
       <div className="pt-2">
-        <VkConnectBanner variant="banner" dismissKey="vk_banner_master_profile" onDismiss={() => {}} />
+        <VkConnectBanner vkId={user?.vk_id} variant="banner" dismissKey="vk_banner_master_profile" onDismiss={() => {}} />
       </div>
     </div>
   );
