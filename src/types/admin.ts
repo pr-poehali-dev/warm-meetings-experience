@@ -22,6 +22,7 @@ export type ViewType =
   | "support"
   | "event-types"
   | "notifications"
+  | "mailings"
   | "merge-accounts";
 
 export interface AdminEvent {

@@ -26,6 +26,7 @@ import AdminVideos from "@/components/admin/AdminVideos";
 import AdminSupport from "@/components/admin/AdminSupport";
 import AdminEventTypes from "@/components/admin/AdminEventTypes";
 import AdminNotifications from "@/components/admin/AdminNotifications";
+import AdminMailings from "@/components/admin/AdminMailings";
 import AdminMergeAccounts from "@/components/admin/AdminMergeAccounts";
 
 
@@ -131,6 +132,8 @@ export default function Admin() {
         return <AdminEventTypes />;
       case "notifications":
         return <AdminNotifications />;
+      case "mailings":
+        return <AdminMailings />;
       case "merge-accounts":
         return <AdminMergeAccounts />;
       default:

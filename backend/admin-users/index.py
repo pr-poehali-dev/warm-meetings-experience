@@ -108,6 +108,27 @@ def handler(event, context):
             'stats_24h': stats_n,
         })
 
+    # Подресурс: рассылки и личные сообщения
+    resource = params.get('resource') or ''
+    if resource == 'audiences' and method == 'GET':
+        from broadcast import handle_audiences
+        resp = handle_audiences(cur, schema)
+        conn.close()
+        return resp
+
+    if resource == 'user_search' and method == 'GET':
+        from broadcast import handle_search_users
+        resp = handle_search_users(cur, schema, params.get('q') or '')
+        conn.close()
+        return resp
+
+    if resource == 'broadcast' and method == 'POST':
+        from broadcast import handle_send_broadcast
+        body = json.loads(event.get('body') or '{}')
+        resp = handle_send_broadcast(cur, conn, schema, body)
+        conn.close()
+        return resp
+
     if method == 'GET':
         search = (params.get('search') or '').strip()
         page = max(1, int(params.get('page', 1)))

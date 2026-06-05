@@ -99,6 +99,12 @@ const NAV: NavGroup[] = [
         hint: "Журнал отправок email/Telegram",
       },
       {
+        view: "mailings",
+        label: "Рассылки",
+        icon: "Megaphone",
+        hint: "Сообщения и рассылки пользователям",
+      },
+      {
         view: "merge-accounts",
         label: "Объединение аккаунтов",
         icon: "GitMerge",
