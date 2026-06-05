@@ -363,7 +363,7 @@ def _ext_videos_add(event: dict, user_token: str) -> dict:
     if not user_token:
         return err('Не авторизован', 401)
     schema = get_schema()
-    conn = get_conn(); cur = conn.cursor()
+    conn = get_conn(); cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     user = get_user_from_token(cur, schema, user_token)
     if not user:
         conn.close(); return err('Не авторизован', 401)
