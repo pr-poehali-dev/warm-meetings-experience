@@ -81,13 +81,18 @@ export default function AdminNotifications() {
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState<Stats24h>({ ok_24h: 0, fail_24h: 0, critical_24h: 0 });
   const [page, setPage] = useState(1);
-  const [perPage] = useState(30);
+  const [perPage] = useState(50);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string>("all");
   const [channel, setChannel] = useState<string>("all");
   const [search, setSearch] = useState<string>("");
   const [searchInput, setSearchInput] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [selected, setSelected] = useState<NotificationItem | null>(null);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,6 +104,8 @@ export default function AdminNotifications() {
       if (status !== "all") params.set("status", status);
       if (channel !== "all") params.set("channel", channel);
       if (search) params.set("search", search);
+      if (dateFrom) params.set("date_from", dateFrom);
+      if (dateTo) params.set("date_to", dateTo);
       const res = await fetch(`${API}?${params.toString()}`, {
         headers: { "X-Admin-Token": getAdminToken() },
       });
@@ -112,7 +119,7 @@ export default function AdminNotifications() {
     } finally {
       setLoading(false);
     }
-  }, [page, perPage, status, channel, search]);
+  }, [page, perPage, status, channel, search, dateFrom, dateTo]);
 
   useEffect(() => {
     load();
@@ -166,10 +173,23 @@ export default function AdminNotifications() {
 
       {/* Фильтры */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Фильтры</CardTitle>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-base">Фильтры</CardTitle>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" onClick={() => { setDateFrom(yesterday); setDateTo(yesterday); setPage(1); }}>
+                Вчера
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setDateFrom(today); setDateTo(today); setPage(1); }}>
+                Сегодня
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { setDateFrom(""); setDateTo(""); setStatus("all"); setChannel("all"); setSearch(""); setSearchInput(""); setPage(1); }}>
+                Сбросить
+              </Button>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
             <SelectTrigger><SelectValue placeholder="Статус" /></SelectTrigger>
             <SelectContent>
@@ -195,6 +215,14 @@ export default function AdminNotifications() {
               if (e.key === "Enter") { setSearch(searchInput); setPage(1); }
             }}
           />
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted-foreground whitespace-nowrap">С:</label>
+            <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-muted-foreground whitespace-nowrap">По:</label>
+            <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} />
+          </div>
           <div className="flex gap-2">
             <Button onClick={() => { setSearch(searchInput); setPage(1); }} className="flex-1">
               <Icon name="Search" size={16} className="mr-2" /> Найти

@@ -53,6 +53,8 @@ def handler(event, context):
         channel_f = (params.get('channel') or '').strip()
         event_type_f = (params.get('event_type') or '').strip()
         search_f = (params.get('search') or '').strip()
+        date_from_f = (params.get('date_from') or '').strip()
+        date_to_f = (params.get('date_to') or '').strip()
 
         if status_f in ('success', 'failed'):
             filters.append(f"status = '{status_f}'")
@@ -64,6 +66,10 @@ def handler(event, context):
         if search_f:
             s = search_f.replace("'", "''")
             filters.append(f"(recipient ILIKE '%{s}%' OR error_text ILIKE '%{s}%' OR subject ILIKE '%{s}%')")
+        if date_from_f:
+            filters.append(f"created_at >= '{date_from_f[:10]}'::date")
+        if date_to_f:
+            filters.append(f"created_at < ('{date_to_f[:10]}'::date + INTERVAL '1 day')")
 
         where = ('WHERE ' + ' AND '.join(filters)) if filters else ''
 
