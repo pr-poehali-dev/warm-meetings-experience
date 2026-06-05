@@ -7,6 +7,7 @@ import requests
 from datetime import datetime, timedelta
 
 from shared import *
+from vk_callback import handle_vk_callback
 
 
 BOT_TOKEN = None
@@ -75,6 +76,10 @@ def handler(event, context):
         if 'update_id' in body:
             process_update(body)
             return respond(200, {'ok': True})
+        # VK Callback API: событие от сообщества ВКонтакте
+        if 'type' in body and 'group_id' in body:
+            result = handle_vk_callback(body)
+            return {'statusCode': 200, 'headers': {}, 'body': result}
         if body.get('action') == 'publish_event':
             return handle_publish_event(body)
         if body.get('action') == 'publish_content':
