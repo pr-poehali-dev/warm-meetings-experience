@@ -392,7 +392,7 @@ def _ext_videos_add(event: dict, user_token: str) -> dict:
         [owner_type, int(owner_id)],
     )
     sort_order = cur.fetchone()['next_order']
-    status = 'approved' if has_role(cur, schema, user['id'], 'admin') else 'pending'
+    status = 'approved'
 
     cur.execute(
         f"INSERT INTO {schema}.videos "
@@ -401,7 +401,19 @@ def _ext_videos_add(event: dict, user_token: str) -> dict:
         [owner_type, int(owner_id), provider, external_id, embed_url, thumbnail, title or None, sort_order, status],
     )
     new_id = cur.fetchone()['id']
-    conn.commit(); cur.close(); conn.close()
+    conn.commit()
+
+    owner_label = {'master': 'Мастер', 'bath': 'Баня', 'event': 'Событие'}.get(owner_type, owner_type)
+    video_title = title or provider
+    tg_notify_admin(
+        f"📹 Новое видео ({owner_label} #{owner_id})\n"
+        f"Название: {video_title}\n"
+        f"Провайдер: {provider}\n"
+        f"Ссылка: {embed_url}\n"
+        f"Чтобы заблокировать — откройте Админ → Видео"
+    )
+
+    cur.close(); conn.close()
     return ok({'ok': True, 'id': new_id, 'provider': provider, 'embed_url': embed_url, 'status': status})
 
 
@@ -450,12 +462,12 @@ def _ext_videos_delete(params: dict, user_token: str) -> dict:
 
 
 def _ext_videos_admin_list(params: dict, admin_token: str) -> dict:
-    """GET ?videos=1&admin=1 — список для модерации."""
+    """GET ?videos=1&admin=1 — список видео для администратора."""
     if not verify_admin_token(admin_token):
         return err('Не авторизован', 401)
     schema = get_schema()
     conn = get_conn(); cur = conn.cursor()
-    status_filter = params.get('status', 'pending')
+    status_filter = params.get('status', 'approved')
     cur.execute(
         f"SELECT id, owner_type, owner_id, provider, embed_url, thumbnail_url, title, status, created_at "
         f"FROM {schema}.videos WHERE status = %s ORDER BY created_at DESC LIMIT 100",
@@ -467,13 +479,13 @@ def _ext_videos_admin_list(params: dict, admin_token: str) -> dict:
 
 
 def _ext_videos_admin_moderate(event: dict, admin_token: str) -> dict:
-    """PUT ?admin_moderate=1 — сменить статус видео."""
+    """PUT ?admin_moderate=1 — заблокировать/разблокировать видео."""
     if not verify_admin_token(admin_token):
         return err('Не авторизован', 401)
     body       = json.loads(event.get('body') or '{}')
     video_id   = body.get('id')
     new_status = body.get('status')
-    if not video_id or new_status not in ('approved', 'rejected', 'pending'):
+    if not video_id or new_status not in ('approved', 'blocked'):
         return err('Неверные параметры')
     schema = get_schema()
     conn = get_conn(); cur = conn.cursor()

@@ -12,7 +12,7 @@ function getAdminToken() {
 
 function statusBadge(status: string) {
   if (status === "approved") return <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">Опубликовано</span>;
-  if (status === "rejected") return <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">Отклонено</span>;
+  if (status === "blocked") return <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">Заблокировано</span>;
   return <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">На модерации</span>;
 }
 
@@ -38,9 +38,9 @@ interface AdminVideoItem extends VideoItem {
 export default function AdminVideos() {
   const [videos, setVideos] = useState<AdminVideoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<"pending" | "approved" | "rejected">("pending");
+  const [statusFilter, setStatusFilter] = useState<"approved" | "blocked">("approved");
   const [previewVideo, setPreviewVideo] = useState<AdminVideoItem | null>(null);
-  const [moderating, setModerating] = useState<number | null>(null);
+  const [acting, setActing] = useState<number | null>(null);
 
   const load = async (s: string) => {
     setLoading(true);
@@ -56,8 +56,8 @@ export default function AdminVideos() {
 
   useEffect(() => { load(statusFilter); }, [statusFilter]);
 
-  const moderate = async (id: number, newStatus: "approved" | "rejected") => {
-    setModerating(id);
+  const setStatus = async (id: number, newStatus: "approved" | "blocked") => {
+    setActing(id);
     try {
       await fetch(`${VIDEOS_API}/?admin_moderate=1`, {
         method: "PUT",
@@ -66,15 +66,18 @@ export default function AdminVideos() {
       });
       setVideos((v) => v.filter((x) => x.id !== id));
     } catch { /* ignore */ }
-    finally { setModerating(null); }
+    finally { setActing(null); }
   };
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold">Модерация видео</h2>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h2 className="text-xl font-semibold">Видео</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Видео публикуются сразу — здесь можно заблокировать нежелательные</p>
+        </div>
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-          {(["pending", "approved", "rejected"] as const).map((s) => (
+          {(["approved", "blocked"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
@@ -82,7 +85,7 @@ export default function AdminVideos() {
                 statusFilter === s ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
               }`}
             >
-              {s === "pending" ? "На модерации" : s === "approved" ? "Одобрено" : "Отклонено"}
+              {s === "approved" ? "Опубликованные" : "Заблокированные"}
             </button>
           ))}
         </div>
@@ -95,15 +98,15 @@ export default function AdminVideos() {
       ) : videos.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Icon name="Video" size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="text-sm">Нет видео в этом разделе</p>
+          <p className="text-sm">{statusFilter === "approved" ? "Нет опубликованных видео" : "Нет заблокированных видео"}</p>
         </div>
       ) : (
         <div className="space-y-3">
           {videos.map((v) => (
-            <div key={v.id} className="bg-white border border-gray-200 rounded-2xl p-4 flex gap-4 items-start">
+            <div key={v.id} className="bg-white border border-gray-200 rounded-2xl p-4 flex gap-3 items-start">
               <button
                 onClick={() => setPreviewVideo(previewVideo?.id === v.id ? null : v)}
-                className="flex-shrink-0 w-28 h-16 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center hover:opacity-80 transition-opacity"
+                className="flex-shrink-0 w-24 h-14 sm:w-28 sm:h-16 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center hover:opacity-80 transition-opacity"
               >
                 {v.thumbnail_url ? (
                   <img src={v.thumbnail_url} alt="" className="w-full h-full object-cover" />
@@ -114,7 +117,7 @@ export default function AdminVideos() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-start gap-2 flex-wrap mb-1">
                   <span className="text-sm font-medium">{v.title || providerLabel(v.provider)}</span>
-                  {statusBadge(v.status || "pending")}
+                  {statusBadge(v.status || "approved")}
                   <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-0.5 rounded-lg">{ownerLabel(v)}</span>
                   <span className="text-xs text-muted-foreground bg-gray-100 px-2 py-0.5 rounded-lg">{providerLabel(v.provider)}</span>
                 </div>
@@ -130,29 +133,30 @@ export default function AdminVideos() {
                   </div>
                 )}
               </div>
-              {v.status === "pending" && (
-                <div className="flex flex-col gap-2 flex-shrink-0">
-                  <Button
-                    size="sm"
-                    className="h-8 text-xs gap-1.5 bg-green-600 hover:bg-green-700"
-                    onClick={() => moderate(v.id, "approved")}
-                    disabled={moderating === v.id}
-                  >
-                    {moderating === v.id ? <Icon name="Loader2" size={12} className="animate-spin" /> : <Icon name="Check" size={12} />}
-                    Одобрить
-                  </Button>
+              <div className="flex-shrink-0">
+                {v.status === "approved" ? (
                   <Button
                     size="sm"
                     variant="outline"
                     className="h-8 text-xs gap-1.5 border-red-200 text-red-600 hover:bg-red-50"
-                    onClick={() => moderate(v.id, "rejected")}
-                    disabled={moderating === v.id}
+                    onClick={() => setStatus(v.id, "blocked")}
+                    disabled={acting === v.id}
                   >
-                    <Icon name="X" size={12} />
-                    Отклонить
+                    {acting === v.id ? <Icon name="Loader2" size={12} className="animate-spin" /> : <Icon name="Ban" size={12} />}
+                    Заблокировать
                   </Button>
-                </div>
-              )}
+                ) : (
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs gap-1.5 bg-green-600 hover:bg-green-700"
+                    onClick={() => setStatus(v.id, "approved")}
+                    disabled={acting === v.id}
+                  >
+                    {acting === v.id ? <Icon name="Loader2" size={12} className="animate-spin" /> : <Icon name="Check" size={12} />}
+                    Разблокировать
+                  </Button>
+                )}
+              </div>
             </div>
           ))}
         </div>

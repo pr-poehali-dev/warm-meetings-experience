@@ -33,8 +33,8 @@ function providerName(provider: string) {
 
 function statusBadge(status: string) {
   if (status === "approved") return <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Опубликовано</span>;
-  if (status === "rejected") return <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Отклонено</span>;
-  return <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">На модерации</span>;
+  if (status === "blocked") return <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">Заблокировано</span>;
+  return null;
 }
 
 export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: ExternalVideoBlockProps) {
