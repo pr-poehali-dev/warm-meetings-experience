@@ -70,10 +70,13 @@ const CHANNEL_LABEL: Record<string, { label: string; icon: string; color: string
 
 const EVENT_LABEL: Record<string, string> = {
   master_booking_new: "Новая запись к мастеру",
+  client_booking_created: "Заявка клиента принята",
   client_booking_confirmed: "Подтверждение записи",
   client_booking_canceled: "Отмена записи",
   event_signup: "Запись на событие",
   organizer_alert: "Уведомление организатору",
+  user_registered: "Регистрация пользователя",
+  master_created: "Создан профиль мастера",
 };
 
 export default function AdminNotifications() {

@@ -520,6 +520,93 @@ def _notify_client_about_confirmation(cur, schema, master_id, booking):
         pass
 
 
+def _notify_client_about_new_booking(cur, schema, master_id, booking, service_name=''):
+    """Шлёт клиенту email-подтверждение сразу после создания записи.
+    Текст зависит от статуса: confirmed (подтверждена) или pending (ожидает подтверждения).
+    Ошибки молча проглатываются — флоу создания брони не должен ломаться.
+    """
+    try:
+        client_email = (booking.get('client_email') or '').strip()
+        client_name = (booking.get('client_name') or '').strip() or 'клиент'
+        if not client_email or client_email.endswith('.vk.local') or client_email.endswith('@vk.local'):
+            return
+        if not (os.environ.get('UNISENDER_API_KEY') and os.environ.get('UNISENDER_SENDER_EMAIL')):
+            return
+
+        cur.execute(f"""
+            SELECT m.name AS master_name,
+                   COALESCE(mcs.timezone, 'Europe/Moscow') AS tz
+            FROM {schema}.masters m
+            LEFT JOIN {schema}.master_calendar_settings mcs ON mcs.master_id = m.id
+            WHERE m.id = {int(master_id)}
+        """)
+        m = cur.fetchone() or {}
+        master_name = m.get('master_name') or 'мастер'
+        tz_name = m.get('tz') or 'Europe/Moscow'
+
+        try:
+            from zoneinfo import ZoneInfo
+            local_tz = ZoneInfo(tz_name)
+        except Exception:
+            from datetime import timezone as _tz, timedelta as _td
+            local_tz = _tz(_td(hours=3))
+
+        dt_raw = booking.get('datetime_start')
+        try:
+            dtv = datetime.fromisoformat(str(dt_raw).replace('Z', '+00:00'))
+            if dtv.tzinfo is None:
+                from datetime import timezone as _tz
+                dtv = dtv.replace(tzinfo=_tz.utc)
+            dt_human = dtv.astimezone(local_tz).strftime('%d.%m.%Y в %H:%M')
+        except Exception:
+            dt_human = str(dt_raw)
+
+        status = booking.get('status', 'pending')
+        is_confirmed = status == 'confirmed'
+
+        base = (os.environ.get('SITE_URL') or 'https://sparcom.ru').rstrip('/')
+        chat_block = ''
+        reply_token = booking.get('reply_token')
+        if reply_token:
+            chat_link = f'{base}/m/{reply_token}'
+            chat_block = (
+                f'<p style="margin-top: 20px;"><a href="{chat_link}" '
+                f'style="display: inline-block; padding: 10px 18px; background: #0ea5e9; '
+                f'color: #fff; border-radius: 8px; text-decoration: none;">Написать мастеру</a></p>'
+            )
+
+        svc_block = f'<p style="color: #6b7280;">Услуга: <b>{service_name}</b></p>' if service_name else ''
+
+        if is_confirmed:
+            subject = f'Запись на {dt_human} принята'
+            status_text = f'Ваша запись к мастеру <b>{master_name}</b> на <b>{dt_human}</b> принята и подтверждена.'
+        else:
+            subject = f'Заявка на {dt_human} принята'
+            status_text = (
+                f'Ваша заявка на запись к мастеру <b>{master_name}</b> на <b>{dt_human}</b> принята '
+                f'и ожидает подтверждения мастером. Мы пришлём вам письмо, как только мастер её подтвердит.'
+            )
+
+        body_html = f"""
+        <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #2d2318;">
+            <h2 style="color: #0f172a;">Здравствуйте, {client_name}!</h2>
+            <p>{status_text}</p>
+            {svc_block}
+            {chat_block}
+        </div>
+        """.strip()
+
+        ok = send_email(client_email, subject, body_html, tags=['booking-new-client'])
+        _log_notification(cur, schema,
+            channel='email', event_type='client_booking_created',
+            recipient=client_email, subject=subject,
+            status='success' if ok else 'failed',
+            related_id=booking.get('id'),
+            payload={'master_id': master_id, 'client_name': client_name, 'booking_status': status})
+    except Exception:
+        pass
+
+
 def handle_bookings_root(event, method, params, schema, headers):
     """Маршрутизация подресурсов записей: bookings/public-slots/public-book/public-settings/stats/reviews"""
     sub = params.get('sub') or params.get('subresource') or 'bookings'
@@ -705,6 +792,10 @@ def handle_bookings(event, method, params, schema, headers):
                 pass
         try:
             _notify_master_about_booking(cur, schema, master_id, dict(booking), svc_name_for_notify)
+        except Exception:
+            pass
+        try:
+            _notify_client_about_new_booking(cur, schema, master_id, dict(booking), svc_name_for_notify)
         except Exception:
             pass
 
@@ -1225,6 +1316,11 @@ def handle_public_book(event, method, params, schema, headers):
     # Уведомляем мастера (email + Telegram) — после коммита, чтобы не задерживать транзакцию
     try:
         _notify_master_about_booking(cur, schema, master_id, dict(booking), booking_service_name)
+    except Exception:
+        pass
+    # Уведомляем клиента (email-подтверждение заявки)
+    try:
+        _notify_client_about_new_booking(cur, schema, master_id, dict(booking), booking_service_name)
     except Exception:
         pass
 

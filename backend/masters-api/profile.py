@@ -18,6 +18,96 @@ def row_to_dict(row, cursor):
     return result
 
 
+def _log_notification(cur, schema, *, channel, event_type, recipient, status,
+                      subject=None, error_code=None, error_text=None,
+                      user_id=None, related_id=None, payload=None):
+    """Пишет запись в notification_log. Никогда не падает."""
+    try:
+        def _esc(v):
+            if v is None:
+                return 'NULL'
+            return "'" + str(v).replace("'", "''")[:4000] + "'"
+        payload_json = 'NULL'
+        if payload is not None:
+            try:
+                payload_json = "'" + json.dumps(payload, default=str, ensure_ascii=False).replace("'", "''")[:6000] + "'"
+            except Exception:
+                payload_json = 'NULL'
+        cur.execute(f"""
+            INSERT INTO {schema}.notification_log
+                (channel, event_type, recipient, subject, status,
+                 error_code, error_text, payload, user_id, related_id)
+            VALUES ({_esc(channel)}, {_esc(event_type)}, {_esc(recipient)}, {_esc(subject)}, {_esc(status)},
+                    {_esc(error_code)}, {_esc(error_text)}, {payload_json}::jsonb,
+                    {'NULL' if user_id is None else int(user_id)},
+                    {'NULL' if related_id is None else int(related_id)})
+        """)
+    except Exception:
+        pass
+
+
+def _notify_new_master(cur, schema, user_id, master_id, master_name):
+    """Приветствие новому мастеру (email + Telegram) при создании профиля.
+    Пишет в notification_log. Никогда не падает.
+    """
+    try:
+        cur.execute(f"""
+            SELECT u.name, u.email, u.tg_chat_id,
+                   la.telegram_user_id AS linked_tg
+            FROM {schema}.users u
+            LEFT JOIN (
+                SELECT DISTINCT ON (user_id) user_id, telegram_user_id
+                FROM {schema}.tg_linked_accounts
+                ORDER BY user_id, linked_at DESC
+            ) la ON la.user_id = u.id
+            WHERE u.id = {int(user_id)}
+        """)
+        u = cur.fetchone() or {}
+        display_name = (u.get('name') or master_name or 'мастер').strip()
+
+        subject = 'Профиль мастера создан'
+        email_html = (
+            f"<p>Здравствуйте, {display_name}!</p>"
+            f"<p>Ваш профиль мастера на Sparcom создан. Заполните услуги, расписание и описание "
+            f"в личном кабинете — и клиенты смогут записываться к вам онлайн.</p>"
+            f"<p>После заполнения профиль автоматически отправится на проверку администратору.</p>"
+            f"<p>Тёплых встреч!</p>"
+        )
+        tg_text = (
+            f"🧖 <b>{display_name}</b>, ваш профиль мастера создан!\n\n"
+            f"Заполните услуги и расписание в личном кабинете — и клиенты смогут записываться к вам онлайн."
+        )
+
+        tg_chat = u.get('linked_tg') or u.get('tg_chat_id')
+        if tg_chat:
+            ok_tg = False
+            try:
+                ok_tg = tg_send(tg_chat, tg_text)
+            except Exception:
+                ok_tg = False
+            _log_notification(cur, schema, channel='telegram', event_type='master_created',
+                              recipient=str(tg_chat), subject=subject,
+                              status='success' if ok_tg else 'failed',
+                              user_id=user_id, related_id=master_id,
+                              payload={'master_name': master_name})
+
+        email = u.get('email') or ''
+        if email and '@vk.local' not in email and not email.endswith('.vk.local'):
+            ok_email = False
+            err = None
+            try:
+                ok_email = send_email(email, subject, email_html, to_name=display_name, tags=['master_created'])
+            except Exception as ex:
+                err = str(ex)
+            _log_notification(cur, schema, channel='email', event_type='master_created',
+                              recipient=email, subject=subject,
+                              status='success' if ok_email else 'failed',
+                              error_text=err, user_id=user_id, related_id=master_id,
+                              payload={'master_name': master_name})
+    except Exception:
+        pass
+
+
 def _notify_master_verification(user, master_name, master_slug, now_verified, note=''):
     """Шлёт мастеру письмо и сообщение в Telegram при смене статуса верификации.
 
@@ -107,6 +197,11 @@ def handle_profile(event, method, params, schema, headers):
             )
             row = cur2.fetchone()
             conn.commit()
+            try:
+                _notify_new_master(cur2, schema, user['id'], row['id'], uname)
+                conn.commit()
+            except Exception:
+                pass
         master = dict(row)
         master['rating'] = float(master['rating']) if master.get('rating') else 0
         for k, v in master.items():

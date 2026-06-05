@@ -193,7 +193,7 @@ def handle_register(body, ip=None):
     conn.commit()
     conn.close()
 
-    send_welcome_email(email, name)
+    send_welcome_email(email, name, user_id=user['id'])
 
     return respond(200, {
         'user': dict(user),
@@ -1107,12 +1107,48 @@ def handle_login_2fa_verify_oauth(body, ip=None, user_agent=''):
 # =============================================================================
 
 
-def send_welcome_email(to_email, name):
+def log_notification(channel, event_type, recipient, status, *,
+                     subject=None, error_code=None, error_text=None,
+                     user_id=None, related_id=None, payload=None):
+    """Пишет запись в notification_log. Открывает свой коннект, никогда не падает."""
+    try:
+        schema = get_schema()
+        conn = get_conn()
+        cur = conn.cursor()
+
+        def _esc(v):
+            if v is None:
+                return 'NULL'
+            return "'" + str(v).replace("'", "''")[:4000] + "'"
+        payload_json = 'NULL'
+        if payload is not None:
+            try:
+                payload_json = "'" + json.dumps(payload, default=str, ensure_ascii=False).replace("'", "''")[:6000] + "'"
+            except Exception:
+                payload_json = 'NULL'
+        cur.execute(f"""
+            INSERT INTO {schema}.notification_log
+                (channel, event_type, recipient, subject, status,
+                 error_code, error_text, payload, user_id, related_id)
+            VALUES ({_esc(channel)}, {_esc(event_type)}, {_esc(recipient)}, {_esc(subject)}, {_esc(status)},
+                    {_esc(error_code)}, {_esc(error_text)}, {payload_json}::jsonb,
+                    {'NULL' if user_id is None else int(user_id)},
+                    {'NULL' if related_id is None else int(related_id)})
+        """)
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
+def send_welcome_email(to_email, name, user_id=None):
     import requests
     api_key = os.environ.get('UNISENDER_API_KEY', '')
     sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
     sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
     if not api_key or not sender_email:
+        return
+    if to_email.endswith('.vk.local') or to_email.endswith('@vk.local'):
         return
 
     html = f"""
@@ -1153,6 +1189,8 @@ def send_welcome_email(to_email, name):
     if sender_name:
         message["from_name"] = sender_name
 
+    sent_ok = False
+    err = None
     try:
         requests.post(
             "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
@@ -1160,8 +1198,14 @@ def send_welcome_email(to_email, name):
             json={"message": message},
             timeout=10
         )
-    except Exception:
-        pass
+        sent_ok = True
+    except Exception as ex:
+        err = str(ex)
+    log_notification('email', 'user_registered', to_email,
+                     'success' if sent_ok else 'failed',
+                     subject='Добро пожаловать в Sparcom!',
+                     error_text=err, user_id=user_id,
+                     payload={'name': name})
 
 
 def send_reset_email(to_email, name, token):
