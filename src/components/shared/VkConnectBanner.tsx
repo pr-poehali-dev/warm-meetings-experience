@@ -83,15 +83,15 @@ export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, d
 
   if (variant === "inline") {
     return (
-      <div className="flex items-center gap-3 bg-[#e8f0fc] dark:bg-blue-950/40 border border-[#b8cff7] dark:border-blue-800 rounded-xl px-4 py-3">
-        <div className="w-8 h-8 rounded-full bg-[#0077FF] flex items-center justify-center flex-shrink-0">
-          <Icon name={isLinked ? "MessageCircle" : "Link"} size={16} className="text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
+      <div className="bg-[#e8f0fc] dark:bg-blue-950/40 border border-[#b8cff7] dark:border-blue-800 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-6 h-6 rounded-full bg-[#0077FF] flex items-center justify-center flex-shrink-0">
+            <Icon name={isLinked ? "MessageCircle" : "Link"} size={13} className="text-white" />
+          </div>
           <p className="text-sm font-medium text-[#0d1b4b] dark:text-blue-100">{title}</p>
-          <p className="text-xs text-[#4a5c8a] dark:text-blue-300 mt-0.5">{description}</p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <p className="text-xs text-[#4a5c8a] dark:text-blue-300 mb-3 leading-relaxed">{description}</p>
+        <div className="flex items-center gap-2">
           <button
             onClick={handleClick}
             disabled={loading}
@@ -100,13 +100,12 @@ export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, d
             {loading && <Icon name="Loader2" size={12} className="animate-spin" />}
             {loading ? "Загрузка..." : btnLabel}
           </button>
-          {onDismiss && (
+          {effectiveDismissKey && onDismiss && (
             <button
               onClick={handleDismiss}
-              className="text-[#7a8fb5] hover:text-[#0d1b4b] dark:hover:text-white transition-colors"
-              title="Не сейчас"
+              className="text-xs text-[#7a8fb5] hover:text-[#4a5c8a] dark:hover:text-blue-300 transition-colors"
             >
-              <Icon name="X" size={15} />
+              Не сейчас
             </button>
           )}
         </div>
