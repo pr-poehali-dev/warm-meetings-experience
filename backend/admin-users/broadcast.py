@@ -30,11 +30,15 @@ ROLE_LABELS = {
 
 
 def _vk_send(vk_user_id, text):
-    """Личное сообщение ВКонтакте от имени сообщества. Не падает."""
+    """Личное сообщение ВКонтакте от имени сообщества.
+    Возвращает (ok: bool, error: str|None). Не падает.
+    """
     token = os.environ.get('VK_COMMUNITY_TOKEN', '')
     community_id = os.environ.get('VK_COMMUNITY_ID', '0')
-    if not token or not vk_user_id:
-        return False
+    if not token:
+        return False, 'Не настроен VK_COMMUNITY_TOKEN'
+    if not vk_user_id:
+        return False, 'У пользователя нет VK ID'
     params = {
         'peer_id': str(int(vk_user_id)),
         'message': text,
@@ -54,10 +58,15 @@ def _vk_send(vk_user_id, text):
         resp = urllib.request.urlopen(req, timeout=6)
         result = json.loads(resp.read().decode('utf-8'))
         if 'error' in result:
-            return False
-        return True
-    except Exception:
-        return False
+            err = result['error']
+            code = err.get('error_code')
+            msg = err.get('error_msg', 'VK error')
+            if code == 901:
+                msg = 'Пользователь не разрешил писать ему (не написал сообществу первым)'
+            return False, f'{msg} (код {code})'
+        return True, None
+    except Exception as e:
+        return False, f'{type(e).__name__}: {e}'
 
 
 def _log(cur, schema, *, channel, event_type, recipient, status,
@@ -129,10 +138,10 @@ def _send_one(cur, schema, user, channel, subject, text, event_type):
         if not vk_id:
             return 'skipped'
         head = f'{subject}\n\n' if subject else ''
-        ok = _vk_send(vk_id, head + (text or ''))
+        ok, vk_err = _vk_send(vk_id, head + (text or ''))
         _log(cur, schema, channel='vk', event_type=event_type, recipient=str(vk_id),
              status='success' if ok else 'failed', subject=subject, user_id=uid,
-             error_text=None if ok else 'vk_send returned False')
+             error_text=None if ok else vk_err)
         return 'sent' if ok else 'failed'
 
     return 'skipped'
