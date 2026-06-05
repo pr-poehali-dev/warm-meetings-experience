@@ -388,10 +388,10 @@ def _ext_videos_add(event: dict, user_token: str) -> dict:
         return err('Неподдерживаемый сервис. Используйте VK Video, RuTube или прямую ссылку на .mp4')
 
     cur.execute(
-        f"SELECT COALESCE(MAX(sort_order), -1) + 1 FROM {schema}.videos WHERE owner_type = %s AND owner_id = %s",
+        f"SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM {schema}.videos WHERE owner_type = %s AND owner_id = %s",
         [owner_type, int(owner_id)],
     )
-    sort_order = cur.fetchone()[0]
+    sort_order = cur.fetchone()['next_order']
     status = 'approved' if has_role(cur, schema, user['id'], 'admin') else 'pending'
 
     cur.execute(
@@ -400,7 +400,7 @@ def _ext_videos_add(event: dict, user_token: str) -> dict:
         f"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
         [owner_type, int(owner_id), provider, external_id, embed_url, thumbnail, title or None, sort_order, status],
     )
-    new_id = cur.fetchone()[0]
+    new_id = cur.fetchone()['id']
     conn.commit(); cur.close(); conn.close()
     return ok({'ok': True, 'id': new_id, 'provider': provider, 'embed_url': embed_url, 'status': status})
 
