@@ -515,10 +515,10 @@ def delete_event_guest(cur, conn, user_id, schema, params):
     sid = int(sid)
     is_admin = has_role(cur, schema, user_id, 'admin')
     if is_admin:
-        cur.execute(f"DELETE FROM {schema}.event_signups WHERE id = {sid}")
+        cur.execute(f"SELECT id FROM {schema}.event_signups WHERE id = {sid}")
     else:
         cur.execute(f"""
-            DELETE FROM {schema}.event_signups
+            SELECT id FROM {schema}.event_signups
             WHERE id = {sid} AND event_id IN (
                 SELECT e.id FROM {schema}.events e
                 WHERE e.organizer_id = {user_id}
@@ -528,8 +528,13 @@ def delete_event_guest(cur, conn, user_id, schema, params):
                    )
             )
         """)
+    if not cur.fetchone():
+        return respond(404, {'error': 'Запись не найдена или нет прав'})
+    cur.execute(f"DELETE FROM {schema}.guest_messages WHERE signup_id = {sid}")
+    cur.execute(f"DELETE FROM {schema}.refund_requests WHERE signup_id = {sid}")
+    cur.execute(f"DELETE FROM {schema}.event_signups WHERE id = {sid}")
     conn.commit()
-    return respond(200, {'ok': True, 'deleted': cur.rowcount})
+    return respond(200, {'ok': True, 'deleted': 1})
 
 
 def get_client(cur, conn, user_id, schema, params):
