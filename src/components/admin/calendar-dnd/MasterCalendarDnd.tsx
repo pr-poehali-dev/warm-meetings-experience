@@ -815,6 +815,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           start={createMode.start}
           end={createMode.end}
           allDay={createMode.allDay}
+          timeZone={settings?.timezone || "Europe/Moscow"}
           services={services}
           onCancel={() => setCreateMode({ open: false, start: null, end: null, allDay: false })}
           onCreate={handleCreate}
