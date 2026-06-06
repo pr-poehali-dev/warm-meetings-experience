@@ -53,6 +53,15 @@ const toISO = (d: Date) => d.toISOString();
 
 export default function MasterCalendarDnd({ masterId }: Props) {
   const calRef = useRef<FullCalendar | null>(null);
+
+  // Форматирует Date в ISO-строку в часовом поясе календаря (с корректным offset).
+  // Это решает сдвиг времени: Date от FullCalendar при timeZone != local
+  // нельзя слать через .toISOString(). formatIso учитывает зону календаря.
+  const toCalIso = useCallback((d: Date) => {
+    const api = calRef.current?.getApi();
+    if (api) return api.formatIso(d, { omitTime: false });
+    return d.toISOString();
+  }, []);
   const [loading, setLoading] = useState(false);
   const [bookings, setBookings] = useState<MasterBooking[]>([]);
   const [slots, setSlots] = useState<MasterSlot[]>([]);
@@ -64,8 +73,10 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     open: boolean;
     start: Date | null;
     end: Date | null;
+    startStr: string | null;
+    endStr: string | null;
     allDay: boolean;
-  }>({ open: false, start: null, end: null, allDay: false });
+  }>({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false });
 
   const [quick, setQuick] = useState<QuickEvent | null>(null);
   const [quickAnchor, setQuickAnchor] = useState<{ x: number; y: number } | null>(null);
@@ -295,8 +306,13 @@ export default function MasterCalendarDnd({ masterId }: Props) {
 
   // Drag create
   const handleSelect = (sel: DateSelectArg) => {
+    const api = sel.view.calendar;
     let start = sel.start;
     let end = sel.end;
+    // startStr/endStr приходят от FullCalendar уже в часовом поясе календаря
+    // (с корректным offset, напр. ...T15:00:00+03:00). Это КАНОН для сохранения.
+    const startStr = sel.startStr;
+    let endStr = sel.endStr;
 
     if (sel.allDay) {
       // All-day выделение — захват целого дня (или нескольких дней)
@@ -304,18 +320,18 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       s.setHours(0, 0, 0, 0);
       const e = new Date(end);
       e.setHours(0, 0, 0, 0);
-      // FullCalendar end эксклюзивен — оставляем как есть
       start = s;
       end = e;
     } else {
-      // Минимум 15 минут
+      // Минимум 15 минут → расширяем до 1 часа
       if (end.getTime() - start.getTime() < 15 * 60_000) {
         end = new Date(start.getTime() + 60 * 60_000);
+        endStr = api.formatIso(end, { omitTime: false });
       }
     }
 
-    setCreateMode({ open: true, start, end, allDay: !!sel.allDay });
-    sel.view.calendar.unselect();
+    setCreateMode({ open: true, start, end, startStr, endStr, allDay: !!sel.allDay });
+    api.unselect();
   };
 
   // Создание
@@ -366,7 +382,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         } else {
           toast.success("Выходной добавлен");
         }
-        setCreateMode({ open: false, start: null, end: null, allDay: false });
+        setCreateMode({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false });
         loadData();
         return;
       }
@@ -404,8 +420,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       if (mode === "work") {
         await masterCalendarApi.createSlot({
           master_id: masterId,
-          datetime_start: toISO(start),
-          datetime_end: toISO(end),
+          datetime_start: toCalIso(start),
+          datetime_end: toCalIso(end),
           max_clients: 1,
           status: "available",
           notes: "",
@@ -422,8 +438,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           client_name: payload.client_name,
           client_phone: payload.client_phone || "",
           service_id: payload.service_id || undefined,
-          datetime_start: toISO(start),
-          datetime_end: toISO(end),
+          datetime_start: toCalIso(start),
+          datetime_end: toCalIso(end),
           price: svc?.price || 0,
           status: "confirmed",
           source: "manual",
@@ -433,8 +449,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       } else if (mode === "block") {
         await masterCalendarApi.createSlot({
           master_id: masterId,
-          datetime_start: toISO(start),
-          datetime_end: toISO(end),
+          datetime_start: toCalIso(start),
+          datetime_end: toCalIso(end),
           max_clients: 1,
           status: "blocked",
           notes: payload.comment || "Заблокировано",
@@ -443,15 +459,15 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       } else if (mode === "break") {
         await masterCalendarApi.createSlot({
           master_id: masterId,
-          datetime_start: toISO(start),
-          datetime_end: toISO(end),
+          datetime_start: toCalIso(start),
+          datetime_end: toCalIso(end),
           max_clients: 1,
           status: "event",
           notes: payload.comment || "Перерыв",
         });
         toast.success("Перерыв добавлен");
       }
-      setCreateMode({ open: false, start: null, end: null, allDay: false });
+      setCreateMode({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false });
       loadData();
     } catch (e) {
       console.error("[Calendar] save failed", e);
@@ -514,8 +530,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         const sid = Number(id.slice(2));
         await masterCalendarApi.updateSlot({
           id: sid,
-          datetime_start: toISO(ev.start),
-          datetime_end: toISO(ev.end),
+          datetime_start: toCalIso(ev.start),
+          datetime_end: toCalIso(ev.end),
         });
       }
       toast.success("Перенесено");
@@ -563,8 +579,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       } else if (ev.id.startsWith("s-")) {
         await masterCalendarApi.updateSlot({
           id: Number(ev.id.slice(2)),
-          datetime_start: toISO(ev.start),
-          datetime_end: toISO(ev.end),
+          datetime_start: toCalIso(ev.start),
+          datetime_end: toCalIso(ev.end),
         });
       }
       toast.success("Длительность изменена");
@@ -591,8 +607,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   const rescheduleBooking = async (bookingId: number, start: Date, end: Date) => {
     await masterBookingsApi.rescheduleBooking({
       id: bookingId,
-      datetime_start: toISO(start),
-      datetime_end: toISO(end),
+      datetime_start: toCalIso(start),
+      datetime_end: toCalIso(end),
     });
   };
 
@@ -815,9 +831,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           start={createMode.start}
           end={createMode.end}
           allDay={createMode.allDay}
-          timeZone={settings?.timezone || "Europe/Moscow"}
           services={services}
-          onCancel={() => setCreateMode({ open: false, start: null, end: null, allDay: false })}
+          onCancel={() => setCreateMode({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false })}
           onCreate={handleCreate}
         />
       )}
