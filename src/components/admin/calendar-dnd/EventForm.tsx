@@ -26,16 +26,16 @@ interface Props {
   onCreate: (mode: CreateMode, payload: CreatePayload) => Promise<void> | void;
 }
 
-// Date от FullCalendar — это момент времени. Форматируем строго в зоне мастера
-// (timeZone), чтобы цифры совпадали с тем, что показывает календарь — независимо
-// от зоны браузера.
-const fmt = (d: Date, tz?: string) =>
-  d.toLocaleString("ru-RU", { weekday: "short", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit", timeZone: tz });
+// Date от FullCalendar (timeZone-режим) несёт «стенное время зоны мастера,
+// замаскированное под локальное браузера». Поэтому форматируем БЕЗ timeZone —
+// иначе toLocaleString конвертирует второй раз и даёт сдвиг (+3 часа).
+const fmt = (d: Date) =>
+  d.toLocaleString("ru-RU", { weekday: "short", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" });
 
-const fmtDay = (d: Date, tz?: string) =>
-  d.toLocaleDateString("ru-RU", { weekday: "short", day: "2-digit", month: "long", timeZone: tz });
+const fmtDay = (d: Date) =>
+  d.toLocaleDateString("ru-RU", { weekday: "short", day: "2-digit", month: "long" });
 
-export default function EventForm({ start, end, allDay, timeZone, services, onCancel, onCreate }: Props) {
+export default function EventForm({ start, end, allDay, services, onCancel, onCreate }: Props) {
   const [step, setStep] = useState<"choose" | "form">(allDay ? "form" : "choose");
   const [mode, setMode] = useState<CreateMode>(allDay ? "block" : "booking");
 
@@ -92,13 +92,13 @@ export default function EventForm({ start, end, allDay, timeZone, services, onCa
           <DialogDescription className="text-xs">
             {allDay ? (
               <>
-                Весь день · {fmtDay(start, timeZone)}
+                Весь день · {fmtDay(start)}
                 {end.getTime() - start.getTime() > 24 * 60 * 60_000 && (
-                  <> → {fmtDay(new Date(end.getTime() - 24 * 60 * 60_000), timeZone)}</>
+                  <> → {fmtDay(new Date(end.getTime() - 24 * 60 * 60_000))}</>
                 )}
               </>
             ) : (
-              <>{fmt(start, timeZone)} → {fmt(end, timeZone)}</>
+              <>{fmt(start)} → {fmt(end)}</>
             )}
           </DialogDescription>
         </DialogHeader>

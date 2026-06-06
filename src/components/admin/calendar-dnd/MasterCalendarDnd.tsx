@@ -46,38 +46,21 @@ const fmtDate = (d: Date) =>
   d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long" });
 
 // КАНОН ВРЕМЕНИ (фронт ↔ бэк):
-// FullCalendar работает в timeZone мастера. Date, который он отдаёт в
-// select/drop/resize — это конкретный МОМЕНТ времени (правильный UTC-инстант).
-// Чтобы получить «стенное» время в зоне мастера НЕЗАВИСИМО от зоны браузера —
-// раскладываем момент через Intl с timeZone мастера и собираем ISO без offset
-// вида "YYYY-MM-DDTHH:mm:ss". Бэк (time_utils.parse_client_dt) трактует строку
-// без offset как время мастера — это единый канон, без сдвигов на 3 часа.
+// FullCalendar в timeZone-режиме отдаёт Date, у которого ЛОКАЛЬНЫЕ компоненты
+// (getHours/getMinutes/...) уже равны «стенному времени» в зоне мастера.
+// Поэтому собираем ISO БЕЗ offset напрямую из локальных компонент — без всякой
+// конвертации зоны (Intl/timeZone давали двойной сдвиг +3 часа).
+// Бэк (time_utils.parse_client_dt) трактует строку без offset как зону мастера.
 const pad = (n: number) => String(n).padStart(2, "0");
 
-const wallIsoInTz = (d: Date, timeZone: string) => {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(d);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value || "00";
-  let hour = get("hour");
-  if (hour === "24") hour = "00";
-  return `${get("year")}-${get("month")}-${get("day")}T${hour}:${get("minute")}:${get("second")}`;
-};
+const wallIso = (d: Date) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
 export default function MasterCalendarDnd({ masterId }: Props) {
   const calRef = useRef<FullCalendar | null>(null);
-  const settingsRef = useRef<string>("Europe/Moscow");
 
-  // Сериализует момент Date в «стенное» ISO без offset в зоне мастера.
-  // Зоно-независимо: Intl сам раскладывает момент по timeZone мастера.
-  const toCalIso = useCallback((d: Date) => wallIsoInTz(d, settingsRef.current), []);
+  // Сериализует Date из календаря в «стенное» ISO без offset (зона мастера).
+  const toCalIso = useCallback((d: Date) => wallIso(d), []);
   const [loading, setLoading] = useState(false);
   const [bookings, setBookings] = useState<MasterBooking[]>([]);
   const [slots, setSlots] = useState<MasterSlot[]>([]);
@@ -196,7 +179,6 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       setBlocks(wv.blocks || []);
       setServices(srv || []);
       setSettings(st);
-      if (st?.timezone) settingsRef.current = st.timezone;
     } catch (e) {
       toast.error("Не удалось загрузить календарь: " + String(e));
     } finally {
@@ -398,12 +380,11 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         return;
       }
 
-      // All-day: время задаём «стенными» часами в зоне мастера, без zone-конвертаций.
-      // Дата дня берётся из календарного start (Intl → дата в зоне мастера).
+      // All-day: время задаём «стенными» часами, дата дня — из локальных компонент.
       let allDayStartIso: string | null = null;
       let allDayEndIso: string | null = null;
       if (isAllDay) {
-        const dayStr = wallIsoInTz(start, settingsRef.current).slice(0, 10); // YYYY-MM-DD
+        const dayStr = wallIso(start).slice(0, 10); // YYYY-MM-DD
         if (mode === "work") {
           allDayStartIso = `${dayStr}T09:00:00`;
           allDayEndIso = `${dayStr}T18:00:00`;
@@ -430,10 +411,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         const svc = services.find((s) => s.id === payload.service_id);
         if (svc?.duration_minutes) {
           const base = new Date(allDayStartIso);
-          endIso = wallIsoInTz(
-            new Date(base.getTime() + svc.duration_minutes * 60_000),
-            settingsRef.current
-          );
+          endIso = wallIso(new Date(base.getTime() + svc.duration_minutes * 60_000));
         }
       }
 
