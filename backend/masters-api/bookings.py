@@ -837,6 +837,19 @@ def handle_bookings(event, method, params, schema, headers):
 
             master_id = curr_b['master_id']
 
+            # Канон времени: строку без offset трактуем как зону мастера и
+            # сохраняем как ISO с явным offset (как в create). Иначе при прямой
+            # вставке timestamptz Postgres использует зону сессии БД → сдвиг.
+            resch_tz = fetch_master_tz(cur, schema, master_id)
+            try:
+                new_start = to_master_iso(parse_client_dt(new_start, resch_tz), resch_tz)
+                new_end = to_master_iso(parse_client_dt(new_end, resch_tz), resch_tz)
+            except (ValueError, TypeError):
+                conn.close()
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+                    'error': 'invalid_datetime', 'message': 'Неверный формат времени'
+                }, ensure_ascii=False)}
+
             # Проверяем доступ — кто может переносить бронь у этого мастера.
             ok, err_resp = ensure_master_access(cur, schema, event, master_id, headers)
             if not ok:

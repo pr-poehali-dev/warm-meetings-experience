@@ -45,23 +45,39 @@ const fmtTime = (d: Date) =>
 const fmtDate = (d: Date) =>
   d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long" });
 
-// КАНОН ВРЕМЕНИ: FullCalendar работает в timeZone мастера (см. ниже timeZone=).
-// Поэтому Date-объекты из календаря несут корректный МОМЕНТ времени. Отправляем
-// его в UTC (toISOString) — Postgres timestamptz сам приведёт к нужной зоне.
-// Так отправка НЕ зависит от зоны браузера (раньше был баг getTimezoneOffset).
-const toISO = (d: Date) => d.toISOString();
+// КАНОН ВРЕМЕНИ (фронт ↔ бэк):
+// FullCalendar работает в timeZone мастера. Date, который он отдаёт в
+// select/drop/resize — это конкретный МОМЕНТ времени (правильный UTC-инстант).
+// Чтобы получить «стенное» время в зоне мастера НЕЗАВИСИМО от зоны браузера —
+// раскладываем момент через Intl с timeZone мастера и собираем ISO без offset
+// вида "YYYY-MM-DDTHH:mm:ss". Бэк (time_utils.parse_client_dt) трактует строку
+// без offset как время мастера — это единый канон, без сдвигов на 3 часа.
+const pad = (n: number) => String(n).padStart(2, "0");
+
+const wallIsoInTz = (d: Date, timeZone: string) => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value || "00";
+  let hour = get("hour");
+  if (hour === "24") hour = "00";
+  return `${get("year")}-${get("month")}-${get("day")}T${hour}:${get("minute")}:${get("second")}`;
+};
 
 export default function MasterCalendarDnd({ masterId }: Props) {
   const calRef = useRef<FullCalendar | null>(null);
+  const settingsRef = useRef<string>("Europe/Moscow");
 
-  // Форматирует Date в ISO-строку в часовом поясе календаря (с корректным offset).
-  // Это решает сдвиг времени: Date от FullCalendar при timeZone != local
-  // нельзя слать через .toISOString(). formatIso учитывает зону календаря.
-  const toCalIso = useCallback((d: Date) => {
-    const api = calRef.current?.getApi();
-    if (api) return api.formatIso(d, { omitTime: false });
-    return d.toISOString();
-  }, []);
+  // Сериализует момент Date в «стенное» ISO без offset в зоне мастера.
+  // Зоно-независимо: Intl сам раскладывает момент по timeZone мастера.
+  const toCalIso = useCallback((d: Date) => wallIsoInTz(d, settingsRef.current), []);
   const [loading, setLoading] = useState(false);
   const [bookings, setBookings] = useState<MasterBooking[]>([]);
   const [slots, setSlots] = useState<MasterSlot[]>([]);
@@ -73,10 +89,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     open: boolean;
     start: Date | null;
     end: Date | null;
-    startStr: string | null;
-    endStr: string | null;
     allDay: boolean;
-  }>({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false });
+  }>({ open: false, start: null, end: null, allDay: false });
 
   const [quick, setQuick] = useState<QuickEvent | null>(null);
   const [quickAnchor, setQuickAnchor] = useState<{ x: number; y: number } | null>(null);
@@ -142,11 +156,11 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       if (scope === "week") {
         const api = calRef.current?.getApi();
         if (api) {
-          date_from = toISO(api.view.activeStart);
-          date_to = toISO(api.view.activeEnd);
+          date_from = api.view.activeStart.toISOString();
+          date_to = api.view.activeEnd.toISOString();
         }
       } else if (scope === "future") {
-        date_from = toISO(today);
+        date_from = today.toISOString();
       }
       const res = await masterCalendarApi.clearCalendar({
         master_id: masterId,
@@ -182,6 +196,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       setBlocks(wv.blocks || []);
       setServices(srv || []);
       setSettings(st);
+      if (st?.timezone) settingsRef.current = st.timezone;
     } catch (e) {
       toast.error("Не удалось загрузить календарь: " + String(e));
     } finally {
@@ -309,10 +324,6 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     const api = sel.view.calendar;
     let start = sel.start;
     let end = sel.end;
-    // startStr/endStr приходят от FullCalendar уже в часовом поясе календаря
-    // (с корректным offset, напр. ...T15:00:00+03:00). Это КАНОН для сохранения.
-    const startStr = sel.startStr;
-    let endStr = sel.endStr;
 
     if (sel.allDay) {
       // All-day выделение — захват целого дня (или нескольких дней)
@@ -326,18 +337,18 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       // Минимум 15 минут → расширяем до 1 часа
       if (end.getTime() - start.getTime() < 15 * 60_000) {
         end = new Date(start.getTime() + 60 * 60_000);
-        endStr = api.formatIso(end, { omitTime: false });
       }
     }
 
-    setCreateMode({ open: true, start, end, startStr, endStr, allDay: !!sel.allDay });
+    // Сохраняем момент (Date). Сериализация в зону мастера — через toCalIso.
+    setCreateMode({ open: true, start, end, allDay: !!sel.allDay });
     api.unselect();
   };
 
   // Создание
   const handleCreate = async (mode: CreateMode, payload: CreatePayload) => {
     if (!createMode.start || !createMode.end) return;
-    let start = createMode.start;
+    const start = createMode.start;
     let end = createMode.end;
     const isAllDay = createMode.allDay;
 
@@ -382,37 +393,52 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         } else {
           toast.success("Выходной добавлен");
         }
-        setCreateMode({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false });
+        setCreateMode({ open: false, start: null, end: null, allDay: false });
         loadData();
         return;
       }
 
-      // All-day для рабочего времени — открываем стандартный день 9:00–18:00
-      if (isAllDay && mode === "work") {
-        const s = new Date(start);
-        s.setHours(9, 0, 0, 0);
-        const e = new Date(start);
-        e.setHours(18, 0, 0, 0);
-        start = s;
-        end = e;
-      } else if (isAllDay) {
-        // All-day для брони/перерыва — задаём дефолт 12:00–13:00 в первый день
-        const s = new Date(start);
-        s.setHours(12, 0, 0, 0);
-        start = s;
-        end = new Date(s.getTime() + 60 * 60_000);
+      // All-day: время задаём «стенными» часами в зоне мастера, без zone-конвертаций.
+      // Дата дня берётся из календарного start (Intl → дата в зоне мастера).
+      let allDayStartIso: string | null = null;
+      let allDayEndIso: string | null = null;
+      if (isAllDay) {
+        const dayStr = wallIsoInTz(start, settingsRef.current).slice(0, 10); // YYYY-MM-DD
+        if (mode === "work") {
+          allDayStartIso = `${dayStr}T09:00:00`;
+          allDayEndIso = `${dayStr}T18:00:00`;
+        } else {
+          allDayStartIso = `${dayStr}T12:00:00`;
+          allDayEndIso = `${dayStr}T13:00:00`;
+        }
       }
 
-      // Если выбрана процедура — автоподстановка длительности
-      if (mode === "booking" && payload.service_id) {
+      // Если выбрана процедура — автоподстановка длительности (для не-all-day)
+      if (mode === "booking" && payload.service_id && !isAllDay) {
         const svc = services.find((s) => s.id === payload.service_id);
         if (svc?.duration_minutes) {
           end = new Date(start.getTime() + svc.duration_minutes * 60_000);
         }
       }
 
+      // Единый канон: «стенное» ISO без offset в зоне мастера.
+      // All-day — заранее посчитанные строки, иначе — момент Date через toCalIso.
+      const startIso = allDayStartIso ?? toCalIso(start);
+      let endIso = allDayEndIso ?? toCalIso(end);
+      // All-day бронь с услугой: пересчёт конца по длительности от 12:00.
+      if (mode === "booking" && payload.service_id && isAllDay && allDayStartIso) {
+        const svc = services.find((s) => s.id === payload.service_id);
+        if (svc?.duration_minutes) {
+          const base = new Date(allDayStartIso);
+          endIso = wallIsoInTz(
+            new Date(base.getTime() + svc.duration_minutes * 60_000),
+            settingsRef.current
+          );
+        }
+      }
+
       // Проверка конфликта (для рабочего времени не нужна — оно может охватывать брони)
-      if (mode !== "work" && hasConflict(start, end, null)) {
+      if (mode !== "work" && !isAllDay && hasConflict(start, end, null)) {
         toast.error("Это время уже занято");
         return;
       }
@@ -420,8 +446,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       if (mode === "work") {
         await masterCalendarApi.createSlot({
           master_id: masterId,
-          datetime_start: toCalIso(start),
-          datetime_end: toCalIso(end),
+          datetime_start: startIso,
+          datetime_end: endIso,
           max_clients: 1,
           status: "available",
           notes: "",
@@ -438,8 +464,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           client_name: payload.client_name,
           client_phone: payload.client_phone || "",
           service_id: payload.service_id || undefined,
-          datetime_start: toCalIso(start),
-          datetime_end: toCalIso(end),
+          datetime_start: startIso,
+          datetime_end: endIso,
           price: svc?.price || 0,
           status: "confirmed",
           source: "manual",
@@ -449,8 +475,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       } else if (mode === "block") {
         await masterCalendarApi.createSlot({
           master_id: masterId,
-          datetime_start: toCalIso(start),
-          datetime_end: toCalIso(end),
+          datetime_start: startIso,
+          datetime_end: endIso,
           max_clients: 1,
           status: "blocked",
           notes: payload.comment || "Заблокировано",
@@ -459,15 +485,15 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       } else if (mode === "break") {
         await masterCalendarApi.createSlot({
           master_id: masterId,
-          datetime_start: toCalIso(start),
-          datetime_end: toCalIso(end),
+          datetime_start: startIso,
+          datetime_end: endIso,
           max_clients: 1,
           status: "event",
           notes: payload.comment || "Перерыв",
         });
         toast.success("Перерыв добавлен");
       }
-      setCreateMode({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false });
+      setCreateMode({ open: false, start: null, end: null, allDay: false });
       loadData();
     } catch (e) {
       console.error("[Calendar] save failed", e);
@@ -831,8 +857,9 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           start={createMode.start}
           end={createMode.end}
           allDay={createMode.allDay}
+          timeZone={settings?.timezone || "Europe/Moscow"}
           services={services}
-          onCancel={() => setCreateMode({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false })}
+          onCancel={() => setCreateMode({ open: false, start: null, end: null, allDay: false })}
           onCreate={handleCreate}
         />
       )}

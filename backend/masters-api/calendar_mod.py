@@ -418,6 +418,21 @@ def handle_slots(event, method, params, schema, headers):
 
         master_id = current['master_id']
 
+        # Канон времени: строку без offset трактуем как зону мастера и нормализуем
+        # в ISO с offset (как в POST). Иначе прямая вставка timestamptz → сдвиг.
+        if new_start or new_end:
+            slot_tz = fetch_master_tz(cur, schema, master_id)
+            try:
+                if new_start:
+                    new_start = to_master_iso(parse_client_dt(new_start, slot_tz), slot_tz)
+                if new_end:
+                    new_end = to_master_iso(parse_client_dt(new_end, slot_tz), slot_tz)
+            except (ValueError, TypeError):
+                conn.close()
+                return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+                    'error': 'invalid_datetime', 'message': 'Неверный формат времени'
+                }, ensure_ascii=False)}
+
         # Если меняется время — валидируем как новую бронь:
         # выходные, пересечения, blocked-слоты, буфер (если внутри есть активная бронь).
         if new_start or new_end:
