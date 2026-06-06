@@ -19,23 +19,56 @@ export interface CreatePayload {
 interface Props {
   start: Date;
   end: Date;
+  // «Экранное время» — ISO-строки с offset зоны мастера (от календаря).
+  startStr?: string | null;
+  endStr?: string | null;
   allDay?: boolean;
-  timeZone?: string;
   services: MasterService[];
   onCancel: () => void;
   onCreate: (mode: CreateMode, payload: CreatePayload) => Promise<void> | void;
 }
 
-// Date от FullCalendar (timeZone-режим) несёт «стенное время зоны мастера,
-// замаскированное под локальное браузера». Поэтому форматируем БЕЗ timeZone —
-// иначе toLocaleString конвертирует второй раз и даёт сдвиг (+3 часа).
-const fmt = (d: Date) =>
-  d.toLocaleString("ru-RU", { weekday: "short", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" });
+const WD = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
+const MM = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 
-const fmtDay = (d: Date) =>
-  d.toLocaleDateString("ru-RU", { weekday: "short", day: "2-digit", month: "long" });
+// Парсим «экранную» ISO-строку (YYYY-MM-DDTHH:mm:ss±hh:mm) ПОКОМПОНЕНТНО,
+// без new Date — чтобы цифры были ровно те, что показывает календарь (зона
+// мастера), независимо от часового пояса браузера.
+const parseIso = (iso: string) => {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const [, y, mo, d, h, mi] = m;
+  return { y: +y, mo: +mo, d: +d, h: +h, mi: +mi };
+};
 
-export default function EventForm({ start, end, allDay, services, onCancel, onCreate }: Props) {
+const wdName = (y: number, mo: number, d: number) =>
+  WD[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()];
+
+// «YYYY-MM-DD» предыдущего дня, считаем через UTC-полночь (без сдвигов зоны).
+const prevDayIso = (dateStr: string) => {
+  const [y, mo, d] = dateStr.split("-").map(Number);
+  const t = new Date(Date.UTC(y, mo - 1, d) - 86_400_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`;
+};
+
+// «вт, 09 июня в 11:00» из ISO-строки
+const fmtIso = (iso: string) => {
+  const p = parseIso(iso);
+  if (!p) return iso;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${wdName(p.y, p.mo, p.d)}, ${pad(p.d)} ${MM[p.mo - 1]} в ${pad(p.h)}:${pad(p.mi)}`;
+};
+
+// «вт, 09 июня» из ISO-строки (для режима «весь день»)
+const fmtIsoDay = (iso: string) => {
+  const p = parseIso(iso);
+  if (!p) return iso;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${wdName(p.y, p.mo, p.d)}, ${pad(p.d)} ${MM[p.mo - 1]}`;
+};
+
+export default function EventForm({ start, end, startStr, endStr, allDay, services, onCancel, onCreate }: Props) {
   const [step, setStep] = useState<"choose" | "form">(allDay ? "form" : "choose");
   const [mode, setMode] = useState<CreateMode>(allDay ? "block" : "booking");
 
@@ -92,13 +125,13 @@ export default function EventForm({ start, end, allDay, services, onCancel, onCr
           <DialogDescription className="text-xs">
             {allDay ? (
               <>
-                Весь день · {fmtDay(start)}
-                {end.getTime() - start.getTime() > 24 * 60 * 60_000 && (
-                  <> → {fmtDay(new Date(end.getTime() - 24 * 60 * 60_000))}</>
+                Весь день · {startStr ? fmtIsoDay(startStr) : ""}
+                {endStr && prevDayIso(endStr.slice(0, 10)) > (startStr || "").slice(0, 10) && (
+                  <> → {fmtIsoDay(`${prevDayIso(endStr.slice(0, 10))}T00:00`)}</>
                 )}
               </>
             ) : (
-              <>{fmt(start)} → {fmt(end)}</>
+              <>{startStr ? fmtIso(startStr) : ""}{endStr ? <> → {fmtIso(endStr)}</> : null}</>
             )}
           </DialogDescription>
         </DialogHeader>

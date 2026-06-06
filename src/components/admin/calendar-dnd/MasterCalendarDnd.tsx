@@ -45,22 +45,24 @@ const fmtTime = (d: Date) =>
 const fmtDate = (d: Date) =>
   d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long" });
 
-// КАНОН ВРЕМЕНИ (фронт ↔ бэк):
-// FullCalendar в timeZone-режиме отдаёт Date, у которого ЛОКАЛЬНЫЕ компоненты
-// (getHours/getMinutes/...) уже равны «стенному времени» в зоне мастера.
-// Поэтому собираем ISO БЕЗ offset напрямую из локальных компонент — без всякой
-// конвертации зоны (Intl/timeZone давали двойной сдвиг +3 часа).
-// Бэк (time_utils.parse_client_dt) трактует строку без offset как зону мастера.
-const pad = (n: number) => String(n).padStart(2, "0");
-
-const wallIso = (d: Date) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+// КАНОН ВРЕМЕНИ (фронт ↔ бэк) — «ЭКРАННОЕ ВРЕМЯ»:
+// FullCalendar в timeZone-режиме знает зону мастера. Любые ISO-строки времени
+// мы получаем ОТ САМОГО КАЛЕНДАРЯ:
+//   • при выделении — sel.startStr / sel.endStr (уже с offset, напр. ...+03:00);
+//   • при переносе/resize — ev.startStr / ev.endStr;
+//   • для пересчитанных дат (мин.15мин, длительность услуги) — api.formatIso(date).
+// Это ровно то же самое «экранное время», по которому рисуются события. Никаких
+// getHours()/Intl — поэтому нет зависимости от зоны браузера и сдвигов на 3 часа.
 
 export default function MasterCalendarDnd({ masterId }: Props) {
   const calRef = useRef<FullCalendar | null>(null);
 
-  // Сериализует Date из календаря в «стенное» ISO без offset (зона мастера).
-  const toCalIso = useCallback((d: Date) => wallIso(d), []);
+  // Сериализует Date в ISO-строку с offset зоны КАЛЕНДАРЯ (экранное время).
+  // Используется только для дат, посчитанных нами (длительность/мин.15мин).
+  const calIso = useCallback((d: Date) => {
+    const api = calRef.current?.getApi();
+    return api ? api.formatIso(d) : d.toISOString();
+  }, []);
   const [loading, setLoading] = useState(false);
   const [bookings, setBookings] = useState<MasterBooking[]>([]);
   const [slots, setSlots] = useState<MasterSlot[]>([]);
@@ -72,8 +74,11 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     open: boolean;
     start: Date | null;
     end: Date | null;
+    // «Экранное время» — ISO-строки с offset зоны календаря (для отправки на бэк).
+    startStr: string | null;
+    endStr: string | null;
     allDay: boolean;
-  }>({ open: false, start: null, end: null, allDay: false });
+  }>({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false });
 
   const [quick, setQuick] = useState<QuickEvent | null>(null);
   const [quickAnchor, setQuickAnchor] = useState<{ x: number; y: number } | null>(null);
@@ -306,24 +311,24 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     const api = sel.view.calendar;
     let start = sel.start;
     let end = sel.end;
+    // «Экранное время» от календаря — ISO-строки с offset зоны мастера.
+    const startStr = sel.startStr;
+    let endStr = sel.endStr;
 
     if (sel.allDay) {
-      // All-day выделение — захват целого дня (или нескольких дней)
-      const s = new Date(start);
-      s.setHours(0, 0, 0, 0);
-      const e = new Date(end);
-      e.setHours(0, 0, 0, 0);
-      start = s;
-      end = e;
+      // All-day выделение — захват целого дня (или нескольких дней).
+      // Точное время выставится в handleCreate, строки тут не нужны.
+      start = sel.start;
+      end = sel.end;
     } else {
       // Минимум 15 минут → расширяем до 1 часа
       if (end.getTime() - start.getTime() < 15 * 60_000) {
         end = new Date(start.getTime() + 60 * 60_000);
+        endStr = calIso(end);
       }
     }
 
-    // Сохраняем момент (Date). Сериализация в зону мастера — через toCalIso.
-    setCreateMode({ open: true, start, end, allDay: !!sel.allDay });
+    setCreateMode({ open: true, start, end, startStr, endStr, allDay: !!sel.allDay });
     api.unselect();
   };
 
@@ -337,16 +342,19 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     try {
       // All-day блок — создаём master_day_blocks (выходной/отпуск)
       if (isAllDay && mode === "block") {
-        const blockStart = new Date(start);
-        const blockEndExclusive = new Date(end);
-        // end эксклюзивен → последний реально захваченный день = end - 1 день
-        const lastDay = new Date(blockEndExclusive.getTime() - 24 * 60 * 60_000);
+        // День берём из «экранной» строки (для all-day это "YYYY-MM-DD") — без
+        // getHours, чтобы день не уехал на сутки в иных зонах браузера.
+        const firstDay = (createMode.startStr || "").slice(0, 10);
+        // end эксклюзивен → последний реально захваченный день = endStr - 1 день
+        const endExclusive = (createMode.endStr || createMode.startStr || "").slice(0, 10);
+        const lastDayDate = new Date(`${endExclusive}T00:00:00`);
+        lastDayDate.setDate(lastDayDate.getDate() - 1);
         const pad = (n: number) => String(n).padStart(2, "0");
-        const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const lastDay = `${lastDayDate.getFullYear()}-${pad(lastDayDate.getMonth() + 1)}-${pad(lastDayDate.getDate())}`;
         const blockArgs = {
           master_id: masterId,
-          block_date: fmt(blockStart),
-          block_end_date: fmt(lastDay),
+          block_date: firstDay,
+          block_end_date: lastDay < firstDay ? firstDay : lastDay,
           reason: payload.comment || "Выходной",
         };
         const res = await masterCalendarApi.createBlock(blockArgs);
@@ -375,16 +383,17 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         } else {
           toast.success("Выходной добавлен");
         }
-        setCreateMode({ open: false, start: null, end: null, allDay: false });
+        setCreateMode({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false });
         loadData();
         return;
       }
 
-      // All-day: время задаём «стенными» часами, дата дня — из локальных компонент.
+      // All-day: дата дня — из «экранной» строки (YYYY-MM-DD), время — стандартное.
+      // Строки без offset бэк трактует как зону мастера (для дня offset неважен).
       let allDayStartIso: string | null = null;
       let allDayEndIso: string | null = null;
       if (isAllDay) {
-        const dayStr = wallIso(start).slice(0, 10); // YYYY-MM-DD
+        const dayStr = (createMode.startStr || "").slice(0, 10); // YYYY-MM-DD
         if (mode === "work") {
           allDayStartIso = `${dayStr}T09:00:00`;
           allDayEndIso = `${dayStr}T18:00:00`;
@@ -402,16 +411,20 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         }
       }
 
-      // Единый канон: «стенное» ISO без offset в зоне мастера.
-      // All-day — заранее посчитанные строки, иначе — момент Date через toCalIso.
-      const startIso = allDayStartIso ?? toCalIso(start);
-      let endIso = allDayEndIso ?? toCalIso(end);
+      // Канон «экранного времени»:
+      //  • не-all-day → строки от календаря (с offset). Конец услуги — calIso(end).
+      //  • all-day → заранее собранные строки дня.
+      const startIso = allDayStartIso ?? (createMode.startStr as string);
+      let endIso = allDayEndIso
+        ?? (mode === "booking" && payload.service_id ? calIso(end) : (createMode.endStr as string));
       // All-day бронь с услугой: пересчёт конца по длительности от 12:00.
       if (mode === "booking" && payload.service_id && isAllDay && allDayStartIso) {
         const svc = services.find((s) => s.id === payload.service_id);
         if (svc?.duration_minutes) {
-          const base = new Date(allDayStartIso);
-          endIso = wallIso(new Date(base.getTime() + svc.duration_minutes * 60_000));
+          const base = new Date(`${allDayStartIso}`);
+          const e = new Date(base.getTime() + svc.duration_minutes * 60_000);
+          const pad = (n: number) => String(n).padStart(2, "0");
+          endIso = `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}T${pad(e.getHours())}:${pad(e.getMinutes())}:00`;
         }
       }
 
@@ -471,7 +484,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         });
         toast.success("Перерыв добавлен");
       }
-      setCreateMode({ open: false, start: null, end: null, allDay: false });
+      setCreateMode({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false });
       loadData();
     } catch (e) {
       console.error("[Calendar] save failed", e);
@@ -525,17 +538,15 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         const bid = Number(id.slice(2));
         const b = bookings.find(x => x.id === bid);
         if (b) {
-          // нет PATCH datetime — используем PUT через updateBooking? Тут API только action.
-          // Используем прямой fetch через updateSlot для slot_id, иначе fallback на recreate.
-          // Лучше: добавим PATCH через bookings update — пока используем универсальный путь:
-          await rescheduleBooking(bid, ev.start, ev.end);
+          // «Экранное время» от календаря — ISO-строки с offset зоны мастера.
+          await rescheduleBooking(bid, ev.startStr, ev.endStr);
         }
       } else if (id.startsWith("s-")) {
         const sid = Number(id.slice(2));
         await masterCalendarApi.updateSlot({
           id: sid,
-          datetime_start: toCalIso(ev.start),
-          datetime_end: toCalIso(ev.end),
+          datetime_start: ev.startStr,
+          datetime_end: ev.endStr,
         });
       }
       toast.success("Перенесено");
@@ -579,12 +590,12 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     if (!ev.start || !ev.end) return;
     try {
       if (ev.id.startsWith("b-")) {
-        await rescheduleBooking(Number(ev.id.slice(2)), ev.start, ev.end);
+        await rescheduleBooking(Number(ev.id.slice(2)), ev.startStr, ev.endStr);
       } else if (ev.id.startsWith("s-")) {
         await masterCalendarApi.updateSlot({
           id: Number(ev.id.slice(2)),
-          datetime_start: toCalIso(ev.start),
-          datetime_end: toCalIso(ev.end),
+          datetime_start: ev.startStr,
+          datetime_end: ev.endStr,
         });
       }
       toast.success("Длительность изменена");
@@ -607,12 +618,13 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   };
 
   // Прямой перенос брони через action='reschedule'.
+  // start/end — «экранные» ISO-строки с offset зоны мастера (от календаря).
   // Бэк сам валидирует выходные / буфер / пересечения и синхронно двигает привязанный слот.
-  const rescheduleBooking = async (bookingId: number, start: Date, end: Date) => {
+  const rescheduleBooking = async (bookingId: number, start: string, end: string) => {
     await masterBookingsApi.rescheduleBooking({
       id: bookingId,
-      datetime_start: toCalIso(start),
-      datetime_end: toCalIso(end),
+      datetime_start: start,
+      datetime_end: end,
     });
   };
 
@@ -834,10 +846,11 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         <EventForm
           start={createMode.start}
           end={createMode.end}
+          startStr={createMode.startStr}
+          endStr={createMode.endStr}
           allDay={createMode.allDay}
-          timeZone={settings?.timezone || "Europe/Moscow"}
           services={services}
-          onCancel={() => setCreateMode({ open: false, start: null, end: null, allDay: false })}
+          onCancel={() => setCreateMode({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false })}
           onCreate={handleCreate}
         />
       )}
