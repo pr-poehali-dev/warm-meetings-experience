@@ -141,61 +141,6 @@ const MasterCalendarSettings = ({ masterId }: { masterId: number }) => {
       <div className="space-y-6 max-w-2xl">
         <div className="bg-white rounded-lg border border-gray-200 p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Icon name="Clock" size={18} className="text-nature-forest" />
-            <h2 className="text-lg font-semibold text-gray-900">Параметры слотов</h2>
-          </div>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Длительность слота по умолчанию (мин)</Label>
-                <Input
-                  type="number"
-                  min={5}
-                  max={480}
-                  value={form.default_slot_duration}
-                  onChange={(e) => updateNumber("default_slot_duration", e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Минимальное время между сеансами (мин)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={120}
-                  value={form.break_between_slots}
-                  onChange={(e) => updateNumber("break_between_slots", e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Время на подготовку (мин)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={120}
-                  value={form.prep_time}
-                  onChange={(e) => updateNumber("prep_time", e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label>Макс. клиентов в день</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={form.max_clients_per_day}
-                  onChange={(e) => updateNumber("max_clients_per_day", e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg border border-gray-200 p-5">
-          <div className="flex items-center gap-2 mb-4">
             <Icon name="Bell" size={18} className="text-nature-forest" />
             <h2 className="text-lg font-semibold text-gray-900">Уведомления</h2>
           </div>
