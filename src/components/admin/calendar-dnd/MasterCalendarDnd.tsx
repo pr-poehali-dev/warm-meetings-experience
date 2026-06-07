@@ -816,10 +816,9 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           return blockedDates.has(key) ? ["fcb-day-cell-blocked"] : [];
         }}
         selectAllow={(sel) => {
-          // В all-day разрешаем любой диапазон дней. В часовом — ограничиваем 1 днём и 8 часами.
+          // В all-day разрешаем любой диапазон дней. В часовом — только в пределах одного дня.
           if (sel.allDay) return true;
           if (sel.start.toDateString() !== sel.end.toDateString()) return false;
-          if (sel.end.getTime() - sel.start.getTime() > 8 * 60 * 60_000) return false;
           return true;
         }}
         select={handleSelect}
