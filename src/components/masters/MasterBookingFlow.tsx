@@ -29,17 +29,17 @@ function fmtTime(d: Date) {
 }
 
 const TZ_ABBR: Record<string, string> = {
-  "Europe/Kaliningrad": "UTC+2",
-  "Europe/Moscow":      "UTC+3",
-  "Europe/Samara":      "UTC+4",
-  "Asia/Yekaterinburg": "UTC+5",
-  "Asia/Omsk":          "UTC+6",
-  "Asia/Krasnoyarsk":   "UTC+7",
-  "Asia/Irkutsk":       "UTC+8",
-  "Asia/Yakutsk":       "UTC+9",
-  "Asia/Vladivostok":   "UTC+10",
-  "Asia/Magadan":       "UTC+11",
-  "Asia/Kamchatka":     "UTC+12",
+  "Europe/Kaliningrad": "Калининград",
+  "Europe/Moscow":      "Москва, Санкт-Петербург",
+  "Europe/Samara":      "Самара, Ижевск",
+  "Asia/Yekaterinburg": "Екатеринбург, Уфа, Пермь",
+  "Asia/Omsk":          "Омск",
+  "Asia/Krasnoyarsk":   "Красноярск, Новосибирск",
+  "Asia/Irkutsk":       "Иркутск, Улан-Удэ",
+  "Asia/Yakutsk":       "Якутск, Чита",
+  "Asia/Vladivostok":   "Владивосток, Хабаровск",
+  "Asia/Magadan":       "Магадан, Сахалин",
+  "Asia/Kamchatka":     "Камчатка",
 };
 
 
