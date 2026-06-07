@@ -17,6 +17,7 @@ import { ru } from "date-fns/locale";
 import func2url from "../../../backend/func2url.json";
 import ExternalVideoBlock from "@/components/video/ExternalVideoBlock";
 import NotifyChannels from "@/components/workspace/NotifyChannels";
+import ImageCropDialog from "@/components/shared/ImageCropDialog";
 
 const UPLOAD_URL = func2url["media-api"];
 
@@ -183,6 +184,8 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
   const [portfolioUploading, setPortfolioUploading] = useState(false);
   const [photos, setPhotos] = useState<Array<{ key: string; url: string }>>([]);
   const [photosUploading, setPhotosUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
     mastersApi.getMyProfile().then((m) => {
@@ -341,19 +344,20 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
             className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
             title="Загрузить фото"
           >
-            <Icon name="Camera" size={18} className="text-white" />
+            {avatarUploading
+              ? <Icon name="Loader2" size={18} className="text-white animate-spin" />
+              : <Icon name="Camera" size={18} className="text-white" />}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
               className="hidden"
-              onChange={async (e) => {
+              onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                if (file.size > 5 * 1024 * 1024) { setError("Размер фото не более 5 МБ"); return; }
-                try {
-                  const { url } = await uploadFile(file);
-                  setAvatar(url);
-                } catch { setError("Не удалось загрузить фото"); }
+                if (file.size > 10 * 1024 * 1024) { setError("Размер фото не более 10 МБ"); return; }
+                const reader = new FileReader();
+                reader.onload = () => setCropSrc(reader.result as string);
+                reader.readAsDataURL(file);
                 e.target.value = "";
               }}
             />
@@ -361,10 +365,30 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
         </div>
         <div>
           <p className="text-sm font-medium">{form.name || "Ваш профиль"}</p>
-          <p className="text-xs text-muted-foreground">Нажмите на фото для загрузки</p>
+          <p className="text-xs text-muted-foreground">Нажмите на фото, чтобы выбрать нужную область</p>
           <p className="text-xs text-muted-foreground">ID мастера: #{master.id}</p>
         </div>
       </div>
+
+      {cropSrc && (
+        <ImageCropDialog
+          open
+          imageSrc={cropSrc}
+          aspect={1}
+          cropShape="round"
+          title="Настройте фото профиля"
+          onCancel={() => setCropSrc(null)}
+          onCropped={async (file) => {
+            setCropSrc(null);
+            setAvatarUploading(true);
+            try {
+              const { url } = await uploadFile(file);
+              setAvatar(url);
+            } catch { setError("Не удалось загрузить фото"); }
+            finally { setAvatarUploading(false); }
+          }}
+        />
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {field("name", "Имя")}
         {field("tagline", "Слоган")}
