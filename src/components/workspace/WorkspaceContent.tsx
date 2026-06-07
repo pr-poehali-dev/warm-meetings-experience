@@ -1,7 +1,7 @@
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { OrgEvent, DashboardData } from "@/lib/organizer-api";
+import { organizerApi, OrgEvent, DashboardData } from "@/lib/organizer-api";
 import { PartnerBath } from "@/lib/partner-api";
 import React, { useState } from "react";
 import OrgDashboard from "@/components/organizer/OrgDashboard";
@@ -73,8 +73,6 @@ interface WorkspaceContentProps {
   tgChannelsCount: number;
   refreshTgInfo: () => void;
 }
-
-import { organizerApi } from "@/lib/organizer-api";
 
 export default function WorkspaceContent(props: WorkspaceContentProps) {
   const {
