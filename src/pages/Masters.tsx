@@ -237,6 +237,90 @@ function MasterCard({ master, specializations }: { master: Master; specializatio
   );
 }
 
+function MasterListCard({ master, specializations }: { master: Master; specializations: Specialization[] }) {
+  const [hovered, setHovered] = useState(false);
+  const placeholder = `https://placehold.co/200x200/2d1f14/8b7355?text=${encodeURIComponent(master.name[0])}`;
+  const avatar = master.avatar || placeholder;
+  const masterSpecs = specializations.filter((s) => (master.specialization_ids || []).includes(s.id));
+
+  return (
+    <Link
+      to={`/masters/${master.slug}`}
+      className="group flex gap-4 rounded-2xl overflow-hidden p-3 transition-all duration-300"
+      style={{
+        ...glassCard,
+        transform: hovered ? "translateY(-2px)" : "translateY(0)",
+        boxShadow: hovered ? "0 12px 30px rgba(0,0,0,0.2)" : "none",
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden flex-shrink-0">
+        <img
+          src={avatar}
+          alt={master.name}
+          className="w-full h-full object-cover object-top transition-transform duration-500"
+          style={{ transform: hovered ? "scale(1.06)" : "scale(1)" }}
+        />
+        {master.is_verified && (
+          <div
+            className="absolute top-1.5 left-1.5 w-5 h-5 rounded-full flex items-center justify-center"
+            style={{ background: "rgba(200,131,74,0.9)", color: "#fff" }}
+            title="Проверен"
+          >
+            <Icon name="BadgeCheck" size={11} />
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0 flex flex-col justify-center">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-bold text-base leading-tight truncate" style={{ color: "var(--c-cream)" }}>{master.name}</h3>
+          {master.rating > 0 && (
+            <div className="flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-full" style={{ background: "rgba(245,158,11,0.15)" }}>
+              <Icon name="Star" size={11} style={{ color: "#F59E0B", fill: "#F59E0B" } as React.CSSProperties} />
+              <span className="text-xs font-bold" style={{ color: "#F59E0B" }}>{master.rating.toFixed(1)}</span>
+            </div>
+          )}
+        </div>
+
+        {master.tagline && (
+          <p className="text-sm mt-0.5 line-clamp-1 italic" style={{ color: "var(--c-text)" }}>«{master.tagline}»</p>
+        )}
+
+        <div className="flex items-center gap-3 text-xs mt-2 flex-wrap" style={{ color: "var(--c-muted)" }}>
+          {master.experience_years > 0 && (
+            <span className="flex items-center gap-1">
+              <Icon name="Award" size={11} style={{ color: "var(--c-terra)" } as React.CSSProperties} />
+              <span style={{ color: "var(--c-cream)" }}>{master.experience_years}</span> {getYearWord(master.experience_years)} опыта
+            </span>
+          )}
+          <span className="flex items-center gap-1"><Icon name="MapPin" size={11} />{master.city}</span>
+          <span className="flex items-center gap-1"><Icon name="MessageSquare" size={11} />{master.reviews_count || 0} отзывов</span>
+        </div>
+
+        {masterSpecs.length > 0 && (
+          <div className="hidden sm:flex flex-wrap gap-1 mt-2">
+            {masterSpecs.slice(0, 3).map((s) => (
+              <span key={s.id} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(143,168,154,0.15)", color: "var(--c-sage)" }}>{s.name}</span>
+            ))}
+            {masterSpecs.length > 3 && (
+              <span className="text-xs px-1" style={{ color: "var(--c-muted)" }}>+{masterSpecs.length - 3}</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {master.price_from > 0 && (
+        <div className="flex flex-col items-end justify-center flex-shrink-0 pl-2">
+          <span className="text-xs" style={{ color: "var(--c-muted)" }}>от</span>
+          <span className="text-base font-bold" style={{ color: "#FF6B1A" }}>{master.price_from.toLocaleString("ru-RU")} ₽</span>
+        </div>
+      )}
+    </Link>
+  );
+}
+
 export default function Masters() {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -249,6 +333,7 @@ export default function Masters() {
   const [search, setSearch] = useState("");
   const [selectedSpec, setSelectedSpec] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [view, setView] = useState<"grid" | "list">("grid");
 
   useEffect(() => {
     Promise.all([mastersApi.getAll(), mastersApi.getSpecializations()])
@@ -393,12 +478,42 @@ export default function Masters() {
           </div>
         ) : (
           <>
-            <div className="text-sm mb-5" style={{ color: "var(--c-muted)" }}>
-              {filtered.length === masters.length ? `${masters.length} мастеров` : `${filtered.length} из ${masters.length}`}
+            <div className="flex items-center justify-between mb-5">
+              <div className="text-sm" style={{ color: "var(--c-muted)" }}>
+                {filtered.length === masters.length ? `${masters.length} мастеров` : `${filtered.length} из ${masters.length}`}
+              </div>
+              <div className="flex gap-1 rounded-xl p-1" style={{ background: "var(--filter-idle-bg)" }}>
+                <button
+                  onClick={() => setView("grid")}
+                  className="p-2 rounded-lg transition-all duration-200"
+                  title="Плитка"
+                  style={view === "grid"
+                    ? { background: "rgba(200,131,74,0.3)", color: "#C8834A" }
+                    : { color: "var(--c-muted)" }}
+                >
+                  <Icon name="LayoutGrid" size={16} />
+                </button>
+                <button
+                  onClick={() => setView("list")}
+                  className="p-2 rounded-lg transition-all duration-200"
+                  title="Список"
+                  style={view === "list"
+                    ? { background: "rgba(200,131,74,0.3)", color: "#C8834A" }
+                    : { color: "var(--c-muted)" }}
+                >
+                  <Icon name="List" size={16} />
+                </button>
+              </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filtered.map((m) => <MasterCard key={m.slug} master={m} specializations={specializations} />)}
-            </div>
+            {view === "grid" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filtered.map((m) => <MasterCard key={m.slug} master={m} specializations={specializations} />)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {filtered.map((m) => <MasterListCard key={m.slug} master={m} specializations={specializations} />)}
+              </div>
+            )}
           </>
         )}
       </section>
