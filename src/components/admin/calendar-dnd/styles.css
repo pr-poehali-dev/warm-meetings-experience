@@ -121,11 +121,19 @@
 .fc-dnd .fc-timegrid-now-indicator-line {
   border-color: #ef4444 !important;
   border-width: 2px;
+  pointer-events: none !important;
 }
 .fc-dnd .fc-timegrid-now-indicator-arrow {
   border-color: #ef4444 !important;
   border-right-color: transparent !important;
   border-bottom-color: transparent !important;
+  pointer-events: none !important;
+}
+/* Фоновые события (рабочее время / свободно) не должны перехватывать
+   выделение мышью — иначе drag-создание обрывается на их границе. */
+.fc-dnd .fc-bg-event,
+.fc-dnd .fc-timegrid-bg-harness {
+  pointer-events: none !important;
 }
 
 /* Буфер-полоса под событием */
