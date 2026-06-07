@@ -286,6 +286,48 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
       {/* Статус верификации — мастер должен понимать, что с его профилем */}
       <VerificationStatus master={master} />
 
+      {/* Ссылка на публичный профиль */}
+      {master.slug && (
+        <div className="rounded-xl border border-border bg-muted/40 px-4 py-3 flex items-center gap-3">
+          <Icon name="Link" size={16} className="text-muted-foreground flex-shrink-0" />
+          <a
+            href={`/masters/${master.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-primary underline underline-offset-2 truncate flex-1"
+          >
+            {window.location.origin}/masters/{master.slug}
+          </a>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 flex-shrink-0"
+            title="Копировать ссылку"
+            onClick={() => {
+              navigator.clipboard.writeText(`${window.location.origin}/masters/${master.slug}`);
+            }}
+          >
+            <Icon name="Copy" size={14} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 flex-shrink-0"
+            title="Поделиться"
+            onClick={() => {
+              const url = `${window.location.origin}/masters/${master.slug}`;
+              if (navigator.share) {
+                navigator.share({ title: master.name || "Мой профиль", url });
+              } else {
+                window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}`, "_blank");
+              }
+            }}
+          >
+            <Icon name="Share2" size={14} />
+          </Button>
+        </div>
+      )}
+
       {/* Переключатель видимости профиля в каталоге */}
       <VisibilityToggle master={master} onToggle={handleToggleVisibility} />
 
