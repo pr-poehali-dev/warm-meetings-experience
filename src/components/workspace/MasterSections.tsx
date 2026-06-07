@@ -291,7 +291,9 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
 
       {/* Ссылка на публичный профиль */}
       {master.slug && (
-        <div className="rounded-xl border border-border bg-muted/40 px-4 py-3 flex items-center gap-3">
+        <div className="rounded-xl border border-border bg-muted/40 px-4 py-3 flex flex-col gap-2">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ваша публичная страница</span>
+          <div className="flex items-center gap-3">
           <Icon name="Link" size={16} className="text-muted-foreground flex-shrink-0" />
           <a
             href={`/masters/${master.slug}`}
@@ -328,6 +330,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
           >
             <Icon name="Share2" size={14} />
           </Button>
+          </div>
         </div>
       )}
 
