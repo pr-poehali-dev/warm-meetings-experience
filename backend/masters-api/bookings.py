@@ -624,7 +624,7 @@ def handle_bookings_root(event, method, params, schema, headers):
 
 
 def handle_public_settings(event, method, params, schema, headers):
-    """Публичные настройки мастера для виджета бронирования (буфер, авто-подтверждение)"""
+    """Публичные настройки мастера для виджета бронирования (буфер, авто-подтверждение, часовой пояс)"""
     if method != 'GET':
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'GET only'})}
     master_id = params.get('master_id')
@@ -634,7 +634,7 @@ def handle_public_settings(event, method, params, schema, headers):
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"""
-        SELECT break_between_slots, prep_time
+        SELECT break_between_slots, prep_time, timezone
         FROM {schema}.master_calendar_settings
         WHERE master_id = {int(master_id)}
     """)
@@ -647,6 +647,7 @@ def handle_public_settings(event, method, params, schema, headers):
         'body': json.dumps({
             'break_between_slots': (row.get('break_between_slots') if row else 0) or 0,
             'prep_time': (row.get('prep_time') if row else 0) or 0,
+            'timezone': (row.get('timezone') if row else None) or 'Europe/Moscow',
         })
     }
 

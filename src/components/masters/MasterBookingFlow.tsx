@@ -28,6 +28,20 @@ function fmtTime(d: Date) {
   return format(d, "HH:mm");
 }
 
+const TZ_ABBR: Record<string, string> = {
+  "Europe/Kaliningrad": "UTC+2",
+  "Europe/Moscow":      "UTC+3",
+  "Europe/Samara":      "UTC+4",
+  "Asia/Yekaterinburg": "UTC+5",
+  "Asia/Omsk":          "UTC+6",
+  "Asia/Krasnoyarsk":   "UTC+7",
+  "Asia/Irkutsk":       "UTC+8",
+  "Asia/Yakutsk":       "UTC+9",
+  "Asia/Vladivostok":   "UTC+10",
+  "Asia/Magadan":       "UTC+11",
+  "Asia/Kamchatka":     "UTC+12",
+};
+
 
 
 /**
@@ -64,13 +78,17 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
   const [slots, setSlots] = useState<MasterSlot[]>([]);
   const [bookings, setBookings] = useState<ActiveBooking[]>([]);
   const [bufferMinutes, setBufferMinutes] = useState(0);
+  const [masterTz, setMasterTz] = useState<string>("Europe/Moscow");
   const [loading, setLoading] = useState(false);
   const [aboutServiceId, setAboutServiceId] = useState<number | null>(null);
 
   useEffect(() => {
     masterBookingsApi
       .getPublicSettings(masterId)
-      .then((s) => setBufferMinutes(s.break_between_slots || 0))
+      .then((s) => {
+        setBufferMinutes(s.break_between_slots || 0);
+        if (s.timezone) setMasterTz(s.timezone);
+      })
       .catch(() => setBufferMinutes(0));
   }, [masterId]);
 
@@ -567,10 +585,13 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
               {/* ШАГ 3: Время */}
               <div className="mt-5">
                 <div
-                  className="text-[11px] font-semibold uppercase tracking-wider mb-3"
+                  className="text-[11px] font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5"
                   style={{ color: "var(--c-muted)" }}
                 >
                   Время
+                  {TZ_ABBR[masterTz] && (
+                    <span className="normal-case font-normal opacity-60">({TZ_ABBR[masterTz]})</span>
+                  )}
                 </div>
                 {optionsForDay.length === 0 ? (
                   <div className="text-center py-6 text-sm" style={{ color: "var(--c-text)" }}>

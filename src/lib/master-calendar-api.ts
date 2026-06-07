@@ -453,7 +453,7 @@ export const masterBookingsApi = {
   },
 
   getPublicSettings: (masterId: number) =>
-    fetchApi<{ break_between_slots: number; prep_time: number }>(
+    fetchApi<{ break_between_slots: number; prep_time: number; timezone: string }>(
       `${BOOKINGS_URL}&sub=public-settings&master_id=${masterId}`
     ),
 
