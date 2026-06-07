@@ -449,6 +449,15 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
                   <Icon name="Users" size={14} className="text-gray-400 shrink-0" />
                   <span className="text-gray-600">до {service.max_clients} чел.</span>
                 </div>
+                {service.service_format && (() => {
+                  const fmt = FORMAT_OPTIONS.find((f) => f.value === service.service_format);
+                  return fmt ? (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Icon name={fmt.icon as "Home"} size={14} className="text-gray-400 shrink-0" />
+                      <span className="text-gray-600">{fmt.title}</span>
+                    </div>
+                  ) : null;
+                })()}
               </div>
 
               <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
