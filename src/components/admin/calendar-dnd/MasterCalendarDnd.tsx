@@ -810,7 +810,9 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         slotDuration="00:30:00"
         slotMinTime="07:00:00"
         slotMaxTime="23:00:00"
-        height="auto"
+        height={650}
+        expandRows
+        dragScroll
         events={fcEvents}
         dayCellClassNames={(arg) => {
           const key = dateKey(arg.date);
