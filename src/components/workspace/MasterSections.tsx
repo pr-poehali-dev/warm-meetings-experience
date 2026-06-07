@@ -186,6 +186,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
   const [photosUploading, setPhotosUploading] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     mastersApi.getMyProfile().then((m) => {
@@ -291,45 +292,54 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
 
       {/* Ссылка на публичный профиль */}
       {master.slug && (
-        <div className="rounded-xl border border-border bg-muted/40 px-4 py-3 flex flex-col gap-2">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ваша публичная страница</span>
-          <div className="flex items-center gap-3">
-          <Icon name="Link" size={16} className="text-muted-foreground flex-shrink-0" />
-          <a
-            href={`/masters/${master.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-primary underline underline-offset-2 truncate flex-1"
-          >
-            {window.location.origin}/masters/{master.slug}
-          </a>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 flex-shrink-0"
-            title="Копировать ссылку"
-            onClick={() => {
-              navigator.clipboard.writeText(`${window.location.origin}/masters/${master.slug}`);
-            }}
-          >
-            <Icon name="Copy" size={14} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 flex-shrink-0"
-            title="Поделиться"
-            onClick={() => {
-              const url = `${window.location.origin}/masters/${master.slug}`;
-              if (navigator.share) {
-                navigator.share({ title: master.name || "Мой профиль", url });
-              } else {
-                window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}`, "_blank");
-              }
-            }}
-          >
-            <Icon name="Share2" size={14} />
-          </Button>
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 flex gap-3">
+          <Icon name="Globe" size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-blue-900">Ваша публичная страница</div>
+            <a
+              href={`/masters/${master.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-600 underline underline-offset-2 truncate block mt-0.5"
+            >
+              {window.location.origin}/masters/{master.slug}
+            </a>
+            <div className="flex gap-2 mt-2.5">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/masters/${master.slug}`);
+                  setLinkCopied(true);
+                  setTimeout(() => setLinkCopied(false), 2000);
+                }}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-blue-200 bg-white text-blue-700 hover:bg-blue-50 transition-colors"
+              >
+                <Icon name={linkCopied ? "Check" : "Copy"} size={12} />
+                {linkCopied ? "Скопировано" : "Копировать"}
+              </button>
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/masters/${master.slug}`;
+                  if (navigator.share) {
+                    navigator.share({ title: master.name || "Мой профиль", url });
+                  } else {
+                    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}`, "_blank");
+                  }
+                }}
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-blue-200 bg-white text-blue-700 hover:bg-blue-50 transition-colors"
+              >
+                <Icon name="Share2" size={12} />
+                Поделиться
+              </button>
+              <a
+                href={`/masters/${master.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-blue-200 bg-white text-blue-700 hover:bg-blue-50 transition-colors"
+              >
+                <Icon name="ExternalLink" size={12} />
+                Открыть
+              </a>
+            </div>
           </div>
         </div>
       )}
