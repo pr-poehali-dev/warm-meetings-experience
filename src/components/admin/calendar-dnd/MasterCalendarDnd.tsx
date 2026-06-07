@@ -801,6 +801,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         editable
         selectable
         selectMirror
+        selectOverlap
         unselectAuto={false}
         longPressDelay={350}
         eventLongPressDelay={350}
