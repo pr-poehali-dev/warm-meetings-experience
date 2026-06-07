@@ -519,7 +519,7 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
               {editingService ? "Редактировать услугу" : "Новая услуга"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2 overflow-y-auto flex-1">
+          <div className="space-y-4 py-2 overflow-y-auto flex-1 px-3.5">
             <div>
               <Label>Название <span className="text-red-500">*</span></Label>
               <Input
@@ -534,7 +534,7 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
                 <Icon name="MapPinned" size={14} className="text-nature-forest" />
                 Формат оказания
               </Label>
-              <div className="space-y-2">
+              <div className="space-y-2 py-[5px] px-[27px]">
                 {FORMAT_OPTIONS.map((opt) => {
                   const active = form.service_format === opt.value;
                   return (
