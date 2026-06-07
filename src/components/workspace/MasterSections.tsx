@@ -291,7 +291,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
       <VerificationStatus master={master} />
 
       {/* Ссылка на публичный профиль */}
-      {!master.is_verified ? (
+      {(!master.is_verified || master.is_active === false) ? (
         <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 flex gap-3">
           <Icon name="Clock" size={18} className="text-zinc-400 mt-0.5 flex-shrink-0" />
           <div>
