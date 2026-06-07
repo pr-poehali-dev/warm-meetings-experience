@@ -291,7 +291,17 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
       <VerificationStatus master={master} />
 
       {/* Ссылка на публичный профиль */}
-      {master.slug && (
+      {!master.is_verified ? (
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 flex gap-3">
+          <Icon name="Clock" size={18} className="text-zinc-400 mt-0.5 flex-shrink-0" />
+          <div>
+            <div className="font-medium text-zinc-600">Ссылка на профиль появится после проверки</div>
+            <div className="text-xs text-zinc-500 mt-0.5">
+              После одобрения администратором вы получите личную страницу в каталоге мастеров.
+            </div>
+          </div>
+        </div>
+      ) : master.slug && (
         <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 flex gap-3">
           <Icon name="Globe" size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
