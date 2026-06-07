@@ -141,47 +141,6 @@ const MasterCalendarSettings = ({ masterId }: { masterId: number }) => {
       <div className="space-y-6 max-w-2xl">
         <div className="bg-white rounded-lg border border-gray-200 p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Icon name="Bell" size={18} className="text-nature-forest" />
-            <h2 className="text-lg font-semibold text-gray-900">Уведомления</h2>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-sm font-medium text-gray-900">Уведомлять о новых заявках</Label>
-                <p className="text-xs text-gray-500 mt-0.5">Получать уведомление при новой записи</p>
-              </div>
-              <Switch
-                checked={form.notify_new_booking}
-                onCheckedChange={(v) => updateToggle("notify_new_booking", v)}
-              />
-            </div>
-            <div className="border-t border-gray-100" />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-sm font-medium text-gray-900">Напоминание за 24 часа</Label>
-                <p className="text-xs text-gray-500 mt-0.5">Напоминание о предстоящем сеансе</p>
-              </div>
-              <Switch
-                checked={form.notify_24h_reminder}
-                onCheckedChange={(v) => updateToggle("notify_24h_reminder", v)}
-              />
-            </div>
-            <div className="border-t border-gray-100" />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-sm font-medium text-gray-900">Уведомлять об отменах</Label>
-                <p className="text-xs text-gray-500 mt-0.5">Получать уведомление при отмене записи</p>
-              </div>
-              <Switch
-                checked={form.notify_cancellation}
-                onCheckedChange={(v) => updateToggle("notify_cancellation", v)}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg border border-gray-200 p-5">
-          <div className="flex items-center gap-2 mb-4">
             <Icon name="Globe" size={18} className="text-nature-forest" />
             <h2 className="text-lg font-semibold text-gray-900">Часовой пояс</h2>
           </div>
