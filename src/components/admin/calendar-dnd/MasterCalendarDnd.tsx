@@ -939,20 +939,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     const label = (isMobile && currentView === "timeGridWeek")
       ? <><span style={{ display: "block", fontSize: 9, opacity: 0.7 }}>{shortDay}</span><span style={{ display: "block" }}>{shortDate}</span></>
       : arg.text;
-    const handlePlusClick = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      // Открываем отдельное окно «Действия на день»: ручная бронь или блокировка.
-      const dayStr = calDateKey(arg.date); // YYYY-MM-DD (зона мастера)
-      const offMatch = calIso(arg.date).match(/(Z|[+-]\d{2}:\d{2})$/);
-      const offset = offMatch ? offMatch[0] : "";
-      const dayLabel = arg.date.toLocaleDateString("ru-RU", {
-        weekday: "long", day: "2-digit", month: "long", timeZone: tz,
-      });
-      setDayAction({ dayStr, dayLabel, offset });
-    };
-
     return (
-      <div className="fcb-day-load group relative">
+      <div className="fcb-day-load">
         <div className="text-sm font-semibold capitalize leading-tight">{label}</div>
         {isBlocked ? (
           <div className="fcb-day-header-block" title="Выходной">
@@ -966,18 +954,34 @@ export default function MasterCalendarDnd({ masterId }: Props) {
             <div className="fcb-day-load-label">{pct}%</div>
           </>
         )}
-        {/* Кнопка «+» — на мобильном видна всегда, на десктопе при наведении */}
-        <button
-          onClick={handlePlusClick}
-          className="absolute top-0 right-0 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center transition-opacity z-10 sm:opacity-0 sm:group-hover:opacity-100"
-          title="Создать запись на этот день"
-          style={{ fontSize: 14, lineHeight: 1 }}
-        >
-          +
-        </button>
       </div>
     );
   };
+
+  // Кнопка «+» в ячейке allDay конкретного дня.
+  // FullCalendar вызывает allDayCellContent для каждой колонки дня в строке allDay.
+  const allDayCellContent = useCallback((arg: { date: Date }) => {
+    const tz = settings?.timezone || "Europe/Moscow";
+    const handleClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const dayStr = calDateKey(arg.date);
+      const offMatch = calIso(arg.date).match(/(Z|[+-]\d{2}:\d{2})$/);
+      const offset = offMatch ? offMatch[0] : "";
+      const dayLabel = arg.date.toLocaleDateString("ru-RU", {
+        weekday: "long", day: "2-digit", month: "long", timeZone: tz,
+      });
+      setDayAction({ dayStr, dayLabel, offset });
+    };
+    return (
+      <button
+        onClick={handleClick}
+        className="fcb-allday-plus"
+        title="Создать бронь или заблокировать этот день"
+      >
+        +
+      </button>
+    );
+  }, [settings?.timezone, calDateKey, calIso]);
 
   return (
     <div className="fc-dnd space-y-3">
@@ -1048,8 +1052,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
               <span>Выделите диапазон мышью или пальцем — создать запись. Тяните блок — перенести. Нижний край — изменить длительность.</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Icon name="Lock" size={12} className="shrink-0 text-red-400" />
-              <span>Чтобы заблокировать <strong>целый день</strong> — выделите его в строке «Весь день» сверху сетки.</span>
+              <Icon name="Plus" size={12} className="shrink-0 text-primary" />
+              <span>Кнопка <strong>«+»</strong> в строке «Весь день» — создать бронь или заблокировать этот день.</span>
             </div>
           </div>
         ) : <div />}
@@ -1080,7 +1084,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         locale={ruLocale}
         firstDay={1}
         allDaySlot={true}
-        allDayText="Весь день"
+        allDayText="+ день"
+        allDayCellContent={allDayCellContent}
         nowIndicator
         editable
         selectable
