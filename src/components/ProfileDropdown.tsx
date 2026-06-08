@@ -60,9 +60,8 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -78,23 +77,6 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
   useEffect(() => {
     setOpen(false);
   }, [location.pathname]);
-
-  // Пересчитываем позицию после рендера — теперь знаем реальный размер меню.
-  useEffect(() => {
-    if (!open || !menuRef.current || !buttonRef.current) return;
-    const btn = buttonRef.current.getBoundingClientRect();
-    const menuH = menuRef.current.offsetHeight;
-    const spaceBelow = window.innerHeight - btn.bottom - 8;
-    const spaceAbove = btn.top - 8;
-    let top: number;
-    if (spaceBelow >= menuH || spaceBelow >= spaceAbove) {
-      top = btn.bottom + 8;
-    } else {
-      top = btn.top - menuH - 8;
-    }
-    top = Math.max(8, Math.min(top, window.innerHeight - menuH - 8));
-    setDropdownPos({ top, right: Math.max(8, window.innerWidth - btn.right) });
-  }, [open]);
 
   const handleLogout = async () => {
     setOpen(false);
@@ -127,7 +109,21 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
     <div ref={dropdownRef}>
       <button
         ref={buttonRef}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (open) { setOpen(false); return; }
+          if (buttonRef.current) {
+            const r = buttonRef.current.getBoundingClientRect();
+            const menuW = Math.min(288, window.innerWidth - 16);
+            const right = Math.max(8, window.innerWidth - r.right);
+            // Если меню уйдёт за левый край — прижимаем к нему
+            const left = window.innerWidth - right - menuW;
+            setDropdownPos({
+              top: r.bottom + 8,
+              right: left < 8 ? 8 : right,
+            });
+          }
+          setOpen(true);
+        }}
         className={buttonClass}
       >
         <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -145,10 +141,9 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
         />
       </button>
 
-      {open && (
+      {open && dropdownPos && (
         <div
-          ref={menuRef}
-          style={{ top: dropdownPos.top, right: Math.max(dropdownPos.right, 8), maxHeight: "calc(100dvh - 16px)" }}
+          style={{ top: dropdownPos.top, right: dropdownPos.right, maxHeight: "calc(100dvh - 16px)" }}
           className="fixed w-72 max-w-[calc(100vw-16px)] bg-card border border-border rounded-2xl shadow-2xl z-[200] overflow-y-auto"
         >
           {/* Шапка профиля */}
