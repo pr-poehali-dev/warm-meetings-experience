@@ -757,15 +757,24 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     return set;
   }, [blocks]);
 
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+
   // Render day header с прогресс-баром + меткой "выходной"
   const dayHeaderContent = (arg: { date: Date; text: string }) => {
     const key = calDateKey(arg.date);
     const load = dayLoad.get(key);
     const pct = load ? Math.min(100, Math.round((load.busy / load.total) * 100)) : 0;
     const isBlocked = blockedDates.has(key);
+    // На мобильном: короткий формат "Пн↵08"
+    const tz = settings?.timezone || "Europe/Moscow";
+    const shortDay = arg.date.toLocaleDateString("ru-RU", { weekday: "short", timeZone: tz });
+    const shortDate = arg.date.toLocaleDateString("ru-RU", { day: "2-digit", timeZone: tz });
+    const label = isMobile
+      ? <><span style={{ display: "block" }}>{shortDay}</span><span style={{ display: "block" }}>{shortDate}</span></>
+      : arg.text;
     return (
       <div className="fcb-day-load">
-        <div className="text-sm font-semibold capitalize">{arg.text}</div>
+        <div className="text-sm font-semibold capitalize leading-tight">{label}</div>
         {isBlocked ? (
           <div className="fcb-day-header-block" title="Выходной">
             <Icon name="Lock" size={11} />
@@ -785,38 +794,41 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   return (
     <div className="fc-dnd space-y-3">
       {/* Шапка с навигацией */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          <Button size="sm" variant="outline" onClick={() => { calRef.current?.getApi().prev(); updateTitle(); }}>
+      <div className="flex flex-col gap-2">
+        {/* Строка 1: навигация + заголовок + переключатели вида */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Button size="sm" variant="outline" className="px-2" onClick={() => { calRef.current?.getApi().prev(); updateTitle(); }}>
             <Icon name="ChevronLeft" size={16} />
           </Button>
-          <Button size="sm" variant="outline" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
+          <Button size="sm" variant="outline" className="px-2.5" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
             Сегодня
           </Button>
-          <Button size="sm" variant="outline" onClick={() => { calRef.current?.getApi().next(); updateTitle(); }}>
+          <Button size="sm" variant="outline" className="px-2" onClick={() => { calRef.current?.getApi().next(); updateTitle(); }}>
             <Icon name="ChevronRight" size={16} />
           </Button>
-          <span className="text-base font-semibold capitalize ml-2">{viewTitle}</span>
+          <span className="text-sm font-semibold capitalize flex-1 min-w-0 truncate">{viewTitle}</span>
+          {loading && <Icon name="Loader2" size={16} className="animate-spin text-muted-foreground" />}
         </div>
-        <div className="flex items-center gap-1.5">
+        {/* Строка 2: виды + доп. кнопки */}
+        <div className="flex items-center gap-1.5 flex-wrap">
           <Button size="sm" variant={currentView === "timeGridDay" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("timeGridDay")}>День</Button>
           <Button size="sm" variant={currentView === "timeGridWeek" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("timeGridWeek")}>Неделя</Button>
           <Button size="sm" variant={currentView === "dayGridMonth" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("dayGridMonth")}>Месяц</Button>
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={openTrash} title="Корзина и резервные копии">
+          <div className="flex-1" />
+          <Button size="sm" variant="outline" className="px-2" onClick={openTrash} title="Корзина и резервные копии">
             <Icon name="Archive" size={14} />
-            Корзина
+            <span className="hidden sm:inline ml-1">Корзина</span>
           </Button>
-          <Button size="sm" variant="outline" className="gap-1.5 text-red-600 hover:text-red-700" onClick={() => setClearOpen(true)}>
+          <Button size="sm" variant="outline" className="px-2 text-red-600 hover:text-red-700" onClick={() => setClearOpen(true)} title="Очистить">
             <Icon name="Trash2" size={14} />
-            Очистить
+            <span className="hidden sm:inline ml-1">Очистить</span>
           </Button>
-          {loading && <Icon name="Loader2" size={16} className="animate-spin text-muted-foreground" />}
         </div>
       </div>
 
       {/* Подсказка + часовой пояс мастера */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+      <div className="flex items-center justify-between gap-2">
+        <div className="hidden sm:flex text-xs text-muted-foreground items-center gap-2">
           <Icon name="Info" size={12} />
           <span>Выделите диапазон мышью или удержанием пальца — чтобы создать запись. Тяните блок — чтобы перенести. Тяните нижний край — изменить длительность.</span>
         </div>
@@ -829,7 +841,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       <FullCalendar
         ref={calRef}
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-        initialView="timeGridWeek"
+        initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
         timeZone={settings?.timezone || "Europe/Moscow"}
         locale={ruLocale}
         firstDay={1}
