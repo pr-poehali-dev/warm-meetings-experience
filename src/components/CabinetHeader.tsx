@@ -51,7 +51,7 @@ export default function CabinetHeader({
           <img
             src={isDark ? LOGO_ON_DARK : LOGO_ON_LIGHT}
             alt="Спарком"
-            className="h-7 w-auto"
+            className="h-7 w-auto max-w-[130px]"
           />
         </Link>
 
