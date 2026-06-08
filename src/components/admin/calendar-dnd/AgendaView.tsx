@@ -27,7 +27,7 @@ const fmtTime = (iso: string, tz: string) =>
   new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: tz });
 
 const fmtDayTitle = (d: Date, tz: string) =>
-  d.toLocaleDateString("ru-RU", { weekday: "long", day: "2-digit", month: "long", timeZone: tz });
+  d.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short", timeZone: tz });
 
 export default function AgendaView({ date, bookings, timezone, onPrev, onNext, onToday, onChangeStatus }: Props) {
   const tz = timezone || "Europe/Moscow";
@@ -60,9 +60,8 @@ export default function AgendaView({ date, bookings, timezone, onPrev, onNext, o
       {/* Навигация по дням */}
       <div className="flex items-center gap-2">
         <Button size="sm" variant="outline" className="px-2" onClick={onPrev}><Icon name="ChevronLeft" size={16} /></Button>
-        <Button size="sm" variant="outline" className="px-2.5" onClick={onToday}>Сегодня</Button>
+        <Button size="sm" variant="outline" className="px-3 capitalize font-semibold" onClick={onToday}>{fmtDayTitle(date, tz)}</Button>
         <Button size="sm" variant="outline" className="px-2" onClick={onNext}><Icon name="ChevronRight" size={16} /></Button>
-        <span className="text-sm font-semibold capitalize ml-1">{fmtDayTitle(date, tz)}</span>
       </div>
 
       {/* Сводка дня */}
