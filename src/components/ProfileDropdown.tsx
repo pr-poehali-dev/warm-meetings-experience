@@ -86,6 +86,14 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
     setOpen(false);
   }, [location.pathname]);
 
+  // Блокируем скролл страницы когда bottom sheet открыт на мобильном
+  useEffect(() => {
+    if (open && isMobile) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [open, isMobile]);
+
   const openMenu = () => {
     if (open) { setOpen(false); return; }
     if (!isMobile && buttonRef.current) {
@@ -158,7 +166,7 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
         <div
           style={isMobile ? undefined : { top: pos!.top, right: pos!.right, maxHeight: "calc(100dvh - 64px)" }}
           className={isMobile
-            ? "fixed bottom-0 left-0 right-0 z-[200] bg-card border-t border-border rounded-t-2xl shadow-2xl overflow-y-auto max-h-[85dvh]"
+            ? "fixed bottom-0 left-0 right-0 z-[200] bg-card border-t border-border rounded-t-2xl shadow-2xl overflow-y-auto overscroll-contain max-h-[90dvh]"
             : "fixed w-72 max-w-[calc(100vw-16px)] bg-card border border-border rounded-2xl shadow-2xl z-[200] overflow-y-auto"
           }
         >
