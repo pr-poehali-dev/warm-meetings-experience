@@ -4,7 +4,22 @@ import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+
+const TIMEZONES = [
+  { value: "Europe/Kaliningrad", label: "Калининград (UTC+2)" },
+  { value: "Europe/Moscow",      label: "Москва, Питер (UTC+3)" },
+  { value: "Europe/Samara",      label: "Самара, Ижевск (UTC+4)" },
+  { value: "Asia/Yekaterinburg", label: "Екатеринбург, Уфа (UTC+5)" },
+  { value: "Asia/Omsk",          label: "Омск (UTC+6)" },
+  { value: "Asia/Krasnoyarsk",   label: "Красноярск, Новосибирск (UTC+7)" },
+  { value: "Asia/Irkutsk",       label: "Иркутск (UTC+8)" },
+  { value: "Asia/Yakutsk",       label: "Якутск, Чита (UTC+9)" },
+  { value: "Asia/Vladivostok",   label: "Владивосток, Хабаровск (UTC+10)" },
+  { value: "Asia/Magadan",       label: "Магадан, Сахалин (UTC+11)" },
+  { value: "Asia/Kamchatka",     label: "Камчатка (UTC+12)" },
+];
 import {
   masterCalendarApi,
   MasterService,
@@ -53,6 +68,11 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
   const [generating, setGenerating] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
 
+  // Настройки
+  const [timezone, setTimezone] = useState("Europe/Moscow");
+  const [autoConfirm, setAutoConfirm] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+
   // Превью существующих слотов
   const [existingCount, setExistingCount] = useState<number | null>(null);
 
@@ -82,13 +102,26 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
   const loadSettings = useCallback(async () => {
     try {
       const s = await masterCalendarApi.getSettings(masterId);
-      if (s && typeof s.break_between_slots === "number") {
-        setBufferMinutes(s.break_between_slots);
-      }
+      if (!s) return;
+      if (typeof s.break_between_slots === "number") setBufferMinutes(s.break_between_slots);
+      if ((s as { timezone?: string }).timezone) setTimezone((s as { timezone?: string }).timezone!);
+      if (typeof s.auto_confirm === "boolean") setAutoConfirm(s.auto_confirm);
     } catch {
       // настройки могут быть не созданы — это ок
     }
   }, [masterId]);
+
+  const handleSaveSettings = async (tz: string, ac: boolean) => {
+    setSavingSettings(true);
+    try {
+      await masterCalendarApi.saveSettings({ master_id: masterId, timezone: tz, auto_confirm: ac } as Parameters<typeof masterCalendarApi.saveSettings>[0]);
+      toast.success("Настройки сохранены");
+    } catch {
+      toast.error("Не удалось сохранить настройки");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   useEffect(() => {
     loadServices();
@@ -498,6 +531,51 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
         <p className="text-[11px] text-muted-foreground mt-2">
           Когда гость бронирует время, его кусочек окна занимается, а остаток разбивается на свободные интервалы — другие гости смогут забронировать оставшееся время.
         </p>
+      </section>
+
+      {/* Настройки: часовой пояс + автоподтверждение */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-6 h-6 rounded-full bg-muted text-muted-foreground inline-flex items-center justify-center text-xs font-bold">⚙</span>
+          <h3 className="text-base font-semibold">Настройки</h3>
+        </div>
+        <div className="bg-card border rounded-2xl p-4 space-y-4">
+          <div>
+            <Label className="text-xs mb-1 block">Часовой пояс</Label>
+            <select
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {TIMEZONES.map((tz) => (
+                <option key={tz.value} value={tz.value}>{tz.label}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-muted-foreground mt-1">Время в календаре, уведомлениях и карточках записей</p>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-xs font-medium">Автоподтверждение записей</Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Новые записи сразу подтверждаются, без ручной проверки</p>
+            </div>
+            <Switch
+              checked={autoConfirm}
+              onCheckedChange={(v) => setAutoConfirm(v)}
+            />
+          </div>
+          <div className="flex justify-end pt-1">
+            <Button
+              size="sm"
+              onClick={() => handleSaveSettings(timezone, autoConfirm)}
+              disabled={savingSettings}
+              className="gap-1.5"
+            >
+              {savingSettings && <Icon name="Loader2" size={13} className="animate-spin" />}
+              <Icon name="Save" size={13} />
+              Сохранить
+            </Button>
+          </div>
+        </div>
       </section>
 
       {/* Ссылка на превью */}

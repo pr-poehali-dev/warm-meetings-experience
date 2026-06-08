@@ -10,7 +10,6 @@ import MasterCalendar from "@/components/admin/calendar-dnd/MasterCalendarDnd";
 import MasterBookingsList from "@/components/admin/MasterBookingsList";
 import MasterServices from "@/components/admin/MasterServices";
 import MasterTemplates from "@/components/admin/MasterTemplates";
-import MasterCalendarSettings from "@/components/admin/MasterCalendarSettings";
 import QuickScheduleSetup from "@/components/master/QuickScheduleSetup";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -566,15 +565,17 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
 
 // ─── Мастер: Расписание ───────────────────────────────────────────────────────
 
+const SCHEDULE_TABS = [
+  { id: "quick",    label: "Быстрый старт", icon: "Zap",          color: "text-amber-600",   activeBg: "bg-amber-50 dark:bg-amber-950/40",   activeBorder: "border-amber-200 dark:border-amber-800" },
+  { id: "calendar", label: "Календарь",     icon: "CalendarDays",  color: "text-blue-600",    activeBg: "bg-blue-50 dark:bg-blue-950/40",     activeBorder: "border-blue-200 dark:border-blue-800" },
+  { id: "services", label: "Услуги",        icon: "Sparkles",      color: "text-violet-600",  activeBg: "bg-violet-50 dark:bg-violet-950/40", activeBorder: "border-violet-200 dark:border-violet-800" },
+  { id: "templates",label: "Шаблоны",       icon: "Copy",          color: "text-teal-600",    activeBg: "bg-teal-50 dark:bg-teal-950/40",    activeBorder: "border-teal-200 dark:border-teal-800" },
+] as const;
+
+type ScheduleTab = typeof SCHEDULE_TABS[number]["id"];
+
 export function MasterScheduleSection({ masterId, masterSlug }: { masterId: number; masterSlug: string }) {
-  const [tab, setTab] = useState<"quick" | "calendar" | "services" | "templates" | "settings">("quick");
-  const tabs = [
-    { id: "quick", label: "Быстрый старт", icon: "Zap" },
-    { id: "calendar", label: "Календарь", icon: "CalendarDays" },
-    { id: "services", label: "Услуги", icon: "Sparkles" },
-    { id: "templates", label: "Шаблоны", icon: "Copy" },
-    { id: "settings", label: "Настройки", icon: "Settings" },
-  ] as const;
+  const [tab, setTab] = useState<ScheduleTab>("quick");
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -583,29 +584,35 @@ export function MasterScheduleSection({ masterId, masterSlug }: { masterId: numb
           href="/master-schedule-guide"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-base font-semibold"
+          className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
         >
           <Icon name="BookOpen" size={13} />
           Инструкция
         </a>
       </div>
-      <div className="flex gap-1 bg-muted/60 rounded-xl p-1 w-fit overflow-x-auto max-w-full">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${tab === t.id ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <Icon name={t.icon} size={13} />
-            {t.label}
-          </button>
-        ))}
+      <div className="flex gap-1.5 flex-wrap">
+        {SCHEDULE_TABS.map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all whitespace-nowrap
+                ${active
+                  ? `${t.activeBg} ${t.activeBorder} ${t.color} shadow-sm`
+                  : "bg-muted/50 border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+            >
+              <Icon name={t.icon} size={12} />
+              {t.label}
+            </button>
+          );
+        })}
       </div>
-      {tab === "quick" && <QuickScheduleSetup masterId={masterId} masterSlug={masterSlug} onNavigateToServices={() => setTab("services")} />}
-      {tab === "calendar" && <MasterCalendar masterId={masterId} />}
-      {tab === "services" && <MasterServices masterId={masterId} />}
+      {tab === "quick"     && <QuickScheduleSetup masterId={masterId} masterSlug={masterSlug} onNavigateToServices={() => setTab("services")} />}
+      {tab === "calendar"  && <MasterCalendar masterId={masterId} />}
+      {tab === "services"  && <MasterServices masterId={masterId} />}
       {tab === "templates" && <MasterTemplates masterId={masterId} />}
-      {tab === "settings" && <MasterCalendarSettings masterId={masterId} />}
     </div>
   );
 }
