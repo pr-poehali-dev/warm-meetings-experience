@@ -590,21 +590,22 @@ export function MasterScheduleSection({ masterId, masterSlug }: { masterId: numb
           Инструкция
         </a>
       </div>
-      <div className="flex gap-1.5 flex-wrap">
-        {SCHEDULE_TABS.map((t) => {
+      <div className="inline-flex border border-border rounded-xl overflow-hidden bg-muted/40 w-full sm:w-auto">
+        {SCHEDULE_TABS.map((t, i) => {
           const active = tab === t.id;
           return (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all whitespace-nowrap
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold transition-all whitespace-nowrap
+                ${i > 0 ? "border-l border-border" : ""}
                 ${active
-                  ? `${t.activeBg} ${t.activeBorder} ${t.color} shadow-sm`
-                  : "bg-muted/50 border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
+                  ? `${t.activeBg} ${t.color} shadow-inner`
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 }`}
             >
-              <Icon name={t.icon} size={12} />
-              {t.label}
+              <Icon name={t.icon} size={13} />
+              <span className="hidden sm:inline">{t.label}</span>
             </button>
           );
         })}
