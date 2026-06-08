@@ -985,7 +985,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           title="Создать бронь или заблокировать этот день"
         >
           <span className="fcb-day-plus-icon">+</span>
-          <span className="fcb-day-plus-text">запись</span>
+          <span className="fcb-day-plus-text hidden sm:inline">запись</span>
         </button>
       </div>
     );
