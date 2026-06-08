@@ -1463,14 +1463,16 @@ function ConfirmBar({
   onCancel: () => void;
 }) {
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border rounded-xl shadow-lg p-4 flex items-center gap-3 min-w-[300px]">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border rounded-xl shadow-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3 w-[calc(100%-2rem)] max-w-sm sm:max-w-none sm:min-w-[300px]">
       <div className="flex-1">
         <div className="font-semibold text-sm">{title}</div>
         {oldText && <div className="text-xs text-muted-foreground">Было: {oldText}</div>}
         <div className="text-xs text-foreground">Стало: {newText}</div>
       </div>
-      <Button size="sm" onClick={onConfirm}>Подтвердить</Button>
-      <Button size="sm" variant="ghost" onClick={onCancel}>Отмена</Button>
+      <div className="flex gap-2">
+        <Button size="sm" className="flex-1 sm:flex-none" onClick={onConfirm}>Подтвердить</Button>
+        <Button size="sm" variant="ghost" className="flex-1 sm:flex-none" onClick={onCancel}>Отмена</Button>
+      </div>
     </div>
   );
 }
