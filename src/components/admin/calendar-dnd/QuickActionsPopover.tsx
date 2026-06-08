@@ -16,17 +16,19 @@ export interface QuickEvent {
 interface Props {
   event: QuickEvent;
   anchor: { x: number; y: number };
+  timezone?: string;
   onClose: () => void;
   onCancelBooking: (bookingId: number) => void;
   onDeleteSlot: (slotId: number) => void;
   onDeleteBlock?: (blockId: number) => void;
 }
 
-const fmtRange = (s: Date, e: Date) =>
-  `${s.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}\u00A0–\u00A0${e.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
+// Форматируем в ЭКРАННОМ времени мастера (явный timeZone), а не браузера.
+const fmtRange = (s: Date, e: Date, tz: string) =>
+  `${s.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: tz })}\u00A0–\u00A0${e.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: tz })}`;
 
-const fmtDate = (d: Date) =>
-  d.toLocaleDateString("ru-RU", { weekday: "long", day: "2-digit", month: "long" });
+const fmtDate = (d: Date, tz: string) =>
+  d.toLocaleDateString("ru-RU", { weekday: "long", day: "2-digit", month: "long", timeZone: tz });
 
 function useIsMobile() {
   const [m, setM] = useState(false);
@@ -39,8 +41,9 @@ function useIsMobile() {
   return m;
 }
 
-export default function QuickActionsPopover({ event, anchor, onClose, onCancelBooking, onDeleteSlot, onDeleteBlock }: Props) {
+export default function QuickActionsPopover({ event, anchor, timezone, onClose, onCancelBooking, onDeleteSlot, onDeleteBlock }: Props) {
   const isMobile = useIsMobile();
+  const tz = timezone || "Europe/Moscow";
   const booking = event.kind === "booking" ? (event.raw as MasterBooking | undefined) : undefined;
 
   const handleWrite = () => {
@@ -77,7 +80,7 @@ export default function QuickActionsPopover({ event, anchor, onClose, onCancelBo
     <div className="space-y-3">
       <div>
         <div className="font-semibold text-base">{event.title}</div>
-        <div className="text-xs text-muted-foreground capitalize">{fmtDate(event.start)} · {fmtRange(event.start, event.end)}</div>
+        <div className="text-xs text-muted-foreground capitalize">{fmtDate(event.start, tz)} · {fmtRange(event.start, event.end, tz)}</div>
         {booking?.client_phone && (
           <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
             <Icon name="Phone" size={11} />

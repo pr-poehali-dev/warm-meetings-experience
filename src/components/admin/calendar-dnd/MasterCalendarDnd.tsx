@@ -39,11 +39,12 @@ type FcbEvent = EventInput & {
   };
 };
 
-const fmtTime = (d: Date) =>
-  d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+// Форматируем в ЭКРАННОМ времени мастера (явный timeZone), а не браузера.
+const fmtTime = (d: Date, tz: string) =>
+  d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: tz });
 
-const fmtDate = (d: Date) =>
-  d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long" });
+const fmtDate = (d: Date, tz: string) =>
+  d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long", timeZone: tz });
 
 // Человекочитаемая подпись часового пояса мастера: "Калининград (UTC+2)".
 const TZ_LABELS: Record<string, string> = {
@@ -93,6 +94,13 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   const calIso = useCallback((d: Date) => {
     const api = calRef.current?.getApi();
     return api ? api.formatIso(d) : d.toISOString();
+  }, []);
+
+  // Дата YYYY-MM-DD в ЭКРАННОМ времени мастера (зона календаря), без сдвига
+  // на зону браузера. Используется для дат, отправляемых на бэк, и для сравнений.
+  const calDateKey = useCallback((d: Date) => {
+    const api = calRef.current?.getApi();
+    return (api ? api.formatIso(d) : d.toISOString()).slice(0, 10);
   }, []);
   const [loading, setLoading] = useState(false);
   const [bookings, setBookings] = useState<MasterBooking[]>([]);
@@ -168,18 +176,17 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   const handleClear = async (scope: "all" | "week" | "future") => {
     setClearing(true);
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
       let date_from: string | undefined;
       let date_to: string | undefined;
       if (scope === "week") {
         const api = calRef.current?.getApi();
         if (api) {
-          date_from = api.view.activeStart.toISOString();
-          date_to = api.view.activeEnd.toISOString();
+          // Экранное время мастера, а не UTC.
+          date_from = calDateKey(api.view.activeStart);
+          date_to = calDateKey(api.view.activeEnd);
         }
       } else if (scope === "future") {
-        date_from = today.toISOString();
+        date_from = calDateKey(new Date());
       }
       const res = await masterCalendarApi.clearCalendar({
         master_id: masterId,
@@ -224,14 +231,12 @@ export default function MasterCalendarDnd({ masterId }: Props) {
 
   // Перезагружаем данные при смене видимого диапазона FullCalendar
   const handleDatesSet = useCallback((arg: { start: Date; end: Date; view: { type: string; title: string } }) => {
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    const endInclusive = new Date(arg.end);
-    endInclusive.setDate(endInclusive.getDate() - 1);
-    loadData(fmt(arg.start), fmt(endInclusive));
+    // Диапазон в экранном времени мастера. arg.end эксклюзивный — берём минус сутки.
+    const endInclusive = new Date(arg.end.getTime() - 24 * 60 * 60_000);
+    loadData(calDateKey(arg.start), calDateKey(endInclusive));
     setViewTitle(arg.view.title);
     setCurrentView(arg.view.type);
-  }, [loadData]);
+  }, [loadData, calDateKey]);
 
   useEffect(() => {
     loadData();
@@ -394,7 +399,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
             .slice(0, 5)
             .map((c) => {
               const dt = new Date(c.datetime_start);
-              const when = `${dt.toLocaleDateString("ru-RU")} ${dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
+              const tz = settings?.timezone || "Europe/Moscow";
+              const when = `${dt.toLocaleDateString("ru-RU", { timeZone: tz })} ${dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: tz })}`;
               return `• ${when} — ${c.client_name}${c.client_phone ? ", " + c.client_phone : ""}`;
             })
             .join("\n");
@@ -733,13 +739,13 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       if (kind !== "booking" && kind !== "block" && kind !== "break") return;
       const s = ev.start instanceof Date ? ev.start : new Date(ev.start as string);
       const e = ev.end instanceof Date ? ev.end : new Date(ev.end as string);
-      const key = s.toISOString().slice(0, 10);
+      const key = calDateKey(s);
       const cur = map.get(key) || { busy: 0, total: workMinPerDay };
       cur.busy += (e.getTime() - s.getTime()) / 60_000;
       map.set(key, cur);
     });
     return map;
-  }, [fcEvents]);
+  }, [fcEvents, calDateKey]);
 
   // Множество заблокированных дат (YYYY-MM-DD) — 1 запись = 1 день
   const blockedDates = useMemo(() => {
@@ -751,14 +757,9 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     return set;
   }, [blocks]);
 
-  const dateKey = (d: Date) => {
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  };
-
   // Render day header с прогресс-баром + меткой "выходной"
   const dayHeaderContent = (arg: { date: Date; text: string }) => {
-    const key = dateKey(arg.date);
+    const key = calDateKey(arg.date);
     const load = dayLoad.get(key);
     const pct = load ? Math.min(100, Math.round((load.busy / load.total) * 100)) : 0;
     const isBlocked = blockedDates.has(key);
@@ -851,7 +852,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         expandRows
         events={fcEvents}
         dayCellClassNames={(arg) => {
-          const key = dateKey(arg.date);
+          const key = calDateKey(arg.date);
           return blockedDates.has(key) ? ["fcb-day-cell-blocked"] : [];
         }}
         selectAllow={(sel) => {
@@ -908,6 +909,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         <QuickActionsPopover
           event={quick}
           anchor={quickAnchor}
+          timezone={settings?.timezone}
           onClose={handleQuickClose}
           onCancelBooking={handleCancelBooking}
           onDeleteSlot={handleDeleteSlot}
@@ -919,8 +921,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       {pendingMove && pendingMove.event.start && pendingMove.event.end && (
         <ConfirmBar
           title="Перенести запись?"
-          oldText={`${fmtDate(pendingMove.oldEvent.start as Date)} · ${fmtTime(pendingMove.oldEvent.start as Date)}`}
-          newText={`${fmtDate(pendingMove.event.start)} · ${fmtTime(pendingMove.event.start)}`}
+          oldText={`${fmtDate(pendingMove.oldEvent.start as Date, settings?.timezone || "Europe/Moscow")} · ${fmtTime(pendingMove.oldEvent.start as Date, settings?.timezone || "Europe/Moscow")}`}
+          newText={`${fmtDate(pendingMove.event.start, settings?.timezone || "Europe/Moscow")} · ${fmtTime(pendingMove.event.start, settings?.timezone || "Europe/Moscow")}`}
           onConfirm={confirmMove}
           onCancel={cancelMove}
         />
@@ -931,7 +933,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         <ConfirmBar
           title="Продлить сеанс?"
           oldText=""
-          newText={`${fmtTime(pendingResize.event.start)} – ${fmtTime(pendingResize.event.end)}`}
+          newText={`${fmtTime(pendingResize.event.start, settings?.timezone || "Europe/Moscow")} – ${fmtTime(pendingResize.event.end, settings?.timezone || "Europe/Moscow")}`}
           onConfirm={confirmResize}
           onCancel={cancelResize}
         />
