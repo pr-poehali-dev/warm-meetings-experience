@@ -322,7 +322,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
                 }}
                 className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-blue-200 bg-white text-blue-700 hover:bg-blue-50 transition-colors"
               >
-                <Icon name={linkCopied ? "Check" : "Copy"} size={12} />
+                <Icon name={linkCopied ? "Check" : "Copy"} size={14} />
                 {linkCopied ? "Скопировано" : "Копировать"}
               </button>
               <button
@@ -336,7 +336,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
                 }}
                 className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-blue-200 bg-white text-blue-700 hover:bg-blue-50 transition-colors"
               >
-                <Icon name="Share2" size={12} />
+                <Icon name="Share2" size={14} />
                 Поделиться
               </button>
               <a
@@ -345,7 +345,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-blue-200 bg-white text-blue-700 hover:bg-blue-50 transition-colors"
               >
-                <Icon name="ExternalLink" size={12} />
+                <Icon name="ExternalLink" size={14} />
                 Открыть
               </a>
             </div>
