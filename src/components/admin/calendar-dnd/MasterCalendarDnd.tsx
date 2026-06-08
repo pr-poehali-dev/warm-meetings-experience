@@ -25,6 +25,7 @@ import {
 import EventForm, { CreateMode, CreatePayload } from "./EventForm";
 import QuickActionsPopover, { QuickEvent } from "./QuickActionsPopover";
 import AgendaView from "./AgendaView";
+import DayActionDialog, { DayBookingPayload, DayBlockPayload } from "./DayActionDialog";
 import "./styles.css";
 
 interface Props {
@@ -130,6 +131,9 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   const [currentView, setCurrentView] = useState<string>("timeGridWeek");
   const [agendaMode, setAgendaMode] = useState(false);
   const [agendaDate, setAgendaDate] = useState<Date>(new Date());
+  // Диалог ручного управления днём (бронь / блокировка) по кнопке «+»
+  const [dayAction, setDayAction] = useState<{ dayStr: string; dayLabel: string; offset: string } | null>(null);
+  const [daySaving, setDaySaving] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -713,6 +717,100 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     });
   };
 
+  // ─── Действия из окна «+» на дне ──────────────────────────────────────
+  const handleDayBooking = async (p: DayBookingPayload) => {
+    if (!dayAction) return;
+    if (!p.client_name.trim()) {
+      toast.error("Укажите имя клиента");
+      return;
+    }
+    const { dayStr, offset } = dayAction;
+    const startIso = `${dayStr}T${p.time_start}:00${offset}`;
+    const endIso = `${dayStr}T${p.time_end}:00${offset}`;
+    const svc = services.find((s) => s.id === p.service_id);
+    setDaySaving(true);
+    try {
+      await masterBookingsApi.createBooking({
+        master_id: masterId,
+        client_name: p.client_name,
+        client_phone: p.client_phone || "",
+        service_id: p.service_id || undefined,
+        datetime_start: startIso,
+        datetime_end: endIso,
+        price: svc?.price || 0,
+        status: "confirmed",
+        source: "manual",
+        comment: p.comment || "",
+      });
+      toast.success("Бронь создана");
+      setDayAction(null);
+      loadData();
+    } catch (e) {
+      if (e instanceof BookingApiError && e.status === 409) {
+        toast.error(e.message);
+      } else {
+        toast.error("Не удалось: " + (e instanceof Error ? e.message : String(e)));
+      }
+    } finally {
+      setDaySaving(false);
+    }
+  };
+
+  const handleDayBlock = async (p: DayBlockPayload) => {
+    if (!dayAction) return;
+    const { dayStr, offset } = dayAction;
+    setDaySaving(true);
+    try {
+      if (p.whole_day) {
+        // Блокировка целого дня — master_day_blocks (выходной)
+        const res = await masterCalendarApi.createBlock({
+          master_id: masterId,
+          block_date: dayStr,
+          block_end_date: dayStr,
+          reason: p.reason || "Выходной",
+        });
+        if (res.conflict) {
+          const ok = window.confirm(
+            `На этот день есть ${res.conflicts.length} активных записей. Заблокировать и отменить их?`
+          );
+          if (!ok) { setDaySaving(false); return; }
+          const forced = await masterCalendarApi.createBlock({
+            master_id: masterId,
+            block_date: dayStr,
+            block_end_date: dayStr,
+            reason: p.reason || "Выходной",
+            force: true,
+          });
+          if (forced.conflict) { toast.error("Не удалось заблокировать"); setDaySaving(false); return; }
+          toast.success(`День заблокирован. Отменено записей: ${forced.canceled_bookings ?? res.conflicts.length}`);
+        } else {
+          toast.success("День заблокирован");
+        }
+      } else {
+        // Блокировка интервала — слот со статусом blocked
+        await masterCalendarApi.createSlot({
+          master_id: masterId,
+          datetime_start: `${dayStr}T${p.time_start}:00${offset}`,
+          datetime_end: `${dayStr}T${p.time_end}:00${offset}`,
+          max_clients: 1,
+          status: "blocked",
+          notes: p.reason || "Заблокировано",
+        });
+        toast.success("Интервал заблокирован");
+      }
+      setDayAction(null);
+      loadData();
+    } catch (e) {
+      if (e instanceof BookingApiError && e.status === 409) {
+        toast.error(e.message);
+      } else {
+        toast.error("Не удалось: " + (e instanceof Error ? e.message : String(e)));
+      }
+    } finally {
+      setDaySaving(false);
+    }
+  };
+
   // Клик по блоку → мини-карточка
   const handleEventClick = (arg: EventClickArg) => {
     const kind = (arg.event.extendedProps as FcbEvent["extendedProps"]).kind;
@@ -843,23 +941,14 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       : arg.text;
     const handlePlusClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-      // Открываем форму на этот день, время по умолчанию 9:00–10:00 (его можно
-      // поправить в форме). День берём в зоне мастера; offset — из calIso.
+      // Открываем отдельное окно «Действия на день»: ручная бронь или блокировка.
       const dayStr = calDateKey(arg.date); // YYYY-MM-DD (зона мастера)
       const offMatch = calIso(arg.date).match(/(Z|[+-]\d{2}:\d{2})$/);
       const offset = offMatch ? offMatch[0] : "";
-      const startStr = `${dayStr}T09:00:00${offset}`;
-      const endStr = `${dayStr}T10:00:00${offset}`;
-      const d = new Date(startStr);
-      const end = new Date(endStr);
-      setCreateMode({
-        open: true,
-        start: d,
-        end,
-        startStr,
-        endStr,
-        allDay: false,
+      const dayLabel = arg.date.toLocaleDateString("ru-RU", {
+        weekday: "long", day: "2-digit", month: "long", timeZone: tz,
       });
+      setDayAction({ dayStr, dayLabel, offset });
     };
 
     return (
@@ -1074,6 +1163,19 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           onDeleteSlot={handleDeleteSlot}
           onDeleteBlock={handleDeleteBlock}
           onChangeStatus={handleBookingStatus}
+        />
+      )}
+
+      {/* Окно «+» на дне: ручная бронь или блокировка */}
+      {dayAction && (
+        <DayActionDialog
+          dayStr={dayAction.dayStr}
+          dayLabel={dayAction.dayLabel}
+          services={services}
+          saving={daySaving}
+          onClose={() => setDayAction(null)}
+          onCreateBooking={handleDayBooking}
+          onBlock={handleDayBlock}
         />
       )}
 
