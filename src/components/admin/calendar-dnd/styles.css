@@ -82,6 +82,10 @@
   background: hsl(var(--muted) / 0.4);
   padding: 8px 4px;
   border-color: hsl(var(--border)) !important;
+  overflow: visible;
+}
+.fc-dnd .fc-col-header-cell-cushion {
+  overflow: visible;
 }
 
 .fc-dnd .fc-col-header-cell-cushion {

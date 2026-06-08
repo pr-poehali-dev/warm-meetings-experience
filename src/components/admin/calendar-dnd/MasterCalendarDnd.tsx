@@ -822,8 +822,25 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     const label = (isMobile && currentView === "timeGridWeek")
       ? <><span style={{ display: "block", fontSize: 9, opacity: 0.7 }}>{shortDay}</span><span style={{ display: "block" }}>{shortDate}</span></>
       : arg.text;
+    const handlePlusClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      // Открываем форму на 9:00–10:00 этого дня в зоне мастера.
+      // Берём дату из arg.date и выставляем 9:00 через calIso.
+      const d = new Date(arg.date);
+      d.setHours(9, 0, 0, 0);
+      const end = new Date(d.getTime() + 60 * 60_000);
+      setCreateMode({
+        open: true,
+        start: d,
+        end,
+        startStr: calIso(d),
+        endStr: calIso(end),
+        allDay: false,
+      });
+    };
+
     return (
-      <div className="fcb-day-load">
+      <div className="fcb-day-load group relative">
         <div className="text-sm font-semibold capitalize leading-tight">{label}</div>
         {isBlocked ? (
           <div className="fcb-day-header-block" title="Выходной">
@@ -837,6 +854,15 @@ export default function MasterCalendarDnd({ masterId }: Props) {
             <div className="fcb-day-load-label">{pct}%</div>
           </>
         )}
+        {/* Кнопка «+» — на мобильном видна всегда, на десктопе при наведении */}
+        <button
+          onClick={handlePlusClick}
+          className="absolute top-0 right-0 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center transition-opacity z-10 sm:opacity-0 sm:group-hover:opacity-100"
+          title="Создать запись на этот день"
+          style={{ fontSize: 14, lineHeight: 1 }}
+        >
+          +
+        </button>
       </div>
     );
   };
