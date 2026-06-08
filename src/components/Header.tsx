@@ -118,7 +118,7 @@ export default function Header({ transparent = false }: HeaderProps) {
               ))}
             </nav>
 
-            <div className="flex items-center gap-1.5 shrink-0 min-w-0 overflow-hidden">
+            <div className="flex items-center gap-1.5 shrink-0">
               <a
                 href="https://messenger.online.sberbank.ru/sl/9eE3EK9SoMLSsYC2x"
                 target="_blank"
