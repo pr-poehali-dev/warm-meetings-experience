@@ -89,7 +89,7 @@ export default function YandexLinkSection({ yandexId, hasPassword, onLinked, onU
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2 min-w-0">
       <div className="w-4 h-4 flex-shrink-0 flex items-center justify-center">
         <svg className="w-4 h-4 text-muted-foreground" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path
@@ -98,7 +98,7 @@ export default function YandexLinkSection({ yandexId, hasPassword, onLinked, onU
           />
         </svg>
       </div>
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <div className="text-sm text-muted-foreground">Яндекс</div>
         {yandexId ? (
           <div className="flex items-center gap-2">
@@ -118,7 +118,7 @@ export default function YandexLinkSection({ yandexId, hasPassword, onLinked, onU
           onClick={handleLinkYandex}
           isLoading={yandexAuth.isLoading}
           buttonText="Привязать"
-          className="h-8 text-sm px-3"
+          className="h-8 text-sm px-3 flex-shrink-0"
         />
       )}
     </div>
