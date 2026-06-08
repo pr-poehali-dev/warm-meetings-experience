@@ -72,7 +72,7 @@ export default function AgendaView({ date, bookings, timezone, onPrev, onNext, o
           <div className="text-[11px] text-muted-foreground">записей</div>
         </div>
         <div className="rounded-xl border bg-card p-3 text-center">
-          <div className="text-2xl font-bold text-green-600">{revenue.toLocaleString("ru-RU")}</div>
+          <div className="text-2xl font-bold text-green-600 truncate">{Math.round(revenue).toLocaleString("ru-RU")}</div>
           <div className="text-[11px] text-muted-foreground">₽ за день</div>
         </div>
         <div className="rounded-xl border bg-card p-3 text-center">
