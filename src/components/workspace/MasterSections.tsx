@@ -575,7 +575,7 @@ const SCHEDULE_TABS = [
 type ScheduleTab = typeof SCHEDULE_TABS[number]["id"];
 
 export function MasterScheduleSection({ masterId, masterSlug }: { masterId: number; masterSlug: string }) {
-  const [tab, setTab] = useState<ScheduleTab>("quick");
+  const [tab, setTab] = useState<ScheduleTab>("calendar");
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
