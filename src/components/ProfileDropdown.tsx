@@ -60,9 +60,7 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -78,23 +76,6 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
   useEffect(() => {
     setOpen(false);
   }, [location.pathname]);
-
-  // Пересчитываем позицию после рендера — теперь знаем реальный размер меню.
-  useEffect(() => {
-    if (!open || !menuRef.current || !buttonRef.current) return;
-    const btn = buttonRef.current.getBoundingClientRect();
-    const menuH = menuRef.current.offsetHeight;
-    const spaceBelow = window.innerHeight - btn.bottom - 8;
-    const spaceAbove = btn.top - 8;
-    let top: number;
-    if (spaceBelow >= menuH || spaceBelow >= spaceAbove) {
-      top = btn.bottom + 8;
-    } else {
-      top = btn.top - menuH - 8;
-    }
-    top = Math.max(8, Math.min(top, window.innerHeight - menuH - 8));
-    setDropdownPos({ top, right: Math.max(8, window.innerWidth - btn.right) });
-  }, [open]);
 
   const handleLogout = async () => {
     setOpen(false);
@@ -124,7 +105,7 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
   );
 
   return (
-    <div ref={dropdownRef}>
+    <div ref={dropdownRef} className="relative">
       <button
         ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
@@ -147,9 +128,8 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
 
       {open && (
         <div
-          ref={menuRef}
-          style={{ top: dropdownPos.top, right: Math.max(dropdownPos.right, 8), maxHeight: "calc(100dvh - 16px)" }}
-          className="fixed w-72 max-w-[calc(100vw-16px)] bg-card border border-border rounded-2xl shadow-2xl z-[200] overflow-y-auto"
+          className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-16px)] bg-card border border-border rounded-2xl shadow-2xl z-[200] overflow-y-auto"
+          style={{ maxHeight: "calc(100dvh - 64px)" }}
         >
           {/* Шапка профиля */}
           <div className="px-4 pt-4 pb-3 flex items-center gap-3">
