@@ -751,7 +751,18 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   };
 
   return (
-    <div className="fc-dnd space-y-3">
+    <div
+      className="fc-dnd space-y-3"
+      onMouseDownCapture={(e) => {
+        const el = e.target as HTMLElement;
+        const td = el.closest("td,.fc-timegrid-slot,.fc-event,.fc-bg-event,.fc-highlight,.fc-non-business,.fc-timegrid-now-indicator-line");
+        console.log(
+          "[CAL mousedown] target:", el.className,
+          "| closest:", td?.className,
+          "| at y:", e.clientY,
+        );
+      }}
+    >
       {/* Шапка с навигацией */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5">
