@@ -134,6 +134,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   // Диалог ручного управления днём (бронь / блокировка) по кнопке «+»
   const [dayAction, setDayAction] = useState<{ dayStr: string; dayLabel: string; offset: string } | null>(null);
   const [daySaving, setDaySaving] = useState(false);
+  // Флаг: следующий allDay-select пришёл от нашей кнопки «+» → игнорируем EventForm
+  const suppressAllDaySelect = useRef(false);
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -366,6 +368,15 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   // Drag create
   const handleSelect = (sel: DateSelectArg) => {
     const api = sel.view.calendar;
+
+    // Кнопка «+» в allDay-ячейке открывает DayActionDialog и выставляет флаг.
+    // FullCalendar всё равно шлёт select — игнорируем его и сбрасываем флаг.
+    if (sel.allDay && suppressAllDaySelect.current) {
+      suppressAllDaySelect.current = false;
+      api.unselect();
+      return;
+    }
+
     let start = sel.start;
     let end = sel.end;
     // «Экранное время» от календаря — ISO-строки с offset зоны мастера.
@@ -964,6 +975,10 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     const tz = settings?.timezone || "Europe/Moscow";
     const handleClick = (e: React.MouseEvent) => {
       e.stopPropagation();
+      e.preventDefault();
+      // Подавляем следующий allDay-select — FullCalendar его всё равно пошлёт,
+      // но мы его проигнорируем и откроем свой диалог.
+      suppressAllDaySelect.current = true;
       const dayStr = calDateKey(arg.date);
       const offMatch = calIso(arg.date).match(/(Z|[+-]\d{2}:\d{2})$/);
       const offset = offMatch ? offMatch[0] : "";
