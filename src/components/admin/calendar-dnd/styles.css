@@ -233,6 +233,31 @@
   pointer-events: none;
 }
 
+/* Кнопка «+» в заголовке дня */
+.fcb-day-plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 400;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+.fcb-day-plus:hover {
+  opacity: 0.85;
+  transform: scale(1.12);
+}
+
 /* Кнопка «+» в ячейке «Весь день» для каждого дня */
 .fcb-allday-plus {
   display: flex;

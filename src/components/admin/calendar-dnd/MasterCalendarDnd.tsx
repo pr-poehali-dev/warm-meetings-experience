@@ -936,7 +936,20 @@ export default function MasterCalendarDnd({ masterId }: Props) {
 
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
 
-  // Render day header с прогресс-баром + меткой "выходной"
+  // Открыть диалог действий на день (бронь / блокировка) для указанной даты.
+  const openDayAction = useCallback((date: Date, suppressSelect = false) => {
+    const tz = settings?.timezone || "Europe/Moscow";
+    if (suppressSelect) suppressAllDaySelect.current = true;
+    const dayStr = calDateKey(date);
+    const offMatch = calIso(date).match(/(Z|[+-]\d{2}:\d{2})$/);
+    const offset = offMatch ? offMatch[0] : "";
+    const dayLabel = date.toLocaleDateString("ru-RU", {
+      weekday: "long", day: "2-digit", month: "long", timeZone: tz,
+    });
+    setDayAction({ dayStr, dayLabel, offset });
+  }, [settings?.timezone, calDateKey, calIso]);
+
+  // Render day header с прогресс-баром + меткой "выходной" + кнопкой «+»
   const dayHeaderContent = (arg: { date: Date; text: string }) => {
     const key = calDateKey(arg.date);
     const load = dayLoad.get(key);
@@ -952,7 +965,16 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       : arg.text;
     return (
       <div className="fcb-day-load">
-        <div className="text-sm font-semibold capitalize leading-tight">{label}</div>
+        <div className="flex items-center justify-center gap-1">
+          <span className="text-sm font-semibold capitalize leading-tight">{label}</span>
+          <button
+            onClick={(e) => { e.stopPropagation(); openDayAction(arg.date); }}
+            className="fcb-day-plus"
+            title="Создать бронь или заблокировать этот день"
+          >
+            +
+          </button>
+        </div>
         {isBlocked ? (
           <div className="fcb-day-header-block" title="Выходной">
             <Icon name="Lock" size={11} />
@@ -971,32 +993,15 @@ export default function MasterCalendarDnd({ masterId }: Props) {
 
   // Кнопка «+» в ячейке allDay конкретного дня.
   // FullCalendar вызывает allDayCellContent для каждой колонки дня в строке allDay.
-  const allDayCellContent = useCallback((arg: { date: Date }) => {
-    const tz = settings?.timezone || "Europe/Moscow";
-    const handleClick = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      e.preventDefault();
-      // Подавляем следующий allDay-select — FullCalendar его всё равно пошлёт,
-      // но мы его проигнорируем и откроем свой диалог.
-      suppressAllDaySelect.current = true;
-      const dayStr = calDateKey(arg.date);
-      const offMatch = calIso(arg.date).match(/(Z|[+-]\d{2}:\d{2})$/);
-      const offset = offMatch ? offMatch[0] : "";
-      const dayLabel = arg.date.toLocaleDateString("ru-RU", {
-        weekday: "long", day: "2-digit", month: "long", timeZone: tz,
-      });
-      setDayAction({ dayStr, dayLabel, offset });
-    };
-    return (
-      <button
-        onClick={handleClick}
-        className="fcb-allday-plus"
-        title="Создать бронь или заблокировать этот день"
-      >
-        +
-      </button>
-    );
-  }, [settings?.timezone, calDateKey, calIso]);
+  const allDayCellContent = useCallback((arg: { date: Date }) => (
+    <button
+      onClick={(e) => { e.stopPropagation(); e.preventDefault(); openDayAction(arg.date, true); }}
+      className="fcb-allday-plus"
+      title="Создать бронь или заблокировать этот день"
+    >
+      +
+    </button>
+  ), [openDayAction]);
 
   return (
     <div className="fc-dnd space-y-3">
