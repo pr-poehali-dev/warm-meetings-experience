@@ -997,7 +997,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     <div className="fc-dnd space-y-3">
       {/* Шапка с навигацией */}
       <div className="flex flex-col gap-2">
-        {/* Строка 1: переключатель Список/Календарь + навигация по датам */}
+        {/* Строка 1: переключатель Список/Календарь + заголовок даты */}
         <div className="flex items-center gap-2">
           {/* Переключатель — главный выбор режима, всегда виден */}
           <div className="inline-flex border border-border rounded-lg overflow-hidden shrink-0">
@@ -1016,36 +1016,40 @@ export default function MasterCalendarDnd({ masterId }: Props) {
               <span className="hidden sm:inline">Календарь</span>
             </button>
           </div>
-          {/* Навигация по датам — только в режиме сетки */}
           {!agendaMode && (
-            <>
-              <div className="w-px h-5 bg-border shrink-0" />
-              <Button size="sm" variant="outline" className="px-2 shrink-0" onClick={() => { calRef.current?.getApi().prev(); updateTitle(); }}>
-                <Icon name="ChevronLeft" size={16} />
-              </Button>
-              <Button size="sm" variant="outline" className="px-2.5 shrink-0" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
-                Сегодня
-              </Button>
-              <Button size="sm" variant="outline" className="px-2 shrink-0" onClick={() => { calRef.current?.getApi().next(); updateTitle(); }}>
-                <Icon name="ChevronRight" size={16} />
-              </Button>
-              <span className="text-sm font-semibold capitalize flex-1 min-w-0 truncate">{viewTitle}</span>
-            </>
+            <span className="text-sm font-semibold capitalize flex-1 min-w-0 truncate">{viewTitle}</span>
           )}
           {loading && <Icon name="Loader2" size={16} className="animate-spin text-muted-foreground ml-auto" />}
         </div>
-        {/* Строка 2: виды сетки + служебные кнопки (только в режиме Календаря) */}
+        {/* Строка 2: навигация по датам + виды + служебные кнопки (только в режиме Календаря) */}
         {!agendaMode && (
-          <div className="flex items-center gap-1.5">
-            <Button size="sm" variant={currentView === "timeGridDay" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("timeGridDay")}>День</Button>
-            <Button size="sm" variant={currentView === "timeGridWeek" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("timeGridWeek")}>Неделя</Button>
-            <Button size="sm" variant={currentView === "dayGridMonth" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("dayGridMonth")}>Месяц</Button>
-            <div className="flex-1" />
-            <Button size="sm" variant="outline" className="px-2" onClick={openTrash} title="Корзина и резервные копии">
+          <div className="flex items-center flex-wrap gap-1.5">
+            {/* Навигация по датам */}
+            <div className="inline-flex items-center gap-1 shrink-0">
+              <Button size="sm" variant="outline" className="px-2" onClick={() => { calRef.current?.getApi().prev(); updateTitle(); }}>
+                <Icon name="ChevronLeft" size={16} />
+              </Button>
+              <Button size="sm" variant="outline" className="px-2.5" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
+                Сегодня
+              </Button>
+              <Button size="sm" variant="outline" className="px-2" onClick={() => { calRef.current?.getApi().next(); updateTitle(); }}>
+                <Icon name="ChevronRight" size={16} />
+              </Button>
+            </div>
+            <div className="w-px h-5 bg-border shrink-0 hidden sm:block" />
+            {/* Выбор вида */}
+            <div className="inline-flex items-center gap-1 shrink-0">
+              <Button size="sm" variant={currentView === "timeGridDay" ? "default" : "outline"} className="px-2.5" onClick={() => calRef.current?.getApi().changeView("timeGridDay")}>День</Button>
+              <Button size="sm" variant={currentView === "timeGridWeek" ? "default" : "outline"} className="px-2.5" onClick={() => calRef.current?.getApi().changeView("timeGridWeek")}>Неделя</Button>
+              <Button size="sm" variant={currentView === "dayGridMonth" ? "default" : "outline"} className="px-2.5" onClick={() => calRef.current?.getApi().changeView("dayGridMonth")}>Месяц</Button>
+            </div>
+            <div className="flex-1 min-w-0" />
+            {/* Служебные кнопки */}
+            <Button size="sm" variant="outline" className="px-2 shrink-0" onClick={openTrash} title="Корзина и резервные копии">
               <Icon name="Archive" size={14} />
               <span className="hidden sm:inline ml-1">Корзина</span>
             </Button>
-            <Button size="sm" variant="outline" className="px-2 text-red-600 hover:text-red-700" onClick={() => setClearOpen(true)} title="Очистить">
+            <Button size="sm" variant="outline" className="px-2 shrink-0 text-red-600 hover:text-red-700" onClick={() => setClearOpen(true)} title="Очистить">
               <Icon name="Trash2" size={14} />
               <span className="hidden sm:inline ml-1">Очистить</span>
             </Button>
