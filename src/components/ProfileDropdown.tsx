@@ -63,6 +63,7 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
 
   const mobile = () => window.innerWidth < 640;
 
@@ -83,12 +84,12 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
     setOpen(false);
   }, [location.pathname]);
 
-  // Блокировать скролл страницы на мобильном
+  // При открытии bottom sheet — сбросить scroll наверх
   useEffect(() => {
     if (open && mobile()) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => { document.body.style.overflow = prev; };
+      requestAnimationFrame(() => {
+        if (sheetRef.current) sheetRef.current.scrollTop = 0;
+      });
     }
   }, [open]);
 
@@ -262,7 +263,10 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
 
       {/* Bottom sheet (мобильный) */}
       {isBottomSheet && (
-        <div className="fixed bottom-0 left-0 right-0 z-[200] bg-card border-t border-border rounded-t-2xl shadow-2xl overflow-y-auto overscroll-contain max-h-[85svh]">
+        <div
+          ref={(el) => { sheetRef.current = el; if (el) el.scrollTop = 0; }}
+          className="fixed bottom-0 left-0 right-0 z-[200] bg-card border-t border-border rounded-t-2xl shadow-2xl overflow-y-auto overscroll-contain max-h-[85svh]"
+        >
           {menuContent}
         </div>
       )}
