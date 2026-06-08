@@ -60,6 +60,7 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -76,6 +77,18 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
   useEffect(() => {
     setOpen(false);
   }, [location.pathname]);
+
+  const openMenu = () => {
+    if (open) { setOpen(false); return; }
+    if (buttonRef.current) {
+      const r = buttonRef.current.getBoundingClientRect();
+      setPos({
+        top: r.bottom + 8,
+        right: Math.max(8, window.innerWidth - r.right),
+      });
+    }
+    setOpen(true);
+  };
 
   const handleLogout = async () => {
     setOpen(false);
@@ -105,10 +118,10 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
   );
 
   return (
-    <div ref={dropdownRef} className="relative">
+    <div ref={dropdownRef}>
       <button
         ref={buttonRef}
-        onClick={() => setOpen((v) => !v)}
+        onClick={openMenu}
         className={buttonClass}
       >
         <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -126,10 +139,10 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
         />
       </button>
 
-      {open && (
+      {open && pos && (
         <div
-          style={{ maxHeight: "calc(100dvh - 64px)" }}
-          className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-16px)] bg-card border border-border rounded-2xl shadow-2xl z-[200] overflow-y-auto"
+          style={{ top: pos.top, right: pos.right, maxHeight: "calc(100dvh - 64px)" }}
+          className="fixed w-72 max-w-[calc(100vw-16px)] bg-card border border-border rounded-2xl shadow-2xl z-[200] overflow-y-auto"
         >
           {/* Шапка профиля */}
           <div className="px-4 pt-4 pb-3 flex items-center gap-3">
