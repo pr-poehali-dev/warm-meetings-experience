@@ -15,6 +15,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { masterCalendarApi } from "@/lib/master-calendar-api";
+import { mastersApi } from "@/lib/masters-api";
 import type { MasterService, ServiceFormat, MasterAddress } from "@/lib/master-calendar-api";
 import { parseServiceDescription, buildServiceDescription } from "@/lib/service-description";
 
@@ -198,6 +199,7 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [form, setForm] = useState<ServiceFormData>({ ...emptyForm });
   const [addresses, setAddresses] = useState<MasterAddress[]>([]);
+  const [masterSlug, setMasterSlug] = useState<string>("");
 
   const { toast } = useToast();
 
@@ -207,8 +209,34 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
       .getAddresses(masterId)
       .then(setAddresses)
       .catch(() => setAddresses([]));
+    mastersApi
+      .getMyProfile()
+      .then((p) => setMasterSlug(p?.slug || ""))
+      .catch(() => setMasterSlug(""));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [masterId]);
+
+  const copyServiceLink = async (service: MasterService) => {
+    if (!masterSlug) {
+      toast({
+        title: "Ссылка недоступна",
+        description: "Не удалось определить публичный адрес страницы мастера",
+        variant: "destructive",
+      });
+      return;
+    }
+    const url = `${window.location.origin}/masters/${masterSlug}?service=${service.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ title: "Ссылка скопирована", description: url });
+    } catch {
+      toast({
+        title: "Не удалось скопировать",
+        description: url,
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchServices = async () => {
     setLoading(true);
@@ -481,6 +509,14 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
                   disabled={saving}
                 >
                   <Icon name={service.is_active ? "EyeOff" : "Eye"} size={16} />
+                </button>
+                <button
+                  onClick={() => copyServiceLink(service)}
+                  className="p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+                  title="Скопировать ссылку на услугу"
+                  disabled={saving}
+                >
+                  <Icon name="Link" size={16} />
                 </button>
                 <button
                   onClick={() => service.id && confirmDelete(service.id)}
