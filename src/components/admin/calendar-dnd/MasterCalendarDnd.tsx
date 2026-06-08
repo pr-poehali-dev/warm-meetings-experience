@@ -802,12 +802,13 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     const load = dayLoad.get(key);
     const pct = load ? Math.min(100, Math.round((load.busy / load.total) * 100)) : 0;
     const isBlocked = blockedDates.has(key);
-    // На мобильном: короткий формат "Пн↵08"
     const tz = settings?.timezone || "Europe/Moscow";
-    const shortDay = arg.date.toLocaleDateString("ru-RU", { weekday: "short", timeZone: tz });
-    const shortDate = arg.date.toLocaleDateString("ru-RU", { day: "2-digit", timeZone: tz });
-    const label = isMobile
-      ? <><span style={{ display: "block" }}>{shortDay}</span><span style={{ display: "block" }}>{shortDate}</span></>
+    // На мобильном в режиме недели — только число (08), иначе буквы налезают.
+    // В режиме дня/месяца — полный формат.
+    const shortDate = arg.date.toLocaleDateString("ru-RU", { day: "numeric", timeZone: tz });
+    const shortDay = arg.date.toLocaleDateString("ru-RU", { weekday: "narrow", timeZone: tz });
+    const label = (isMobile && currentView === "timeGridWeek")
+      ? <><span style={{ display: "block", fontSize: 9, opacity: 0.7 }}>{shortDay}</span><span style={{ display: "block" }}>{shortDate}</span></>
       : arg.text;
     return (
       <div className="fcb-day-load">
