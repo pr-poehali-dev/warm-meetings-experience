@@ -849,16 +849,34 @@ export default function MasterCalendarDnd({ masterId }: Props) {
             {loading && <Icon name="Loader2" size={16} className="animate-spin text-muted-foreground" />}
           </div>
         )}
-        {/* Строка 2: виды + доп. кнопки */}
+        {/* Строка 2: переключатель Список/Календарь + виды + доп. кнопки */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <Button size="sm" variant={agendaMode ? "default" : "outline"} className="gap-1.5" onClick={() => setAgendaMode((v) => !v)} title="Повестка дня — список записей">
-            <Icon name="ListChecks" size={14} />
-            <span className="hidden sm:inline">Повестка</span>
-          </Button>
-          <div className="w-px h-5 bg-border mx-0.5" />
-          <Button size="sm" variant={!agendaMode && currentView === "timeGridDay" ? "default" : "outline"} disabled={agendaMode} onClick={() => calRef.current?.getApi().changeView("timeGridDay")}>День</Button>
-          <Button size="sm" variant={!agendaMode && currentView === "timeGridWeek" ? "default" : "outline"} disabled={agendaMode} onClick={() => calRef.current?.getApi().changeView("timeGridWeek")}>Неделя</Button>
-          <Button size="sm" variant={!agendaMode && currentView === "dayGridMonth" ? "default" : "outline"} disabled={agendaMode} onClick={() => calRef.current?.getApi().changeView("dayGridMonth")}>Месяц</Button>
+          {/* Сегментированный переключатель Список / Календарь */}
+          <div className="inline-flex border border-border rounded-lg overflow-hidden">
+            <button
+              onClick={() => setAgendaMode(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${agendaMode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
+            >
+              <Icon name="ListChecks" size={13} />
+              Список
+            </button>
+            <button
+              onClick={() => setAgendaMode(false)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border-l border-border transition-colors ${!agendaMode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
+            >
+              <Icon name="CalendarDays" size={13} />
+              Календарь
+            </button>
+          </div>
+          {/* Виды сетки — только в режиме Календаря */}
+          {!agendaMode && (
+            <>
+              <div className="w-px h-5 bg-border mx-0.5" />
+              <Button size="sm" variant={currentView === "timeGridDay" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("timeGridDay")}>День</Button>
+              <Button size="sm" variant={currentView === "timeGridWeek" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("timeGridWeek")}>Неделя</Button>
+              <Button size="sm" variant={currentView === "dayGridMonth" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("dayGridMonth")}>Месяц</Button>
+            </>
+          )}
           <div className="flex-1" />
           <Button size="sm" variant="outline" className="px-2" onClick={openTrash} title="Корзина и резервные копии">
             <Icon name="Archive" size={14} />
