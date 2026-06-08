@@ -61,8 +61,16 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -80,7 +88,7 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
 
   const openMenu = () => {
     if (open) { setOpen(false); return; }
-    if (buttonRef.current) {
+    if (!isMobile && buttonRef.current) {
       const r = buttonRef.current.getBoundingClientRect();
       setPos({
         top: r.bottom + 8,
@@ -139,13 +147,30 @@ export default function ProfileDropdown({ variant = "default", onLogout }: Profi
         />
       </button>
 
-      {open && pos && (
+      {open && isMobile && (
         <div
-          style={{ top: pos.top, right: pos.right, maxHeight: "calc(100dvh - 64px)" }}
-          className="fixed w-72 max-w-[calc(100vw-16px)] bg-card border border-border rounded-2xl shadow-2xl z-[200] overflow-y-auto"
+          className="fixed inset-0 z-[199] bg-black/40"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
+      {open && (isMobile || pos) && (
+        <div
+          style={isMobile ? undefined : { top: pos!.top, right: pos!.right, maxHeight: "calc(100dvh - 64px)" }}
+          className={isMobile
+            ? "fixed bottom-0 left-0 right-0 z-[200] bg-card border-t border-border rounded-t-2xl shadow-2xl overflow-y-auto max-h-[85dvh]"
+            : "fixed w-72 max-w-[calc(100vw-16px)] bg-card border border-border rounded-2xl shadow-2xl z-[200] overflow-y-auto"
+          }
         >
+          {/* Ручка для bottom sheet (только мобильный) */}
+          {isMobile && (
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-border" />
+            </div>
+          )}
+
           {/* Шапка профиля */}
-          <div className="px-4 pt-4 pb-3 flex items-center gap-3">
+          <div className="px-4 pt-3 pb-3 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center overflow-hidden flex-shrink-0">
               {user.avatar_url ? (
                 <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
