@@ -755,11 +755,11 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       className="fc-dnd space-y-3"
       onMouseDownCapture={(e) => {
         const el = e.target as HTMLElement;
-        const td = el.closest("td,.fc-timegrid-slot,.fc-event,.fc-bg-event,.fc-highlight,.fc-non-business,.fc-timegrid-now-indicator-line");
+        const top = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
         console.log(
           "[CAL mousedown] target:", el.className,
-          "| closest:", td?.className,
-          "| at y:", e.clientY,
+          "| topElement:", top?.className,
+          "| tag:", top?.tagName,
         );
       }}
     >
