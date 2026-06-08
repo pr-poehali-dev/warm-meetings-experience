@@ -978,15 +978,17 @@ export default function MasterCalendarDnd({ masterId }: Props) {
             <div className="fcb-day-load-label">{pct}%</div>
           </>
         )}
-        {/* Отдельная строка-кнопка «+ запись» под датой */}
-        <button
-          onClick={(e) => { e.stopPropagation(); openDayAction(arg.date); }}
-          className="fcb-day-plus-row"
-          title="Создать бронь или заблокировать этот день"
-        >
-          <span className="fcb-day-plus-icon">+</span>
-          <span className="fcb-day-plus-text hidden sm:inline">запись</span>
-        </button>
+        {/* Отдельная строка-кнопка «+ запись» под датой — только в режимах день/неделя */}
+        {currentView !== "dayGridMonth" && (
+          <button
+            onClick={(e) => { e.stopPropagation(); openDayAction(arg.date); }}
+            className="fcb-day-plus-row"
+            title="Создать бронь или заблокировать этот день"
+          >
+            <span className="fcb-day-plus-icon">+</span>
+            <span className="fcb-day-plus-text hidden sm:inline">запись</span>
+          </button>
+        )}
       </div>
     );
   };
