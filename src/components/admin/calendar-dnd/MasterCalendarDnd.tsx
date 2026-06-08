@@ -892,9 +892,15 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       {/* Подсказка + часовой пояс мастера */}
       <div className="flex items-center justify-between gap-2">
         {!agendaMode ? (
-          <div className="hidden sm:flex text-xs text-muted-foreground items-center gap-2">
-            <Icon name="Info" size={12} />
-            <span>Выделите диапазон мышью или удержанием пальца — чтобы создать запись. Тяните блок — чтобы перенести. Тяните нижний край — изменить длительность.</span>
+          <div className="hidden sm:flex flex-col gap-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <Icon name="Info" size={12} className="shrink-0" />
+              <span>Выделите диапазон мышью или пальцем — создать запись. Тяните блок — перенести. Нижний край — изменить длительность.</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Icon name="Lock" size={12} className="shrink-0 text-red-400" />
+              <span>Чтобы заблокировать <strong>целый день</strong> — выделите его в строке «Весь день» сверху сетки.</span>
+            </div>
           </div>
         ) : <div />}
         <div className="text-xs font-medium text-muted-foreground flex items-center gap-1 whitespace-nowrap">
