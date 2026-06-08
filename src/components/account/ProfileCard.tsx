@@ -97,7 +97,7 @@ export default function ProfileCard({
     : "?";
 
   return (
-    <Card className="border-0 shadow-sm overflow-hidden">
+    <Card className="border-0 shadow-sm">
       {/* Визитка-шапка */}
       <div className="bg-gradient-to-br from-primary/15 to-primary/5 px-5 pt-5 pb-4">
         <div className="flex items-center gap-4">

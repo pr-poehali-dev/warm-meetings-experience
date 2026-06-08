@@ -115,7 +115,7 @@ export default function VkLinkSection({ vkId, hasPassword, onLinked, onUnlinked 
             onClick={handleLinkVk}
             isLoading={vkAuth.isLoading}
             buttonText="Привязать"
-            className="h-8 text-sm px-3"
+            className="h-8 text-xs px-2.5"
           />
         )}
       </div>

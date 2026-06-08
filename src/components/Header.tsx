@@ -98,7 +98,7 @@ export default function Header({ transparent = false }: HeaderProps) {
               <img
                 src={isDarkTheme ? LOGO_ON_DARK : LOGO_ON_LIGHT}
                 alt="Спарком"
-                className="h-6 sm:h-7 w-auto max-w-full object-contain object-left"
+                className="h-6 sm:h-7 w-auto max-w-[120px] sm:max-w-none object-contain object-left"
               />
             </Link>
 
