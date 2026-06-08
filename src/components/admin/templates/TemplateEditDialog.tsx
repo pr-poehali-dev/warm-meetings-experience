@@ -2,14 +2,6 @@ import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -63,7 +55,6 @@ const TemplateEditDialog = ({
   onUpdateRule,
   onAddRuleForDay,
   onRemoveRule,
-  services,
   saving,
   onSave,
 }: TemplateEditDialogProps) => {
@@ -201,37 +192,6 @@ const TemplateEditDialog = ({
                                   onUpdateRule(ruleIdx, { time_end: e.target.value })
                                 }
                                 className="w-[110px] h-8 text-sm"
-                              />
-                              <Select
-                                value={rule.service_id || "none"}
-                                onValueChange={(v) =>
-                                  onUpdateRule(ruleIdx, { service_id: v === "none" ? "" : v })
-                                }
-                              >
-                                <SelectTrigger className="w-[170px] h-8 text-xs">
-                                  <SelectValue placeholder="Услуга" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">Без услуги</SelectItem>
-                                  {services.map((s) => (
-                                    <SelectItem key={s.id} value={String(s.id)}>
-                                      {s.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={50}
-                                value={rule.max_clients}
-                                onChange={(e) =>
-                                  onUpdateRule(ruleIdx, {
-                                    max_clients: Number(e.target.value) || 1,
-                                  })
-                                }
-                                className="w-[60px] h-8 text-sm"
-                                title="Макс. клиентов"
                               />
                               <Button
                                 type="button"
