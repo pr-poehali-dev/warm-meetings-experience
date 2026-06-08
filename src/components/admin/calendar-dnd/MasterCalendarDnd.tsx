@@ -166,6 +166,20 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     }
   };
 
+  const handleRestoreOne = async (bookingId: number) => {
+    setRestoring(true);
+    try {
+      await masterCalendarApi.restoreBookings(masterId, [bookingId]);
+      toast.success("Запись восстановлена");
+      await openTrash();
+      loadData();
+    } catch (e) {
+      toast.error("Не удалось восстановить: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   const handleBackupNow = async () => {
     try {
       const res = await masterCalendarApi.createBackup(masterId);
@@ -1015,6 +1029,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         restoring={restoring}
         onClose={() => setTrashOpen(false)}
         onRestoreAll={handleRestoreAll}
+        onRestoreOne={handleRestoreOne}
         onBackupNow={handleBackupNow}
         formatDt={(iso) => {
           try {
@@ -1121,7 +1136,7 @@ function ClearCalendarDialog({
 
 function TrashDialog({
   open, loading, bookings, backups, restoring,
-  onClose, onRestoreAll, onBackupNow, formatDt,
+  onClose, onRestoreAll, onRestoreOne, onBackupNow, formatDt,
 }: {
   open: boolean;
   loading: boolean;
@@ -1130,6 +1145,7 @@ function TrashDialog({
   restoring: boolean;
   onClose: () => void;
   onRestoreAll: () => void;
+  onRestoreOne: (bookingId: number) => void;
   onBackupNow: () => void;
   formatDt: (iso: string) => string;
 }) {
@@ -1164,11 +1180,23 @@ function TrashDialog({
                 <div className="space-y-1.5">
                   {bookings.map((b) => (
                     <div key={b.id} className="flex items-center gap-2 p-2 rounded-lg border text-sm">
-                      <Icon name="User" size={14} className="text-muted-foreground" />
+                      <Icon name="User" size={14} className="text-muted-foreground shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">{b.client_name}</div>
                         <div className="text-xs text-muted-foreground">{formatDt(b.datetime_start)} · {b.client_phone}</div>
                       </div>
+                      {b.id && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 shrink-0 h-8"
+                          disabled={restoring}
+                          onClick={() => onRestoreOne(b.id!)}
+                        >
+                          <Icon name="RotateCcw" size={13} />
+                          <span className="hidden sm:inline">Восстановить</span>
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>
