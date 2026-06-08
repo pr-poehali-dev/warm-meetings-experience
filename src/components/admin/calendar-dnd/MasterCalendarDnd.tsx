@@ -1006,14 +1006,14 @@ export default function MasterCalendarDnd({ masterId }: Props) {
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${agendaMode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
             >
               <Icon name="ListChecks" size={13} />
-              Список
+              <span className="hidden sm:inline">Список</span>
             </button>
             <button
               onClick={() => setAgendaMode(false)}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border-l border-border transition-colors ${!agendaMode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
             >
               <Icon name="CalendarDays" size={13} />
-              Календарь
+              <span className="hidden sm:inline">Календарь</span>
             </button>
           </div>
           {/* Навигация по датам — только в режиме сетки */}
