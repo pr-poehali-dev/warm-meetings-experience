@@ -445,7 +445,7 @@ def _ext_videos_update(event: dict, params: dict, user_token: str) -> dict:
 
 
 def _ext_videos_delete(params: dict, user_token: str) -> dict:
-    """DELETE ?videos=1&me=1&video_id=N — мягкое удаление."""
+    """DELETE ?videos=1&me=1&video_id=N — удаление видео владельцем."""
     if not user_token:
         return err('Не авторизован', 401)
     video_id = params.get('video_id')
@@ -456,7 +456,7 @@ def _ext_videos_delete(params: dict, user_token: str) -> dict:
     user = get_user_from_token(cur, schema, user_token)
     if not user:
         conn.close(); return err('Не авторизован', 401)
-    cur.execute(f"UPDATE {schema}.videos SET status = 'deleted' WHERE id = %s", [int(video_id)])
+    cur.execute(f"DELETE FROM {schema}.videos WHERE id = %s AND owner_id = %s", [int(video_id), user['id']])
     conn.commit(); cur.close(); conn.close()
     return ok({'ok': True})
 
