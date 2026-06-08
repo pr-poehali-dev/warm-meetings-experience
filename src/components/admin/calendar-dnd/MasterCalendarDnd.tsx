@@ -143,6 +143,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   const [trashBookings, setTrashBookings] = useState<MasterBooking[]>([]);
   const [trashBackups, setTrashBackups] = useState<MasterBackup[]>([]);
   const [restoring, setRestoring] = useState(false);
+  const [cancelConfirm, setCancelConfirm] = useState<number | null>(null);
 
   const openTrash = async () => {
     setTrashOpen(true);
@@ -843,10 +844,17 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     setQuickAnchor(null);
   };
 
-  const handleCancelBooking = async (bookingId: number) => {
+  const handleCancelBooking = (bookingId: number) => {
+    setCancelConfirm(bookingId);
+  };
+
+  const confirmCancelBooking = async () => {
+    if (cancelConfirm === null) return;
+    const bookingId = cancelConfirm;
+    setCancelConfirm(null);
     try {
       await masterBookingsApi.updateBooking({ id: bookingId, action: "cancel" });
-      toast.success("Запись отменена");
+      toast.success("Запись отменена и перенесена в корзину");
       handleQuickClose();
       loadData();
     } catch (e) {
@@ -858,6 +866,10 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     bookingId: number,
     action: "confirm" | "complete" | "no_show" | "cancel",
   ) => {
+    if (action === "cancel") {
+      setCancelConfirm(bookingId);
+      return;
+    }
     const labels: Record<typeof action, string> = {
       confirm: "Запись подтверждена",
       complete: "Запись завершена",
@@ -1217,6 +1229,27 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           onConfirm={confirmResize}
           onCancel={cancelResize}
         />
+      )}
+
+      {/* Диалог подтверждения отмены записи */}
+      {cancelConfirm !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-card border rounded-2xl shadow-xl p-6 w-full max-w-sm flex flex-col gap-4">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-red-100 p-2 shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-600"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <div>
+                <div className="font-semibold text-sm">Отменить запись?</div>
+                <div className="text-xs text-muted-foreground mt-1">Запись будет отменена и перенесена в корзину. Вы сможете восстановить её через «Корзину».</div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="destructive" className="flex-1" onClick={confirmCancelBooking}>Да, отменить</Button>
+              <Button variant="outline" className="flex-1" onClick={() => setCancelConfirm(null)}>Назад</Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Диалог очистки календаря */}
