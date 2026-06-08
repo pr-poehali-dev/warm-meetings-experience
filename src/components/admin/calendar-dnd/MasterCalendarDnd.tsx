@@ -45,6 +45,37 @@ const fmtTime = (d: Date) =>
 const fmtDate = (d: Date) =>
   d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long" });
 
+// Человекочитаемая подпись часового пояса мастера: "Калининград (UTC+2)".
+const TZ_LABELS: Record<string, string> = {
+  "Europe/Kaliningrad": "Калининград",
+  "Europe/Moscow": "Москва",
+  "Europe/Samara": "Самара",
+  "Asia/Yekaterinburg": "Екатеринбург",
+  "Asia/Omsk": "Омск",
+  "Asia/Novosibirsk": "Новосибирск",
+  "Asia/Krasnoyarsk": "Красноярск",
+  "Asia/Irkutsk": "Иркутск",
+  "Asia/Yakutsk": "Якутск",
+  "Asia/Vladivostok": "Владивосток",
+  "Asia/Magadan": "Магадан",
+  "Asia/Kamchatka": "Камчатка",
+};
+
+const tzLabel = (tz: string) => {
+  const city = TZ_LABELS[tz] || tz;
+  let off = "";
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      timeZoneName: "shortOffset",
+    }).formatToParts(new Date());
+    off = parts.find((p) => p.type === "timeZoneName")?.value || "";
+  } catch {
+    off = "";
+  }
+  return off ? `${city} (${off.replace("GMT", "UTC")})` : city;
+};
+
 // КАНОН ВРЕМЕНИ (фронт ↔ бэк) — «ЭКРАННОЕ ВРЕМЯ»:
 // FullCalendar в timeZone-режиме знает зону мастера. Любые ISO-строки времени
 // мы получаем ОТ САМОГО КАЛЕНДАРЯ:
@@ -751,18 +782,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   };
 
   return (
-    <div
-      className="fc-dnd space-y-3"
-      onMouseDownCapture={(e) => {
-        const el = e.target as HTMLElement;
-        const top = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-        console.log(
-          "[CAL mousedown] target:", el.className,
-          "| topElement:", top?.className,
-          "| tag:", top?.tagName,
-        );
-      }}
-    >
+    <div className="fc-dnd space-y-3">
       {/* Шапка с навигацией */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5">
@@ -793,10 +813,16 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         </div>
       </div>
 
-      {/* Подсказка */}
-      <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-        <Icon name="Info" size={12} />
-        <span>Выделите диапазон мышью или удержанием пальца — чтобы создать запись. Тяните блок — чтобы перенести. Тяните нижний край — изменить длительность.</span>
+      {/* Подсказка + часовой пояс мастера */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+          <Icon name="Info" size={12} />
+          <span>Выделите диапазон мышью или удержанием пальца — чтобы создать запись. Тяните блок — чтобы перенести. Тяните нижний край — изменить длительность.</span>
+        </div>
+        <div className="text-xs font-medium text-muted-foreground flex items-center gap-1 whitespace-nowrap">
+          <Icon name="Globe" size={12} />
+          <span>Время мастера: {tzLabel(settings?.timezone || "Europe/Moscow")}</span>
+        </div>
       </div>
 
       <FullCalendar
@@ -829,7 +855,6 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           return blockedDates.has(key) ? ["fcb-day-cell-blocked"] : [];
         }}
         selectAllow={(sel) => {
-          console.log("[CAL selectAllow]", sel.startStr, "->", sel.endStr, "allDay:", sel.allDay);
           // В all-day разрешаем любой диапазон дней. В часовом — только в пределах одного дня.
           if (sel.allDay) return true;
           if (sel.start.toDateString() !== sel.end.toDateString()) return false;
