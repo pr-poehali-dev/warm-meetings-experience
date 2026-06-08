@@ -233,54 +233,34 @@
   pointer-events: none;
 }
 
-/* Кнопка «+» в заголовке дня */
-.fcb-day-plus {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  font-size: 13px;
-  line-height: 1;
-  font-weight: 400;
-  border: none;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition:
-    opacity 0.15s,
-    transform 0.15s;
-}
-.fcb-day-plus:hover {
-  opacity: 0.85;
-  transform: scale(1.12);
-}
-
-/* Кнопка «+» в ячейке «Весь день» для каждого дня */
-.fcb-allday-plus {
+/* Строка-кнопка «+ запись» под датой в заголовке дня */
+.fcb-day-plus-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
-  font-size: 16px;
+  gap: 3px;
+  width: 100%;
+  margin-top: 3px;
+  padding: 2px 4px;
+  border-radius: 5px;
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  font-size: 10px;
+  font-weight: 600;
   line-height: 1;
-  font-weight: 400;
   border: none;
   cursor: pointer;
-  margin: 2px auto;
   transition:
-    opacity 0.15s,
-    transform 0.15s;
+    background 0.15s,
+    color 0.15s;
 }
-.fcb-allday-plus:hover {
-  opacity: 0.85;
-  transform: scale(1.1);
+.fcb-day-plus-row:hover {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.fcb-day-plus-icon {
+  font-size: 13px;
+  line-height: 1;
 }
 
 /* Прогресс-бар загруженности дня */

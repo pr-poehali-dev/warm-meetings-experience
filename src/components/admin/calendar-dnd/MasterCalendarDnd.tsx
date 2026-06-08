@@ -965,16 +965,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       : arg.text;
     return (
       <div className="fcb-day-load">
-        <div className="flex items-center justify-center gap-1">
-          <span className="text-sm font-semibold capitalize leading-tight">{label}</span>
-          <button
-            onClick={(e) => { e.stopPropagation(); openDayAction(arg.date); }}
-            className="fcb-day-plus"
-            title="Создать бронь или заблокировать этот день"
-          >
-            +
-          </button>
-        </div>
+        <div className="text-sm font-semibold capitalize leading-tight">{label}</div>
         {isBlocked ? (
           <div className="fcb-day-header-block" title="Выходной">
             <Icon name="Lock" size={11} />
@@ -987,21 +978,18 @@ export default function MasterCalendarDnd({ masterId }: Props) {
             <div className="fcb-day-load-label">{pct}%</div>
           </>
         )}
+        {/* Отдельная строка-кнопка «+ запись» под датой */}
+        <button
+          onClick={(e) => { e.stopPropagation(); openDayAction(arg.date); }}
+          className="fcb-day-plus-row"
+          title="Создать бронь или заблокировать этот день"
+        >
+          <span className="fcb-day-plus-icon">+</span>
+          <span className="fcb-day-plus-text">запись</span>
+        </button>
       </div>
     );
   };
-
-  // Кнопка «+» в ячейке allDay конкретного дня.
-  // FullCalendar вызывает allDayCellContent для каждой колонки дня в строке allDay.
-  const allDayCellContent = useCallback((arg: { date: Date }) => (
-    <button
-      onClick={(e) => { e.stopPropagation(); e.preventDefault(); openDayAction(arg.date, true); }}
-      className="fcb-allday-plus"
-      title="Создать бронь или заблокировать этот день"
-    >
-      +
-    </button>
-  ), [openDayAction]);
 
   return (
     <div className="fc-dnd space-y-3">
@@ -1073,7 +1061,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
             </div>
             <div className="flex items-center gap-1.5">
               <Icon name="Plus" size={12} className="shrink-0 text-primary" />
-              <span>Кнопка <strong>«+»</strong> в строке «Весь день» — создать бронь или заблокировать этот день.</span>
+              <span>Кнопка <strong>«+ запись»</strong> под датой дня — создать бронь или заблокировать этот день.</span>
             </div>
           </div>
         ) : <div />}
@@ -1104,8 +1092,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         locale={ruLocale}
         firstDay={1}
         allDaySlot={true}
-        allDayText="+ день"
-        allDayCellContent={allDayCellContent}
+        allDayText="Весь день"
         nowIndicator
         editable
         selectable
