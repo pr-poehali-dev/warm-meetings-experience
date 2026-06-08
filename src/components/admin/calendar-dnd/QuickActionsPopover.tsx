@@ -13,6 +13,8 @@ export interface QuickEvent {
   raw?: MasterBooking | MasterSlot | DayBlock;
 }
 
+export type BookingStatusAction = "confirm" | "complete" | "no_show";
+
 interface Props {
   event: QuickEvent;
   anchor: { x: number; y: number };
@@ -21,7 +23,16 @@ interface Props {
   onCancelBooking: (bookingId: number) => void;
   onDeleteSlot: (slotId: number) => void;
   onDeleteBlock?: (blockId: number) => void;
+  onChangeStatus?: (bookingId: number, action: BookingStatusAction) => void;
 }
+
+const STATUS_META: Record<string, { label: string; cls: string }> = {
+  pending:   { label: "Ждёт подтверждения", cls: "bg-amber-100 text-amber-700" },
+  confirmed: { label: "Подтверждена",        cls: "bg-green-100 text-green-700" },
+  completed: { label: "Завершена",           cls: "bg-blue-100 text-blue-700" },
+  canceled:  { label: "Отменена",            cls: "bg-red-100 text-red-700" },
+  no_show:   { label: "Не пришёл",           cls: "bg-gray-200 text-gray-600" },
+};
 
 // Форматируем в ЭКРАННОМ времени мастера (явный timeZone), а не браузера.
 const fmtRange = (s: Date, e: Date, tz: string) =>
@@ -41,21 +52,20 @@ function useIsMobile() {
   return m;
 }
 
-export default function QuickActionsPopover({ event, anchor, timezone, onClose, onCancelBooking, onDeleteSlot, onDeleteBlock }: Props) {
+export default function QuickActionsPopover({ event, anchor, timezone, onClose, onCancelBooking, onDeleteSlot, onDeleteBlock, onChangeStatus }: Props) {
   const isMobile = useIsMobile();
   const tz = timezone || "Europe/Moscow";
   const booking = event.kind === "booking" ? (event.raw as MasterBooking | undefined) : undefined;
+  const phone = (booking?.client_phone || "").replace(/\D/g, "");
+  const status = booking?.status;
+  const isActive = status === "pending" || status === "confirmed";
 
-  const handleWrite = () => {
-    if (!booking) return;
-    const phone = (booking.client_phone || "").replace(/\D/g, "");
-    if (phone) {
-      // Telegram сначала по phone, fallback на tel:
-      window.open(`tg://resolve?phone=${phone}`, "_blank");
-      setTimeout(() => window.open(`tel:+${phone}`, "_self"), 600);
-    } else {
-      window.alert("У клиента не указан телефон");
-    }
+  const call = () => phone && window.open(`tel:+${phone}`, "_self");
+  const whatsapp = () => phone && window.open(`https://wa.me/${phone}`, "_blank");
+  const telegram = () => phone && window.open(`https://t.me/+${phone}`, "_blank");
+
+  const changeStatus = (action: BookingStatusAction) => {
+    if (booking?.id && onChangeStatus) onChangeStatus(booking.id, action);
   };
 
   const handleCancel = () => {
@@ -79,8 +89,18 @@ export default function QuickActionsPopover({ event, anchor, timezone, onClose, 
   const content = (
     <div className="space-y-3">
       <div>
-        <div className="font-semibold text-base">{event.title}</div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-base">{event.title}</span>
+          {booking && status && STATUS_META[status] && (
+            <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium ${STATUS_META[status].cls}`}>
+              {STATUS_META[status].label}
+            </span>
+          )}
+        </div>
         <div className="text-xs text-muted-foreground capitalize">{fmtDate(event.start, tz)} · {fmtRange(event.start, event.end, tz)}</div>
+        {booking?.service_name && (
+          <div className="text-xs text-muted-foreground mt-1">{booking.service_name}{booking.price ? ` · ${booking.price} ₽` : ""}</div>
+        )}
         {booking?.client_phone && (
           <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
             <Icon name="Phone" size={11} />
@@ -92,20 +112,54 @@ export default function QuickActionsPopover({ event, anchor, timezone, onClose, 
         )}
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        {event.kind === "booking" && booking?.client_phone && (
-          <Button size="sm" variant="outline" className="justify-start gap-2" onClick={handleWrite}>
-            <Icon name="MessageSquare" size={14} />
-            Написать
+      {/* Быстрый контакт с клиентом */}
+      {event.kind === "booking" && phone && (
+        <div className="flex gap-1.5">
+          <Button size="sm" variant="outline" className="flex-1 gap-1.5" onClick={call} title="Позвонить">
+            <Icon name="Phone" size={14} className="text-blue-600" />
+            <span className="hidden xs:inline">Звонок</span>
           </Button>
-        )}
+          <Button size="sm" variant="outline" className="flex-1 gap-1.5" onClick={whatsapp} title="WhatsApp">
+            <Icon name="MessageCircle" size={14} className="text-green-600" />
+            WA
+          </Button>
+          <Button size="sm" variant="outline" className="flex-1 gap-1.5" onClick={telegram} title="Telegram">
+            <Icon name="Send" size={14} className="text-sky-500" />
+            TG
+          </Button>
+        </div>
+      )}
+
+      {/* Смена статуса записи */}
+      {event.kind === "booking" && isActive && onChangeStatus && (
+        <div className="flex flex-col gap-1.5 border-t pt-2.5">
+          {status === "pending" && (
+            <Button size="sm" className="justify-start gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => changeStatus("confirm")}>
+              <Icon name="Check" size={14} />
+              Подтвердить запись
+            </Button>
+          )}
+          <div className="flex gap-1.5">
+            <Button size="sm" variant="outline" className="flex-1 gap-1.5" onClick={() => changeStatus("complete")}>
+              <Icon name="CircleCheckBig" size={14} className="text-blue-600" />
+              Завершена
+            </Button>
+            <Button size="sm" variant="outline" className="flex-1 gap-1.5" onClick={() => changeStatus("no_show")}>
+              <Icon name="UserX" size={14} className="text-gray-500" />
+              Не пришёл
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-1.5 border-t pt-2.5">
         {!event.id.startsWith("blk-") && (
-          <Button size="sm" variant="outline" className="justify-start gap-2" onClick={onClose}>
+          <Button size="sm" variant="ghost" className="justify-start gap-2 text-muted-foreground" onClick={onClose}>
             <Icon name="Move" size={14} />
-            Перенести <span className="text-xs text-muted-foreground ml-auto">перетащите блок</span>
+            Перенести <span className="text-xs ml-auto">перетащите блок</span>
           </Button>
         )}
-        <Button size="sm" variant="destructive" className="justify-start gap-2" onClick={handleCancel}>
+        <Button size="sm" variant="ghost" className="justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={handleCancel}>
           <Icon name="X" size={14} />
           {event.kind === "booking" ? "Отменить запись" : "Удалить"}
         </Button>
@@ -128,13 +182,13 @@ export default function QuickActionsPopover({ event, anchor, timezone, onClose, 
 
   // Desktop — поповер прибит к координатам
   const left = Math.max(8, Math.min(window.innerWidth - 280 - 8, anchor.x - 140));
-  const top = Math.min(window.innerHeight - 220, anchor.y);
+  const top = Math.max(8, Math.min(window.innerHeight - 360, anchor.y));
 
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       <div
-        className="fixed z-50 w-[280px] bg-card border rounded-xl shadow-lg p-3"
+        className="fixed z-50 w-[280px] max-h-[80vh] overflow-y-auto bg-card border rounded-xl shadow-lg p-3"
         style={{ left, top }}
         onClick={(e) => e.stopPropagation()}
       >

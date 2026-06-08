@@ -24,6 +24,7 @@ import {
 
 import EventForm, { CreateMode, CreatePayload } from "./EventForm";
 import QuickActionsPopover, { QuickEvent } from "./QuickActionsPopover";
+import AgendaView from "./AgendaView";
 import "./styles.css";
 
 interface Props {
@@ -127,6 +128,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
 
   const [viewTitle, setViewTitle] = useState<string>("");
   const [currentView, setCurrentView] = useState<string>("timeGridWeek");
+  const [agendaMode, setAgendaMode] = useState(false);
+  const [agendaDate, setAgendaDate] = useState<Date>(new Date());
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -697,6 +700,26 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     }
   };
 
+  const handleBookingStatus = async (
+    bookingId: number,
+    action: "confirm" | "complete" | "no_show" | "cancel",
+  ) => {
+    const labels: Record<typeof action, string> = {
+      confirm: "Запись подтверждена",
+      complete: "Запись завершена",
+      no_show: "Отмечено: клиент не пришёл",
+      cancel: "Запись отменена",
+    };
+    try {
+      await masterBookingsApi.updateBooking({ id: bookingId, action });
+      toast.success(labels[action]);
+      handleQuickClose();
+      loadData();
+    } catch (e) {
+      toast.error("Не удалось: " + String(e));
+    }
+  };
+
   const handleDeleteSlot = async (slotId: number) => {
     try {
       await masterCalendarApi.deleteSlot(slotId);
@@ -795,25 +818,32 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     <div className="fc-dnd space-y-3">
       {/* Шапка с навигацией */}
       <div className="flex flex-col gap-2">
-        {/* Строка 1: навигация + заголовок + переключатели вида */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Button size="sm" variant="outline" className="px-2" onClick={() => { calRef.current?.getApi().prev(); updateTitle(); }}>
-            <Icon name="ChevronLeft" size={16} />
-          </Button>
-          <Button size="sm" variant="outline" className="px-2.5" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
-            Сегодня
-          </Button>
-          <Button size="sm" variant="outline" className="px-2" onClick={() => { calRef.current?.getApi().next(); updateTitle(); }}>
-            <Icon name="ChevronRight" size={16} />
-          </Button>
-          <span className="text-sm font-semibold capitalize flex-1 min-w-0 truncate">{viewTitle}</span>
-          {loading && <Icon name="Loader2" size={16} className="animate-spin text-muted-foreground" />}
-        </div>
+        {/* Строка 1: навигация + заголовок + переключатели вида (только для сетки) */}
+        {!agendaMode && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Button size="sm" variant="outline" className="px-2" onClick={() => { calRef.current?.getApi().prev(); updateTitle(); }}>
+              <Icon name="ChevronLeft" size={16} />
+            </Button>
+            <Button size="sm" variant="outline" className="px-2.5" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
+              Сегодня
+            </Button>
+            <Button size="sm" variant="outline" className="px-2" onClick={() => { calRef.current?.getApi().next(); updateTitle(); }}>
+              <Icon name="ChevronRight" size={16} />
+            </Button>
+            <span className="text-sm font-semibold capitalize flex-1 min-w-0 truncate">{viewTitle}</span>
+            {loading && <Icon name="Loader2" size={16} className="animate-spin text-muted-foreground" />}
+          </div>
+        )}
         {/* Строка 2: виды + доп. кнопки */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <Button size="sm" variant={currentView === "timeGridDay" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("timeGridDay")}>День</Button>
-          <Button size="sm" variant={currentView === "timeGridWeek" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("timeGridWeek")}>Неделя</Button>
-          <Button size="sm" variant={currentView === "dayGridMonth" ? "default" : "outline"} onClick={() => calRef.current?.getApi().changeView("dayGridMonth")}>Месяц</Button>
+          <Button size="sm" variant={agendaMode ? "default" : "outline"} className="gap-1.5" onClick={() => setAgendaMode((v) => !v)} title="Повестка дня — список записей">
+            <Icon name="ListChecks" size={14} />
+            <span className="hidden sm:inline">Повестка</span>
+          </Button>
+          <div className="w-px h-5 bg-border mx-0.5" />
+          <Button size="sm" variant={!agendaMode && currentView === "timeGridDay" ? "default" : "outline"} disabled={agendaMode} onClick={() => calRef.current?.getApi().changeView("timeGridDay")}>День</Button>
+          <Button size="sm" variant={!agendaMode && currentView === "timeGridWeek" ? "default" : "outline"} disabled={agendaMode} onClick={() => calRef.current?.getApi().changeView("timeGridWeek")}>Неделя</Button>
+          <Button size="sm" variant={!agendaMode && currentView === "dayGridMonth" ? "default" : "outline"} disabled={agendaMode} onClick={() => calRef.current?.getApi().changeView("dayGridMonth")}>Месяц</Button>
           <div className="flex-1" />
           <Button size="sm" variant="outline" className="px-2" onClick={openTrash} title="Корзина и резервные копии">
             <Icon name="Archive" size={14} />
@@ -828,16 +858,31 @@ export default function MasterCalendarDnd({ masterId }: Props) {
 
       {/* Подсказка + часовой пояс мастера */}
       <div className="flex items-center justify-between gap-2">
-        <div className="hidden sm:flex text-xs text-muted-foreground items-center gap-2">
-          <Icon name="Info" size={12} />
-          <span>Выделите диапазон мышью или удержанием пальца — чтобы создать запись. Тяните блок — чтобы перенести. Тяните нижний край — изменить длительность.</span>
-        </div>
+        {!agendaMode ? (
+          <div className="hidden sm:flex text-xs text-muted-foreground items-center gap-2">
+            <Icon name="Info" size={12} />
+            <span>Выделите диапазон мышью или удержанием пальца — чтобы создать запись. Тяните блок — чтобы перенести. Тяните нижний край — изменить длительность.</span>
+          </div>
+        ) : <div />}
         <div className="text-xs font-medium text-muted-foreground flex items-center gap-1 whitespace-nowrap">
           <Icon name="Globe" size={12} />
           <span>Время мастера: {tzLabel(settings?.timezone || "Europe/Moscow")}</span>
         </div>
       </div>
 
+      {agendaMode && (
+        <AgendaView
+          date={agendaDate}
+          bookings={bookings}
+          timezone={settings?.timezone || "Europe/Moscow"}
+          onPrev={() => setAgendaDate((d) => new Date(d.getTime() - 86400000))}
+          onNext={() => setAgendaDate((d) => new Date(d.getTime() + 86400000))}
+          onToday={() => setAgendaDate(new Date())}
+          onChangeStatus={handleBookingStatus}
+        />
+      )}
+
+      <div className={agendaMode ? "hidden" : ""}>
       <FullCalendar
         ref={calRef}
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
@@ -901,6 +946,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           }
         }}
       />
+      </div>
 
       {/* Floating Create Form */}
       {createMode.open && createMode.start && createMode.end && (
@@ -926,6 +972,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           onCancelBooking={handleCancelBooking}
           onDeleteSlot={handleDeleteSlot}
           onDeleteBlock={handleDeleteBlock}
+          onChangeStatus={handleBookingStatus}
         />
       )}
 
