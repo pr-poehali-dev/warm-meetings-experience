@@ -35,11 +35,15 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 };
 
 // Форматируем в ЭКРАННОМ времени мастера (явный timeZone), а не браузера.
-const fmtRange = (s: Date, e: Date, tz: string) =>
-  `${s.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: tz })}\u00A0–\u00A0${e.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: tz })}`;
+// start/end могут быть null (например, у all-day выходного) — защищаемся.
+const fmtRange = (s: Date | null, e: Date | null, tz: string) => {
+  if (!s || !e) return "";
+  const opt = { hour: "2-digit", minute: "2-digit", timeZone: tz } as const;
+  return `${s.toLocaleTimeString("ru-RU", opt)}\u00A0–\u00A0${e.toLocaleTimeString("ru-RU", opt)}`;
+};
 
-const fmtDate = (d: Date, tz: string) =>
-  d.toLocaleDateString("ru-RU", { weekday: "long", day: "2-digit", month: "long", timeZone: tz });
+const fmtDate = (d: Date | null, tz: string) =>
+  d ? d.toLocaleDateString("ru-RU", { weekday: "long", day: "2-digit", month: "long", timeZone: tz }) : "";
 
 function useIsMobile() {
   const [m, setM] = useState(false);
@@ -97,7 +101,7 @@ export default function QuickActionsPopover({ event, anchor, timezone, onClose, 
             </span>
           )}
         </div>
-        <div className="text-xs text-muted-foreground capitalize">{fmtDate(event.start, tz)} · {fmtRange(event.start, event.end, tz)}</div>
+        <div className="text-xs text-muted-foreground capitalize">{[fmtDate(event.start, tz), fmtRange(event.start, event.end, tz)].filter(Boolean).join(" · ")}</div>
         {booking?.service_name && (
           <div className="text-xs text-muted-foreground mt-1">{booking.service_name}{booking.price ? ` · ${booking.price} ₽` : ""}</div>
         )}
