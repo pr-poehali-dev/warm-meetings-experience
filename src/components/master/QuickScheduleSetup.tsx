@@ -414,46 +414,29 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
           {/* Буфер между сеансами */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <Label className="text-xs">Буфер между сеансами, мин</Label>
-              {savingBuffer && (
-                <Icon name="Loader2" size={12} className="animate-spin text-muted-foreground" />
-              )}
+              <Label className="text-xs">Пауза между сеансами</Label>
+              {savingBuffer && <Icon name="Loader2" size={12} className="animate-spin text-muted-foreground" />}
             </div>
-            <div className="flex flex-wrap gap-2">
-              {[0, 5, 10, 15, 20, 30, 45, 60].map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => {
-                    setBufferMinutes(m);
-                    handleSaveBuffer(m);
-                  }}
-                  disabled={savingBuffer}
-                  className={`min-w-[48px] px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                    bufferMinutes === m
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background border-border hover:bg-muted"
-                  }`}
-                >
-                  {m === 0 ? "Без паузы" : `${m} мин`}
-                </button>
-              ))}
-              <div className="flex items-center gap-1">
-                <Input
-                  type="number"
-                  min={0}
-                  max={240}
-                  value={bufferMinutes}
-                  onChange={(e) => setBufferMinutes(Math.max(0, Number(e.target.value) || 0))}
-                  onBlur={() => handleSaveBuffer(bufferMinutes)}
-                  className="w-20 h-8 text-xs"
-                />
-                <span className="text-xs text-muted-foreground">мин</span>
-              </div>
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1.5">
-              Время после каждой записи — отдых, уборка, подготовка. Гости не смогут забронировать его.
-            </p>
+            <select
+              value={bufferMinutes}
+              disabled={savingBuffer}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setBufferMinutes(v);
+                handleSaveBuffer(v);
+              }}
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value={0}>Без паузы</option>
+              <option value={5}>5 мин</option>
+              <option value={10}>10 мин</option>
+              <option value={15}>15 мин</option>
+              <option value={20}>20 мин</option>
+              <option value={30}>30 мин</option>
+              <option value={45}>45 мин</option>
+              <option value={60}>1 час</option>
+            </select>
+            <p className="text-[11px] text-muted-foreground mt-1">Отдых, уборка, подготовка — гости не смогут занять это время.</p>
           </div>
 
           {/* Количество недель */}
