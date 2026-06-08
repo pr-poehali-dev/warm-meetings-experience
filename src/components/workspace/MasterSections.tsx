@@ -323,7 +323,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
                 className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-blue-200 bg-white text-blue-700 hover:bg-blue-50 transition-colors"
               >
                 <Icon name={linkCopied ? "Check" : "Copy"} size={14} />
-                {linkCopied ? "Скопировано" : "Копировать"}
+                <span className="hidden sm:inline">{linkCopied ? "Скопировано" : "Копировать"}</span>
               </button>
               <button
                 onClick={() => {
@@ -337,7 +337,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
                 className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-blue-200 bg-white text-blue-700 hover:bg-blue-50 transition-colors"
               >
                 <Icon name="Share2" size={14} />
-                Поделиться
+                <span className="hidden sm:inline">Поделиться</span>
               </button>
               <a
                 href={`/masters/${master.slug}`}
@@ -346,7 +346,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
                 className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border border-blue-200 bg-white text-blue-700 hover:bg-blue-50 transition-colors"
               >
                 <Icon name="ExternalLink" size={14} />
-                Открыть
+                <span className="hidden sm:inline">Открыть</span>
               </a>
             </div>
           </div>
