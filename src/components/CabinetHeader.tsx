@@ -47,11 +47,11 @@ export default function CabinetHeader({
           </button>
         )}
 
-        <Link to="/" className="flex items-center hover:opacity-80 transition shrink-0">
+        <Link to="/" className="flex items-center hover:opacity-80 transition min-w-0 shrink">
           <img
             src={isDark ? LOGO_ON_DARK : LOGO_ON_LIGHT}
             alt="Спарком"
-            className="h-7 w-auto max-w-[130px]"
+            className="h-7 w-auto max-h-7 object-contain object-left"
           />
         </Link>
 
