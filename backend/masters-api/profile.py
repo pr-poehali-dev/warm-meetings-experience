@@ -403,7 +403,7 @@ def handle_profile(event, method, params, schema, headers):
         conn = get_conn()
         cur = conn.cursor()
         cur.execute(
-            f"SELECT * FROM {schema}.masters WHERE slug = %s AND is_active = true AND hidden_by_owner = false AND is_verified = true",
+            f"SELECT * FROM {schema}.masters WHERE slug = %s AND is_active = true AND is_verified = true",
             [params['slug']],
         )
         row = cur.fetchone()
