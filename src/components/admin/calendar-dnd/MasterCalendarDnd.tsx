@@ -782,7 +782,27 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   };
 
   return (
-    <div className="fc-dnd space-y-3">
+    <div
+      className="fc-dnd space-y-3"
+      onMouseDown={(e) => {
+        // Запускаем трекинг: что под курсором во время протягивания выделения.
+        if ((e.target as HTMLElement).closest(".fc-timegrid-event, .fc-event")) return;
+        const track = (mv: MouseEvent) => {
+          const el = document.elementFromPoint(mv.clientX, mv.clientY) as HTMLElement | null;
+          // Логируем только когда под курсором НЕ обычная ячейка-сетка.
+          const isPlainSlot = el?.closest(".fc-timegrid-slot-lane, .fc-timegrid-col-bg, .fc-highlight, .fc-timegrid-now-indicator-line");
+          if (!isPlainSlot) {
+            console.log("[SEL track] BLOCKER under cursor:", el?.className, "tag:", el?.tagName, "y:", mv.clientY);
+          }
+        };
+        const stop = () => {
+          window.removeEventListener("mousemove", track);
+          window.removeEventListener("mouseup", stop);
+        };
+        window.addEventListener("mousemove", track);
+        window.addEventListener("mouseup", stop);
+      }}
+    >
       {/* Шапка с навигацией */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5">
@@ -856,11 +876,28 @@ export default function MasterCalendarDnd({ masterId }: Props) {
         }}
         selectAllow={(sel) => {
           // В all-day разрешаем любой диапазон дней. В часовом — только в пределах одного дня.
+          const okDay = sel.allDay || sel.start.toDateString() === sel.end.toDateString();
+          console.log(
+            "[SEL allow]", sel.startStr, "->", sel.endStr,
+            "allDay:", sel.allDay, "=>", okDay,
+          );
           if (sel.allDay) return true;
           if (sel.start.toDateString() !== sel.end.toDateString()) return false;
           return true;
         }}
-        select={handleSelect}
+        select={(arg) => {
+          console.log("[SEL select FIRED]", arg.startStr, "->", arg.endStr);
+          handleSelect(arg);
+        }}
+        unselect={(jsEvent) => {
+          const ev = jsEvent as unknown as MouseEvent | undefined;
+          const tgt = ev ? (document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null) : null;
+          console.log(
+            "[SEL unselect]", "underCursor:", tgt?.className || "(none)",
+            "tag:", tgt?.tagName,
+            "y:", ev?.clientY,
+          );
+        }}
         eventClick={handleEventClick}
         eventDrop={handleEventDrop}
         eventResize={handleEventResize}
