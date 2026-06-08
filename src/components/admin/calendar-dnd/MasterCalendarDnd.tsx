@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
-import interactionPlugin, { DateSelectArg } from "@fullcalendar/interaction";
+import interactionPlugin, { DateSelectArg, DateClickArg } from "@fullcalendar/interaction";
 import { EventClickArg, EventDropArg, EventInput } from "@fullcalendar/core";
 import ruLocale from "@fullcalendar/core/locales/ru";
 import { toast } from "sonner";
@@ -384,6 +384,18 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     setCreateMode({ open: true, start, end, startStr, endStr, allDay: !!sel.allDay });
     api.unselect();
   };
+
+  // Тап на ячейку (dateClick) — удобно на мобильном: без протягивания открывает
+  // форму с диапазоном 1 час от тапнутого момента. На десктопе не мешает — там
+  // работает привычное выделение (handleSelect).
+  const handleDateClick = useCallback((arg: DateClickArg) => {
+    if (arg.allDay) return; // блокировку дня создаём через allDay-полосу
+    const start = arg.date;
+    const end = new Date(start.getTime() + 60 * 60_000);
+    const startStr = arg.dateStr;
+    const endStr = calIso(end);
+    setCreateMode({ open: true, start, end, startStr, endStr, allDay: false });
+  }, [calIso]);
 
   // Создание
   const handleCreate = async (mode: CreateMode, payload: CreatePayload) => {
@@ -968,6 +980,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           return startDay === endDay;
         }}
         select={handleSelect}
+        dateClick={handleDateClick}
         eventClick={handleEventClick}
         eventDrop={handleEventDrop}
         eventResize={handleEventResize}
