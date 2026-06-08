@@ -488,44 +488,45 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
                 })()}
               </div>
 
-              <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => openEdit(service)}
-                  className="flex-1"
-                >
-                  <Icon name="Pencil" size={14} className="mr-1" />
-                  Редактировать
-                </Button>
-                <button
-                  onClick={() => toggleActive(service)}
-                  className={`p-2 rounded-md transition-colors ${
-                    service.is_active
-                      ? "text-yellow-600 hover:bg-yellow-50"
-                      : "text-green-600 hover:bg-green-50"
-                  }`}
-                  title={service.is_active ? "Деактивировать" : "Активировать"}
-                  disabled={saving}
-                >
-                  <Icon name={service.is_active ? "EyeOff" : "Eye"} size={16} />
-                </button>
-                <button
-                  onClick={() => copyServiceLink(service)}
-                  className="p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
-                  title="Скопировать ссылку на услугу"
-                  disabled={saving}
-                >
-                  <Icon name="Link" size={16} />
-                </button>
-                <button
-                  onClick={() => service.id && confirmDelete(service.id)}
-                  className="p-2 rounded-md text-red-500 hover:bg-red-50 transition-colors"
-                  title="Удалить"
-                  disabled={saving}
-                >
-                  <Icon name="Trash2" size={16} />
-                </button>
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => openEdit(service)}
+                    className="p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+                    title="Редактировать"
+                    disabled={saving}
+                  >
+                    <Icon name="Pencil" size={16} />
+                  </button>
+                  <button
+                    onClick={() => toggleActive(service)}
+                    className={`p-2 rounded-md transition-colors ${
+                      service.is_active
+                        ? "text-yellow-600 hover:bg-yellow-50"
+                        : "text-green-600 hover:bg-green-50"
+                    }`}
+                    title={service.is_active ? "Деактивировать" : "Активировать"}
+                    disabled={saving}
+                  >
+                    <Icon name={service.is_active ? "EyeOff" : "Eye"} size={16} />
+                  </button>
+                  <button
+                    onClick={() => copyServiceLink(service)}
+                    className="p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+                    title="Скопировать ссылку на услугу"
+                    disabled={saving}
+                  >
+                    <Icon name="Link" size={16} />
+                  </button>
+                  <button
+                    onClick={() => service.id && confirmDelete(service.id)}
+                    className="p-2 rounded-md text-red-500 hover:bg-red-50 transition-colors"
+                    title="Удалить"
+                    disabled={saving}
+                  >
+                    <Icon name="Trash2" size={16} />
+                  </button>
+                </div>
                 {service.id && service.is_active && (
                   <TgPublishButton
                     contentType="master_service"
