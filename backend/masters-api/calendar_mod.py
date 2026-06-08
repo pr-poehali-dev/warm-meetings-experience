@@ -351,13 +351,19 @@ def handle_slots(event, method, params, schema, headers):
         # Защита от гонок
         acquire_master_lock(cur, master_id)
 
-        # Пересечение со ВСЕМИ слотами (включая blocked) — два разных
-        # назначения времени на одну точку недопустимы.
+        # Пересечение с другими слотами.
+        # Блок/перерыв (blocked, event) разрешено создавать поверх рабочего
+        # слота (available) — мастер вправе закрыть часть своего рабочего времени.
+        # Запрет остаётся только на пересечение двух «жёстких» слотов
+        # (booked, blocked, event).
+        is_hard = slot_status in ('blocked', 'event')
+        overlap_exclude = "AND status = 'available'" if is_hard else ""
         cur.execute(f"""
             SELECT id, status, notes FROM {schema}.master_slots
             WHERE master_id = {int(master_id)}
               AND datetime_start < '{dt_end}'
               AND datetime_end > '{dt_start}'
+              {overlap_exclude}
             LIMIT 1
         """)
         existing = cur.fetchone()
@@ -449,13 +455,18 @@ def handle_slots(event, method, params, schema, headers):
                     'message': f"День {blocked_day['block_date']} заблокирован: {blocked_day.get('reason') or 'выходной'}",
                 }, default=str, ensure_ascii=False)}
 
-            # 2) Пересечение с другим слотом
+            # 2) Пересечение с другим слотом.
+            # Блок/перерыв разрешён поверх available — см. аналогичную логику POST.
+            new_status = body.get('status') or current.get('status', 'available')
+            is_hard_put = new_status in ('blocked', 'event')
+            overlap_exclude_put = "AND status = 'available'" if is_hard_put else ""
             cur.execute(f"""
                 SELECT id, status FROM {schema}.master_slots
                 WHERE master_id = {int(master_id)}
                   AND id <> {slot_id}
                   AND datetime_start < '{check_e}'
                   AND datetime_end > '{check_s}'
+                  {overlap_exclude_put}
                 LIMIT 1
             """)
             other = cur.fetchone()

@@ -8,6 +8,8 @@ import Icon from "@/components/ui/icon";
 import { MasterService } from "@/lib/master-calendar-api";
 
 export type CreateMode = "booking" | "block" | "break" | "work";
+// "block" и "break" семантически одинаковы — оба закрывают время от записи.
+// На UI используем единую кнопку "Закрыть время" → mode="block".
 
 export interface CreatePayload {
   client_name?: string;
@@ -89,6 +91,11 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
   }, [start, end, allDay]);
 
   const pick = (m: CreateMode) => {
+    // Для «закрыть время» и «рабочее время» форма не нужна — создаём сразу.
+    if (m === "block" || m === "work") {
+      onCreate(m, {});
+      return;
+    }
     setMode(m);
     setStep("form");
   };
@@ -147,7 +154,7 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
                 <div className="font-semibold text-sm">Рабочее время</div>
                 <div className="text-xs text-muted-foreground">Открыть время для записи клиентов</div>
               </div>
-              <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+              <Icon name="Plus" size={14} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => pick("booking")}
@@ -166,21 +173,10 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
             >
               <div className="w-3 h-3 rounded-full" style={{ background: "#9E9E9E" }} />
               <div className="flex-1">
-                <div className="font-semibold text-sm">Заблокировать</div>
-                <div className="text-xs text-muted-foreground">Закрыть время от записи</div>
+                <div className="font-semibold text-sm">Закрыть время</div>
+                <div className="text-xs text-muted-foreground">Перерыв, обед, личное время — запись недоступна</div>
               </div>
-              <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
-            </button>
-            <button
-              onClick={() => pick("break")}
-              className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors text-left"
-            >
-              <div className="w-3 h-3 rounded-full" style={{ background: "#FFC107" }} />
-              <div className="flex-1">
-                <div className="font-semibold text-sm">Перерыв</div>
-                <div className="text-xs text-muted-foreground">Обед, пауза, личное время</div>
-              </div>
-              <Icon name="ChevronRight" size={16} className="text-muted-foreground" />
+              <Icon name="Lock" size={14} className="text-muted-foreground" />
             </button>
           </div>
         ) : (
