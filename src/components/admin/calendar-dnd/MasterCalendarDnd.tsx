@@ -818,6 +818,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           return blockedDates.has(key) ? ["fcb-day-cell-blocked"] : [];
         }}
         selectAllow={(sel) => {
+          console.log("[CAL selectAllow]", sel.startStr, "->", sel.endStr, "allDay:", sel.allDay);
           // В all-day разрешаем любой диапазон дней. В часовом — только в пределах одного дня.
           if (sel.allDay) return true;
           if (sel.start.toDateString() !== sel.end.toDateString()) return false;
