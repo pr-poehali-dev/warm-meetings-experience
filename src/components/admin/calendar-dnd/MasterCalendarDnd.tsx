@@ -400,9 +400,26 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   // Создание
   const handleCreate = async (mode: CreateMode, payload: CreatePayload) => {
     if (!createMode.start || !createMode.end) return;
-    const start = createMode.start;
+    let start = createMode.start;
     let end = createMode.end;
     const isAllDay = createMode.allDay;
+
+    // Пользователь поправил время в форме (для брони не-all-day) — пересобираем
+    // «экранные» строки из дня выделения и нового времени. Берём offset зоны
+    // мастера из исходной startStr, чтобы не было сдвига на зону браузера.
+    if (!isAllDay && mode === "booking" && payload.time_start && payload.time_end && payload.time_end > payload.time_start) {
+      const base = createMode.startStr || calIso(start); // YYYY-MM-DDTHH:mm:ss±hh:mm
+      const dayStr = base.slice(0, 10);
+      const offset = base.slice(16) || ""; // ±hh:mm (или "")
+      const newStartStr = `${dayStr}T${payload.time_start}:00${offset}`;
+      const newEndStr = `${dayStr}T${payload.time_end}:00${offset}`;
+      start = new Date(newStartStr);
+      end = new Date(newEndStr);
+      createMode.start = start;
+      createMode.end = end;
+      createMode.startStr = newStartStr;
+      createMode.endStr = newEndStr;
+    }
 
     try {
       // All-day блок — создаём master_day_blocks (выходной/отпуск)
@@ -824,17 +841,20 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       : arg.text;
     const handlePlusClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-      // Открываем форму на 9:00–10:00 этого дня в зоне мастера.
-      // Берём дату из arg.date и выставляем 9:00 через calIso.
-      const d = new Date(arg.date);
-      d.setHours(9, 0, 0, 0);
-      const end = new Date(d.getTime() + 60 * 60_000);
+      // Открываем форму на этот день, время по умолчанию 9:00–10:00 (его можно
+      // поправить в форме). День берём в зоне мастера; offset — из calIso.
+      const dayStr = calDateKey(arg.date); // YYYY-MM-DD (зона мастера)
+      const offset = calIso(arg.date).slice(16) || "";
+      const startStr = `${dayStr}T09:00:00${offset}`;
+      const endStr = `${dayStr}T10:00:00${offset}`;
+      const d = new Date(startStr);
+      const end = new Date(endStr);
       setCreateMode({
         open: true,
         start: d,
         end,
-        startStr: calIso(d),
-        endStr: calIso(end),
+        startStr,
+        endStr,
         allDay: false,
       });
     };

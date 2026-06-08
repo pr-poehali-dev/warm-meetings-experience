@@ -16,6 +16,9 @@ export interface CreatePayload {
   client_phone?: string;
   service_id?: number | null;
   comment?: string;
+  // Переопределение времени (HH:MM), когда пользователь правит его в форме.
+  time_start?: string;
+  time_end?: string;
 }
 
 interface Props {
@@ -81,6 +84,11 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Редактируемое время (HH:MM) — извлекаем из «экранной» ISO-строки.
+  const initTime = (iso?: string | null) => (iso ? iso.slice(11, 16) : "09:00");
+  const [timeStart, setTimeStart] = useState(initTime(startStr));
+  const [timeEnd, setTimeEnd] = useState(initTime(endStr));
+
   useEffect(() => {
     setStep(allDay ? "form" : "choose");
     setMode(allDay ? "block" : "booking");
@@ -88,7 +96,9 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
     setClientPhone("");
     setServiceId("");
     setComment("");
-  }, [start, end, allDay]);
+    setTimeStart(initTime(startStr));
+    setTimeEnd(initTime(endStr));
+  }, [start, end, allDay, startStr, endStr]);
 
   const pick = (m: CreateMode) => {
     // Для «закрыть время» и «рабочее время» форма не нужна — создаём сразу.
@@ -108,6 +118,8 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
         client_phone: clientPhone,
         service_id: serviceId ? Number(serviceId) : null,
         comment,
+        time_start: timeStart,
+        time_end: timeEnd,
       });
     } finally {
       setSaving(false);
@@ -183,6 +195,19 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
           <div className="space-y-2 mt-2">
             {mode === "booking" && (
               <>
+                {!allDay && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <label className="text-[11px] text-muted-foreground mb-1 block">Начало</label>
+                      <Input type="time" value={timeStart} onChange={(e) => setTimeStart(e.target.value)} className="h-9" />
+                    </div>
+                    <span className="text-muted-foreground mt-5">–</span>
+                    <div className="flex-1">
+                      <label className="text-[11px] text-muted-foreground mb-1 block">Конец</label>
+                      <Input type="time" value={timeEnd} onChange={(e) => setTimeEnd(e.target.value)} className="h-9" />
+                    </div>
+                  </div>
+                )}
                 <Input
                   placeholder="Имя клиента"
                   value={clientName}
