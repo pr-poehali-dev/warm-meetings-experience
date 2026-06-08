@@ -410,7 +410,9 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     if (!isAllDay && mode === "booking" && payload.time_start && payload.time_end && payload.time_end > payload.time_start) {
       const base = createMode.startStr || calIso(start); // YYYY-MM-DDTHH:mm:ss±hh:mm
       const dayStr = base.slice(0, 10);
-      const offset = base.slice(16) || ""; // ±hh:mm (или "")
+      // offset — хвост после времени: "+03:00" / "-05:00" / "Z" / "" 
+      const offsetMatch = base.match(/(Z|[+-]\d{2}:\d{2})$/);
+      const offset = offsetMatch ? offsetMatch[0] : "";
       const newStartStr = `${dayStr}T${payload.time_start}:00${offset}`;
       const newEndStr = `${dayStr}T${payload.time_end}:00${offset}`;
       start = new Date(newStartStr);
@@ -844,7 +846,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       // Открываем форму на этот день, время по умолчанию 9:00–10:00 (его можно
       // поправить в форме). День берём в зоне мастера; offset — из calIso.
       const dayStr = calDateKey(arg.date); // YYYY-MM-DD (зона мастера)
-      const offset = calIso(arg.date).slice(16) || "";
+      const offMatch = calIso(arg.date).match(/(Z|[+-]\d{2}:\d{2})$/);
+      const offset = offMatch ? offMatch[0] : "";
       const startStr = `${dayStr}T09:00:00${offset}`;
       const endStr = `${dayStr}T10:00:00${offset}`;
       const d = new Date(startStr);
