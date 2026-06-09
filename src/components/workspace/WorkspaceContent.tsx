@@ -344,12 +344,18 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                   const existingId = selectedEvent?.id || merged.id;
                   if (existingId) {
                     const updated = await organizerApi.updateEvent({ ...merged, id: existingId, submit_action: submitAction } as OrgEvent & { id: number; submit_action: string });
+                    if (merged.pricing_type === "dynamic" && merged.pricing_tiers) {
+                      await organizerApi.savePricingTiers(existingId, merged.pricing_tiers);
+                    }
                     setFormData({ ...updated });
                     setSelectedEvent(updated);
                     toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
                     if (submitAction === "submit") setOrgView("dashboard");
                   } else {
                     const created = await organizerApi.createEvent({ ...merged, submit_action: submitAction } as Parameters<typeof organizerApi.createEvent>[0]);
+                    if (merged.pricing_type === "dynamic" && merged.pricing_tiers && created.id) {
+                      await organizerApi.savePricingTiers(created.id, merged.pricing_tiers);
+                    }
                     setSelectedEvent(created);
                     setFormData({ ...created });
                     toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
