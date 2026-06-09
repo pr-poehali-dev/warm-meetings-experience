@@ -1,4 +1,4 @@
-import { useParams, Navigate } from "react-router-dom";
+import { useParams, Navigate, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
@@ -20,6 +20,7 @@ const MEDIA_API = func2url["media-api"];
 
 export default function EventDetail() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const [event, setEvent] = useState<EventItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -107,6 +108,14 @@ export default function EventDetail() {
       )}
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+        >
+          <Icon name="ArrowLeft" size={16} />
+          Назад
+        </button>
+
         <div className="flex flex-col lg:flex-row gap-10">
 
           {/* Основной контент */}
