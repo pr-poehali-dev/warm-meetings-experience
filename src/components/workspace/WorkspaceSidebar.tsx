@@ -74,27 +74,29 @@ export default function WorkspaceSidebar({
     sectionKey,
     icon,
     accent,
+    tint,
     label,
     children,
   }: {
     sectionKey: string;
     icon: string;
     accent: string;
+    tint: string;
     label: string;
     children: React.ReactNode;
   }) => {
     const open = openSections[sectionKey] ?? true;
     return (
-      <div>
+      <div className={`rounded-2xl border px-1.5 py-1 mt-3 ${tint}`}>
         <button
           onClick={() => toggleSection(sectionKey)}
-          className="w-full flex items-center gap-1.5 px-3 mb-1.5 mt-3 text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider hover:text-foreground transition-colors"
+          className="w-full flex items-center gap-1.5 px-1.5 mb-1 mt-1 text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider hover:text-foreground transition-colors"
         >
           <Icon name={icon} size={11} className={accent} />
           <span className="flex-1 text-left">{label}</span>
           <Icon name="ChevronDown" size={12} className={`transition-transform ${open ? "" : "-rotate-90"}`} />
         </button>
-        {open && <div className="space-y-0.5">{children}</div>}
+        {open && <div className="space-y-0.5 pb-1">{children}</div>}
       </div>
     );
   };
@@ -112,7 +114,7 @@ export default function WorkspaceSidebar({
 
       {/* Мастер-разделы */}
       {isMaster && (
-        <CollapsibleSection sectionKey="master" icon="Flame" accent="text-orange-500" label="Мастер-услуги">
+        <CollapsibleSection sectionKey="master" icon="Flame" accent="text-orange-500" tint="bg-orange-500/[0.04] border-orange-500/15" label="Мастер-услуги">
           {MASTER_NAV.filter((n) => n.id !== "dashboard").map((n) => (
             <NavItem
               key={n.id}
@@ -128,7 +130,7 @@ export default function WorkspaceSidebar({
 
       {/* Организатор-разделы */}
       {isOrganizer && (
-        <CollapsibleSection sectionKey="organizer" icon="CalendarDays" accent="text-emerald-500" label="Мероприятия">
+        <CollapsibleSection sectionKey="organizer" icon="CalendarDays" accent="text-emerald-500" tint="bg-emerald-500/[0.04] border-emerald-500/15" label="Мероприятия">
           <NavItem
             active={roleTab === "organizer" && orgView === "dashboard"}
             onClick={() => switchOrgView("dashboard")}
@@ -162,7 +164,7 @@ export default function WorkspaceSidebar({
 
       {/* Партнёр-разделы */}
       {isPartner && (
-        <CollapsibleSection sectionKey="partner" icon="Building2" accent="text-violet-500" label="Управляющий">
+        <CollapsibleSection sectionKey="partner" icon="Building2" accent="text-violet-500" tint="bg-violet-500/[0.04] border-violet-500/15" label="Управляющий">
           <NavItem
             active={roleTab === "partner" && partnerView === "baths"}
             onClick={() => switchPartnerView("baths")}
