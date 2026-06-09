@@ -87,13 +87,20 @@ export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: Ex
   };
 
   const handleDelete = async (id: number) => {
+    if (!window.confirm("Удалить это видео? Действие необратимо.")) return;
     try {
-      await fetch(`${VIDEOS_API}/?videos=1&me=1&video_id=${id}`, {
+      const res = await fetch(`${VIDEOS_API}/?videos=1&me=1&video_id=${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${userToken}` },
       });
+      if (!res.ok) {
+        setError("Не удалось удалить видео");
+        return;
+      }
       setVideos((v) => v.filter((x) => x.id !== id));
-    } catch { /* ignore */ }
+    } catch {
+      setError("Ошибка соединения");
+    }
   };
 
   const handleMoveUp = async (index: number) => {

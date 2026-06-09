@@ -465,7 +465,7 @@ def _ext_videos_delete(params: dict, user_token: str) -> dict:
     if not video_id:
         return err('Не указан video_id')
     schema = get_schema()
-    conn = get_conn(); cur = conn.cursor()
+    conn = get_conn(); cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     user = get_user_from_token(cur, schema, user_token)
     if not user:
         conn.close(); return err('Не авторизован', 401)
@@ -476,7 +476,7 @@ def _ext_videos_delete(params: dict, user_token: str) -> dict:
         cur.close(); conn.close(); return ok({'ok': True})
 
     is_admin = has_role(cur, schema, user['id'], 'admin')
-    if not is_admin and not _user_owns_video(cur, schema, user['id'], row[0], int(row[1])):
+    if not is_admin and not _user_owns_video(cur, schema, user['id'], row['owner_type'], int(row['owner_id'])):
         cur.close(); conn.close(); return err('Нет прав', 403)
 
     cur.execute(f"DELETE FROM {schema}.videos WHERE id = %s", [int(video_id)])
