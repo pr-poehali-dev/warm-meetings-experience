@@ -122,7 +122,7 @@ export default function WorkspaceDashboard({
 
       {/* МАСТЕР */}
       {isMaster && masterData.stats && (
-        <div>
+        <div className="border-l-2 border-l-orange-500/40 bg-orange-500/[0.03] rounded-r-xl pl-3 sm:pl-4 py-2">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
             <Icon name="Flame" size={15} className="text-orange-500" />
             Мастер-услуги
@@ -206,7 +206,7 @@ export default function WorkspaceDashboard({
 
       {/* ОРГАНИЗАТОР */}
       {isOrganizer && orgData && (
-        <div>
+        <div className="border-l-2 border-l-emerald-500/40 bg-emerald-500/[0.03] rounded-r-xl pl-3 sm:pl-4 py-2">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
             <Icon name="CalendarDays" size={15} className="text-emerald-600" />
             Мероприятия
