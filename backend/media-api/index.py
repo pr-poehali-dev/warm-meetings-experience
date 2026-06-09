@@ -444,6 +444,19 @@ def _ext_videos_update(event: dict, params: dict, user_token: str) -> dict:
     return ok({'ok': True})
 
 
+def _user_owns_video(cur, schema: str, user_id: int, owner_type: str, owner_id: int) -> bool:
+    """Проверяет, принадлежит ли owner-объект (мастер/баня/событие) пользователю."""
+    if owner_type == 'master':
+        cur.execute(f"SELECT 1 FROM {schema}.masters WHERE id = %s AND user_id = %s", [owner_id, user_id])
+    elif owner_type == 'bath':
+        cur.execute(f"SELECT 1 FROM {schema}.baths WHERE id = %s AND owner_id = %s", [owner_id, user_id])
+    elif owner_type == 'event':
+        cur.execute(f"SELECT 1 FROM {schema}.events WHERE id = %s AND organizer_id = %s", [owner_id, user_id])
+    else:
+        return False
+    return cur.fetchone() is not None
+
+
 def _ext_videos_delete(params: dict, user_token: str) -> dict:
     """DELETE ?videos=1&me=1&video_id=N — удаление видео владельцем."""
     if not user_token:
@@ -456,7 +469,17 @@ def _ext_videos_delete(params: dict, user_token: str) -> dict:
     user = get_user_from_token(cur, schema, user_token)
     if not user:
         conn.close(); return err('Не авторизован', 401)
-    cur.execute(f"DELETE FROM {schema}.videos WHERE id = %s AND owner_id = %s", [int(video_id), user['id']])
+
+    cur.execute(f"SELECT owner_type, owner_id FROM {schema}.videos WHERE id = %s", [int(video_id)])
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close(); return ok({'ok': True})
+
+    is_admin = has_role(cur, schema, user['id'], 'admin')
+    if not is_admin and not _user_owns_video(cur, schema, user['id'], row[0], int(row[1])):
+        cur.close(); conn.close(); return err('Нет прав', 403)
+
+    cur.execute(f"DELETE FROM {schema}.videos WHERE id = %s", [int(video_id)])
     conn.commit(); cur.close(); conn.close()
     return ok({'ok': True})
 
