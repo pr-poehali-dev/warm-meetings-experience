@@ -11,6 +11,7 @@ import { partnerApi, PartnerBath } from "@/lib/partner-api";
 import { masterChatApi } from "@/lib/master-calendar-api";
 import { mastersApi } from "@/lib/masters-api";
 import { useToast } from "@/hooks/use-toast";
+import { usePolling } from "@/hooks/usePolling";
 
 import WorkspaceSidebar from "@/components/workspace/WorkspaceSidebar";
 import WorkspaceContent from "@/components/workspace/WorkspaceContent";
@@ -117,35 +118,31 @@ export default function Workspace() {
 
   // Непрочитанные сообщения от гостей (для бейджа в разделе «Сообщения»)
   const [unreadMessages, setUnreadMessages] = useState(0);
-  useEffect(() => {
-    if (!isMaster || !masterId) return;
-    let cancelled = false;
-    const loadUnread = () => {
+  usePolling(
+    () => {
       masterChatApi
         .getUnreadCount(masterId)
-        .then((r) => { if (!cancelled) setUnreadMessages(r.unread || 0); })
+        .then((r) => setUnreadMessages(r.unread || 0))
         .catch(() => {});
-    };
-    loadUnread();
-    const t = setInterval(loadUnread, 30000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, [isMaster, masterId, masterSection]);
+    },
+    60000,
+    isMaster && !!masterId,
+    [isMaster, masterId, masterSection],
+  );
 
   // Непрочитанные сообщения от гостей у организатора (бейдж в разделе «Мои события»)
   const [unreadGuestMessages, setUnreadGuestMessages] = useState(0);
-  useEffect(() => {
-    if (!isOrganizer) return;
-    let cancelled = false;
-    const loadUnread = () => {
+  usePolling(
+    () => {
       organizerApi
         .getGuestsUnreadCount()
-        .then((r) => { if (!cancelled) setUnreadGuestMessages(r.unread || 0); })
+        .then((r) => setUnreadGuestMessages(r.unread || 0))
         .catch(() => {});
-    };
-    loadUnread();
-    const t = setInterval(loadUnread, 30000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, [isOrganizer, orgView]);
+    },
+    60000,
+    isOrganizer,
+    [isOrganizer, orgView],
+  );
 
   // Organizer state
   const [orgDashboard, setOrgDashboard] = useState<DashboardData | null>(null);

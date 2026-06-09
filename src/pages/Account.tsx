@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import { useAccount } from "@/hooks/useAccount";
 import { useAuth } from "@/contexts/AuthContext";
 import { userProfileApi } from "@/lib/user-api";
+import { usePolling } from "@/hooks/usePolling";
 import AccountHeader from "@/components/account/AccountHeader";
 import ProfileCard from "@/components/account/ProfileCard";
 import GrowthSection from "@/components/account/GrowthSection";
@@ -54,17 +55,16 @@ export default function Account() {
   const [unreadInbox, setUnreadInbox] = useState(0);
   const { user: authUser, updateUser } = useAuth();
 
-  useEffect(() => {
-    let cancelled = false;
-    const tick = () => {
+  usePolling(
+    () => {
       userProfileApi.getInboxUnreadCount()
-        .then((r) => { if (!cancelled) setUnreadInbox(r.unread || 0); })
+        .then((r) => setUnreadInbox(r.unread || 0))
         .catch(() => {});
-    };
-    tick();
-    const id = setInterval(tick, 60000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [mainTab]);
+    },
+    120000,
+    true,
+    [mainTab],
+  );
 
   const {
     user,
