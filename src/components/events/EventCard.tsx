@@ -25,7 +25,6 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
     });
   };
   const dateObj = parseISO(event.date);
-  const endDateObj = event.endDate ? parseISO(event.endDate) : null;
   const spotsColor =
     event.spotsLeft === 0
       ? "text-red-600"
@@ -110,8 +109,7 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
           <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
             <span className="flex items-center gap-1.5">
               <Icon name="Calendar" size={14} />
-              {format(dateObj, "d MMMM", { locale: ru })}
-              {endDateObj ? ` — ${format(endDateObj, "d MMMM", { locale: ru })}` : `, ${format(dateObj, "EEEE", { locale: ru })}`}
+              {format(dateObj, "d MMMM, EEEE", { locale: ru })}
             </span>
             <span className="flex items-center gap-1.5">
               <Icon name="Clock" size={14} />
