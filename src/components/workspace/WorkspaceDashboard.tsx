@@ -214,7 +214,7 @@ export default function WorkspaceDashboard({
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard
               icon="CalendarDays" color="text-emerald-600 dark:text-emerald-400" bg="bg-emerald-500/15"
-              value={upcomingEvents.length}
+              value={orgData.stats.upcoming_events ?? upcomingEvents.length}
               label="Предстоящих событий"
               hint="Мои события"
               onClick={() => onGoToOrgView("dashboard")}
