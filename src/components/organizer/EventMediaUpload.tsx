@@ -47,12 +47,16 @@ export default function EventMediaUpload({ eventId }: Props) {
   const handleFile = (file: File) => { uploadFile(file); };
 
   const handleDelete = async (item: MediaItem) => {
-    if (!confirm("Удалить фото?")) return;
+    if (!confirm("Удалить фото? Действие необратимо.")) return;
     try {
-      await fetch(`${MEDIA_API}/?event_media=1&media_id=${item.id}`, {
+      const res = await fetch(`${MEDIA_API}/?event_media=1&media_id=${item.id}`, {
         method: "DELETE",
         headers: { "X-Session-Token": token },
       });
+      if (!res.ok) {
+        toast({ title: "Не удалось удалить", variant: "destructive" });
+        return;
+      }
       setPhotos((prev) => prev.filter((i) => i.id !== item.id));
       toast({ title: "Фото удалено" });
     } catch {

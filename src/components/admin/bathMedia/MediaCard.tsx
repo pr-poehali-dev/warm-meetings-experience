@@ -19,13 +19,17 @@ export default function MediaCard({ item, slug, onDeleted }: MediaCardProps) {
   const cfg = MEDIA_CONFIG[item.type];
 
   const handleDelete = async () => {
-    if (!confirm("Удалить файл?")) return;
+    if (!confirm("Удалить файл? Действие необратимо.")) return;
     setDeleting(true);
     try {
-      await fetch(
+      const res = await fetch(
         `${MEDIA_API}/?key=${encodeURIComponent(item.key)}&slug=${slug}&media_type=${item.type === "photo" ? "photo" : "video"}`,
         { method: "DELETE" }
       );
+      if (!res.ok) {
+        toast({ title: "Ошибка удаления", variant: "destructive" });
+        return;
+      }
       toast({ title: "Удалено" });
       onDeleted();
     } catch {
