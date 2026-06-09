@@ -13,6 +13,7 @@ export interface EventFromAPI {
   full_description: string;
   description: string;
   event_date: string;
+  end_date?: string | null;
   start_time: string;
   end_time: string;
   event_type: string;

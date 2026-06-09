@@ -7,6 +7,7 @@ export interface EventItem {
   slug: string;
   title: string;
   date: string;
+  endDate?: string | null;
   timeStart: string;
   timeEnd: string;
   type: EventType;
@@ -105,6 +106,7 @@ export function mapApiEvent(e: EventFromAPI): EventItem {
     slug: e.slug || `event-${e.id}`,
     title: e.title,
     date: e.event_date,
+    endDate: e.end_date || null,
     timeStart: e.start_time?.slice(0, 5) || "19:00",
     timeEnd: e.end_time?.slice(0, 5) || "23:00",
     type: e.event_type || "знакомство",
