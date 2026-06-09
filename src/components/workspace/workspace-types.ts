@@ -1,5 +1,5 @@
 export type RoleTab = "dashboard" | "master" | "organizer" | "partner" | "telegram" | "landing" | "notify" | "blog" | "notifications";
-export type MasterSection = "dashboard" | "profile" | "addresses" | "schedule" | "bookings" | "messages" | "reviews" | "finances" | "notifications";
+export type MasterSection = "dashboard" | "profile" | "addresses" | "schedule" | "services" | "bookings" | "messages" | "reviews" | "finances" | "notifications";
 export type OrgView = "dashboard" | "create" | "edit" | "participants" | "calculator" | "notify" | "blog" | "questions";
 export type PartnerView = "dashboard" | "baths" | "add" | "edit";
 
@@ -8,6 +8,7 @@ export const MASTER_NAV: { id: MasterSection; label: string; icon: string }[] = 
   { id: "profile", label: "Мой профиль", icon: "User" },
   { id: "addresses", label: "Мои адреса", icon: "MapPin" },
   { id: "schedule", label: "Расписание", icon: "CalendarDays" },
+  { id: "services", label: "Услуги", icon: "Sparkles" },
   { id: "bookings", label: "Записи", icon: "ClipboardCheck" },
   { id: "messages", label: "Сообщения", icon: "MessageCircle" },
   { id: "reviews", label: "Отзывы", icon: "Star" },

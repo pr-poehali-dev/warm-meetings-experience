@@ -21,6 +21,7 @@ import {
   MasterDashboardSection,
   MasterProfileSection,
   MasterScheduleSection,
+  MasterServicesSection,
   MasterBookingsSection,
   MasterReviewsSection,
   MasterFinancesSection,
@@ -210,7 +211,8 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
       case "dashboard": return roleAccent("orange", <MasterDashboardSection masterId={masterId} />);
       case "profile": return roleAccent("orange", <>{backBtn}<MasterProfileSection masterId={masterId} /></>);
       case "addresses": return roleAccent("orange", <>{backBtn}<div className="space-y-4"><MasterAddresses masterId={masterId} /></div></>);
-      case "schedule": return roleAccent("orange", <>{backBtn}<MasterScheduleSection masterId={masterId} masterSlug={masterSlug} /></>);
+      case "schedule": return roleAccent("orange", <>{backBtn}<MasterScheduleSection masterId={masterId} masterSlug={masterSlug} onGoToServices={() => switchMasterSection("services")} /></>);
+      case "services": return roleAccent("orange", <>{backBtn}<MasterServicesSection masterId={masterId} /></>);
       case "bookings": return roleAccent("orange", <>{backBtn}<MasterBookingsSection masterId={masterId} /></>);
       case "messages": return roleAccent("orange", <>{backBtn}<MasterMessages masterId={masterId} /></>);
       case "reviews": return roleAccent("orange", <>{backBtn}<MasterReviewsSection masterId={masterId} /></>);

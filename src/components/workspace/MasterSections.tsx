@@ -523,13 +523,21 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
 const SCHEDULE_TABS = [
   { id: "quick",    label: "Быстрый старт", icon: "Zap",          color: "text-amber-600",   activeBg: "bg-amber-50 dark:bg-amber-950/40",   activeBorder: "border-amber-200 dark:border-amber-800" },
   { id: "calendar", label: "Календарь",     icon: "CalendarDays",  color: "text-blue-600",    activeBg: "bg-blue-50 dark:bg-blue-950/40",     activeBorder: "border-blue-200 dark:border-blue-800" },
-  { id: "services", label: "Услуги",        icon: "Sparkles",      color: "text-violet-600",  activeBg: "bg-violet-50 dark:bg-violet-950/40", activeBorder: "border-violet-200 dark:border-violet-800" },
   { id: "templates",label: "Шаблоны",       icon: "Copy",          color: "text-teal-600",    activeBg: "bg-teal-50 dark:bg-teal-950/40",    activeBorder: "border-teal-200 dark:border-teal-800" },
 ] as const;
 
 type ScheduleTab = typeof SCHEDULE_TABS[number]["id"];
 
-export function MasterScheduleSection({ masterId, masterSlug }: { masterId: number; masterSlug: string }) {
+export function MasterServicesSection({ masterId }: { masterId: number }) {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold">Услуги</h2>
+      <MasterServices masterId={masterId} />
+    </div>
+  );
+}
+
+export function MasterScheduleSection({ masterId, masterSlug, onGoToServices }: { masterId: number; masterSlug: string; onGoToServices?: () => void }) {
   const [tab, setTab] = useState<ScheduleTab>("calendar");
   return (
     <div className="space-y-4">
@@ -565,9 +573,8 @@ export function MasterScheduleSection({ masterId, masterSlug }: { masterId: numb
           );
         })}
       </div>
-      {tab === "quick"     && <QuickScheduleSetup masterId={masterId} masterSlug={masterSlug} onNavigateToServices={() => setTab("services")} />}
+      {tab === "quick"     && <QuickScheduleSetup masterId={masterId} masterSlug={masterSlug} onNavigateToServices={onGoToServices} />}
       {tab === "calendar"  && <MasterCalendar masterId={masterId} />}
-      {tab === "services"  && <MasterServices masterId={masterId} />}
       {tab === "templates" && <MasterTemplates masterId={masterId} />}
     </div>
   );
