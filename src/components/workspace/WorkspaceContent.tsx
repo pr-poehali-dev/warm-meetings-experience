@@ -114,6 +114,16 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
   // Диалог гостей события (CRM)
   const [guestsDialog, setGuestsDialog] = useState<{ id: number; title: string } | null>(null);
 
+  // Лёгкая подсветка раздела в цвет роли (как в боковом меню)
+  const roleAccent = (accent: "orange" | "emerald" | "violet", node: React.ReactNode) => {
+    const tint = {
+      orange: "border-l-orange-500/40 bg-orange-500/[0.03]",
+      emerald: "border-l-emerald-500/40 bg-emerald-500/[0.03]",
+      violet: "border-l-violet-500/40 bg-violet-500/[0.03]",
+    }[accent];
+    return <div className={`border-l-2 ${tint} rounded-r-xl pl-3 sm:pl-4 py-1`}>{node}</div>;
+  };
+
   const guestsDialogNode = guestsDialog ? (
     <EventGuestsDialog
       open={!!guestsDialog}
@@ -197,20 +207,20 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
       </button>
     );
     switch (masterSection) {
-      case "dashboard": return <MasterDashboardSection masterId={masterId} />;
-      case "profile": return <>{backBtn}<MasterProfileSection masterId={masterId} /></>;
-      case "addresses": return <>{backBtn}<div className="space-y-4"><MasterAddresses masterId={masterId} /></div></>;
-      case "schedule": return <>{backBtn}<MasterScheduleSection masterId={masterId} masterSlug={masterSlug} /></>;
-      case "bookings": return <>{backBtn}<MasterBookingsSection masterId={masterId} /></>;
-      case "messages": return <>{backBtn}<MasterMessages masterId={masterId} /></>;
-      case "reviews": return <>{backBtn}<MasterReviewsSection masterId={masterId} /></>;
-      case "finances": return <>{backBtn}<MasterFinancesSection masterId={masterId} /></>;
+      case "dashboard": return roleAccent("orange", <MasterDashboardSection masterId={masterId} />);
+      case "profile": return roleAccent("orange", <>{backBtn}<MasterProfileSection masterId={masterId} /></>);
+      case "addresses": return roleAccent("orange", <>{backBtn}<div className="space-y-4"><MasterAddresses masterId={masterId} /></div></>);
+      case "schedule": return roleAccent("orange", <>{backBtn}<MasterScheduleSection masterId={masterId} masterSlug={masterSlug} /></>);
+      case "bookings": return roleAccent("orange", <>{backBtn}<MasterBookingsSection masterId={masterId} /></>);
+      case "messages": return roleAccent("orange", <>{backBtn}<MasterMessages masterId={masterId} /></>);
+      case "reviews": return roleAccent("orange", <>{backBtn}<MasterReviewsSection masterId={masterId} /></>);
+      case "finances": return roleAccent("orange", <>{backBtn}<MasterFinancesSection masterId={masterId} /></>);
     }
   }
 
   if (roleTab === "partner" && isPartner) {
     if (partnerView === "dashboard" || partnerView === "baths") {
-      return (
+      return roleAccent("violet",
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">{partnerView === "baths" ? "Мои бани" : "Управляющий"}</h2>
@@ -282,7 +292,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
   }
 
   if (roleTab === "organizer" && isOrganizer) {
-    const wrap = (node: React.ReactNode) => <>{guestsDialogNode}{node}</>;
+    const wrap = (node: React.ReactNode) => <>{guestsDialogNode}{roleAccent("emerald", node)}</>;
     switch (orgView) {
       case "dashboard":
         return wrap(orgDashboard ? (
