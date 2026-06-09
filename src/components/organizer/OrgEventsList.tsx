@@ -235,7 +235,6 @@ export default function OrgEventsList({
                   <span className="flex items-center gap-1">
                     <Icon name="Calendar" size={14} />
                     {formatDate(ev.event_date)}
-                    {ev.end_date ? ` — ${formatDate(ev.end_date)}` : ""}
                   </span>
                   {ev.start_time && (
                     <span className="flex items-center gap-1">

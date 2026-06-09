@@ -447,6 +447,58 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
         {saved ? "Сохранено!" : "Сохранить"}
       </Button>
 
+      {/* Фото профиля */}
+      <div className="pt-2">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-sm font-semibold">Фото профиля</h3>
+            <p className="text-xs text-muted-foreground">Показывается на вашей публичной странице</p>
+          </div>
+          <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-border bg-muted/40 hover:bg-muted/70 transition-colors cursor-pointer ${photosUploading ? "opacity-50 pointer-events-none" : ""}`}>
+            {photosUploading
+              ? <Icon name="Loader2" size={13} className="animate-spin" />
+              : <Icon name="Plus" size={13} />}
+            Добавить фото
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="hidden"
+              disabled={photosUploading}
+              onChange={async (e) => {
+                const files = Array.from(e.target.files || []);
+                for (const f of files) await handlePhotoUpload(f);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+
+        {photos.length === 0 && !photosUploading && (
+          <div className="border-2 border-dashed border-border rounded-2xl p-8 text-center text-muted-foreground text-sm">
+            <Icon name="Images" size={28} className="mx-auto mb-2 opacity-40" />
+            Добавьте фото для галереи в вашем профиле
+          </div>
+        )}
+
+        {photos.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {photos.map((item) => (
+              <div key={item.key} className="relative group aspect-video rounded-xl overflow-hidden bg-muted/40">
+                <img src={item.url} alt="" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handlePhotoDelete(item.key)}
+                  className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Icon name="Trash2" size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Портфолио */}
       <div className="pt-2">
         <div className="flex items-center justify-between mb-3">
