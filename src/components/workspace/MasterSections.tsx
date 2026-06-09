@@ -247,15 +247,26 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
     await mastersApi.updateMyProfile({ ...form, avatar, portfolio, photos: updated }).catch(() => {});
   };
 
-  const handlePortfolioUpload = async (file: File) => {
-    if (file.size > 10 * 1024 * 1024) { setError("Размер фото не более 10 МБ"); return; }
+  const handlePortfolioUpload = async (files: File[]) => {
+    const valid = files.filter((f) => {
+      if (f.size > 10 * 1024 * 1024) { setError("Размер фото не более 10 МБ"); return false; }
+      return true;
+    });
+    if (!valid.length) return;
     setPortfolioUploading(true);
     try {
-      const { url } = await uploadFile(file);
-      const key = `masters/portfolio/${Date.now()}_${file.name}`;
-      const updated = [...portfolio, { key, url }];
-      setPortfolio(updated);
-      await mastersApi.updateMyProfile({ ...form, avatar, portfolio: updated, photos });
+      const results = await Promise.all(
+        valid.map(async (f) => {
+          const { url } = await uploadFile(f);
+          const key = `masters/portfolio/${Date.now()}_${Math.random().toString(36).slice(2)}_${f.name}`;
+          return { key, url };
+        })
+      );
+      setPortfolio((prev) => {
+        const updated = [...prev, ...results];
+        mastersApi.updateMyProfile({ ...form, avatar, portfolio: updated, photos });
+        return updated;
+      });
     } catch { setError("Не удалось загрузить фото"); }
     setPortfolioUploading(false);
   };
@@ -508,7 +519,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
               disabled={portfolioUploading}
               onChange={async (e) => {
                 const files = Array.from(e.target.files || []);
-                for (const f of files) await handlePortfolioUpload(f);
+                await handlePortfolioUpload(files);
                 e.target.value = "";
               }}
             />
