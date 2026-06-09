@@ -224,7 +224,7 @@ export default function WorkspaceSidebar({
       {/* Низ: личный кабинет + выход */}
       <div className="border-t border-border/60 pt-2 mt-3">
         <Link to="/account" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors">
-          <Icon name="User" size={16} />Профиль
+          <Icon name="User" size={16} />Личный кабинет
         </Link>
         <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
           <Icon name="LogOut" size={16} />Выйти
