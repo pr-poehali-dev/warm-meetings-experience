@@ -452,7 +452,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold">Фото профиля</h3>
-            <p className="text-xs text-muted-foreground">Показываются в карусели на вашей публичной странице</p>
+            <p className="text-xs text-muted-foreground">Показывается на вашей публичной странице</p>
           </div>
           <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border border-border bg-muted/40 hover:bg-muted/70 transition-colors cursor-pointer ${photosUploading ? "opacity-50 pointer-events-none" : ""}`}>
             {photosUploading
