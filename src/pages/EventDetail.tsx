@@ -62,6 +62,7 @@ export default function EventDetail() {
 
   const typeColors = getTypeColors(event.type);
   const dateObj = parseISO(event.date);
+  const endDateObj = event.endDate ? parseISO(event.endDate) : null;
   const spotsColor =
     event.spotsLeft === 0
       ? "text-red-600 bg-red-50"
@@ -123,7 +124,13 @@ export default function EventDetail() {
 
             {/* Мета-инфо */}
             <div className="flex flex-wrap gap-5">
-              <MetaItem icon="Calendar" label={format(dateObj, "d MMMM yyyy, EEEE", { locale: ru })} sub={`${event.timeStart} — ${event.timeEnd}`} />
+              <MetaItem
+                icon="Calendar"
+                label={endDateObj
+                  ? `${format(dateObj, "d MMMM", { locale: ru })} — ${format(endDateObj, "d MMMM yyyy", { locale: ru })}`
+                  : format(dateObj, "d MMMM yyyy, EEEE", { locale: ru })}
+                sub={`${event.timeStart} — ${event.timeEnd}`}
+              />
               {event.bathName && (
                 <MetaItem icon="MapPin" label={event.bathName} sub={event.bathAddress} />
               )}
