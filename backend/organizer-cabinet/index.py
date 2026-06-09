@@ -780,7 +780,7 @@ def handle_pricing_tiers(event, method, params, cur, conn, user_id, schema, head
         if not ev or (not admin and ev['organizer_id'] != user_id):
             conn.close()
             return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Forbidden'})}
-        cur.execute(f"SELECT * FROM event_pricing_tiers WHERE event_id = {event_id} ORDER BY sort_order, valid_until NULLS LAST")
+        cur.execute(f"SELECT * FROM {schema}.event_pricing_tiers WHERE event_id = {event_id} ORDER BY sort_order, valid_until NULLS LAST")
         tiers = [dict(t) for t in cur.fetchall()]
         conn.close()
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps(tiers, default=str)}
@@ -795,19 +795,19 @@ def handle_pricing_tiers(event, method, params, cur, conn, user_id, schema, head
             return {'statusCode': 403, 'headers': headers, 'body': json.dumps({'error': 'Forbidden'})}
 
         tiers = body.get('tiers', [])
-        cur.execute(f"DELETE FROM event_pricing_tiers WHERE event_id = {event_id}")
+        cur.execute(f"DELETE FROM {schema}.event_pricing_tiers WHERE event_id = {event_id}")
         for i, tier in enumerate(tiers):
             label = str(tier.get('label', '')).replace("'", "''")
             price = int(tier.get('price_amount', 0))
             valid_until = tier.get('valid_until')
             valid_until_sql = f"'{valid_until}'" if valid_until else 'NULL'
             cur.execute(f"""
-                INSERT INTO event_pricing_tiers (event_id, label, price_amount, valid_until, sort_order)
+                INSERT INTO {schema}.event_pricing_tiers (event_id, label, price_amount, valid_until, sort_order)
                 VALUES ({event_id}, '{label}', {price}, {valid_until_sql}, {i})
             """)
         conn.commit()
 
-        cur.execute(f"SELECT * FROM event_pricing_tiers WHERE event_id = {event_id} ORDER BY sort_order")
+        cur.execute(f"SELECT * FROM {schema}.event_pricing_tiers WHERE event_id = {event_id} ORDER BY sort_order")
         result = [dict(t) for t in cur.fetchall()]
         conn.close()
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps(result, default=str)}
