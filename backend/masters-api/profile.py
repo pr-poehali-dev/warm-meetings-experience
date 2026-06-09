@@ -3,7 +3,7 @@ import datetime
 import psycopg2.extras
 from shared import (
     CORS_HEADERS, get_conn, get_schema, get_user_from_token,
-    has_role, verify_admin_token, slugify, cached, tg_send, send_email,
+    has_role, verify_admin_token, slugify, cached, tg_send, send_email, tg_notify_admin,
 )
 
 
@@ -264,6 +264,13 @@ def handle_profile(event, method, params, schema, headers):
         conn.close()
         if not row:
             return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Профиль не найден. Обратитесь к администратору.'})}
+        if not toggle_only and row['is_verified']:
+            tg_notify_admin(
+                f"✏️ Мастер обновил профиль\n"
+                f"Имя: {row['name']}\n"
+                f"Slug: {row['slug']}\n"
+                f"Ссылка: https://poehali.dev/masters/{row['slug']}"
+            )
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'master': dict(row)}, default=str, ensure_ascii=False)}
 
     if method == 'GET' and params.get('admin') == '1':
