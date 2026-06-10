@@ -677,52 +677,11 @@ export function MasterFinancesSection({ masterId }: { masterId: number }) {
 
 // ─── Мастер: Уведомления ──────────────────────────────────────────────────────
 
-export function MasterNotificationsSection({ masterId }: { masterId: number }) {
-  const [settings, setSettings] = useState({ notify_new_booking: true, notify_24h_reminder: true, notify_cancellation: true, auto_confirm: false });
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  useEffect(() => { masterCalendarApi.getSettings(masterId).then((s) => setSettings({ notify_new_booking: s.notify_new_booking, notify_24h_reminder: s.notify_24h_reminder, notify_cancellation: s.notify_cancellation, auto_confirm: s.auto_confirm })).catch(() => {}); }, [masterId]);
-  const handleSave = async () => {
-    setSaving(true);
-    try { await masterCalendarApi.saveSettings({ master_id: masterId, ...settings }); setSaved(true); setTimeout(() => setSaved(false), 2000); } catch { /* ignore */ } finally { setSaving(false); }
-  };
-  const toggles: { key: keyof typeof settings; label: string; desc: string }[] = [
-    { key: "notify_new_booking", label: "Новая запись", desc: "Уведомление при каждой новой записи клиента" },
-    { key: "notify_24h_reminder", label: "Напоминание за 24 часа", desc: "Напомнить о предстоящем сеансе за сутки" },
-    { key: "notify_cancellation", label: "Отмена записи", desc: "Уведомление при отмене клиентом" },
-    { key: "auto_confirm", label: "Автоподтверждение", desc: "Записи автоматически получают статус «Подтверждено»" },
-  ];
+export function MasterNotificationsSection({ masterId: _masterId }: { masterId: number }) {
   return (
     <div className="space-y-5 max-w-xl">
       <h2 className="text-xl font-bold">Уведомления</h2>
-
-      {/* О чём уведомлять */}
-      <div className="space-y-3">
-        <div>
-          <p className="font-semibold text-sm">О чём уведомлять</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Выберите события, о которых хотите получать оповещения</p>
-        </div>
-        <div className="space-y-2">
-          {toggles.map((t) => (
-            <div key={t.key} className="flex items-center justify-between gap-4 bg-card border rounded-2xl p-4">
-              <div><div className="font-medium text-sm">{t.label}</div><div className="text-xs text-muted-foreground mt-0.5">{t.desc}</div></div>
-              <button onClick={() => setSettings((p) => ({ ...p, [t.key]: !p[t.key] }))}
-                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${settings[t.key] ? "bg-primary" : "bg-muted"}`}>
-                <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${settings[t.key] ? "translate-x-5" : "translate-x-0"}`} />
-              </button>
-            </div>
-          ))}
-        </div>
-        <Button onClick={handleSave} disabled={saving} size="sm">
-          {saving ? <Icon name="Loader2" size={14} className="animate-spin mr-1" /> : null}
-          {saved ? "Сохранено!" : "Сохранить"}
-        </Button>
-      </div>
-
-      {/* Куда присылать уведомления (каналы) */}
-      <div className="border-t pt-5">
-        <NotifyChannels />
-      </div>
+      <NotifyChannels />
     </div>
   );
 }
