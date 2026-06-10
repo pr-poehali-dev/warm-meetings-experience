@@ -410,7 +410,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     if (arg.allDay) return; // блокировку дня создаём через allDay-полосу
     const start = arg.date;
     const end = new Date(start.getTime() + 60 * 60_000);
-    const startStr = arg.dateStr;
+    const startStr = calIso(start);
     const endStr = calIso(end);
     setCreateMode({ open: true, start, end, startStr, endStr, allDay: false });
   }, [calIso]);
