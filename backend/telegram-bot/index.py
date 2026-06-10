@@ -586,7 +586,8 @@ def handle_help(chat_id):
 
 
 def send_organizer_email(to_email, organizer_name, event_title, event_date, event_time, bath_name,
-                          signup_name, signup_phone, signup_email, signup_telegram, spots_left):
+                          signup_name, signup_phone, signup_email, signup_telegram, spots_left,
+                          comment='', guests=None):
     """Уведомление организатору о новой записи по Email через Unisender Go."""
     api_key = os.environ.get('UNISENDER_API_KEY', '')
     sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
@@ -595,6 +596,28 @@ def send_organizer_email(to_email, organizer_name, event_title, event_date, even
         return False
 
     tg_line = f"<tr><td style='padding:4px 0;color:#888;width:110px;'>Telegram:</td><td style='padding:4px 0;'>{signup_telegram}</td></tr>" if signup_telegram else ""
+
+    guests_block = ""
+    if guests:
+        rows = "".join(
+            f"<tr><td style='padding:3px 0;color:#888;width:110px;'>Участник {i+2}:</td>"
+            f"<td style='padding:3px 0;'>{g.get('name') or '—'}"
+            f"{(' · ' + g['phone']) if g.get('phone') else ''}</td></tr>"
+            for i, g in enumerate(guests)
+        )
+        guests_block = f"""
+    <div style="border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-top:12px;">
+      <p style="color:#1a1a1a;font-size:13px;font-weight:600;margin:0 0 10px;">👥 Доп. участники ({len(guests)})</p>
+      <table style="width:100%;font-size:13px;color:#444;">{rows}</table>
+    </div>"""
+
+    comment_block = ""
+    if comment:
+        comment_block = f"""
+    <div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin-top:12px;background:#fafafa;">
+      <p style="color:#888;font-size:12px;margin:0 0 4px;">💬 Комментарий участника</p>
+      <p style="color:#333;font-size:13px;margin:0;">{comment}</p>
+    </div>"""
 
     html = f"""
 <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:20px;background:#f9fafb;">
@@ -621,6 +644,8 @@ def send_organizer_email(to_email, organizer_name, event_title, event_date, even
         {tg_line}
       </table>
     </div>
+    {guests_block}
+    {comment_block}
     <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
     <p style="color:#aaa;font-size:11px;text-align:center;margin:0;">Управляйте участниками в личном кабинете организатора.</p>
   </div>
@@ -649,7 +674,7 @@ def send_organizer_email(to_email, organizer_name, event_title, event_date, even
 
 
 def send_organizer_vk(vk_user_id, event_title, event_date, event_time,
-                      signup_name, signup_phone, spots_left):
+                      signup_name, signup_phone, spots_left, comment='', guests=None):
     """Уведомление организатору через ВКонтакте."""
     token = os.environ.get('VK_COMMUNITY_TOKEN', '')
     community_id = int(os.environ.get('VK_COMMUNITY_ID', '0'))
@@ -662,8 +687,16 @@ def send_organizer_vk(vk_user_id, event_title, event_date, event_time,
         f"📅 {event_date}, {event_time}\n\n"
         f"👤 {signup_name}\n"
         f"📞 {signup_phone}\n"
-        f"🪑 Осталось мест: {spots_left}"
     )
+    if guests:
+        text += f"\n👥 Доп. участники ({len(guests)}):\n"
+        for g in (guests or []):
+            g_name = g.get('name') or '—'
+            g_phone = g.get('phone') or ''
+            text += f"  • {g_name}" + (f" {g_phone}" if g_phone else "") + "\n"
+    if comment:
+        text += f"\n💬 {comment}\n"
+    text += f"\n🪑 Осталось мест: {spots_left}"
     try:
         r = requests.post(
             "https://api.vk.com/method/messages.send",
@@ -696,6 +729,10 @@ def handle_notify_signup(body):
     event_time      = body.get('event_time', '')
     bath_name       = body.get('bath_name', '')
     spots_left      = body.get('spots_left', '—')
+    comment         = (body.get('comment') or '').strip()
+    guests          = body.get('guests') or []
+    if not isinstance(guests, list):
+        guests = []
 
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -740,6 +777,14 @@ def handle_notify_signup(body):
         )
         if signup_telegram:
             tg_text += f"✈️ {signup_telegram}\n"
+        if guests:
+            tg_text += f"\n👥 Доп. участники ({len(guests)}):\n"
+            for g in guests:
+                g_name = g.get('name') or '—'
+                g_phone = g.get('phone') or ''
+                tg_text += f"  • {g_name}" + (f" {g_phone}" if g_phone else "") + "\n"
+        if comment:
+            tg_text += f"\n💬 Комментарий: {comment}\n"
         tg_text += f"\n🪑 Осталось мест: {spots_left}"
         result = send_message(tg_link['telegram_user_id'], tg_text)
         print(f"[notify_signup] tg_user_id={tg_link['telegram_user_id']} result={result}")
@@ -755,6 +800,7 @@ def handle_notify_signup(body):
             event_title=event_title, event_date=event_date, event_time=event_time,
             bath_name=bath_name, signup_name=signup_name, signup_phone=signup_phone,
             signup_email=signup_email, signup_telegram=signup_telegram, spots_left=spots_left,
+            comment=comment, guests=guests,
         )
         results['email'] = ok
 
@@ -764,6 +810,7 @@ def handle_notify_signup(body):
             vk_user_id=organizer['vk_id'],
             event_title=event_title, event_date=event_date, event_time=event_time,
             signup_name=signup_name, signup_phone=signup_phone, spots_left=spots_left,
+            comment=comment, guests=guests,
         )
         results['vk'] = ok
 
