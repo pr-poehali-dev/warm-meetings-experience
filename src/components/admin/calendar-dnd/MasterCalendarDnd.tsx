@@ -428,9 +428,14 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     if (!isAllDay && mode === "booking" && payload.time_start && payload.time_end && payload.time_end > payload.time_start) {
       const base = createMode.startStr || calIso(start); // YYYY-MM-DDTHH:mm:ss±hh:mm
       const dayStr = base.slice(0, 10);
-      // offset — хвост после времени: "+03:00" / "-05:00" / "Z" / "" 
-      const offsetMatch = base.match(/(Z|[+-]\d{2}:\d{2})$/);
-      const offset = offsetMatch ? offsetMatch[0] : "";
+      // offset зоны мастера — гарантируем его наличие (если строка пришла без
+      // хвоста, берём offset из calIso текущего start). Так new Date(...) ниже
+      // не сорвётся на браузерную зону.
+      const offsetOf = (s: string) => {
+        const m = s.match(/(Z|[+-]\d{2}:\d{2})$/);
+        return m ? m[0] : "";
+      };
+      const offset = offsetOf(base) || offsetOf(calIso(start));
       const newStartStr = `${dayStr}T${payload.time_start}:00${offset}`;
       const newEndStr = `${dayStr}T${payload.time_end}:00${offset}`;
       start = new Date(newStartStr);
@@ -521,13 +526,25 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       let endIso = allDayEndIso
         ?? (mode === "booking" && payload.service_id ? calIso(end) : (createMode.endStr as string));
       // All-day бронь с услугой: пересчёт конца по длительности от 12:00.
+      // Считаем чисто в «экранных» минутах суток — без new Date, чтобы не
+      // зависеть от зоны браузера. День увеличиваем, если вышли за 24:00.
       if (mode === "booking" && payload.service_id && isAllDay && allDayStartIso) {
         const svc = services.find((s) => s.id === payload.service_id);
         if (svc?.duration_minutes) {
-          const base = new Date(`${allDayStartIso}`);
-          const e = new Date(base.getTime() + svc.duration_minutes * 60_000);
           const pad = (n: number) => String(n).padStart(2, "0");
-          endIso = `${e.getFullYear()}-${pad(e.getMonth() + 1)}-${pad(e.getDate())}T${pad(e.getHours())}:${pad(e.getMinutes())}:00`;
+          const dayStr = allDayStartIso.slice(0, 10); // YYYY-MM-DD
+          const startMinutes = 12 * 60; // allDay-бронь стартует в 12:00
+          const total = startMinutes + svc.duration_minutes;
+          const addDays = Math.floor(total / (24 * 60));
+          const hh = Math.floor((total % (24 * 60)) / 60);
+          const mm = total % 60;
+          let dateStr = dayStr;
+          if (addDays > 0) {
+            const [y, mo, d] = dayStr.split("-").map(Number);
+            const t = new Date(Date.UTC(y, mo - 1, d) + addDays * 86_400_000);
+            dateStr = `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`;
+          }
+          endIso = `${dateStr}T${pad(hh)}:${pad(mm)}:00`;
         }
       }
 
