@@ -1034,17 +1034,21 @@ export default function MasterCalendarDnd({ masterId }: Props) {
           <div className="inline-flex border border-border rounded-lg overflow-hidden shrink-0">
             <button
               onClick={() => setAgendaMode(true)}
+              title="Список — все записи и слоты в виде ленты"
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${agendaMode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
             >
               <Icon name="ListChecks" size={13} />
-              <span className="hidden sm:inline">Список</span>
+              <span>Список</span>
+              {agendaMode && <span className="hidden sm:inline text-[10px] opacity-60 font-normal ml-0.5">/ лента</span>}
             </button>
             <button
               onClick={() => setAgendaMode(false)}
+              title="Календарь — сетка по дням недели с перетаскиванием"
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border-l border-border transition-colors ${!agendaMode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
             >
               <Icon name="CalendarDays" size={13} />
-              <span className="hidden sm:inline">Календарь</span>
+              <span>Календарь</span>
+              {!agendaMode && <span className="hidden sm:inline text-[10px] opacity-60 font-normal ml-0.5">/ сетка</span>}
             </button>
           </div>
 
