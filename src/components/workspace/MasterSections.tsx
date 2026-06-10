@@ -681,7 +681,7 @@ export function MasterNotificationsSection({ masterId: _masterId }: { masterId: 
   return (
     <div className="space-y-5 max-w-xl">
       <h2 className="text-xl font-bold">Уведомления</h2>
-      <NotifyChannels />
+      <p className="text-sm text-muted-foreground">Настройки уведомлений перенесены в раздел <strong>Настройки</strong>.</p>
     </div>
   );
 }

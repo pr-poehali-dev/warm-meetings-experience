@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { masterCalendarApi } from "@/lib/master-calendar-api";
+import NotifyChannels from "@/components/workspace/NotifyChannels";
 
 const TIMEZONES = [
   { value: "Europe/Kaliningrad", label: "Калининград (UTC+2)" },
@@ -166,6 +167,9 @@ export default function MasterScheduleSettings({ masterId }: { masterId: number 
           Сохранить
         </Button>
       </div>
+
+      {/* Каналы уведомлений */}
+      <NotifyChannels />
     </div>
   );
 }
