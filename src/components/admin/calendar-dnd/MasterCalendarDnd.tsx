@@ -258,7 +258,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     // Диапазон в экранном времени мастера. arg.end эксклюзивный — берём минус сутки.
     const endInclusive = new Date(arg.end.getTime() - 24 * 60 * 60_000);
     loadData(calDateKey(arg.start), calDateKey(endInclusive));
-    setViewTitle(arg.view.title.replace(/\s*г\.\s*/gi, " ").trim());
+    setViewTitle(arg.view.title.replace(/\s*[\u0433\u0413]\.\s*/g, " ").trim());
     setCurrentView(arg.view.type);
   }, [loadData, calDateKey]);
 
