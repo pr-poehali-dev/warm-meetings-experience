@@ -1,18 +1,13 @@
-const BASE = "https://functions.poehali.dev/47bb36f1-5d1a-45e7-86e3-bd7a07a3d8de";
+import { authenticatedRequest } from "@/lib/http";
+import func2url from "../../backend/func2url.json";
 
-function token() {
-  return localStorage.getItem("user_token") || "";
-}
+const BASE = func2url["notify-module"];
 
-function headers() {
-  return { "Content-Type": "application/json", "X-Session-Token": token() };
-}
-
-async function req<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(url, { ...options, headers: { ...headers(), ...(options?.headers || {}) } });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Что-то пошло не так");
-  return data as T;
+function req<T>(url: string, options?: RequestInit): Promise<T> {
+  return authenticatedRequest(url, {
+    ...options,
+    headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
+  }) as Promise<T>;
 }
 
 // ─── Типы ─────────────────────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { request, authenticatedRequest } from "@/lib/http";
 import func2url from "../../backend/func2url.json";
 
 const MASTERS_API = func2url["masters-api"];
@@ -64,57 +65,42 @@ export const mastersApi = {
     if (filters.specialization) params.set("specialization", filters.specialization);
     if (filters.bath_id) params.set("bath_id", String(filters.bath_id));
 
-    const res = await fetch(`${MASTERS_API}/?${params}`);
-    const data = await res.json();
+    const data = await request(`${MASTERS_API}/?${params}`);
     return data.masters || [];
   },
 
   getBySlug: async (slug: string): Promise<Master> => {
-    const res = await fetch(`${MASTERS_API}/?slug=${slug}`);
-    if (!res.ok) throw new Error("Мастер не найден");
-    const data = await res.json();
+    const data = await request(`${MASTERS_API}/?slug=${slug}`);
     return data.master;
   },
 
   getSpecializations: async (): Promise<Specialization[]> => {
-    const res = await fetch(`${MASTERS_API}/?specializations=1`);
-    const data = await res.json();
+    const data = await request(`${MASTERS_API}/?specializations=1`);
     return data.specializations || [];
   },
 
   getMyProfile: async (): Promise<Master> => {
-    const token = localStorage.getItem("user_token") || "";
-    const res = await fetch(`${MASTERS_API}/?me=1`, {
-      headers: { "X-Session-Token": token },
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Ошибка загрузки профиля");
+    const data = await authenticatedRequest(`${MASTERS_API}/?me=1`);
     return data.master;
   },
 
   updateMyProfile: async (profile: Partial<Pick<Master, "name" | "tagline" | "bio" | "experience_years" | "city" | "phone" | "telegram" | "instagram" | "price_from" | "portfolio" | "photos" | "avatar">>): Promise<Partial<Master>> => {
-    const token = localStorage.getItem("user_token") || "";
-    const res = await fetch(`${MASTERS_API}/?me=1`, {
+    const data = await authenticatedRequest(`${MASTERS_API}/?me=1`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "X-Session-Token": token },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(profile),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Ошибка сохранения");
     return data.master || {};
   },
 
   // Переключить видимость профиля в публичном каталоге.
   // Не влияет на верификацию и не отправляет профиль на повторную проверку.
   setVisibility: async (hidden: boolean): Promise<Partial<Master>> => {
-    const token = localStorage.getItem("user_token") || "";
-    const res = await fetch(`${MASTERS_API}/?me=1`, {
+    const data = await authenticatedRequest(`${MASTERS_API}/?me=1`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json", "X-Session-Token": token },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ hidden_by_owner: hidden }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Не удалось изменить видимость");
     return data.master || {};
   },
 };

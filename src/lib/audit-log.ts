@@ -1,4 +1,7 @@
-const AUDIT_API = "https://functions.poehali.dev/b0f875d7-7795-4fec-b376-4d479d4204c5";
+import { adminModerationRequest } from "@/lib/http";
+import func2url from "../../backend/func2url.json";
+
+const AUDIT_API = func2url["audit-log"];
 
 export type AuditEntityType =
   | "ticket"
@@ -26,10 +29,6 @@ export interface AuditEvent {
   created_at: string;
 }
 
-function getToken(): string {
-  return localStorage.getItem("admin_token") || "";
-}
-
 export const auditLog = {
   /** Получить историю по сущности (последние limit записей). */
   async list(
@@ -38,12 +37,12 @@ export const auditLog = {
     limit = 100,
   ): Promise<AuditEvent[]> {
     const url = `${AUDIT_API}?entity_type=${encodeURIComponent(entityType)}&entity_id=${encodeURIComponent(String(entityId))}&limit=${limit}`;
-    const res = await fetch(url, {
-      headers: { "X-Admin-Token": getToken() },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.events || [];
+    try {
+      const data = await adminModerationRequest(url) as { events?: AuditEvent[] };
+      return data.events || [];
+    } catch {
+      return [];
+    }
   },
 
   /** Записать произвольное событие. Используется для действий, которые не логирует backend сам. */
@@ -58,12 +57,9 @@ export const auditLog = {
     actor_name?: string;
   }): Promise<void> {
     try {
-      await fetch(AUDIT_API, {
+      await adminModerationRequest(AUDIT_API, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Admin-Token": getToken(),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...payload,
           entity_id: String(payload.entity_id),

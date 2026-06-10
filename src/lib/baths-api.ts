@@ -1,3 +1,4 @@
+import { request } from "@/lib/http";
 import func2url from "../../backend/func2url.json";
 
 const BATHS_API = func2url["baths-api"];
@@ -43,15 +44,12 @@ export const bathsApi = {
     if (filters.feature) params.set("feature", filters.feature);
     if (filters.price_max) params.set("price_max", String(filters.price_max));
 
-    const res = await fetch(`${BATHS_API}/?${params}`);
-    const data = await res.json();
+    const data = await request(`${BATHS_API}/?${params}`);
     return data.baths || [];
   },
 
   getBySlug: async (slug: string): Promise<Bath> => {
-    const res = await fetch(`${BATHS_API}/?slug=${slug}`);
-    if (!res.ok) throw new Error("Баня не найдена");
-    const data = await res.json();
+    const data = await request(`${BATHS_API}/?slug=${slug}`);
     return data.bath;
   },
 };
