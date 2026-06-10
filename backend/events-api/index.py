@@ -374,6 +374,21 @@ def handle_signups(event, method, params, schema, headers):
         allowed_channels = {'telegram', 'vk', 'email', 'sms', 'phone', 'site'}
         preferred_channel = preferred_channel_raw if preferred_channel_raw in allowed_channels else 'site'
         preferred_channel = preferred_channel.replace("'", "''")
+        comment = (body.get('comment') or '').strip()[:2000].replace("'", "''")
+
+        # Доп. участники: массив {name, phone}. Чистим и ограничиваем до 20.
+        guests_raw = body.get('guests') or []
+        guests = []
+        if isinstance(guests_raw, list):
+            for g in guests_raw[:20]:
+                if not isinstance(g, dict):
+                    continue
+                gname = (g.get('name') or '').strip()[:200]
+                gphone = (g.get('phone') or '').strip()[:50]
+                if gname or gphone:
+                    guests.append({'name': gname, 'phone': gphone})
+        guests_count = len(guests)
+        guests_json = json.dumps(guests, ensure_ascii=False).replace("'", "''")
 
         # 4) базовая валидация длин (защита от мусора)
         if len(name) > 200 or len(phone) > 50 or len(email) > 200 or len(telegram) > 100:
@@ -457,11 +472,13 @@ def handle_signups(event, method, params, schema, headers):
             cur.execute(f"""
                 INSERT INTO {schema}.event_signups (
                     event_id, name, phone, email, telegram, consent_pd, user_id, preferred_channel,
+                    comment, guests,
                     payment_type, payment_amount,
                     joined_after_freeze, club_fee_paid, club_fee_paid_at, final_price_due, status
                 )
                 VALUES (
                     {event_id}, '{name}', '{phone}', '{email}', '{telegram}', true, {user_id}, '{preferred_channel}',
+                    '{comment}', '{guests_json}'::jsonb,
                     'club_fee', {int(cf_club_fee_charged or 0)},
                     {bool(cf_joined_after_freeze)}, {int(cf_club_fee_charged or 0)}, NOW(),
                     {int(cf_final_price_due) if cf_final_price_due else 'NULL'},
@@ -471,12 +488,14 @@ def handle_signups(event, method, params, schema, headers):
             """)
         else:
             cur.execute(f"""
-                INSERT INTO {schema}.event_signups (event_id, name, phone, email, telegram, consent_pd, user_id, preferred_channel)
-                VALUES ({event_id}, '{name}', '{phone}', '{email}', '{telegram}', true, {user_id}, '{preferred_channel}')
+                INSERT INTO {schema}.event_signups (event_id, name, phone, email, telegram, consent_pd, user_id, preferred_channel, comment, guests)
+                VALUES ({event_id}, '{name}', '{phone}', '{email}', '{telegram}', true, {user_id}, '{preferred_channel}', '{comment}', '{guests_json}'::jsonb)
                 RETURNING *
             """)
         row = cur.fetchone()
-        cur.execute(f"UPDATE {schema}.events SET spots_left = GREATEST(spots_left - 1, 0) WHERE id = {event_id}")
+        # Занимаем места: сам участник + гости
+        spots_taken = 1 + guests_count
+        cur.execute(f"UPDATE {schema}.events SET spots_left = GREATEST(spots_left - {spots_taken}, 0) WHERE id = {event_id}")
 
         if ip_safe:
             cur.execute(f"INSERT INTO {schema}.signup_rate_limit (ip_address, event_id) VALUES ('{ip_safe}', {int(event_id)})")

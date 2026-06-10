@@ -1,6 +1,7 @@
 import BathCaptcha, { BathCaptchaState } from "@/components/BathCaptcha";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import Icon from "@/components/ui/icon";
@@ -29,6 +30,12 @@ interface SignUpFormBodyProps {
   setConsentShare: (v: boolean) => void;
   consentCancel: boolean;
   setConsentCancel: (v: boolean) => void;
+  comment: string;
+  setComment: (v: string) => void;
+  guests: { name: string; phone: string }[];
+  addGuest: () => void;
+  removeGuest: (i: number) => void;
+  updateGuest: (i: number, field: "name" | "phone", value: string) => void;
   honeypot: string;
   setHoneypot: (v: string) => void;
   loading: boolean;
@@ -63,6 +70,8 @@ export default function SignUpFormBody({
   consentPd, setConsentPd,
   consentShare, setConsentShare,
   consentCancel, setConsentCancel,
+  comment, setComment,
+  guests, addGuest, removeGuest, updateGuest,
   honeypot, setHoneypot,
   loading,
   canSubmit,
@@ -253,6 +262,67 @@ export default function SignUpFormBody({
           {preferredChannel === "phone" && (
             <p className="text-xs text-muted-foreground">Позвоним или напишем SMS на указанный номер.</p>
           )}
+        </div>
+
+        {/* Дополнительные участники */}
+        <div className="pt-1 border-t border-border space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium">Дополнительные участники</Label>
+            <span className="text-xs text-muted-foreground">{guests.length > 0 ? `+${guests.length}` : "по желанию"}</span>
+          </div>
+          {guests.map((g, i) => (
+            <div key={i} className="rounded-lg border border-border p-3 space-y-2 relative">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Участник {i + 2}</span>
+                <button
+                  type="button"
+                  onClick={() => removeGuest(i)}
+                  className="text-muted-foreground hover:text-red-500 transition-colors"
+                  aria-label="Удалить участника"
+                >
+                  <Icon name="X" size={16} />
+                </button>
+              </div>
+              <Input
+                placeholder="Имя"
+                value={g.name}
+                onChange={(e) => updateGuest(i, "name", e.target.value)}
+                className="rounded-lg"
+              />
+              <Input
+                type="tel"
+                placeholder="+7(___) ___-__-__"
+                value={g.phone}
+                onChange={(e) => updateGuest(i, "phone", formatPhone(e.target.value))}
+                className="rounded-lg"
+              />
+            </div>
+          ))}
+          {guests.length < 20 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addGuest}
+              className="w-full rounded-lg gap-2 text-sm"
+            >
+              <Icon name="UserPlus" size={15} />
+              Добавить участника
+            </Button>
+          )}
+        </div>
+
+        {/* Комментарий */}
+        <div className="pt-1 border-t border-border space-y-1.5">
+          <Label htmlFor="su-comment" className="text-sm font-medium">Комментарий для организатора</Label>
+          <Textarea
+            id="su-comment"
+            placeholder="Пожелания, вопросы или детали — необязательно"
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={3}
+            maxLength={2000}
+            className="rounded-lg resize-none"
+          />
         </div>
 
         {/* Мотивирующий блок гарантий */}

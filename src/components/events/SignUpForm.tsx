@@ -127,6 +127,8 @@ export default function SignUpForm({
   const [consentPd, setConsentPd] = useState(false);
   const [consentShare, setConsentShare] = useState(false);
   const [consentCancel, setConsentCancel] = useState(false);
+  const [comment, setComment] = useState("");
+  const [guests, setGuests] = useState<{ name: string; phone: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const captcha = useBathCaptcha();
 
@@ -186,9 +188,16 @@ export default function SignUpForm({
     }
     setVkContact("");
     setConsentPd(false); setConsentShare(false); setConsentCancel(false);
+    setComment(""); setGuests([]);
     setTouched(false);
     setScreen("form");
   };
+
+  // Управление списком доп. участников (имя + телефон у каждого)
+  const addGuest = () => setGuests((g) => (g.length >= 20 ? g : [...g, { name: "", phone: "" }]));
+  const removeGuest = (i: number) => setGuests((g) => g.filter((_, idx) => idx !== i));
+  const updateGuest = (i: number, field: "name" | "phone", value: string) =>
+    setGuests((g) => g.map((item, idx) => (idx === i ? { ...item, [field]: value } : item)));
 
   const handleClose = (v: boolean) => {
     setOpen(v);
@@ -210,6 +219,9 @@ export default function SignUpForm({
         preferredChannel === "email" ? email :
         phone;
       const formOpenMs = formOpenedAt > 0 ? Date.now() - formOpenedAt : 0;
+      const cleanGuests = guests
+        .map((g) => ({ name: g.name.trim(), phone: g.phone.trim() }))
+        .filter((g) => g.name || g.phone);
       await signupsApi.create({
         event_id: eventId,
         name,
@@ -219,6 +231,8 @@ export default function SignUpForm({
         consent_pd: true,
         preferred_channel: preferredChannel === "phone" ? "sms" : preferredChannel,
         preferred_contact_value: channelValue,
+        comment: comment.trim(),
+        guests: cleanGuests,
         website: honeypot,
         form_open_ms: formOpenMs,
       });
@@ -329,6 +343,9 @@ export default function SignUpForm({
                 consentPd={consentPd} setConsentPd={setConsentPd}
                 consentShare={consentShare} setConsentShare={setConsentShare}
                 consentCancel={consentCancel} setConsentCancel={setConsentCancel}
+                comment={comment} setComment={setComment}
+                guests={guests}
+                addGuest={addGuest} removeGuest={removeGuest} updateGuest={updateGuest}
                 honeypot={honeypot} setHoneypot={setHoneypot}
                 loading={loading}
                 canSubmit={canSubmit}
