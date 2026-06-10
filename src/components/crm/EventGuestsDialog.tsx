@@ -614,6 +614,23 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                                 {g.telegram && <span className="flex items-center gap-1.5"><Icon name="Send" size={11} className="shrink-0" /><span className="truncate">{g.telegram}</span></span>}
                                 {g.email && <a href={`mailto:${g.email}`} className="flex items-center gap-1.5 hover:text-foreground"><Icon name="Mail" size={11} className="shrink-0" /><span className="truncate">{g.email}</span></a>}
                                 {g.comment && <div className="text-xs italic mt-0.5">«{g.comment}»</div>}
+                                {g.guests && g.guests.length > 0 && (
+                                  <div className="mt-1 space-y-0.5">
+                                    <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wide">
+                                      <Icon name="Users" size={10} />
+                                      Доп. участники ({g.guests.length})
+                                    </div>
+                                    {g.guests.map((guest, gi) => (
+                                      <div key={gi} className="flex items-center gap-1.5 pl-2">
+                                        <Icon name="User" size={10} className="shrink-0" />
+                                        <span>{guest.name || "—"}</span>
+                                        {guest.phone && (
+                                          <a href={`tel:${guest.phone}`} className="hover:text-foreground">{guest.phone}</a>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
 
                               {/* Строка 3: сумма + способ */}

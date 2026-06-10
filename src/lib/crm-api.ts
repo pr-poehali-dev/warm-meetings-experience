@@ -76,6 +76,7 @@ export interface CrmEventGuest {
   topup_amount: number;
   joined_after_freeze: boolean;
   avatar_url: string | null;
+  guests: { name: string; phone: string }[] | null;
   tags: CrmTag[];
 }
 

@@ -508,7 +508,7 @@ def handle_signups(event, method, params, schema, headers):
 
         send_signup_confirmation(email, name, ev)
         send_signup_telegram(name, phone, email, telegram, ev, preferred_channel, preferred_contact_value)
-        notify_organizer_telegram(ev, name, phone, email, telegram, preferred_channel, preferred_contact_value)
+        notify_organizer_telegram(ev, name, phone, email, telegram, preferred_channel, preferred_contact_value, comment=comment, guests=guests)
 
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(dict(row), default=str)}
 
@@ -901,7 +901,7 @@ def notify_organizer_question_telegram(ev, guest_name, guest_contact, contact_ty
         pass
 
 
-def notify_organizer_telegram(event_data, signup_name, signup_phone, signup_email, signup_telegram, preferred_channel='', preferred_contact_value=''):
+def notify_organizer_telegram(event_data, signup_name, signup_phone, signup_email, signup_telegram, preferred_channel='', preferred_contact_value='', comment='', guests=None):
     organizer_id = event_data.get('organizer_id')
     if not organizer_id:
         return
@@ -924,6 +924,8 @@ def notify_organizer_telegram(event_data, signup_name, signup_phone, signup_emai
                 'signup_telegram': signup_telegram,
                 'preferred_channel': preferred_channel,
                 'preferred_contact_value': preferred_contact_value,
+                'comment': comment or '',
+                'guests': guests or [],
             },
             timeout=5
         )

@@ -326,6 +326,7 @@ def list_event_guests(cur, user_id, schema, event_id, search_sql):
                s.status, s.payment_amount, s.payment_type, s.attended, s.comment,
                s.consent_pd, s.preferred_channel, s.wrote_at, s.created_at,
                s.club_fee_paid, s.final_price_due, s.topup_amount, s.joined_after_freeze,
+               s.guests,
                u.avatar_url
         FROM {schema}.event_signups s
         LEFT JOIN {schema}.users u ON u.id = s.user_id
