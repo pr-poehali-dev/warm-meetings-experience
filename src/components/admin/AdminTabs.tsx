@@ -46,9 +46,9 @@ const NAV: NavGroup[] = [
       },
       {
         view: "event-signups",
-        label: "Записи",
-        icon: "ClipboardList",
-        hint: "Записи участников",
+        label: "Гости (CRM)",
+        icon: "Users",
+        hint: "Единая база гостей, теги и рассылки",
         badgeKey: "events",
       },
       {

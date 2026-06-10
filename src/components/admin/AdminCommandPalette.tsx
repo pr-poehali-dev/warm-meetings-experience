@@ -27,7 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: "overview", label: "Дашборд", icon: "LayoutDashboard", group: "События", hint: "Главный экран" },
   { view: "list", label: "Все события", icon: "List", group: "События" },
   { view: "add", label: "Создать встречу", icon: "Plus", group: "События" },
-  { view: "event-signups", label: "Записи участников", icon: "ClipboardList", group: "События" },
+  { view: "event-signups", label: "Гости (CRM)", icon: "Users", group: "События" },
   { view: "moderation", label: "Модерация событий", icon: "ShieldCheck", group: "События" },
   { view: "users", label: "Пользователи", icon: "Users", group: "Люди" },
   { view: "roles", label: "Заявки на роли", icon: "Shield", group: "Люди" },

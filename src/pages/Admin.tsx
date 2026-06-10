@@ -15,7 +15,7 @@ import AdminHolidays from "@/components/admin/AdminHolidays";
 import AdminPromoCodes from "@/components/admin/AdminPromoCodes";
 import AdminSettings from "@/components/admin/AdminSettings";
 import AdminAvailability from "@/components/admin/AdminAvailability";
-import AdminEventSignups from "@/components/admin/AdminEventSignups";
+import CrmModule from "@/components/crm/CrmModule";
 import AdminRoles from "@/components/admin/AdminRoles";
 import AdminBlog from "@/components/admin/AdminBlog";
 import AdminUsers from "@/components/admin/AdminUsers";
@@ -93,7 +93,11 @@ export default function Admin() {
           />
         );
       case "event-signups":
-        return <AdminEventSignups />;
+        return (
+          <div className="max-w-5xl mx-auto">
+            <CrmModule role="admin" />
+          </div>
+        );
       case "roles":
         return <AdminRoles onViewChange={setCurrentView} />;
       case "blog":

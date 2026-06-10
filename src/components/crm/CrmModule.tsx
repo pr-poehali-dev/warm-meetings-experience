@@ -8,7 +8,7 @@ import ImportCsvDialog from "./ImportCsvDialog";
 import NotifyModule from "@/components/notify/NotifyModule";
 
 interface CrmModuleProps {
-  role: "organizer" | "master" | "partner";
+  role: "organizer" | "master" | "partner" | "admin";
 }
 
 type Tab = "clients" | "tags" | "broadcasts";

@@ -95,9 +95,9 @@ export default function AdminOverview({
       tone: badges.calculator > 0 ? "warning" : "muted",
     },
     {
-      label: "Записи на встречи",
-      hint: "Новые регистрации",
-      icon: "ClipboardList",
+      label: "Гости (CRM)",
+      hint: "Единая база гостей",
+      icon: "Users",
       count: badges.events,
       view: "event-signups",
       tone: badges.events > 0 ? "info" : "muted",

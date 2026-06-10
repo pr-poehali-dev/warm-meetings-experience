@@ -1,6 +1,7 @@
 import { authenticatedRequest } from "@/lib/http";
+import func2url from "../../backend/func2url.json";
 
-const BASE = "https://functions.poehali.dev/ceabf12a-ab18-40fd-8265-60883f655b47";
+const BASE = func2url["crm-api"];
 
 export interface CrmTag {
   id: number;

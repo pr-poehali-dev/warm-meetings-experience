@@ -22,7 +22,7 @@ type Tab = "scenarios" | "send" | "history";
 type SubView = "list" | "editor" | "send";
 
 interface Props {
-  role?: "organizer" | "master" | "partner";
+  role?: "organizer" | "master" | "partner" | "admin";
   eventId?: number | null;
 }
 
