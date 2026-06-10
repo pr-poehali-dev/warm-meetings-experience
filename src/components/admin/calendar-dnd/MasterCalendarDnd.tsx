@@ -1028,9 +1028,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
               <span className="hidden sm:inline">Календарь</span>
             </button>
           </div>
-          {!agendaMode && (
-            <span className="text-sm font-semibold capitalize flex-1 min-w-0 truncate">{viewTitle}</span>
-          )}
+
           {loading && <Icon name="Loader2" size={16} className="animate-spin text-muted-foreground ml-auto" />}
         </div>
         {/* Строка 2: навигация по датам + виды + служебные кнопки (только в режиме Календаря) */}
@@ -1041,8 +1039,8 @@ export default function MasterCalendarDnd({ masterId }: Props) {
               <Button size="sm" variant="outline" className="px-2" onClick={() => { calRef.current?.getApi().prev(); updateTitle(); }}>
                 <Icon name="ChevronLeft" size={16} />
               </Button>
-              <Button size="sm" variant="outline" className="px-2.5" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
-                Сегодня
+              <Button size="sm" variant="outline" className="px-2.5 capitalize" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
+                {viewTitle || "Сегодня"}
               </Button>
               <Button size="sm" variant="outline" className="px-2" onClick={() => { calRef.current?.getApi().next(); updateTitle(); }}>
                 <Icon name="ChevronRight" size={16} />
