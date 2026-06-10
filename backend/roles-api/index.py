@@ -262,12 +262,6 @@ def create_email_code(cur, schema, app_id, email, ip, user_agent):
 
 
 def send_role_application_code_email(to_email, name, role_name, code):
-    api_key = os.environ.get('UNISENDER_API_KEY', '')
-    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
-    sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
-    if not api_key or not sender_email:
-        return False
-
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fafafa;">
         <div style="background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
@@ -293,28 +287,13 @@ def send_role_application_code_email(to_email, name, role_name, code):
     </div>
     """
 
-    message = {
-        "recipients": [{"email": to_email, "name": name}],
-        "from_email": sender_email,
-        "subject": f"Подтверждение заявки на роль «{role_name}» — Sparcom",
-        "body": {"html": html},
-        "track_links": 0,
-        "track_read": 1,
-        "tags": ["role-application-2fa"],
-    }
-    if sender_name:
-        message["from_name"] = sender_name
-
-    try:
-        r = requests.post(
-            "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
-            headers={"Content-Type": "application/json", "X-API-KEY": api_key},
-            json={"message": message},
-            timeout=10
-        )
-        return r.status_code < 400
-    except Exception:
-        return False
+    return send_email(
+        to_email,
+        f"Подтверждение заявки на роль «{role_name}» — Sparcom",
+        html,
+        to_name=name,
+        tags=["role-application-2fa"],
+    )
 
 
 def handle_apply(cur, conn, schema, user, body, ip=None, user_agent=''):

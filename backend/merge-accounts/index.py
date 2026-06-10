@@ -5,11 +5,53 @@ import os
 import hashlib
 import secrets
 import re
+import urllib.request
+import urllib.error
 from datetime import datetime, timedelta
 
 import psycopg2
 import psycopg2.extras
-import requests
+
+
+def send_email(to_email, subject, body_html, to_name=None, tags=None):
+    """Отправляет письмо через Unisender Go (актуальный формат from_email/from_name).
+
+    Не падает при ошибках, возвращает True/False.
+    """
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
+    if not api_key or not sender_email or not to_email:
+        return False
+    recipient = {'email': to_email}
+    if to_name:
+        recipient['name'] = to_name
+    message = {
+        'recipients': [recipient],
+        'from_email': sender_email,
+        'subject': subject,
+        'body': {'html': body_html},
+        'track_links': 1,
+        'track_read': 1,
+    }
+    if sender_name:
+        message['from_name'] = sender_name
+    if tags:
+        message['tags'] = tags if isinstance(tags, list) else [str(tags)]
+    payload = json.dumps({'message': message}).encode('utf-8')
+    req = urllib.request.Request(
+        'https://go2.unisender.ru/ru/transactional/api/v1/email/send.json',
+        data=payload,
+        headers={'X-API-KEY': api_key, 'Content-Type': 'application/json'},
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=10)
+        data = json.loads(resp.read().decode('utf-8', 'replace') or '{}')
+        if data.get('status') == 'error' or data.get('failed_emails'):
+            return False
+        return True
+    except Exception:
+        return False
 
 # ---------------------------------------------------------------------------
 # Константы
@@ -91,15 +133,10 @@ def get_user_from_session(cur, schema, token):
 
 def send_merge_code_email(to_email: str, to_name: str, code: str,
                           source_name: str, target_name: str) -> bool:
-    """Отправляет письмо с кодом подтверждения слияния аккаунтов."""
-    api_key = os.environ.get('UNISENDER_API_KEY', '')
-    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
-    sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Сервис')
+    """Отправляет письмо с кодом подтверждения слияния аккаунтов.
 
-    if not api_key or not sender_email or not to_email:
-        print(f"[merge-accounts] send_merge_code_email: missing config, skip send")
-        return False
-
+    Использует единый shared.send_email (Unisender Go, корректный from_email/from_name).
+    """
     html = f"""
 <html>
 <body style="font-family: Arial, sans-serif; color: #222; max-width: 520px; margin: 0 auto;">
@@ -125,38 +162,13 @@ def send_merge_code_email(to_email: str, to_name: str, code: str,
 </body>
 </html>
 """
-
-    payload = {
-        'message': {
-            'recipients': [{'email': to_email, 'substitutions': {'to_name': to_name}}],
-            'sender_email': sender_email,
-            'sender_name': sender_name,
-            'subject': 'Подтверждение объединения аккаунтов',
-            'body': {'html': html},
-            'track_links': 1,
-            'track_read': 1,
-        }
-    }
-
-    try:
-        resp = requests.post(
-            'https://go2.unisender.ru/ru/transactional/api/v1/email/send.json',
-            headers={
-                'Content-Type': 'application/json',
-                'X-API-KEY': api_key,
-            },
-            json=payload,
-            timeout=10,
-        )
-        result = resp.json()
-        if resp.status_code == 200 and result.get('status') == 'success':
-            print(f"[merge-accounts] Email sent to {to_email}")
-            return True
-        print(f"[merge-accounts] Email send failed: {result}")
-        return False
-    except Exception as exc:
-        print(f"[merge-accounts] Email send error: {exc}")
-        return False
+    return send_email(
+        to_email,
+        'Подтверждение объединения аккаунтов',
+        html,
+        to_name=to_name,
+        tags=['account-merge'],
+    )
 
 
 # ---------------------------------------------------------------------------

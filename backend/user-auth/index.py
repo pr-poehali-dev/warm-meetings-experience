@@ -712,12 +712,6 @@ def finalize_login_session(cur, schema, user_row, method_used, ip, user_agent, p
 
 
 def send_login_2fa_email(to_email, name, code, ip, ua):
-    import requests
-    api_key = os.environ.get('UNISENDER_API_KEY', '')
-    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
-    sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
-    if not api_key or not sender_email:
-        return False
     html = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fafafa;">
         <div style="background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
@@ -738,27 +732,13 @@ def send_login_2fa_email(to_email, name, code, ip, ua):
         </div>
     </div>
     """
-    message = {
-        "recipients": [{"email": to_email, "name": name}],
-        "from_email": sender_email,
-        "subject": "Код для входа — Sparcom",
-        "body": {"html": html},
-        "track_links": 0,
-        "track_read": 1,
-        "tags": ["login-2fa"],
-    }
-    if sender_name:
-        message["from_name"] = sender_name
-    try:
-        r = requests.post(
-            "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
-            headers={"Content-Type": "application/json", "X-API-KEY": api_key},
-            json={"message": message},
-            timeout=10,
-        )
-        return r.status_code < 400
-    except Exception:
-        return False
+    return send_email(
+        to_email,
+        "Код для входа — Sparcom",
+        html,
+        to_name=name,
+        tags=["login-2fa"],
+    )
 
 
 def create_and_send_login_email_code(cur, schema, user_row, pending_token, ip, user_agent):
@@ -1142,12 +1122,6 @@ def log_notification(channel, event_type, recipient, status, *,
 
 
 def send_welcome_email(to_email, name, user_id=None):
-    import requests
-    api_key = os.environ.get('UNISENDER_API_KEY', '')
-    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
-    sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
-    if not api_key or not sender_email:
-        return
     if to_email.endswith('.vk.local') or to_email.endswith('@vk.local'):
         return
 
@@ -1177,45 +1151,22 @@ def send_welcome_email(to_email, name, user_id=None):
     </div>
     """
 
-    message = {
-        "recipients": [{"email": to_email, "name": name}],
-        "from_email": sender_email,
-        "subject": "Добро пожаловать в Sparcom!",
-        "body": {"html": html},
-        "track_links": 1,
-        "track_read": 1,
-        "tags": ["welcome"],
-    }
-    if sender_name:
-        message["from_name"] = sender_name
-
-    sent_ok = False
-    err = None
-    try:
-        requests.post(
-            "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
-            headers={"Content-Type": "application/json", "X-API-KEY": api_key},
-            json={"message": message},
-            timeout=10
-        )
-        sent_ok = True
-    except Exception as ex:
-        err = str(ex)
+    sent_ok = send_email(
+        to_email,
+        "Добро пожаловать в Sparcom!",
+        html,
+        to_name=name,
+        tags=["welcome"],
+    )
     log_notification('email', 'user_registered', to_email,
                      'success' if sent_ok else 'failed',
                      subject='Добро пожаловать в Sparcom!',
-                     error_text=err, user_id=user_id,
+                     error_text=None if sent_ok else 'send_email failed',
+                     user_id=user_id,
                      payload={'name': name})
 
 
 def send_reset_email(to_email, name, token):
-    import requests
-    api_key = os.environ.get('UNISENDER_API_KEY', '')
-    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
-    sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
-    if not api_key or not sender_email:
-        return
-
     reset_url = f"https://sparcom.ru/reset-password?token={token}"
 
     html = f"""
@@ -1242,37 +1193,16 @@ def send_reset_email(to_email, name, token):
     </div>
     """
 
-    message = {
-        "recipients": [{"email": to_email, "name": name}],
-        "from_email": sender_email,
-        "subject": "Сброс пароля — Sparcom",
-        "body": {"html": html},
-        "track_links": 0,
-        "track_read": 1,
-        "tags": ["password-reset"],
-    }
-    if sender_name:
-        message["from_name"] = sender_name
-
-    try:
-        requests.post(
-            "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
-            headers={"Content-Type": "application/json", "X-API-KEY": api_key},
-            json={"message": message},
-            timeout=10
-        )
-    except Exception:
-        pass
+    send_email(
+        to_email,
+        "Сброс пароля — Sparcom",
+        html,
+        to_name=name,
+        tags=["password-reset"],
+    )
 
 
 def send_new_device_email(to_email, name, ip, user_agent):
-    import requests
-    api_key = os.environ.get('UNISENDER_API_KEY', '')
-    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
-    sender_name = os.environ.get('UNISENDER_SENDER_NAME', '')
-    if not api_key or not sender_email:
-        return
-
     now_str = datetime.utcnow().strftime('%d.%m.%Y %H:%M UTC')
     short_ua = (user_agent[:80] + '...') if len(user_agent) > 80 else user_agent
 
@@ -1308,24 +1238,10 @@ def send_new_device_email(to_email, name, ip, user_agent):
     </div>
     """
 
-    message = {
-        "recipients": [{"email": to_email, "name": name}],
-        "from_email": sender_email,
-        "subject": "Вход с нового устройства — Sparcom",
-        "body": {"html": html},
-        "track_links": 0,
-        "track_read": 1,
-        "tags": ["new-device-login"],
-    }
-    if sender_name:
-        message["from_name"] = sender_name
-
-    try:
-        requests.post(
-            "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
-            headers={"Content-Type": "application/json", "X-API-KEY": api_key},
-            json={"message": message},
-            timeout=10
-        )
-    except Exception:
-        pass
+    send_email(
+        to_email,
+        "Вход с нового устройства — Sparcom",
+        html,
+        to_name=name,
+        tags=["new-device-login"],
+    )
