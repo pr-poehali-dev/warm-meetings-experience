@@ -9,7 +9,6 @@ import { mastersApi, Master } from "@/lib/masters-api";
 import MasterCalendar from "@/components/admin/calendar-dnd/MasterCalendarDnd";
 import MasterBookingsList from "@/components/admin/MasterBookingsList";
 import MasterServices from "@/components/admin/MasterServices";
-import MasterTemplates from "@/components/admin/MasterTemplates";
 import QuickScheduleSetup from "@/components/master/QuickScheduleSetup";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -521,13 +520,6 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
 
 // ─── Мастер: Расписание ───────────────────────────────────────────────────────
 
-const SCHEDULE_TABS = [
-  { id: "calendar", label: "Календарь",     icon: "CalendarDays",  color: "text-blue-600",    activeBg: "bg-blue-50 dark:bg-blue-950/40",     activeBorder: "border-blue-200 dark:border-blue-800" },
-  { id: "templates",label: "Шаблоны",       icon: "Copy",          color: "text-teal-600",    activeBg: "bg-teal-50 dark:bg-teal-950/40",    activeBorder: "border-teal-200 dark:border-teal-800" },
-] as const;
-
-type ScheduleTab = typeof SCHEDULE_TABS[number]["id"];
-
 export function MasterServicesSection({ masterId }: { masterId: number }) {
   return (
     <div className="space-y-4">
@@ -538,70 +530,48 @@ export function MasterServicesSection({ masterId }: { masterId: number }) {
 }
 
 export function MasterScheduleSection({ masterId, masterSlug, onGoToServices }: { masterId: number; masterSlug: string; onGoToServices?: () => void }) {
-  const [tab, setTab] = useState<ScheduleTab>("calendar");
   const [quickOpen, setQuickOpen] = useState(false);
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-bold">Расписание</h2>
-        <a
-          href="/master-schedule-guide"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
-        >
-          <Icon name="BookOpen" size={13} />
-          Инструкция
-        </a>
-      </div>
-      <div className="flex items-center gap-2 w-full sm:w-auto">
-        <div className="inline-flex border border-border rounded-xl overflow-hidden bg-muted/40 flex-1 sm:flex-none">
-          {SCHEDULE_TABS.map((t, i) => {
-            const active = tab === t.id;
-            return (
+        <div className="flex items-center gap-3">
+          <a
+            href="/master-schedule-guide"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
+          >
+            <Icon name="BookOpen" size={13} />
+            <span className="hidden sm:inline">Инструкция</span>
+          </a>
+          <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
+            <DialogTrigger asChild>
               <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold transition-all whitespace-nowrap
-                  ${i > 0 ? "border-l border-border" : ""}
-                  ${active
-                    ? `${t.activeBg} ${t.color} shadow-inner`
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                  }`}
+                title="Быстрый старт — настройте расписание и шаблоны за минуту"
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-600 text-xs font-semibold transition-all hover:bg-amber-100 dark:hover:bg-amber-900/40"
               >
-                <Icon name={t.icon} size={13} />
-                <span className="hidden sm:inline">{t.label}</span>
+                <Icon name="Zap" size={14} />
+                <span>Быстрый старт</span>
               </button>
-            );
-          })}
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Icon name="Zap" size={18} className="text-amber-600" />
+                  Быстрый старт
+                </DialogTitle>
+              </DialogHeader>
+              <QuickScheduleSetup
+                masterId={masterId}
+                masterSlug={masterSlug}
+                onNavigateToServices={() => { setQuickOpen(false); onGoToServices?.(); }}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
-        <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
-          <DialogTrigger asChild>
-            <button
-              title="Быстрый старт — настройте расписание за минуту"
-              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-600 text-xs font-semibold transition-all hover:bg-amber-100 dark:hover:bg-amber-900/40"
-            >
-              <Icon name="Zap" size={14} />
-              <span className="hidden sm:inline">Быстрый старт</span>
-            </button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Icon name="Zap" size={18} className="text-amber-600" />
-                Быстрый старт
-              </DialogTitle>
-            </DialogHeader>
-            <QuickScheduleSetup
-              masterId={masterId}
-              masterSlug={masterSlug}
-              onNavigateToServices={() => { setQuickOpen(false); onGoToServices?.(); }}
-            />
-          </DialogContent>
-        </Dialog>
       </div>
-      {tab === "calendar"  && <MasterCalendar masterId={masterId} />}
-      {tab === "templates" && <MasterTemplates masterId={masterId} />}
+      <MasterCalendar masterId={masterId} />
     </div>
   );
 }

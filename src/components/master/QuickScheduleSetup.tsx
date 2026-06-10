@@ -25,6 +25,7 @@ import {
   MasterService,
   TemplateRule,
 } from "@/lib/master-calendar-api";
+import MasterTemplates from "@/components/admin/MasterTemplates";
 
 interface QuickScheduleSetupProps {
   masterId: number;
@@ -559,6 +560,18 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
             </Button>
           </div>
         </div>
+      </section>
+
+      {/* ШАГ 3: Шаблоны расписания */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground inline-flex items-center justify-center text-xs font-bold">3</span>
+          <h3 className="text-base font-semibold">Шаблоны расписания</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Сохраняй типовые недели как шаблоны и применяй их к календарю в один клик — не нужно настраивать всё заново.
+        </p>
+        <MasterTemplates masterId={masterId} />
       </section>
 
       {/* Ссылка на превью */}
