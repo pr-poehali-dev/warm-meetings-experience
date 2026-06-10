@@ -128,6 +128,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
   const [pendingResize, setPendingResize] = useState<{ event: EventDropArg["event"]; revert: () => void } | null>(null);
 
   const [viewTitle, setViewTitle] = useState<string>("");
+  const [viewStart, setViewStart] = useState<Date>(new Date());
   const [currentView, setCurrentView] = useState<string>("timeGridWeek");
   const [agendaMode, setAgendaMode] = useState(false);
   const [agendaDate, setAgendaDate] = useState<Date>(new Date());
@@ -259,6 +260,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     const endInclusive = new Date(arg.end.getTime() - 24 * 60 * 60_000);
     loadData(calDateKey(arg.start), calDateKey(endInclusive));
     setViewTitle(arg.view.title.replace(/\s*[\u0433\u0413]\.\s*/g, " ").trim());
+    setViewStart(arg.start);
     setCurrentView(arg.view.type);
   }, [loadData, calDateKey]);
 
@@ -1040,7 +1042,12 @@ export default function MasterCalendarDnd({ masterId }: Props) {
                 <Icon name="ChevronLeft" size={16} />
               </Button>
               <Button size="sm" variant="outline" className="px-2.5 capitalize" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
-                {viewTitle || "Сегодня"}
+                {currentView === "timeGridDay"
+                  ? viewStart.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short", timeZone: settings?.timezone || "Europe/Moscow" })
+                  : currentView === "timeGridWeek"
+                  ? viewStart.toLocaleDateString("ru-RU", { day: "numeric", month: "short", timeZone: settings?.timezone || "Europe/Moscow" })
+                  : viewStart.toLocaleDateString("ru-RU", { month: "long", year: "numeric", timeZone: settings?.timezone || "Europe/Moscow" })
+                }
               </Button>
               <Button size="sm" variant="outline" className="px-2" onClick={() => { calRef.current?.getApi().next(); updateTitle(); }}>
                 <Icon name="ChevronRight" size={16} />
