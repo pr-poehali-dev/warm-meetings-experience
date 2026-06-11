@@ -741,6 +741,40 @@ def handle_bookings(event, method, params, schema, headers):
             ignore_buffer=force,
             require_within_slot=(not slot_id),
         )
+
+        # Мастер создаёт бронь вручную на время, где ещё нет рабочего слота —
+        # не блокируем, а автоматически создаём рабочий слот под это время и
+        # привязываем к нему бронь. Прочие конфликты (выходной, занятость,
+        # блокировка) остаются ошибками.
+        if problem and problem.get('error') == 'outside_working_hours' and not slot_id:
+            auto_max_clients = 1
+            try:
+                cur.execute(f"""
+                    INSERT INTO {schema}.master_slots
+                    (master_id, service_id, datetime_start, datetime_end,
+                     max_clients, status, source, notes)
+                    VALUES ({int(master_id)},
+                            {f"{int(service_id)}" if service_id else "NULL"},
+                            '{dt_start}', '{dt_end}',
+                            {auto_max_clients}, 'available', 'manual',
+                            'Создан автоматически под ручную бронь')
+                    RETURNING id
+                """)
+                new_slot = cur.fetchone()
+                slot_id = new_slot['id'] if new_slot else None
+                problem = None
+            except Exception:
+                conn.rollback()
+                conn.close()
+                return {
+                    'statusCode': 500,
+                    'headers': headers,
+                    'body': json.dumps({
+                        'error': 'slot_autocreate_failed',
+                        'message': 'Не удалось создать рабочий слот под бронь',
+                    }, ensure_ascii=False),
+                }
+
         if problem:
             conn.close()
             return {
