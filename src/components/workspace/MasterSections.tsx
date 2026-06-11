@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import VkConnectBanner from "@/components/shared/VkConnectBanner";
 import Icon from "@/components/ui/icon";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { masterBookingsApi, masterCalendarApi, MasterReview } from "@/lib/master-calendar-api";
 import { mastersApi, Master } from "@/lib/masters-api";
-import MasterCalendar from "@/components/admin/calendar-dnd/MasterCalendarDnd";
+import MasterCalendar, { MasterCalendarDndRef } from "@/components/admin/calendar-dnd/MasterCalendarDnd";
 import MasterBookingsList from "@/components/admin/MasterBookingsList";
 import MasterServices from "@/components/admin/MasterServices";
 import QuickScheduleSetup from "@/components/master/QuickScheduleSetup";
@@ -531,6 +531,7 @@ export function MasterServicesSection({ masterId }: { masterId: number }) {
 
 export function MasterScheduleSection({ masterId, masterSlug, onGoToServices }: { masterId: number; masterSlug: string; onGoToServices?: () => void }) {
   const [quickOpen, setQuickOpen] = useState(false);
+  const calRef = useRef<MasterCalendarDndRef>(null);
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -566,12 +567,14 @@ export function MasterScheduleSection({ masterId, masterSlug, onGoToServices }: 
                 masterId={masterId}
                 masterSlug={masterSlug}
                 onNavigateToServices={() => { setQuickOpen(false); onGoToServices?.(); }}
+                onOpenTrash={() => { setQuickOpen(false); calRef.current?.openTrash(); }}
+                onOpenClear={() => { setQuickOpen(false); calRef.current?.openClear(); }}
               />
             </DialogContent>
           </Dialog>
         </div>
       </div>
-      <MasterCalendar masterId={masterId} />
+      <MasterCalendar ref={calRef} masterId={masterId} />
     </div>
   );
 }

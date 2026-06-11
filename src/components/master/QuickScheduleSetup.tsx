@@ -31,6 +31,8 @@ interface QuickScheduleSetupProps {
   masterId: number;
   masterSlug?: string;
   onNavigateToServices?: () => void;
+  onOpenTrash?: () => void;
+  onOpenClear?: () => void;
 }
 
 const WEEK_DAYS = [
@@ -54,7 +56,7 @@ function fmtDuration(min: number) {
   return m ? `${h} ч ${m} мин` : `${h} ч`;
 }
 
-export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToServices }: QuickScheduleSetupProps) {
+export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToServices, onOpenTrash, onOpenClear }: QuickScheduleSetupProps) {
   // Услуги
   const [services, setServices] = useState<MasterService[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
@@ -573,6 +575,32 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
         </p>
         <MasterTemplates masterId={masterId} />
       </section>
+
+      {/* Служебные действия */}
+      {(onOpenTrash || onOpenClear) && (
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-6 h-6 rounded-full bg-muted text-muted-foreground inline-flex items-center justify-center text-xs font-bold">
+              <Icon name="Settings2" size={13} />
+            </span>
+            <h3 className="text-base font-semibold">Управление данными</h3>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            {onOpenTrash && (
+              <Button variant="outline" className="gap-2 flex-1" onClick={onOpenTrash}>
+                <Icon name="Archive" size={15} />
+                Корзина и резервные копии
+              </Button>
+            )}
+            {onOpenClear && (
+              <Button variant="outline" className="gap-2 flex-1 text-red-600 hover:text-red-700 border-red-200 hover:border-red-300" onClick={onOpenClear}>
+                <Icon name="Trash2" size={15} />
+                Очистить календарь
+              </Button>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Ссылка на превью */}
       <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 flex items-start gap-3">

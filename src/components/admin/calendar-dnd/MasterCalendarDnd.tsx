@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, useImperativeHandle, forwardRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -29,8 +29,15 @@ import AgendaView from "./AgendaView";
 import DayActionDialog, { DayBookingPayload, DayBlockPayload } from "./DayActionDialog";
 import "./styles.css";
 
+export interface MasterCalendarDndRef {
+  openTrash: () => void;
+  openClear: () => void;
+}
+
 interface Props {
   masterId: number;
+  onTrash?: () => void;
+  onClear?: () => void;
 }
 
 type FcbEvent = EventInput & {
@@ -89,7 +96,7 @@ const tzLabel = (tz: string) => {
 // Это ровно то же самое «экранное время», по которому рисуются события. Никаких
 // getHours()/Intl — поэтому нет зависимости от зоны браузера и сдвигов на 3 часа.
 
-export default function MasterCalendarDnd({ masterId }: Props) {
+const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function MasterCalendarDnd({ masterId, onTrash: _onTrash, onClear: _onClear }, ref) {
   const calRef = useRef<FullCalendar | null>(null);
 
   // Сериализует Date в ISO-строку с offset зоны КАЛЕНДАРЯ (экранное время).
@@ -169,6 +176,11 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       setTrashLoading(false);
     }
   };
+
+  useImperativeHandle(ref, () => ({
+    openTrash,
+    openClear: () => setClearOpen(true),
+  }));
 
   const handleRestoreAll = async () => {
     setRestoring(true);
@@ -1066,9 +1078,9 @@ export default function MasterCalendarDnd({ masterId }: Props) {
 
           {loading && <Icon name="Loader2" size={16} className="animate-spin text-muted-foreground ml-auto" />}
         </div>
-        {/* Строка 2: навигация + выпадающий выбор вида + служебные кнопки */}
+        {/* Строка 2: навигация + выпадающий выбор вида */}
         {!agendaMode && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 w-full">
             {/* Кнопки назад/вперёд */}
             <Button size="sm" variant="outline" className="px-2 shrink-0" onClick={() => { calRef.current?.getApi().prev(); updateTitle(); }}>
               <Icon name="ChevronLeft" size={16} />
@@ -1135,18 +1147,6 @@ export default function MasterCalendarDnd({ masterId }: Props) {
             {/* Кнопка «Сегодня» */}
             <Button size="sm" variant="ghost" className="px-2 shrink-0 text-xs text-muted-foreground hover:text-foreground hidden sm:flex" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
               Сегодня
-            </Button>
-
-            <div className="flex-1 min-w-0" />
-
-            {/* Служебные кнопки */}
-            <Button size="sm" variant="outline" className="px-2 shrink-0" onClick={openTrash} title="Корзина и резервные копии">
-              <Icon name="Archive" size={14} />
-              <span className="hidden sm:inline ml-1">Корзина</span>
-            </Button>
-            <Button size="sm" variant="outline" className="px-2 shrink-0 text-red-600 hover:text-red-700" onClick={() => setClearOpen(true)} title="Очистить">
-              <Icon name="Trash2" size={14} />
-              <span className="hidden sm:inline ml-1">Очистить</span>
             </Button>
           </div>
         )}
@@ -1367,7 +1367,9 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       />
     </div>
   );
-}
+});
+
+export default MasterCalendarDnd;
 
 const CLEAR_OPTIONS: { scope: "week" | "future" | "all"; icon: string; title: string; hint: string; danger?: boolean }[] = [
   { scope: "week", icon: "Calendar", title: "Только текущий период", hint: "То, что видно сейчас" },
