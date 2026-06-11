@@ -195,7 +195,6 @@ export default function DayActionDialog({
             placeholder="Имя клиента"
             value={clientName}
             onChange={(e) => setClientName(e.target.value)}
-            autoFocus
           />
           <Input
             placeholder="Телефон"
