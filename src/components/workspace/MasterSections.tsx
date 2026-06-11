@@ -17,6 +17,7 @@ import ExternalVideoBlock from "@/components/video/ExternalVideoBlock";
 import NotifyChannels from "@/components/workspace/NotifyChannels";
 import ImageCropDialog from "@/components/shared/ImageCropDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const UPLOAD_URL = func2url["media-api"];
 
@@ -537,25 +538,42 @@ export function MasterScheduleSection({ masterId, masterSlug, onGoToServices }: 
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-bold">Расписание</h2>
         <div className="flex items-center gap-3">
-          <a
-            href="/master-schedule-guide"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
-          >
-            <Icon name="BookOpen" size={13} />
-            <span className="hidden sm:inline">Инструкция</span>
-          </a>
-          <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
-            <DialogTrigger asChild>
-              <button
-                title="Быстрый старт — настройте расписание и шаблоны за минуту"
-                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-600 text-xs font-semibold transition-all hover:bg-amber-100 dark:hover:bg-amber-900/40"
+          <TooltipProvider delayDuration={400}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <a
+                href="/master-schedule-guide"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
               >
-                <Icon name="Zap" size={14} />
-                <span>Быстрый старт</span>
-              </button>
-            </DialogTrigger>
+                <Icon name="BookOpen" size={13} />
+                <span className="hidden sm:inline">Инструкция</span>
+              </a>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[200px] text-xs leading-snug">
+              Подробная инструкция по работе с расписанием — как создавать слоты, шаблоны, блокировать дни и управлять записями.
+            </TooltipContent>
+          </Tooltip>
+          </TooltipProvider>
+          <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
+            <TooltipProvider delayDuration={400}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DialogTrigger asChild>
+                  <button
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-600 text-xs font-semibold transition-all hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                  >
+                    <Icon name="Zap" size={14} />
+                    <span>Быстрый старт</span>
+                  </button>
+                </DialogTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[220px] text-xs leading-snug">
+                Заполните услуги и выберите рабочие часы — система сама создаст окна доступности на нужное количество недель вперёд.
+              </TooltipContent>
+            </Tooltip>
+            </TooltipProvider>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
