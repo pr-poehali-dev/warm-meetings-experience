@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import MasterServices, { MasterServicesRef } from "@/components/admin/MasterServices";
+
 
 const TIMEZONES = [
   { value: "Europe/Kaliningrad", label: "Калининград (UTC+2)" },
@@ -23,7 +24,6 @@ const TIMEZONES = [
 ];
 import {
   masterCalendarApi,
-  MasterService,
   TemplateRule,
 } from "@/lib/master-calendar-api";
 import MasterTemplates from "@/components/admin/MasterTemplates";
@@ -58,38 +58,7 @@ function fmtDuration(min: number) {
 }
 
 export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToServices, onOpenTrash, onOpenClear }: QuickScheduleSetupProps) {
-  // Услуги
-  const [services, setServices] = useState<MasterService[]>([]);
-  const [loadingServices, setLoadingServices] = useState(true);
-
-  // Диалог быстрого создания услуги
-  const [createServiceOpen, setCreateServiceOpen] = useState(false);
-  const [newService, setNewService] = useState({ name: "", duration_minutes: "60", price: "" });
-  const [savingService, setSavingService] = useState(false);
-
-  const handleCreateService = async () => {
-    if (!newService.name.trim()) { toast.error("Введите название услуги"); return; }
-    if (!newService.price || Number(newService.price) < 0) { toast.error("Укажите цену"); return; }
-    setSavingService(true);
-    try {
-      await masterCalendarApi.createService({
-        master_id: masterId,
-        name: newService.name.trim(),
-        duration_minutes: Number(newService.duration_minutes) || 60,
-        price: Number(newService.price) || 0,
-        max_clients: 1,
-        is_active: true,
-      });
-      toast.success("Услуга добавлена");
-      setCreateServiceOpen(false);
-      setNewService({ name: "", duration_minutes: "60", price: "" });
-      loadServices();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Не удалось создать услугу");
-    } finally {
-      setSavingService(false);
-    }
-  };
+  const servicesRef = useRef<MasterServicesRef>(null);
 
   // Шаблон расписания
   const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5]));
@@ -108,18 +77,6 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
 
   // Превью существующих слотов
   const [existingCount, setExistingCount] = useState<number | null>(null);
-
-  const loadServices = useCallback(async () => {
-    setLoadingServices(true);
-    try {
-      const svcs = await masterCalendarApi.getServices(masterId);
-      setServices(svcs);
-    } catch {
-      toast.error("Не удалось загрузить услуги");
-    } finally {
-      setLoadingServices(false);
-    }
-  }, [masterId]);
 
   const loadExisting = useCallback(async () => {
     try {
@@ -157,10 +114,9 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
   };
 
   useEffect(() => {
-    loadServices();
     loadExisting();
     loadSettings();
-  }, [loadServices, loadExisting, loadSettings]);
+  }, [loadExisting, loadSettings]);
 
   const handleSaveBuffer = async (value: number) => {
     setSavingBuffer(true);
@@ -331,66 +287,11 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
 
       {/* ШАГ 1: Услуги */}
       <section>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground inline-flex items-center justify-center text-xs font-bold">1</span>
-            <h3 className="text-base font-semibold">Услуги</h3>
-            <span className="text-xs text-muted-foreground">({services.filter((s) => s.is_active).length})</span>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => setCreateServiceOpen(true)} className="gap-1.5">
-            <Icon name="Plus" size={14} />
-            Добавить
-          </Button>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground inline-flex items-center justify-center text-xs font-bold">1</span>
+          <h3 className="text-base font-semibold">Услуги</h3>
         </div>
-
-        {loadingServices ? (
-          <div className="flex justify-center py-6">
-            <Icon name="Loader2" size={20} className="animate-spin text-muted-foreground" />
-          </div>
-        ) : services.filter((s) => s.is_active).length === 0 ? (
-          <div className="text-center py-8 text-sm text-muted-foreground bg-muted/30 rounded-xl border border-dashed">
-            <Icon name="Sparkles" size={28} className="mx-auto mb-2 opacity-40" />
-            <p>Пока нет услуг. Добавь первую — без них гости не смогут записаться.</p>
-            <Button size="sm" variant="outline" onClick={() => setCreateServiceOpen(true)} className="mt-3 gap-1.5">
-              <Icon name="Plus" size={13} />
-              Добавить услугу
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {services.filter((s) => s.is_active).map((s) => (
-              <div key={s.id} className="flex items-center justify-between p-3 bg-card border rounded-xl">
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium text-sm truncate">{s.name}</div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-3 mt-0.5">
-                    <span className="flex items-center gap-1">
-                      <Icon name="Clock" size={11} />
-                      {fmtDuration(s.duration_minutes)}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Icon name="Wallet" size={11} />
-                      {fmt(s.price)} ₽
-                    </span>
-                    {s.max_clients > 1 && (
-                      <span className="flex items-center gap-1">
-                        <Icon name="Users" size={11} />
-                        до {s.max_clients}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => setCreateServiceOpen(true)}
-              className="w-full flex items-center justify-center gap-1.5 p-2.5 rounded-xl border border-dashed border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
-            >
-              <Icon name="Plus" size={13} />
-              Добавить услугу
-            </button>
-          </div>
-        )}
+        <MasterServices ref={servicesRef} masterId={masterId} />
       </section>
 
       {/* ШАГ 2: Расписание */}
@@ -650,61 +551,6 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
         </div>
       </div>
 
-      {/* Диалог быстрого создания услуги */}
-      <Dialog open={createServiceOpen} onOpenChange={setCreateServiceOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Icon name="Plus" size={16} className="text-primary" />
-              Новая услуга
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-1">
-            <div>
-              <Label className="text-xs mb-1 block">Название *</Label>
-              <Input
-                placeholder="Например: Классический массаж"
-                value={newService.name}
-                onChange={(e) => setNewService((p) => ({ ...p, name: e.target.value }))}
-                onKeyDown={(e) => e.key === "Enter" && handleCreateService()}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs mb-1 block">Длительность (мин)</Label>
-                <Input
-                  type="number"
-                  min="5"
-                  step="5"
-                  placeholder="60"
-                  value={newService.duration_minutes}
-                  onChange={(e) => setNewService((p) => ({ ...p, duration_minutes: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label className="text-xs mb-1 block">Цена (₽)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={newService.price}
-                  onChange={(e) => setNewService((p) => ({ ...p, price: e.target.value }))}
-                  onKeyDown={(e) => e.key === "Enter" && handleCreateService()}
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 pt-1">
-              <Button variant="outline" className="flex-1" onClick={() => setCreateServiceOpen(false)}>
-                Отмена
-              </Button>
-              <Button className="flex-1 gap-1.5" onClick={handleCreateService} disabled={savingService}>
-                {savingService && <Icon name="Loader2" size={14} className="animate-spin" />}
-                Создать
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import TgPublishButton from "@/components/tg/TgPublishButton";
@@ -189,7 +189,11 @@ const ListField = ({
   );
 };
 
-const MasterServices = ({ masterId }: { masterId: number }) => {
+export interface MasterServicesRef {
+  openCreate: () => void;
+}
+
+const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(({ masterId }, ref) => {
   const [services, setServices] = useState<MasterService[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -259,6 +263,8 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
     setForm({ ...emptyForm });
     setIsDialogOpen(true);
   };
+
+  useImperativeHandle(ref, () => ({ openCreate }));
 
   const openEdit = (service: MasterService) => {
     setEditingService(service);
@@ -770,6 +776,6 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
       </Dialog>
     </div>
   );
-};
+});
 
 export default MasterServices;
