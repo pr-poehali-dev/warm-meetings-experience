@@ -181,7 +181,7 @@ export default function DayActionDialog({
               <SelectTrigger>
                 <SelectValue placeholder="Услуга (длительность подставится)" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper" sideOffset={4}>
                 {services.map((s) => (
                   <SelectItem key={s.id} value={String(s.id)}>
                     {s.name} · {s.duration_minutes} мин
