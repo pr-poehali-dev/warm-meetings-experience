@@ -8,6 +8,7 @@ import ruLocale from "@fullcalendar/core/locales/ru";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Icon from "@/components/ui/icon";
 import {
   masterCalendarApi,
@@ -129,8 +130,17 @@ export default function MasterCalendarDnd({ masterId }: Props) {
 
   const [viewTitle, setViewTitle] = useState<string>("");
   const [viewStart, setViewStart] = useState<Date>(new Date());
-  const [currentView, setCurrentView] = useState<string>("timeGridWeek");
+  const STORAGE_VIEW_KEY = "master_cal_view";
+  const [currentView, setCurrentView] = useState<string>(
+    () => localStorage.getItem(STORAGE_VIEW_KEY) || "timeGridWeek"
+  );
   const [agendaMode, setAgendaMode] = useState(false);
+
+  const changeCalView = (view: string) => {
+    const api = calRef.current?.getApi();
+    if (api) { api.changeView(view); setViewTitle(api.view.title); }
+    localStorage.setItem(STORAGE_VIEW_KEY, view);
+  };
   const [agendaDate, setAgendaDate] = useState<Date>(new Date());
   // Диалог ручного управления днём (бронь / блокировка) по кнопке «+»
   const [dayAction, setDayAction] = useState<{ dayStr: string; dayLabel: string; offset: string } | null>(null);
@@ -262,6 +272,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
     setViewTitle(arg.view.title.replace(/\s*[\u0433\u0413]\.\s*/g, " ").trim());
     setViewStart(arg.start);
     setCurrentView(arg.view.type);
+    localStorage.setItem(STORAGE_VIEW_KEY, arg.view.type);
   }, [loadData, calDateKey]);
 
   useEffect(() => {
@@ -1055,34 +1066,79 @@ export default function MasterCalendarDnd({ masterId }: Props) {
 
           {loading && <Icon name="Loader2" size={16} className="animate-spin text-muted-foreground ml-auto" />}
         </div>
-        {/* Строка 2: навигация по датам + виды + служебные кнопки (только в режиме Календаря) */}
+        {/* Строка 2: навигация + выпадающий выбор вида + служебные кнопки */}
         {!agendaMode && (
-          <div className="flex items-center flex-wrap gap-1.5">
-            {/* Навигация по датам */}
-            <div className="inline-flex items-center gap-1 shrink-0">
-              <Button size="sm" variant="outline" className="px-2" onClick={() => { calRef.current?.getApi().prev(); updateTitle(); }}>
-                <Icon name="ChevronLeft" size={16} />
-              </Button>
-              <Button size="sm" variant="outline" className="px-2.5 capitalize" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
-                {currentView === "timeGridDay"
-                  ? viewStart.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short", timeZone: settings?.timezone || "Europe/Moscow" })
-                  : currentView === "timeGridWeek"
-                  ? viewStart.toLocaleDateString("ru-RU", { day: "numeric", month: "short", timeZone: settings?.timezone || "Europe/Moscow" })
-                  : viewStart.toLocaleDateString("ru-RU", { month: "long", year: "numeric", timeZone: settings?.timezone || "Europe/Moscow" })
-                }
-              </Button>
-              <Button size="sm" variant="outline" className="px-2" onClick={() => { calRef.current?.getApi().next(); updateTitle(); }}>
-                <Icon name="ChevronRight" size={16} />
-              </Button>
-            </div>
-            <div className="w-px h-5 bg-border shrink-0 hidden sm:block" />
-            {/* Выбор вида */}
-            <div className="inline-flex items-center gap-1 shrink-0">
-              <Button size="sm" variant={currentView === "timeGridDay" ? "default" : "outline"} className="px-2.5" onClick={() => calRef.current?.getApi().changeView("timeGridDay")}>День</Button>
-              <Button size="sm" variant={currentView === "timeGridWeek" ? "default" : "outline"} className="px-2.5" onClick={() => calRef.current?.getApi().changeView("timeGridWeek")}>Неделя</Button>
-              <Button size="sm" variant={currentView === "dayGridMonth" ? "default" : "outline"} className="px-2.5" onClick={() => calRef.current?.getApi().changeView("dayGridMonth")}>Месяц</Button>
-            </div>
+          <div className="flex items-center gap-1.5">
+            {/* Кнопки назад/вперёд */}
+            <Button size="sm" variant="outline" className="px-2 shrink-0" onClick={() => { calRef.current?.getApi().prev(); updateTitle(); }}>
+              <Icon name="ChevronLeft" size={16} />
+            </Button>
+
+            {/* Дата + выбор вида — единый выпадающий триггер */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 min-w-0 justify-between gap-2 font-medium capitalize"
+                >
+                  <span className="truncate text-left">
+                    {currentView === "timeGridDay"
+                      ? viewStart.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short", timeZone: settings?.timezone || "Europe/Moscow" })
+                      : currentView === "timeGridWeek"
+                      ? viewStart.toLocaleDateString("ru-RU", { day: "numeric", month: "short", timeZone: settings?.timezone || "Europe/Moscow" })
+                      : viewStart.toLocaleDateString("ru-RU", { month: "long", year: "numeric", timeZone: settings?.timezone || "Europe/Moscow" })
+                    }
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                    <Icon name={currentView === "timeGridDay" ? "CalendarClock" : currentView === "timeGridWeek" ? "CalendarDays" : "CalendarRange"} size={13} />
+                    <span className="hidden sm:inline">
+                      {currentView === "timeGridDay" ? "День" : currentView === "timeGridWeek" ? "Неделя" : "Месяц"}
+                    </span>
+                    <Icon name="ChevronsUpDown" size={11} className="opacity-50" />
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-[160px]">
+                <DropdownMenuItem
+                  onClick={() => changeCalView("timeGridDay")}
+                  className={currentView === "timeGridDay" ? "bg-accent font-semibold" : ""}
+                >
+                  <Icon name="CalendarClock" size={14} className="mr-2 text-muted-foreground" />
+                  День
+                  {currentView === "timeGridDay" && <Icon name="Check" size={13} className="ml-auto text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => changeCalView("timeGridWeek")}
+                  className={currentView === "timeGridWeek" ? "bg-accent font-semibold" : ""}
+                >
+                  <Icon name="CalendarDays" size={14} className="mr-2 text-muted-foreground" />
+                  Неделя
+                  {currentView === "timeGridWeek" && <Icon name="Check" size={13} className="ml-auto text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => changeCalView("dayGridMonth")}
+                  className={currentView === "dayGridMonth" ? "bg-accent font-semibold" : ""}
+                >
+                  <Icon name="CalendarRange" size={14} className="mr-2 text-muted-foreground" />
+                  Месяц
+                  {currentView === "dayGridMonth" && <Icon name="Check" size={13} className="ml-auto text-primary" />}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Кнопка вперёд */}
+            <Button size="sm" variant="outline" className="px-2 shrink-0" onClick={() => { calRef.current?.getApi().next(); updateTitle(); }}>
+              <Icon name="ChevronRight" size={16} />
+            </Button>
+
+            {/* Кнопка «Сегодня» */}
+            <Button size="sm" variant="ghost" className="px-2 shrink-0 text-xs text-muted-foreground hover:text-foreground hidden sm:flex" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
+              Сегодня
+            </Button>
+
             <div className="flex-1 min-w-0" />
+
             {/* Служебные кнопки */}
             <Button size="sm" variant="outline" className="px-2 shrink-0" onClick={openTrash} title="Корзина и резервные копии">
               <Icon name="Archive" size={14} />
@@ -1132,7 +1188,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       <FullCalendar
         ref={calRef}
         plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-        initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
+        initialView={currentView}
         timeZone={settings?.timezone || "Europe/Moscow"}
         locale={ruLocale}
         firstDay={1}
