@@ -1,4 +1,5 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import TgPublishButton from "@/components/tg/TgPublishButton";
@@ -495,44 +496,68 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(({ ma
               </div>
 
               <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <TooltipProvider delayDuration={400}>
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => openEdit(service)}
-                    className="p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
-                    title="Редактировать"
-                    disabled={saving}
-                  >
-                    <Icon name="Pencil" size={16} />
-                  </button>
-                  <button
-                    onClick={() => toggleActive(service)}
-                    className={`p-2 rounded-md transition-colors ${
-                      service.is_active
-                        ? "text-yellow-600 hover:bg-yellow-50"
-                        : "text-green-600 hover:bg-green-50"
-                    }`}
-                    title={service.is_active ? "Деактивировать" : "Активировать"}
-                    disabled={saving}
-                  >
-                    <Icon name={service.is_active ? "EyeOff" : "Eye"} size={16} />
-                  </button>
-                  <button
-                    onClick={() => copyServiceLink(service)}
-                    className="p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
-                    title="Скопировать ссылку на услугу"
-                    disabled={saving}
-                  >
-                    <Icon name="Link" size={16} />
-                  </button>
-                  <button
-                    onClick={() => service.id && confirmDelete(service.id)}
-                    className="p-2 rounded-md text-red-500 hover:bg-red-50 transition-colors"
-                    title="Удалить"
-                    disabled={saving}
-                  >
-                    <Icon name="Trash2" size={16} />
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => openEdit(service)}
+                        className="p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+                        disabled={saving}
+                      >
+                        <Icon name="Pencil" size={16} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">Редактировать услугу</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => toggleActive(service)}
+                        className={`p-2 rounded-md transition-colors ${
+                          service.is_active
+                            ? "text-yellow-600 hover:bg-yellow-50"
+                            : "text-green-600 hover:bg-green-50"
+                        }`}
+                        disabled={saving}
+                      >
+                        <Icon name={service.is_active ? "EyeOff" : "Eye"} size={16} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs max-w-[180px] leading-snug">
+                      {service.is_active
+                        ? "Скрыть услугу — гости не увидят её при записи"
+                        : "Показать услугу — гости смогут выбрать её при записи"}
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => copyServiceLink(service)}
+                        className="p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+                        disabled={saving}
+                      >
+                        <Icon name="Link" size={16} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs max-w-[180px] leading-snug">
+                      Скопировать ссылку на эту услугу — отправьте гостю, он сразу попадёт на запись
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => service.id && confirmDelete(service.id)}
+                        className="p-2 rounded-md text-red-500 hover:bg-red-50 transition-colors"
+                        disabled={saving}
+                      >
+                        <Icon name="Trash2" size={16} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">Удалить услугу</TooltipContent>
+                  </Tooltip>
                 </div>
+                </TooltipProvider>
                 {service.id && service.is_active && (
                   <TgPublishButton
                     contentType="master_service"
