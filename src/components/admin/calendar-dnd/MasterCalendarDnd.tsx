@@ -1139,15 +1139,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
 
             <div className="flex-1 min-w-0" />
 
-            {/* Служебные кнопки */}
-            <Button size="sm" variant="outline" className="px-2 shrink-0" onClick={openTrash} title="Корзина и резервные копии">
-              <Icon name="Archive" size={14} />
-              <span className="hidden sm:inline ml-1">Корзина</span>
-            </Button>
-            <Button size="sm" variant="outline" className="px-2 shrink-0 text-red-600 hover:text-red-700" onClick={() => setClearOpen(true)} title="Очистить">
-              <Icon name="Trash2" size={14} />
-              <span className="hidden sm:inline ml-1">Очистить</span>
-            </Button>
+
           </div>
         )}
       </div>
