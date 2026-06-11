@@ -522,12 +522,7 @@ export function MasterProfileSection({ masterId: _masterId }: { masterId: number
 // ─── Мастер: Расписание ───────────────────────────────────────────────────────
 
 export function MasterServicesSection({ masterId }: { masterId: number }) {
-  return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-bold">Услуги</h2>
-      <MasterServices masterId={masterId} />
-    </div>
-  );
+  return <MasterServices masterId={masterId} />;
 }
 
 export function MasterScheduleSection({ masterId, masterSlug, onGoToServices }: { masterId: number; masterSlug: string; onGoToServices?: () => void }) {
@@ -600,7 +595,7 @@ export function MasterScheduleSection({ masterId, masterSlug, onGoToServices }: 
 // ─── Мастер: Записи ───────────────────────────────────────────────────────────
 
 export function MasterBookingsSection({ masterId }: { masterId: number }) {
-  return <div className="space-y-4"><h2 className="text-xl font-bold">Записи клиентов</h2><MasterBookingsList masterId={masterId} /></div>;
+  return <MasterBookingsList masterId={masterId} />;
 }
 
 // ─── Мастер: Отзывы ───────────────────────────────────────────────────────────
