@@ -1080,10 +1080,15 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
         </div>
         {/* Строка 2: навигация + выпадающий выбор вида */}
         {!agendaMode && (
-          <div className="flex items-center gap-1.5 w-full">
+          <div className="flex items-center gap-1 w-full">
+            {/* Кнопка «Сегодня» — выделенная, всегда видна */}
+            <Button size="sm" variant="outline" className="px-2.5 shrink-0 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
+              Сегодня
+            </Button>
+
             {/* Кнопки назад/вперёд */}
-            <Button size="sm" variant="outline" className="px-2 shrink-0" onClick={() => { calRef.current?.getApi().prev(); updateTitle(); }}>
-              <Icon name="ChevronLeft" size={16} />
+            <Button size="sm" variant="outline" className="px-1.5 shrink-0" onClick={() => { calRef.current?.getApi().prev(); updateTitle(); }}>
+              <Icon name="ChevronLeft" size={15} />
             </Button>
 
             {/* Дата + выбор вида — единый выпадающий триггер */}
@@ -1092,9 +1097,9 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1 min-w-0 justify-between gap-2 font-medium capitalize"
+                  className="flex-1 min-w-0 justify-between gap-1.5 font-medium capitalize px-2.5"
                 >
-                  <span className="truncate text-left">
+                  <span className="truncate text-left text-xs">
                     {currentView === "timeGridDay"
                       ? viewStart.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short", timeZone: settings?.timezone || "Europe/Moscow" })
                       : currentView === "timeGridWeek"
@@ -1103,11 +1108,11 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
                     }
                   </span>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                    <Icon name={currentView === "timeGridDay" ? "CalendarClock" : currentView === "timeGridWeek" ? "CalendarDays" : "CalendarRange"} size={13} />
+                    <Icon name={currentView === "timeGridDay" ? "CalendarClock" : currentView === "timeGridWeek" ? "CalendarDays" : "CalendarRange"} size={12} />
                     <span className="hidden sm:inline">
                       {currentView === "timeGridDay" ? "День" : currentView === "timeGridWeek" ? "Неделя" : "Месяц"}
                     </span>
-                    <Icon name="ChevronsUpDown" size={11} className="opacity-50" />
+                    <Icon name="ChevronsUpDown" size={10} className="opacity-50" />
                   </span>
                 </Button>
               </DropdownMenuTrigger>
@@ -1140,13 +1145,8 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
             </DropdownMenu>
 
             {/* Кнопка вперёд */}
-            <Button size="sm" variant="outline" className="px-2 shrink-0" onClick={() => { calRef.current?.getApi().next(); updateTitle(); }}>
-              <Icon name="ChevronRight" size={16} />
-            </Button>
-
-            {/* Кнопка «Сегодня» */}
-            <Button size="sm" variant="ghost" className="px-2 shrink-0 text-xs text-muted-foreground hover:text-foreground hidden sm:flex" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
-              Сегодня
+            <Button size="sm" variant="outline" className="px-1.5 shrink-0" onClick={() => { calRef.current?.getApi().next(); updateTitle(); }}>
+              <Icon name="ChevronRight" size={15} />
             </Button>
           </div>
         )}
