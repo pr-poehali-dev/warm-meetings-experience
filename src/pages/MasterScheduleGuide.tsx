@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import Icon from "@/components/ui/icon";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
@@ -18,65 +17,73 @@ const MSG_THEME_STYLES = `
 
 const NAV_SECTIONS = [
   { id: "intro", label: "Введение" },
-  { id: "navigation", label: "Навигация" },
-  { id: "services", label: "Шаг 1. Услуги" },
-  { id: "templates", label: "Шаг 2. Шаблоны" },
-  { id: "calendar", label: "Шаг 3. Календарь" },
-  { id: "bookings", label: "Шаг 4. Записи" },
-  { id: "settings", label: "Шаг 5. Настройки" },
+  { id: "quickstart", label: "Быстрый старт" },
+  { id: "services", label: "Услуги" },
+  { id: "templates", label: "Шаблоны" },
+  { id: "calendar", label: "Календарь" },
+  { id: "bookings", label: "Записи" },
+  { id: "settings", label: "Настройки" },
   { id: "scenarios", label: "Сценарии" },
   { id: "faq", label: "FAQ" },
 ];
 
+const BOOKING_STATUSES = [
+  { color: "bg-yellow-400", label: "Ожидает", desc: "Новая заявка от гостя — нужно подтвердить или отклонить" },
+  { color: "bg-green-500", label: "Подтверждена", desc: "Вы приняли запись, гость придёт" },
+  { color: "bg-blue-500", label: "Завершена", desc: "Сеанс состоялся и закрыт" },
+  { color: "bg-red-500", label: "Отменена", desc: "Запись отменена вами или гостем" },
+  { color: "bg-zinc-400", label: "Неявка", desc: "Гость не пришёл, вы отметили это вручную" },
+];
+
 const SLOT_STATUSES = [
-  { color: "bg-green-500", label: "Свободен", desc: "Места есть, клиент может записаться" },
+  { color: "bg-green-500", label: "Свободен", desc: "Гость может записаться" },
   { color: "bg-yellow-400", label: "Ожидает", desc: "Есть заявка, ждёт вашего подтверждения" },
-  { color: "bg-red-500", label: "Занят", desc: "Все места заняты, запись недоступна" },
-  { color: "bg-zinc-400", label: "Заблокирован", desc: "Вы закрыли этот период (отпуск, болезнь)" },
+  { color: "bg-red-500", label: "Занят", desc: "Все места заняты или заполнены" },
+  { color: "bg-zinc-400", label: "Заблокирован", desc: "Вы закрыли этот период вручную" },
 ];
 
 const SCENARIOS = [
   {
     num: "1",
-    title: "Настройка расписания впервые",
+    title: "Настройка расписания с нуля",
     steps: [
-      "Создайте 1–2 услуги (вкладка «Услуги»): например, «Парение 60 мин»",
-      "Перейдите во вкладку «Шаблоны» → создайте шаблон недели",
-      "Укажите рабочие дни, часы работы, услугу по умолчанию",
-      "Нажмите «Применить шаблон» → выберите 4 недели",
-      "Готово — клиенты уже могут записываться",
+      "Нажмите «Быстрый старт» на странице Расписание",
+      "Создайте 1–2 услуги прямо в Быстром старте (например, «Парение 60 мин»)",
+      "Выберите рабочие дни и часы работы",
+      "Укажите количество недель и нажмите «Сгенерировать окна»",
+      "Готово — гости уже могут записываться",
     ],
   },
   {
     num: "2",
     title: "Несколько услуг в один день",
     steps: [
-      "Откройте «Шаблоны» → отредактируйте нужный шаблон",
+      "Перейдите во вкладку «Шаблоны» → создайте или откройте шаблон",
       "В строке нужного дня нажмите «+ Интервал»",
-      "Заполните: например, 10:00–14:00 «Парение», затем 16:00–20:00 «Массаж»",
-      "Сохраните шаблон и снова примените",
-      "В календаре в этот день появятся два разных слота",
+      "Заполните: например 10:00–14:00 «Парение», затем 16:00–20:00 «Массаж»",
+      "Сохраните шаблон и примените на нужный период",
+      "В календаре в этот день появятся два разных окна",
     ],
   },
   {
     num: "3",
-    title: "Заблокировать один конкретный слот",
+    title: "Заблокировать конкретный слот",
     steps: [
-      "Откройте календарь → нажмите на нужный слот",
-      "В окне деталей нажмите «Заблокировать слот»",
-      "Слот станет серым, клиенты не смогут на него записаться",
-      "Остальные слоты в этот день останутся доступными",
-      "Чтобы вернуть — нажмите слот и кнопку «Разблокировать»",
+      "Откройте вкладку «Расписание» (Календарь)",
+      "Кликните по нужному окну",
+      "В диалоге нажмите «Заблокировать слот»",
+      "Слот станет серым — гости не смогут на него записаться",
+      "Чтобы вернуть — кликните снова и нажмите «Разблокировать»",
     ],
   },
   {
     num: "4",
     title: "Добавить один слот вне расписания",
     steps: [
-      "Перейдите во вкладку «Календарь»",
-      "Нажмите кнопку «Добавить слот» в правом верхнем углу",
+      "Перейдите во вкладку «Расписание» (Календарь)",
+      "Нажмите кнопку «Новый слот» (или дважды кликните по пустому месту)",
       "Выберите дату, время начала и окончания",
-      "Выберите услугу и укажите цену",
+      "Выберите услугу или укажите цену вручную",
       "Нажмите «Сохранить»",
     ],
   },
@@ -84,20 +91,31 @@ const SCENARIOS = [
     num: "5",
     title: "Уйти в отпуск / заблокировать дни",
     steps: [
-      "Перейдите во вкладку «Календарь»",
-      "Нажмите кнопку «Заблокировать день»",
-      "Выберите диапазон дат (например, 10–20 августа)",
-      "Укажите причину «Отпуск» (клиент не увидит)",
-      "Все слоты в этот период станут недоступны для записи",
+      "Перейдите во вкладку «Расписание» (Календарь)",
+      "Нажмите кнопку «Блокировка» в заголовке",
+      "Выберите диапазон дат (например, 1–14 июля)",
+      "Можно добавить причину — гост её не видит",
+      "Все окна в этот период станут недоступны для записи",
     ],
   },
   {
     num: "6",
+    title: "Записать гостя вручную",
+    steps: [
+      "Перейдите в раздел «Записи»",
+      "Нажмите «+ Новая запись»",
+      "Заполните имя, телефон, дату и время",
+      "Выберите услугу — цена подставится автоматически",
+      "Нажмите «Сохранить» — запись появится в списке со статусом «Подтверждена»",
+    ],
+  },
+  {
+    num: "7",
     title: "Изменить рабочие часы на следующий месяц",
     steps: [
       "Перейдите во вкладку «Шаблоны»",
-      "Отредактируйте нужный шаблон (например, добавьте утренние часы)",
-      "Нажмите «Применить» → выберите дату начала и количество недель",
+      "Отредактируйте нужный шаблон (добавьте или измените часы)",
+      "Нажмите «Применить» → укажите дату начала и количество недель",
       "Новые слоты создадутся, уже существующие не изменятся",
     ],
   },
@@ -106,35 +124,43 @@ const SCENARIOS = [
 const FAQ = [
   {
     q: "Можно ли работать с разными услугами в один день?",
-    a: "Да. В редакторе шаблона у каждого дня есть кнопка «+ Интервал» — можно добавить, например, утром «Парение» с 10:00 до 14:00 и вечером «Массаж» с 16:00 до 20:00. Каждый интервал — со своей услугой, временем и количеством мест.",
+    a: "Да. В редакторе шаблона у каждого дня есть кнопка «+ Интервал» — добавьте, например, утром «Парение» с 10:00 до 14:00 и вечером «Массаж» с 16:00 до 20:00. Каждый интервал — со своей услугой и временем.",
   },
   {
-    q: "Чем отличается «Заблокировать слот» от «Заблокировать день»?",
-    a: "Блокировка слота закрывает только конкретное время на запись (например, один сеанс массажа в 15:00) — остальные слоты в день работают как обычно. Блокировка дня закрывает целый день целиком (отпуск, болезнь). Слоты в заблокированном дне остаются видимыми, но запись на них невозможна.",
+    q: "Чем отличается блокировка слота от блокировки дня?",
+    a: "Блокировка слота закрывает только одно конкретное окно (один сеанс в 15:00), остальные слоты дня работают. Блокировка дня закрывает весь период целиком — удобно для отпуска или больничного.",
   },
   {
-    q: "Можно ли принимать несколько клиентов в один слот?",
-    a: "Да. При создании услуги или слота укажите «Максимум клиентов» больше 1. Все записавшиеся увидят друг друга только по имени.",
+    q: "Можно ли принимать несколько гостей в один слот?",
+    a: "Да. При создании услуги укажите «Максимум клиентов» больше 1. Все записавшиеся увидят только своё имя.",
   },
   {
-    q: "Что делать, если клиент просит перенести запись?",
-    a: "Отмените текущую запись (кнопка «Отменить» в разделе «Записи»), затем создайте новый слот или попросите клиента записаться самостоятельно на удобное время.",
+    q: "Что делать, если гость просит перенести запись?",
+    a: "Отмените текущую запись в разделе «Записи», затем создайте новый слот или попросите гостя записаться самостоятельно на удобное время.",
   },
   {
-    q: "Что делать, если не хочу работать по шаблону?",
-    a: "Просто создавайте слоты вручную в разделе «Календарь». Шаблон — это удобный инструмент, не обязанность.",
+    q: "Что делать, если гость не пришёл?",
+    a: "В разделе «Записи» найдите запись → нажмите «Неявка». Статус изменится, слот освободится в истории.",
   },
   {
-    q: "Как посмотреть доход за месяц?",
-    a: "Перейдите в раздел «Финансы» в боковой панели кабинета мастера.",
+    q: "Нужно ли подтверждать каждую запись вручную?",
+    a: "Нет, если включено автоподтверждение в Настройках. Тогда все новые записи сразу получают статус «Подтверждена» без вашего участия.",
+  },
+  {
+    q: "Как поделиться ссылкой на конкретную услугу?",
+    a: "В разделе «Услуги» нажмите иконку ссылки на карточке нужной услуги — ссылка скопируется в буфер. Гость перейдёт сразу к форме записи на эту услугу.",
   },
   {
     q: "Можно ли удалить слот, на который уже записались?",
-    a: "Нет. Сначала нужно отменить все записи в этот слот, затем слот можно удалить.",
+    a: "Нет. Сначала отмените все записи в этом слоте, затем слот можно удалить.",
   },
   {
-    q: "Клиент не пришёл — что делать?",
-    a: "Во вкладке «Записи» нажмите «Завершить» → выберите «Клиент не пришёл». Статус записи изменится на «Неявка».",
+    q: "Как посмотреть доход за месяц?",
+    a: "Перейдите в раздел «Финансы» в боковом меню кабинета мастера.",
+  },
+  {
+    q: "Шаблон и Быстрый старт — в чём разница?",
+    a: "Быстрый старт — это одноразовая быстрая настройка для тех, кто только начинает. Шаблоны — более гибкий инструмент с разными услугами в разные дни. Если нужна тонкая настройка — используйте Шаблоны.",
   },
 ];
 
@@ -154,17 +180,14 @@ function StepBadge({ n }: { n: string | number }) {
   );
 }
 
-function TableHeader({ cols }: { cols: string[] }) {
+function InfoBox({ icon, color, children }: { icon: string; color: string; children: React.ReactNode }) {
   return (
-    <thead>
-      <tr className="border-b border-border">
-        {cols.map((c) => (
-          <th key={c} className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide py-2 pr-4">
-            {c}
-          </th>
-        ))}
-      </tr>
-    </thead>
+    <Card className={`border-${color}-200 bg-${color}-50 dark:bg-${color}-950/20 dark:border-${color}-900`}>
+      <CardContent className="p-4 flex gap-3">
+        <Icon name={icon as "Info"} size={16} className={`text-${color}-500 flex-shrink-0 mt-0.5`} />
+        <div className={`text-sm text-${color}-800 dark:text-${color}-300`}>{children}</div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -187,7 +210,6 @@ export default function MasterScheduleGuide() {
     >
       <style dangerouslySetInnerHTML={{ __html: MSG_THEME_STYLES }} />
 
-      {/* Ambient orbs */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div
           className="absolute top-[-15%] left-[-10%] w-[55vw] h-[55vw] rounded-full blur-[120px]"
@@ -200,654 +222,577 @@ export default function MasterScheduleGuide() {
       </div>
 
       <div className="relative z-10">
-      <Header transparent />
+        <Header transparent />
 
-      <div className="max-w-5xl mx-auto px-4 pt-28 pb-10 flex gap-8">
-        {/* Сайдбар навигации */}
-        <aside className="hidden lg:block w-48 flex-shrink-0">
-          <div className="sticky top-24 space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 px-3">
-              Содержание
-            </p>
-            {NAV_SECTIONS.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => scrollTo(s.id)}
-                className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors leading-snug"
-              >
-                {s.label}
-              </button>
-            ))}
-            <div className="pt-4 px-3">
-              <Link
-                to="/workspace?tab=master&view=schedule"
-                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
-              >
-                <Icon name="CalendarDays" size={13} />
-                Открыть расписание
-              </Link>
+        <div className="max-w-5xl mx-auto px-4 pt-28 pb-16 flex gap-8">
+
+          {/* Сайдбар навигации */}
+          <aside className="hidden lg:block w-48 flex-shrink-0">
+            <div className="sticky top-24 space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 px-3">
+                Содержание
+              </p>
+              {NAV_SECTIONS.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => scrollTo(s.id)}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors leading-snug"
+                >
+                  {s.label}
+                </button>
+              ))}
+              <div className="pt-4 px-3">
+                <Link
+                  to="/workspace"
+                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                >
+                  <Icon name="CalendarDays" size={13} />
+                  Открыть кабинет
+                </Link>
+              </div>
             </div>
-          </div>
-        </aside>
+          </aside>
 
-        {/* Основной контент */}
-        <main className="flex-1 min-w-0 space-y-12">
+          {/* Основной контент */}
+          <main className="flex-1 min-w-0 space-y-14">
 
-          {/* Заголовок */}
-          <div id="intro">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-              <Link to="/workspace" className="hover:text-foreground">Рабочий кабинет</Link>
-              <Icon name="ChevronRight" size={14} />
-              <span>Инструкция по расписанию</span>
-            </div>
-            <h1 className="text-3xl font-bold text-foreground mb-4">
-              Расписание мастера
-            </h1>
-            <p className="text-muted-foreground leading-relaxed max-w-2xl">
-              Эта инструкция поможет настроить рабочее расписание в личном кабинете.
-              Система построена по принципу <strong>«настроил один раз — работает постоянно»</strong>:
-              вы создаёте шаблон типовой недели, система автоматически генерирует слоты для записи клиентов.
-            </p>
-          </div>
+            {/* Введение */}
+            <div id="intro">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                <Link to="/workspace" className="hover:text-foreground">Рабочий кабинет</Link>
+                <Icon name="ChevronRight" size={14} />
+                <span>Инструкция для мастера</span>
+              </div>
+              <h1 className="text-3xl font-bold text-foreground mb-4">Кабинет мастера — полное руководство</h1>
+              <p className="text-muted-foreground leading-relaxed max-w-2xl mb-6">
+                Здесь собрано всё, что нужно для работы с расписанием, услугами и записями гостей.
+                Логика простая: вы создаёте <strong>услуги</strong>, настраиваете <strong>рабочие окна</strong> в календаре,
+                гости записываются сами — вы только подтверждаете.
+              </p>
 
-          {/* Навигация */}
-          <section id="navigation">
-            <SectionTitle id="navigation">
-              <Icon name="Map" size={20} className="text-primary" />
-              Где находится раздел
-            </SectionTitle>
-            <Card>
-              <CardContent className="p-5 space-y-4">
-                <div className="flex items-start gap-3">
-                  <Icon name="Navigation" size={16} className="text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-muted-foreground">
-                    Рабочий кабинет → боковое меню «Мастер-услуги» → пункт{" "}
-                    <strong className="text-foreground">Расписание</strong>
-                  </p>
-                </div>
-                <div className="border-t pt-4">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Вкладки внутри раздела</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {/* Структура кабинета */}
+              <Card>
+                <CardContent className="p-5">
+                  <p className="text-sm font-semibold mb-4">Разделы кабинета мастера</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {[
-                      { icon: "CalendarDays", label: "Календарь", desc: "Просмотр и управление слотами" },
-                      { icon: "Sparkles", label: "Услуги", desc: "Создание и редактирование услуг" },
-                      { icon: "Copy", label: "Шаблоны", desc: "Настройка типовой недели" },
-                      { icon: "Settings", label: "Настройки", desc: "Автоматизация и уведомления" },
+                      { icon: "CalendarDays", label: "Расписание", desc: "Окна доступности — когда вы принимаете гостей. Здесь управляете слотами, блокировками и шаблонами." },
+                      { icon: "ClipboardCheck", label: "Записи", desc: "Журнал всех заявок: ожидают подтверждения, подтверждены, завершены, отменены." },
+                      { icon: "Sparkles", label: "Услуги", desc: "Что предлагаете гостям: название, длительность, цена, формат (на месте / выезд)." },
+                      { icon: "Copy", label: "Шаблоны", desc: "Типовое расписание недели — создайте один раз и применяйте на любое число недель." },
+                      { icon: "SlidersHorizontal", label: "Настройки", desc: "Часовой пояс, перерыв между записями, автоподтверждение новых заявок." },
+                      { icon: "UserCircle", label: "Профиль", desc: "Публичная страница мастера — фото, описание, ссылка на социальные сети." },
                     ].map((t) => (
-                      <div key={t.label} className="bg-muted/40 rounded-lg p-3 text-center">
-                        <Icon name={t.icon} size={18} className="text-primary mx-auto mb-1.5" />
-                        <p className="text-sm font-medium">{t.label}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
+                      <div key={t.label} className="flex gap-3 bg-muted/40 rounded-xl p-3">
+                        <Icon name={t.icon as "CalendarDays"} size={18} className="text-primary flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium">{t.label}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{t.desc}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Раздел <strong>«Записи»</strong> — отдельный пункт меню ниже (не вкладка). Там хранится журнал клиентских заявок.
-                </p>
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* Шаг 1. Услуги */}
-          <section id="services">
-            <SectionTitle id="services">
-              <Icon name="Sparkles" size={20} className="text-primary" />
-              Шаг 1. Создайте услуги
-            </SectionTitle>
-            <p className="text-sm text-muted-foreground mb-4">
-              Услуги — это то, что видит клиент при записи. Это необязательный, но удобный шаг:
-              клиент сразу понимает, что его ждёт, а вам не нужно указывать цену в каждом слоте вручную.
-            </p>
-
-            <Card className="mb-4">
-              <CardContent className="p-5">
-                <p className="text-sm font-medium mb-3">Как создать услугу:</p>
-                <ol className="space-y-2">
-                  {[
-                    "Перейдите на вкладку «Услуги»",
-                    "Нажмите кнопку «+ Добавить услугу»",
-                    "Заполните поля (см. таблицу ниже)",
-                    "Нажмите «Сохранить»",
-                  ].map((step, i) => (
-                    <li key={i} className="flex items-start gap-3 text-sm">
-                      <StepBadge n={i + 1} />
-                      <span>{step}</span>
-                    </li>
-                  ))}
-                </ol>
-              </CardContent>
-            </Card>
-
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full text-sm">
-                <TableHeader cols={["Поле", "Что заполнять", "Пример"]} />
-                <tbody className="divide-y divide-border">
-                  {[
-                    ["Название", "Как будет видеть клиент", "Русское парение с веником"],
-                    ["Описание", "Что входит, особенности", "60 мин в парилке, массаж веником, чай"],
-                    ["Длительность", "В минутах", "60"],
-                    ["Цена", "За один сеанс на одного клиента", "3 000 ₽"],
-                    ["Максимум клиентов", "Сколько человек одновременно", "2"],
-                  ].map(([field, what, ex]) => (
-                    <tr key={field} className="hover:bg-muted/30">
-                      <td className="py-2.5 pr-4 font-medium">{field}</td>
-                      <td className="py-2.5 pr-4 text-muted-foreground">{what}</td>
-                      <td className="py-2.5 text-muted-foreground">{ex}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                </CardContent>
+              </Card>
             </div>
 
-            <Card className="mt-4 border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900">
-              <CardContent className="p-4 flex gap-3">
-                <Icon name="Info" size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-blue-800 dark:text-blue-300">
-                  <strong>Без услуг тоже можно.</strong> При создании слота укажите цену вручную. Клиент увидит время и стоимость без названия услуги.
-                  Создайте хотя бы одну услугу, если хотите, чтобы клиент понимал, на что именно записывается.
-                </p>
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* Шаг 2. Шаблоны */}
-          <section id="templates">
-            <SectionTitle id="templates">
-              <Icon name="Copy" size={20} className="text-primary" />
-              Шаг 2. Настройте шаблон недели
-            </SectionTitle>
-            <p className="text-sm text-muted-foreground mb-4">
-              Шаблон — это ваша типовая рабочая неделя. Вы задаёте, в какие дни и часы работаете,
-              система запоминает это и автоматически создаёт слоты на нужное количество недель вперёд.
-            </p>
-
-            <Card className="mb-4">
-              <CardContent className="p-5">
-                <p className="text-sm font-medium mb-3">Как настроить:</p>
-                <ol className="space-y-2">
-                  {[
-                    "Перейдите на вкладку «Шаблоны»",
-                    "Нажмите «Создать шаблон» или откройте существующий",
-                    "Для каждого дня недели настройте параметры (см. таблицу ниже)",
-                    "Нажмите «Применить шаблон» → укажите дату начала и количество недель",
-                  ].map((step, i) => (
-                    <li key={i} className="flex items-start gap-3 text-sm">
-                      <StepBadge n={i + 1} />
-                      <span>{step}</span>
-                    </li>
-                  ))}
-                </ol>
-              </CardContent>
-            </Card>
-
-            <div className="overflow-x-auto rounded-xl border border-border mb-4">
-              <table className="w-full text-sm">
-                <TableHeader cols={["Настройка дня", "Как задать"]} />
-                <tbody className="divide-y divide-border">
-                  {[
-                    ["Выходной день", "Кнопка «Сделать выходным» — слоты в этот день не создадутся"],
-                    ["Рабочие часы", "Укажите время начала и конца интервала (например, 12:00 – 22:00)"],
-                    ["Услуга", "Выберите услугу для интервала из списка — она подставится в слоты"],
-                    ["Макс. клиентов", "Сколько человек принимаете одновременно в этом интервале"],
-                    ["+ Интервал", "Кнопка добавляет ещё один временной промежуток в тот же день (с другой услугой)"],
-                    ["Корзина", "Удаляет конкретный интервал из дня"],
-                  ].map(([field, desc]) => (
-                    <tr key={field} className="hover:bg-muted/30">
-                      <td className="py-2.5 pr-4 font-medium">{field}</td>
-                      <td className="py-2.5 text-muted-foreground">{desc}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <p className="text-sm font-medium mb-3">Пример настройки недели (с несколькими услугами в день):</p>
-            <div className="overflow-x-auto rounded-xl border border-border mb-4">
-              <table className="w-full text-sm">
-                <TableHeader cols={["День", "Статус", "Часы работы", "Услуга"]} />
-                <tbody className="divide-y divide-border">
-                  {[
-                    { day: "Пн", off: true, intervals: [] as { hours: string; service: string }[] },
-                    { day: "Вт", off: false, intervals: [{ hours: "12:00 – 22:00", service: "Парение веником" }] },
-                    { day: "Ср", off: false, intervals: [{ hours: "12:00 – 22:00", service: "Парение веником" }] },
-                    {
-                      day: "Чт",
-                      off: false,
-                      intervals: [
-                        { hours: "10:00 – 14:00", service: "Парение веником" },
-                        { hours: "16:00 – 20:00", service: "Массаж" },
-                      ],
-                    },
-                    { day: "Пт", off: false, intervals: [{ hours: "14:00 – 23:00", service: "Парение веником" }] },
-                    {
-                      day: "Сб",
-                      off: false,
-                      intervals: [
-                        { hours: "10:00 – 14:00", service: "Парение веником" },
-                        { hours: "15:00 – 23:00", service: "Парение с компанией" },
-                      ],
-                    },
-                    { day: "Вс", off: false, intervals: [{ hours: "10:00 – 20:00", service: "Консультация" }] },
-                  ].map((row) => (
-                    <tr key={row.day} className={`hover:bg-muted/30 ${row.off ? "opacity-50" : ""}`}>
-                      <td className="py-2.5 pr-4 font-medium align-top">{row.day}</td>
-                      <td className="py-2.5 pr-4 align-top">
-                        {row.off ? (
-                          <Badge variant="secondary" className="text-xs">Выходной</Badge>
-                        ) : (
-                          <span className="text-green-600 text-xs font-medium">
-                            Рабочий{row.intervals.length > 1 ? ` · ${row.intervals.length} инт.` : ""}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2.5 pr-4 text-muted-foreground align-top">
-                        {row.off ? "—" : row.intervals.map((i, k) => <div key={k}>{i.hours}</div>)}
-                      </td>
-                      <td className="py-2.5 text-muted-foreground align-top">
-                        {row.off ? "—" : row.intervals.map((i, k) => <div key={k}>{i.service}</div>)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <Card className="border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900 mb-3">
-              <CardContent className="p-4 flex gap-3">
-                <Icon name="Layers" size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-emerald-800 dark:text-emerald-300 space-y-1">
-                  <p><strong>Несколько услуг в один день.</strong> У каждого дня есть кнопка <strong>«+ Интервал»</strong> — можно добавить столько временных промежутков, сколько нужно.</p>
-                  <p className="text-xs">Например: утром 10:00–14:00 «Парение веником», вечером 16:00–20:00 «Массаж». Каждый интервал — со своей услугой, временем и количеством мест.</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
-              <CardContent className="p-4 flex gap-3">
-                <Icon name="AlertTriangle" size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-800 dark:text-amber-300">
-                  <strong>Важно:</strong> шаблон можно применять многократно. Уже созданные слоты при повторном применении <strong>не изменятся</strong> — создадутся только новые, на незаполненные периоды.
-                </p>
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* Шаг 3. Календарь */}
-          <section id="calendar">
-            <SectionTitle id="calendar">
-              <Icon name="CalendarDays" size={20} className="text-primary" />
-              Шаг 3. Работа в календаре
-            </SectionTitle>
-            <p className="text-sm text-muted-foreground mb-5">
-              Вкладка «Календарь» показывает слоты текущей недели. Здесь можно добавлять, редактировать,
-              удалять слоты вручную, а также блокировать периоды.
-            </p>
-
-            <Card className="mb-5 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900">
-              <CardContent className="p-4 flex gap-3">
-                <Icon name="Clock" size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-emerald-800 dark:text-emerald-300">
-                  <strong>Сетка часов настраивается сама.</strong> Если в одном дне у вас слоты с 7 утра, а в другом с 10 — все дни покажут общий диапазон, чтобы слоты были выровнены и сравнимы.
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Статусы слотов */}
-            <p className="text-sm font-medium mb-3">Цвета слотов:</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-6">
-              {SLOT_STATUSES.map((s) => (
-                <div key={s.label} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card">
-                  <span className={`w-3 h-3 rounded-full flex-shrink-0 ${s.color}`} />
-                  <div>
-                    <span className="text-sm font-medium">{s.label}</span>
-                    <p className="text-xs text-muted-foreground">{s.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Создание слота */}
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold">Создание слота вручную</h3>
-              <p className="text-sm text-muted-foreground">
-                Нужно, если хотите добавить время вне шаблона — например, дополнительный сеанс в выходной.
+            {/* Быстрый старт */}
+            <section id="quickstart">
+              <SectionTitle id="quickstart">
+                <Icon name="Zap" size={20} className="text-amber-500" />
+                Быстрый старт
+              </SectionTitle>
+              <p className="text-sm text-muted-foreground mb-4">
+                Если вы только начинаете — используйте «Быстрый старт». Это мастер настройки, который
+                создаёт всё необходимое за несколько шагов без погружения в детали.
               </p>
-              <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="w-full text-sm">
-                  <TableHeader cols={["Поле", "Описание"]} />
-                  <tbody className="divide-y divide-border">
-                    {[
-                      ["Дата", "Выберите день в календаре"],
-                      ["Время начала", "Например, 19:00"],
-                      ["Время окончания", "Например, 20:30 — если длительность нестандартная"],
-                      ["Услуга", "Выберите из списка или оставьте пустым"],
-                      ["Цена", "Если услуга не выбрана — укажите вручную"],
-                      ["Максимум клиентов", "Сколько человек может записаться одновременно"],
-                    ].map(([field, desc]) => (
-                      <tr key={field} className="hover:bg-muted/30">
-                        <td className="py-2.5 pr-4 font-medium">{field}</td>
-                        <td className="py-2.5 text-muted-foreground">{desc}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <h3 className="text-base font-semibold pt-2">Редактирование и удаление</h3>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>· Нажмите на слот → откроется окно с деталями и кнопками действий.</p>
-                <p>· Можно изменить время, услугу, цену, количество мест.</p>
-                <p>· <strong className="text-foreground">Нельзя уменьшить</strong> максимум клиентов, если в слоте уже есть подтверждённые записи.</p>
-                <p>· <strong className="text-foreground">Нельзя удалить</strong> слот, если на него есть заявки — сначала обработайте записи.</p>
-              </div>
-
-              <h3 className="text-base font-semibold pt-2">Блокировка отдельного слота</h3>
-              <p className="text-sm text-muted-foreground">
-                Если нужно закрыть один конкретный слот (например, разовая накладка), а остальное время в этот день оставить рабочим.
-              </p>
-              <Card>
+              <Card className="mb-4">
                 <CardContent className="p-5">
+                  <p className="text-sm font-medium mb-3">Как запустить:</p>
                   <ol className="space-y-2">
                     {[
-                      "Нажмите на нужный слот в календаре — откроется окно деталей",
-                      "Нажмите кнопку «Заблокировать слот»",
-                      "Слот станет серым, клиенты не смогут на него записаться",
-                      "Чтобы вернуть — снова нажмите слот и выберите «Разблокировать»",
+                      "Перейдите в раздел «Расписание»",
+                      "Нажмите кнопку «⚡ Быстрый старт» справа вверху",
+                      "Откроется панель с тремя блоками: Услуги, Рабочие часы, Настройки",
                     ].map((step, i) => (
                       <li key={i} className="flex items-start gap-3 text-sm">
                         <StepBadge n={i + 1} />
-                        <span className="text-muted-foreground">{step}</span>
+                        <span>{step}</span>
                       </li>
                     ))}
                   </ol>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Соседние слоты в этот же день (с другими услугами или временем) останутся доступными для записи.
-                  </p>
                 </CardContent>
               </Card>
 
-              <h3 className="text-base font-semibold pt-2">Блокировка целого дня (отпуск, болезнь)</h3>
-              <Card>
+              <div className="grid sm:grid-cols-3 gap-3 mb-4">
+                {[
+                  { icon: "Sparkles", title: "Блок 1: Услуги", desc: "Создайте услуги прямо здесь — кнопка «+ Добавить услугу» открывает полный диалог с форматом, описанием и ценой." },
+                  { icon: "Clock", title: "Блок 2: Рабочие часы", desc: "Выберите дни недели, время начала и окончания, количество недель вперёд. Одним нажатием генерируется расписание." },
+                  { icon: "SlidersHorizontal", title: "Блок 3: Настройки", desc: "Часовой пояс, перерыв между записями и автоподтверждение — базовые параметры без лишних деталей." },
+                ].map((b) => (
+                  <Card key={b.title}>
+                    <CardContent className="p-4">
+                      <Icon name={b.icon as "Sparkles"} size={16} className="text-primary mb-2" />
+                      <p className="text-sm font-medium mb-1">{b.title}</p>
+                      <p className="text-xs text-muted-foreground leading-snug">{b.desc}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <InfoBox icon="Info" color="blue">
+                <strong>После Быстрого старта</strong> у вас будут услуги и окна доступности в календаре.
+                Для тонкой настройки (разные услуги в разные дни, несколько интервалов) используйте вкладку «Шаблоны».
+              </InfoBox>
+            </section>
+
+            {/* Услуги */}
+            <section id="services">
+              <SectionTitle id="services">
+                <Icon name="Sparkles" size={20} className="text-primary" />
+                Услуги
+              </SectionTitle>
+              <p className="text-sm text-muted-foreground mb-4">
+                Услуга — это то, на что записывается гость. Без услуги окна доступности всё равно работают,
+                но гость не будет видеть что именно его ждёт. Создайте хотя бы одну.
+              </p>
+
+              <Card className="mb-4">
+                <CardContent className="p-5 space-y-4">
+                  <p className="text-sm font-semibold">Поля при создании услуги:</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border">
+                          {["Поле", "Описание", "Пример"].map((c) => (
+                            <th key={c} className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide py-2 pr-4">{c}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {[
+                          ["Название", "Как видит гость при записи", "Русское парение 60 мин"],
+                          ["Формат", "На месте / Выезд к гостю / По согласованию", "На месте у мастера"],
+                          ["Краткое описание", "Что входит в услугу", "Парилка, массаж веником, чай"],
+                          ["Что входит", "Список пунктов (каждый с новой строки)", "Парилка, веник, травяной чай"],
+                          ["Что взять с собой", "Что гостю нужно иметь при себе", "Смена белья, тапочки"],
+                          ["Противопоказания", "Важно для безопасности гостей", "Беременность, гипертония"],
+                          ["Длительность (мин)", "Сколько длится один сеанс", "60"],
+                          ["Цена (₽)", "Стоимость за один сеанс", "3 500"],
+                          ["Макс. участников", "Сколько гостей одновременно", "2"],
+                          ["Активна", "Видна ли услуга гостям при записи", "Включено"],
+                        ].map(([field, desc, ex]) => (
+                          <tr key={field} className="hover:bg-muted/30">
+                            <td className="py-2.5 pr-4 font-medium whitespace-nowrap">{field}</td>
+                            <td className="py-2.5 pr-4 text-muted-foreground text-xs leading-snug">{desc}</td>
+                            <td className="py-2.5 text-muted-foreground text-xs">{ex}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="mb-4">
                 <CardContent className="p-5">
+                  <p className="text-sm font-semibold mb-3">Действия с услугой в списке:</p>
+                  <div className="space-y-2">
+                    {[
+                      { icon: "Pencil", label: "Редактировать", desc: "Изменить любые параметры услуги" },
+                      { icon: "EyeOff", label: "Скрыть / Показать", desc: "Скрытая услуга не видна гостям при записи, но существующие слоты с ней сохраняются" },
+                      { icon: "Link", label: "Скопировать ссылку", desc: "Прямая ссылка на запись на эту конкретную услугу — удобно отправить гостю" },
+                      { icon: "Trash2", label: "Удалить", desc: "Удаляет услугу безвозвратно. Нельзя удалить, если есть активные записи" },
+                      { icon: "Send", label: "Опубликовать в Telegram", desc: "Отправить карточку услуги в ваш Telegram-канал или группу" },
+                    ].map((a) => (
+                      <div key={a.label} className="flex items-start gap-3">
+                        <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+                          <Icon name={a.icon as "Pencil"} size={14} className="text-muted-foreground" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium">{a.label}</span>
+                          <span className="text-sm text-muted-foreground"> — {a.desc}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <InfoBox icon="AlertCircle" color="amber">
+                <strong>Формат «Выезд к гостю»</strong> — при выборе этого формата гость указывает адрес на карте при записи.
+                Вы можете заранее сохранить адрес отправления (откуда выезжаете) в настройках.
+              </InfoBox>
+            </section>
+
+            {/* Шаблоны */}
+            <section id="templates">
+              <SectionTitle id="templates">
+                <Icon name="Copy" size={20} className="text-primary" />
+                Шаблоны расписания
+              </SectionTitle>
+              <p className="text-sm text-muted-foreground mb-4">
+                Шаблон — это описание вашей типичной рабочей недели. Создаёте один раз,
+                применяете на любое количество недель — система сама создаёт все окна.
+              </p>
+
+              <Card className="mb-4">
+                <CardContent className="p-5">
+                  <p className="text-sm font-medium mb-3">Как создать шаблон:</p>
                   <ol className="space-y-2">
                     {[
-                      "Нажмите кнопку «Заблокировать день» в правом верхнем углу календаря",
-                      "Выберите одну дату или диапазон (например, с 5 по 12 июня)",
-                      "Укажите причину (опционально — клиенты её не увидят)",
-                      "Нажмите «Сохранить» — день закрывается для записи целиком",
+                      "Перейдите во вкладку «Шаблоны»",
+                      "Нажмите «Создать шаблон» — введите название (например, «Основной» или «Летнее расписание»)",
+                      "Для каждого рабочего дня нажмите «+ Интервал»",
+                      "Укажите время начала и окончания, выберите услугу, максимум гостей",
+                      "При необходимости добавьте несколько интервалов в один день",
+                      "Сохраните шаблон",
                     ].map((step, i) => (
                       <li key={i} className="flex items-start gap-3 text-sm">
                         <StepBadge n={i + 1} />
-                        <span className="text-muted-foreground">{step}</span>
+                        <span>{step}</span>
                       </li>
                     ))}
                   </ol>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Если на эти дни уже были записи — вам нужно будет их отменить вручную в разделе «Записи».
-                  </p>
                 </CardContent>
               </Card>
 
-              <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900">
-                <CardContent className="p-4 flex gap-3">
-                  <Icon name="Info" size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-                    <p><strong>Чем отличается?</strong></p>
-                    <p>· <strong>Слот</strong> — точечная блокировка одного интервала (одна услуга/время).</p>
-                    <p>· <strong>День</strong> — выходной целиком (все интервалы недоступны).</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </section>
-
-          {/* Шаг 4. Записи */}
-          <section id="bookings">
-            <SectionTitle id="bookings">
-              <Icon name="ClipboardCheck" size={20} className="text-primary" />
-              Шаг 4. Управление записями клиентов
-            </SectionTitle>
-            <p className="text-sm text-muted-foreground mb-4">
-              Раздел «Записи» — это журнал всех заявок на ваши слоты. Он доступен как отдельный пункт в боковом меню.
-            </p>
-
-            {/* Жизненный цикл */}
-            <p className="text-sm font-medium mb-3">Статусы записи:</p>
-            <div className="flex flex-wrap items-center gap-2 mb-6 p-4 bg-muted/30 rounded-xl text-sm">
-              {["Новая", "→", "Ожидает", "→", "Подтверждена", "→", "Завершена"].map((item, i) => (
-                <span key={i} className={item === "→" ? "text-muted-foreground" : "font-medium"}>
-                  {item}
-                </span>
-              ))}
-              <span className="text-muted-foreground ml-2">или</span>
-              <span className="font-medium ml-2">Отменена</span>
-              <span className="text-muted-foreground">·</span>
-              <span className="font-medium">Неявка</span>
-            </div>
-
-            <div className="space-y-4">
-              {[
-                {
-                  title: "Новая заявка — что делать",
-                  steps: [
-                    "Зайдите в раздел «Записи» — новые заявки будут выделены",
-                    "Просмотрите информацию о клиенте и времени",
-                    "Нажмите «Подтвердить» или «Отказать»",
-                    "Клиент получит уведомление о вашем решении",
-                  ],
-                },
-                {
-                  title: "После проведённого сеанса",
-                  steps: [
-                    "Найдите запись в журнале (фильтр по дате)",
-                    "Нажмите кнопку «Завершить»",
-                    "Клиенту придёт предложение оставить отзыв",
-                  ],
-                },
-                {
-                  title: "Отмена записи с вашей стороны",
-                  steps: [
-                    "Найдите запись → нажмите «Отменить»",
-                    "Укажите причину (клиент её увидит)",
-                    "Место в слоте освободится, клиент получит уведомление",
-                  ],
-                },
-              ].map((block) => (
-                <Card key={block.title}>
-                  <CardContent className="p-5">
-                    <p className="text-sm font-semibold mb-3">{block.title}</p>
-                    <ol className="space-y-2">
-                      {block.steps.map((step, i) => (
-                        <li key={i} className="flex items-start gap-3 text-sm">
-                          <StepBadge n={i + 1} />
-                          <span className="text-muted-foreground">{step}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            <div className="mt-4 p-4 bg-muted/30 rounded-xl text-sm text-muted-foreground">
-              <p className="font-medium text-foreground mb-1">Фильтры в разделе «Записи»:</p>
-              <p>По статусу: «Ожидают», «Подтверждены», «Завершены», «Все» · По дате: сегодня, завтра, выбранный период · По имени клиента</p>
-            </div>
-          </section>
-
-          {/* Шаг 5. Настройки */}
-          <section id="settings">
-            <SectionTitle id="settings">
-              <Icon name="Settings" size={20} className="text-primary" />
-              Шаг 5. Настройки и автоматизация
-            </SectionTitle>
-
-            <div className="space-y-4">
-              <Card>
-                <CardContent className="p-5 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <Icon name="Zap" size={18} className="text-primary flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-semibold">Автоподтверждение записей</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Включите переключатель «Автоматически подтверждать новые записи» — все заявки будут сразу получать статус «Подтверждена»
-                        без ручной обработки.
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Удобно, если всегда готовы принять запись. Выключите, если нужно сначала согласовать детали с клиентом.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="w-full text-sm">
-                  <TableHeader cols={["Параметр", "Что делает"]} />
-                  <tbody className="divide-y divide-border">
+              <Card className="mb-4">
+                <CardContent className="p-5">
+                  <p className="text-sm font-medium mb-3">Как применить шаблон:</p>
+                  <ol className="space-y-2">
                     {[
-                      ["Длительность слота по умолчанию", "Стандартное время одного слота (мин). Используется при применении шаблона."],
-                      ["Пауза между слотами", "Буферное время между сеансами (мин). Слоты не будут создаваться вплотную."],
-                      ["Максимум клиентов в день", "Общий лимит записей на один день."],
-                      ["Уведомления о новых записях", "Telegram, Email — куда приходят уведомления о заявках."],
-                      ["Напоминание за день", "Автоматическое напоминание клиенту и вам за 24 часа до сеанса."],
-                      ["Часовой пояс", "Убедитесь, что выбран верный пояс (Москва, UTC+3). Влияет на отображение времени."],
-                    ].map(([param, desc]) => (
-                      <tr key={param} className="hover:bg-muted/30">
-                        <td className="py-2.5 pr-4 font-medium">{param}</td>
-                        <td className="py-2.5 text-muted-foreground">{desc}</td>
-                      </tr>
+                      "Найдите нужный шаблон в списке",
+                      "Нажмите «Применить шаблон»",
+                      "Укажите дату начала и количество недель",
+                      "Подтвердите — система создаст все окна доступности",
+                      "Результат: «Создано X слотов» (уже существующие пропускаются)",
+                    ].map((step, i) => (
+                      <li key={i} className="flex items-start gap-3 text-sm">
+                        <StepBadge n={i + 1} />
+                        <span>{step}</span>
+                      </li>
                     ))}
-                  </tbody>
-                </table>
+                  </ol>
+                </CardContent>
+              </Card>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <InfoBox icon="Info" color="blue">
+                  <strong>Несколько шаблонов.</strong> Можно создать разные шаблоны для разных периодов —
+                  «Летнее», «Зимнее», «Праздничное». Применяйте нужный под конкретный месяц.
+                </InfoBox>
+                <InfoBox icon="AlertCircle" color="amber">
+                  <strong>Повторное применение</strong> не удаляет уже созданные слоты — оно только добавляет новые.
+                  Перед применением не нужно чистить календарь.
+                </InfoBox>
+              </div>
+            </section>
+
+            {/* Календарь */}
+            <section id="calendar">
+              <SectionTitle id="calendar">
+                <Icon name="CalendarDays" size={20} className="text-primary" />
+                Календарь
+              </SectionTitle>
+              <p className="text-sm text-muted-foreground mb-4">
+                Здесь вы видите все окна доступности, записи гостей и блокировки в виде сетки по дням и часам.
+                Навигируйте по неделям, кликайте на слоты, перетаскивайте их.
+              </p>
+
+              {/* Статусы слотов */}
+              <Card className="mb-4">
+                <CardContent className="p-5">
+                  <p className="text-sm font-semibold mb-3">Цвета окон в календаре:</p>
+                  <div className="space-y-2">
+                    {SLOT_STATUSES.map((s) => (
+                      <div key={s.label} className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full flex-shrink-0 ${s.color}`} />
+                        <span className="text-sm font-medium w-28">{s.label}</span>
+                        <span className="text-sm text-muted-foreground">{s.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="mb-4">
+                <CardContent className="p-5 space-y-4">
+                  <p className="text-sm font-semibold">Что можно делать с окном:</p>
+                  <div className="space-y-3">
+                    {[
+                      { icon: "MousePointerClick", title: "Клик по окну", desc: "Открывает детали: список гостей, статус, кнопки управления" },
+                      { icon: "GripVertical", title: "Перетащить окно", desc: "Переместить на другое время или день (только если нет подтверждённых записей)" },
+                      { icon: "Expand", title: "Растянуть окно", desc: "Изменить длительность — потяните за нижний край" },
+                      { icon: "Plus", title: "Двойной клик по пустому месту", desc: "Быстро создать новое окно на выбранное время" },
+                      { icon: "Lock", title: "Заблокировать", desc: "Закрыть окно от записи — в деталях слота кнопка «Заблокировать»" },
+                      { icon: "Trash2", title: "Удалить", desc: "Убрать окно из расписания (только если нет записей)" },
+                    ].map((a) => (
+                      <div key={a.title} className="flex items-start gap-3">
+                        <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Icon name={a.icon as "Plus"} size={14} className="text-muted-foreground" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium">{a.title}</span>
+                          <span className="text-sm text-muted-foreground"> — {a.desc}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="mb-4">
+                <CardContent className="p-5">
+                  <p className="text-sm font-semibold mb-3">Кнопки в заголовке календаря:</p>
+                  <div className="space-y-2">
+                    {[
+                      { label: "Новый слот", desc: "Создать окно доступности вручную — дата, время, услуга, максимум гостей" },
+                      { label: "Блокировка", desc: "Заблокировать диапазон дней (отпуск, болезнь, личные дела)" },
+                      { label: "Применить шаблон", desc: "Применить существующий шаблон на выбранный период" },
+                      { label: "Сегодня", desc: "Вернуться к текущей неделе" },
+                    ].map((b) => (
+                      <div key={b.label} className="flex items-start gap-3 text-sm">
+                        <span className="font-medium bg-muted px-2 py-0.5 rounded text-xs whitespace-nowrap">{b.label}</span>
+                        <span className="text-muted-foreground">{b.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <InfoBox icon="Info" color="blue">
+                <strong>Процент заполненности</strong> под датой показывает, сколько окон в этот день занято.
+                0% — все свободны, 100% — все окна заняты или заблокированы.
+              </InfoBox>
+            </section>
+
+            {/* Записи */}
+            <section id="bookings">
+              <SectionTitle id="bookings">
+                <Icon name="ClipboardCheck" size={20} className="text-primary" />
+                Записи
+              </SectionTitle>
+              <p className="text-sm text-muted-foreground mb-4">
+                Раздел «Записи» — это журнал всех заявок от гостей. Здесь подтверждаете, отменяете,
+                завершаете и создаёте записи вручную.
+              </p>
+
+              {/* Статусы записей */}
+              <Card className="mb-4">
+                <CardContent className="p-5">
+                  <p className="text-sm font-semibold mb-3">Статусы записи:</p>
+                  <div className="space-y-2">
+                    {BOOKING_STATUSES.map((s) => (
+                      <div key={s.label} className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full flex-shrink-0 ${s.color}`} />
+                        <span className="text-sm font-medium w-28">{s.label}</span>
+                        <span className="text-sm text-muted-foreground">{s.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="mb-4">
+                <CardContent className="p-5 space-y-4">
+                  <p className="text-sm font-semibold">Действия с записью:</p>
+                  <div className="space-y-2">
+                    {[
+                      { icon: "CheckCircle", label: "Подтвердить", desc: "Принять заявку — гость получит уведомление" },
+                      { icon: "XCircle", label: "Отменить", desc: "Отклонить с указанием причины — она отправится гостю" },
+                      { icon: "CheckCheck", label: "Завершить", desc: "Отметить, что сеанс состоялся" },
+                      { icon: "UserX", label: "Неявка", desc: "Гость не пришёл — запись закрывается, слот освобождается" },
+                    ].map((a) => (
+                      <div key={a.label} className="flex items-start gap-3 text-sm">
+                        <Icon name={a.icon as "CheckCircle"} size={16} className="text-muted-foreground flex-shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-medium">{a.label}</span>
+                          <span className="text-muted-foreground"> — {a.desc}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="mb-4">
+                <CardContent className="p-5">
+                  <p className="text-sm font-semibold mb-3">Создание записи вручную:</p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Нажмите «+ Новая запись» — откроется форма. Полезно, если гость звонит или пишет напрямую.
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border">
+                          {["Поле", "Обязательное", "Примечание"].map((c) => (
+                            <th key={c} className="text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide py-2 pr-4">{c}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {[
+                          ["Имя гостя", "Да", "Как к нему обращаться"],
+                          ["Телефон", "Да", "Для связи"],
+                          ["Email", "Нет", "Опционально"],
+                          ["Дата", "Да", "Формат ГГГГ-ММ-ДД"],
+                          ["Время начала", "Да", "HH:MM"],
+                          ["Время окончания", "Да", "HH:MM или рассчитается по услуге"],
+                          ["Услуга", "Нет", "При выборе — цена подставляется автоматически"],
+                          ["Цена", "Нет", "Можно переопределить цену услуги"],
+                          ["Примечание", "Нет", "Внутренний комментарий"],
+                        ].map(([field, req, note]) => (
+                          <tr key={field} className="hover:bg-muted/30">
+                            <td className="py-2.5 pr-4 font-medium text-xs">{field}</td>
+                            <td className="py-2.5 pr-4 text-xs">
+                              <span className={`px-1.5 py-0.5 rounded text-xs ${req === "Да" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-muted text-muted-foreground"}`}>{req}</span>
+                            </td>
+                            <td className="py-2.5 text-xs text-muted-foreground">{note}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <InfoBox icon="Info" color="blue">
+                <strong>Фильтр по статусу</strong> в верхней части списка — быстро найти все ожидающие подтверждения,
+                завершённые за период или отменённые записи.
+              </InfoBox>
+            </section>
+
+            {/* Настройки */}
+            <section id="settings">
+              <SectionTitle id="settings">
+                <Icon name="SlidersHorizontal" size={20} className="text-primary" />
+                Настройки
+              </SectionTitle>
+              <p className="text-sm text-muted-foreground mb-4">
+                Раздел настроек влияет на то, как работает вся система записи. Задайте правильные параметры один раз.
+              </p>
+
+              <Card className="mb-4">
+                <CardContent className="p-5 space-y-4">
+                  {[
+                    {
+                      icon: "Globe",
+                      title: "Часовой пояс",
+                      desc: "Все времена в календаре будут отображаться в вашем поясе. Если гости из другого региона — они увидят время в своём. Выберите пояс из списка (от Калининграда до Камчатки).",
+                    },
+                    {
+                      icon: "Timer",
+                      title: "Перерыв между записями",
+                      desc: "Дополнительное время после каждого сеанса. Например, 15 минут на уборку и подготовку. Система автоматически блокирует этот интервал между слотами.",
+                    },
+                    {
+                      icon: "Zap",
+                      title: "Автоподтверждение",
+                      desc: "Если включено — новые заявки от гостей сразу получают статус «Подтверждена» без вашего участия. Если выключено — каждую нужно подтверждать вручную в разделе «Записи».",
+                    },
+                    {
+                      icon: "MapPin",
+                      title: "Мои адреса",
+                      desc: "Сохранённые адреса для услуг формата «Выезд к гостю». Укажите откуда выезжаете — система учтёт это при создании услуги.",
+                    },
+                  ].map((s) => (
+                    <div key={s.title} className="flex gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        <Icon name={s.icon as "Globe"} size={15} className="text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{s.title}</p>
+                        <p className="text-sm text-muted-foreground leading-snug mt-0.5">{s.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </section>
+
+            {/* Сценарии */}
+            <section id="scenarios">
+              <SectionTitle id="scenarios">
+                <Icon name="BookMarked" size={20} className="text-primary" />
+                Типовые сценарии
+              </SectionTitle>
+              <p className="text-sm text-muted-foreground mb-5">
+                Пошаговые инструкции для самых частых ситуаций.
+              </p>
+              <div className="space-y-4">
+                {SCENARIOS.map((s) => (
+                  <Card key={s.num}>
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-3 mb-3">
+                        <StepBadge n={s.num} />
+                        <p className="font-semibold text-sm">{s.title}</p>
+                      </div>
+                      <ol className="space-y-1.5">
+                        {s.steps.map((step, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                            <span className="font-medium text-foreground/60 text-xs mt-0.5 w-4 flex-shrink-0">{i + 1}.</span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </section>
+
+            {/* FAQ */}
+            <section id="faq">
+              <SectionTitle id="faq">
+                <Icon name="HelpCircle" size={20} className="text-primary" />
+                Частые вопросы
+              </SectionTitle>
+              <div className="space-y-2">
+                {FAQ.map((item, i) => (
+                  <Card
+                    key={i}
+                    className="cursor-pointer transition-colors hover:bg-muted/30"
+                    onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-medium">{item.q}</p>
+                        <Icon
+                          name={openFaq === i ? "ChevronUp" : "ChevronDown"}
+                          size={16}
+                          className="text-muted-foreground flex-shrink-0 mt-0.5"
+                        />
+                      </div>
+                      {openFaq === i && (
+                        <p className="text-sm text-muted-foreground mt-3 leading-relaxed border-t pt-3">
+                          {item.a}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
 
-              <Card className="border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900">
-                <CardContent className="p-4 flex gap-3">
-                  <Icon name="MessageCircle" size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-green-800 dark:text-green-300">
-                    <strong>Совет:</strong> подключите Telegram-уведомления в разделе «Уведомления» бокового меню —
-                    заявки будут приходить мгновенно, и вы сможете быстро реагировать.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </section>
-
-          {/* Сценарии */}
-          <section id="scenarios">
-            <SectionTitle id="scenarios">
-              <Icon name="BookOpen" size={20} className="text-primary" />
-              Типичные сценарии
-            </SectionTitle>
-            <div className="space-y-4">
-              {SCENARIOS.map((s) => (
-                <Card key={s.num}>
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-3 mb-4">
-                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-sm font-bold">
-                        {s.num}
-                      </span>
-                      <p className="font-semibold">{s.title}</p>
-                    </div>
-                    <ol className="space-y-2">
-                      {s.steps.map((step, i) => (
-                        <li key={i} className="flex items-start gap-3 text-sm">
-                          <StepBadge n={i + 1} />
-                          <span className="text-muted-foreground">{step}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-
-          {/* FAQ */}
-          <section id="faq">
-            <SectionTitle id="faq">
-              <Icon name="HelpCircle" size={20} className="text-primary" />
-              Частые вопросы
-            </SectionTitle>
-            <div className="space-y-2">
-              {FAQ.map((item, i) => (
-                <Card
-                  key={i}
-                  className="cursor-pointer"
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+              <div className="mt-8 p-5 rounded-2xl border border-border bg-muted/30 text-center">
+                <Icon name="MessageCircle" size={24} className="text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm font-medium mb-1">Не нашли ответ?</p>
+                <p className="text-xs text-muted-foreground mb-3">Напишите нам — поможем разобраться</p>
+                <a
+                  href="https://poehali.dev/help"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-medium"
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <p className="text-sm font-medium">{item.q}</p>
-                      <Icon
-                        name={openFaq === i ? "ChevronUp" : "ChevronDown"}
-                        size={16}
-                        className="text-muted-foreground flex-shrink-0 mt-0.5"
-                      />
-                    </div>
-                    {openFaq === i && (
-                      <p className="text-sm text-muted-foreground mt-3 pt-3 border-t border-border">
-                        {item.a}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
+                  <Icon name="ExternalLink" size={12} />
+                  Написать в поддержку
+                </a>
+              </div>
+            </section>
 
-          {/* Итоговая таблица */}
-          <section>
-            <SectionTitle id="summary">
-              <Icon name="CheckSquare" size={20} className="text-primary" />
-              Быстрый справочник
-            </SectionTitle>
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full text-sm">
-                <TableHeader cols={["Что сделать", "Инструмент", "Вкладка"]} />
-                <tbody className="divide-y divide-border">
-                  {[
-                    ["Создать услугу", "Кнопка «+ Добавить услугу»", "Услуги"],
-                    ["Настроить типовую неделю", "Таблица дней → кнопка «Применить»", "Шаблоны"],
-                    ["Добавить слот вручную", "Кнопка «Добавить слот»", "Календарь"],
-                    ["Заблокировать день", "Кнопка «Заблокировать день»", "Календарь"],
-                    ["Подтвердить запись", "Кнопка «Подтвердить» в карточке", "Записи"],
-                    ["Включить автоматизацию", "Переключатель «Автоподтверждение»", "Настройки"],
-                  ].map(([action, tool, tab]) => (
-                    <tr key={action} className="hover:bg-muted/30">
-                      <td className="py-2.5 pr-4 font-medium">{action}</td>
-                      <td className="py-2.5 pr-4 text-muted-foreground">{tool}</td>
-                      <td className="py-2.5">
-                        <Badge variant="secondary" className="text-xs">{tab}</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-6 flex flex-col sm:flex-row gap-3">
-              <Link to="/workspace?tab=master&view=schedule">
-                <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
-                  <Icon name="CalendarDays" size={16} />
-                  Открыть расписание
-                </button>
-              </Link>
-              <Link to="/steam-master-guide">
-                <button className="inline-flex items-center gap-2 px-5 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-muted/40 transition-colors">
-                  <Icon name="BookOpen" size={16} />
-                  Гайд для мастера
-                </button>
-              </Link>
-            </div>
-          </section>
-
-        </main>
-      </div>
-
-      <Footer />
+          </main>
+        </div>
+        <Footer />
       </div>
     </div>
   );
