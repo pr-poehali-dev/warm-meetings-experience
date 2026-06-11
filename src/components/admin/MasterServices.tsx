@@ -571,7 +571,7 @@ const MasterServices = ({ masterId }: { masterId: number }) => {
                 <Icon name="MapPinned" size={14} className="text-nature-forest" />
                 Формат оказания
               </Label>
-              <div className="space-y-2 py-[5px] px-[27px]">
+              <div className="space-y-2 px-0 py-5">
                 {FORMAT_OPTIONS.map((opt) => {
                   const active = form.service_format === opt.value;
                   return (
