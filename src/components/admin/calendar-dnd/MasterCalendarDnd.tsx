@@ -1030,12 +1030,13 @@ export default function MasterCalendarDnd({ masterId }: Props) {
       <div className="flex flex-col gap-2">
         {/* Строка 1: переключатель Список/Календарь + заголовок даты */}
         <div className="flex items-center gap-2">
-          {/* Переключатель — главный выбор режима, всегда виден */}
-          <div className="inline-flex border border-border rounded-lg overflow-hidden shrink-0">
+          {/* Переключатель — главный выбор режима, всегда виден.
+              На мобильном растягивается на всю ширину, кнопки делят её поровну. */}
+          <div className="flex w-full sm:inline-flex sm:w-auto border border-border rounded-lg overflow-hidden shrink-0">
             <button
               onClick={() => setAgendaMode(true)}
               title="Список — все записи и слоты в виде ленты"
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${agendaMode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${agendaMode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
             >
               <Icon name="ListChecks" size={13} />
               <span>Список</span>
@@ -1044,7 +1045,7 @@ export default function MasterCalendarDnd({ masterId }: Props) {
             <button
               onClick={() => setAgendaMode(false)}
               title="Календарь — сетка по дням недели с перетаскиванием"
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border-l border-border transition-colors ${!agendaMode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold border-l border-border transition-colors ${!agendaMode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
             >
               <Icon name="CalendarDays" size={13} />
               <span>Календарь</span>
