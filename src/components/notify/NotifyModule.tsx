@@ -106,6 +106,7 @@ export default function NotifyModule({ role = "organizer", eventId = null }: Pro
 
   const goEdit = (s: NotifyScenario) => { setEditingScenario(s); setSubView("editor"); };
   const goNew = () => { setEditingScenario(null); setSubView("editor"); };
+  const goTemplate = (tpl: Partial<NotifyScenario>) => { setEditingScenario(tpl); setSubView("editor"); };
   const goSend = (s: NotifyScenario) => { setSendScenario(s); setSubView("send"); setTab("send"); };
   const goBack = () => { setSubView("list"); setEditingScenario(null); setSendScenario(null); };
 
@@ -194,6 +195,7 @@ export default function NotifyModule({ role = "organizer", eventId = null }: Pro
               onDelete={handleDeleteScenario}
               onSend={goSend}
               onNew={goNew}
+              onTemplate={goTemplate}
             />
           )}
           {tab === "send" && (

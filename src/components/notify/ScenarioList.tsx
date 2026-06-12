@@ -10,9 +10,77 @@ interface Props {
   onDelete: (id: number) => void;
   onSend: (s: NotifyScenario) => void;
   onNew: () => void;
+  onTemplate?: (tpl: Partial<NotifyScenario>) => void;
 }
 
-export default function ScenarioList({ scenarios, loading, onEdit, onDelete, onSend, onNew }: Props) {
+const SCENARIO_TEMPLATES: { icon: string; color: string; label: string; description: string; data: Partial<NotifyScenario> }[] = [
+  {
+    icon: "Bell",
+    color: "text-blue-500",
+    label: "Напоминание за день",
+    description: "Отправляется за 24 ч до события",
+    data: {
+      name: "Напоминание за день до события",
+      trigger_type: "before_event",
+      trigger_hours: 24,
+      channels: ["email"],
+      subject: "Напоминание: {{event_title}} — завтра!",
+      body_html: "<p>Привет, {{name}}!</p><p>Напоминаем, что завтра вас ждёт <strong>{{event_title}}</strong>.</p><p>📅 Дата: {{event_date}}<br>🕐 Время: {{event_time}}<br>📍 Место: {{bath_name}}</p><p>Ждём вас!</p>",
+      body_text: "Привет, {{name}}!\n\nНапоминаем, что завтра вас ждёт {{event_title}}.\n\nДата: {{event_date}}\nВремя: {{event_time}}\nМесто: {{bath_name}}\n\nДо встречи!",
+      is_active: true,
+    },
+  },
+  {
+    icon: "UserCheck",
+    color: "text-emerald-500",
+    label: "Подтверждение записи",
+    description: "Автоматически при новом участнике",
+    data: {
+      name: "Подтверждение записи",
+      trigger_type: "on_signup",
+      trigger_hours: null,
+      channels: ["email"],
+      subject: "Вы записаны на {{event_title}}",
+      body_html: "<p>Привет, {{name}}!</p><p>Ваша запись на <strong>{{event_title}}</strong> подтверждена.</p><p>📅 {{event_date}} в {{event_time}}<br>📍 {{bath_name}}</p><p>Стоимость: {{price}}</p><p>Будем рады видеть вас!</p>",
+      body_text: "Привет, {{name}}!\n\nВаша запись на {{event_title}} подтверждена.\n\n{{event_date}} в {{event_time}}\n{{bath_name}}\n\nСтоимость: {{price}}\n\nДо встречи!",
+      is_active: true,
+    },
+  },
+  {
+    icon: "Star",
+    color: "text-amber-500",
+    label: "Отзыв после события",
+    description: "Через 2 часа после окончания",
+    data: {
+      name: "Просьба оставить отзыв",
+      trigger_type: "after_event",
+      trigger_hours: 2,
+      channels: ["email"],
+      subject: "Как прошло? Оставьте отзыв о {{event_title}}",
+      body_html: "<p>Привет, {{name}}!</p><p>Надеемся, что <strong>{{event_title}}</strong> прошло замечательно.</p><p>Будем очень рады, если вы поделитесь впечатлениями — это помогает нам становиться лучше.</p><p>Спасибо, что были с нами!</p>",
+      body_text: "Привет, {{name}}!\n\nНадеемся, что {{event_title}} прошло замечательно.\n\nБудем очень рады, если вы поделитесь впечатлениями.\n\nСпасибо, что были с нами!",
+      is_active: true,
+    },
+  },
+  {
+    icon: "Send",
+    color: "text-violet-500",
+    label: "Ручная рассылка",
+    description: "Отправляется вручную по кнопке",
+    data: {
+      name: "Новость для участников",
+      trigger_type: "manual",
+      trigger_hours: null,
+      channels: ["email"],
+      subject: "Важная новость: {{event_title}}",
+      body_html: "<p>Привет, {{name}}!</p><p>Хотим поделиться важной информацией о <strong>{{event_title}}</strong>.</p><p>[Напишите текст сообщения здесь]</p>",
+      body_text: "Привет, {{name}}!\n\nХотим поделиться важной информацией о {{event_title}}.\n\n[Напишите текст сообщения здесь]",
+      is_active: true,
+    },
+  },
+];
+
+export default function ScenarioList({ scenarios, loading, onEdit, onDelete, onSend, onNew, onTemplate }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -37,15 +105,28 @@ export default function ScenarioList({ scenarios, loading, onEdit, onDelete, onS
       </div>
 
       {scenarios.length === 0 ? (
-        <div className="text-center py-10 border-2 border-dashed rounded-2xl">
-          <Icon name="Bell" size={32} className="mx-auto text-muted-foreground/30 mb-3" />
-          <p className="text-sm text-muted-foreground">Сценариев пока нет</p>
-          <p className="text-xs text-muted-foreground mt-1 mb-4">
-            Создайте первый шаблон — например, напоминание за день до события
-          </p>
-          <Button size="sm" variant="outline" onClick={onNew} className="gap-1.5">
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground px-0.5">Выберите готовый шаблон или создайте с нуля:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {SCENARIO_TEMPLATES.map((tpl) => (
+              <button
+                key={tpl.label}
+                onClick={() => onTemplate?.(tpl.data)}
+                className="flex items-start gap-3 p-3.5 rounded-xl border bg-card text-left hover:border-primary/40 hover:bg-primary/[0.03] transition-all group"
+              >
+                <div className={`mt-0.5 shrink-0 ${tpl.color}`}>
+                  <Icon name={tpl.icon as "Bell"} size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium group-hover:text-primary transition-colors">{tpl.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{tpl.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+          <Button size="sm" variant="outline" onClick={onNew} className="gap-1.5 w-full">
             <Icon name="Plus" size={14} />
-            Создать сценарий
+            Создать с нуля
           </Button>
         </div>
       ) : (
