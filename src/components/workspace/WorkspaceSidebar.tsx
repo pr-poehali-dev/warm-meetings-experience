@@ -170,7 +170,7 @@ export default function WorkspaceSidebar({
             onClick={() => switchPartnerView("baths")}
             icon="Building2"
             label="Мои бани"
-            badge={bathsCount || undefined}
+
           />
           <NavItem
             active={roleTab === "partner" && partnerView === "add"}
