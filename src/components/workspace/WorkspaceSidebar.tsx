@@ -136,8 +136,7 @@ export default function WorkspaceSidebar({
             onClick={() => switchOrgView("dashboard")}
             icon="LayoutGrid"
             label="Мои события"
-            badge={unreadGuestMessages || undefined}
-            badgeUrgent={!!unreadGuestMessages}
+
           />
           <NavItem
             active={roleTab === "organizer" && (orgView === "create" || orgView === "edit")}
