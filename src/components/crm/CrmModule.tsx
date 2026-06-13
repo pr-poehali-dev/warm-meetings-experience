@@ -23,13 +23,13 @@ export default function CrmModule({ role }: CrmModuleProps) {
   const TabBtn = ({ id, icon, label }: { id: Tab; icon: string; label: string }) => (
     <button
       onClick={() => setTab(id)}
-      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm transition-all ${
+      className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
         tab === id
-          ? "bg-primary text-primary-foreground font-medium shadow-sm"
-          : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          ? "bg-background shadow text-foreground"
+          : "text-muted-foreground hover:text-foreground"
       }`}
     >
-      <Icon name={icon} size={14} />
+      <Icon name={icon} size={13} />
       <span>{label}</span>
     </button>
   );
@@ -46,8 +46,8 @@ export default function CrmModule({ role }: CrmModuleProps) {
         </p>
       </div>
 
-      <div className="flex gap-1.5 flex-wrap">
-        <TabBtn id="clients" icon="Users" label="Список гостей" />
+      <div className="flex gap-1 bg-muted rounded-xl p-1">
+        <TabBtn id="clients" icon="Users" label="Гости" />
         <TabBtn id="tags" icon="Tags" label="Теги" />
         <TabBtn id="broadcasts" icon="Send" label="Рассылки" />
       </div>
