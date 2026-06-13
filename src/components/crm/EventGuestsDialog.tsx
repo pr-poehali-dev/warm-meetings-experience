@@ -321,10 +321,11 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
     <>
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-auto p-3 sm:p-6 pb-24 sm:pb-6">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Icon name="Users" size={18} />
-              Гости события {eventTitle && <span className="text-muted-foreground font-normal">· {eventTitle}</span>}
+          <DialogHeader className="pr-8">
+            <DialogTitle className="flex items-center gap-2 flex-wrap">
+              <Icon name="Users" size={18} className="shrink-0" />
+              <span>Гости события</span>
+              {eventTitle && <span className="text-muted-foreground font-normal">· {eventTitle}</span>}
             </DialogTitle>
           </DialogHeader>
 
