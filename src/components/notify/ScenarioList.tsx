@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Icon from "@/components/ui/icon";
@@ -81,6 +82,8 @@ const SCENARIO_TEMPLATES: { icon: string; color: string; label: string; descript
 ];
 
 export default function ScenarioList({ scenarios, loading, onEdit, onDelete, onSend, onNew, onTemplate }: Props) {
+  const [showTemplates, setShowTemplates] = useState(false);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -98,24 +101,30 @@ export default function ScenarioList({ scenarios, loading, onEdit, onDelete, onS
             Шаблоны писем и сообщений с настраиваемыми триггерами
           </p>
         </div>
-        <Button size="sm" onClick={onNew} className="gap-1.5">
-          <Icon name="Plus" size={14} />
-          Новый сценарий
-        </Button>
+        <div className="flex gap-1.5">
+          <Button size="sm" variant="outline" onClick={() => setShowTemplates((v) => !v)} className="gap-1.5">
+            <Icon name="LayoutTemplate" size={14} />
+            Из шаблона
+          </Button>
+          <Button size="sm" onClick={onNew} className="gap-1.5">
+            <Icon name="Plus" size={14} />
+            Новый
+          </Button>
+        </div>
       </div>
 
-      {scenarios.length === 0 ? (
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground px-0.5">Выберите готовый шаблон или создайте с нуля:</p>
+      {showTemplates && (
+        <div className="rounded-2xl border bg-muted/30 p-3 space-y-2">
+          <p className="text-xs text-muted-foreground font-medium">Выберите шаблон:</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {SCENARIO_TEMPLATES.map((tpl) => (
               <button
                 key={tpl.label}
-                onClick={() => onTemplate?.(tpl.data)}
-                className="flex items-start gap-3 p-3.5 rounded-xl border bg-card text-left hover:border-primary/40 hover:bg-primary/[0.03] transition-all group"
+                onClick={() => { onTemplate?.(tpl.data); setShowTemplates(false); }}
+                className="flex items-start gap-3 p-3 rounded-xl border bg-card text-left hover:border-primary/40 hover:bg-primary/[0.03] transition-all group"
               >
                 <div className={`mt-0.5 shrink-0 ${tpl.color}`}>
-                  <Icon name={tpl.icon as "Bell"} size={18} />
+                  <Icon name={tpl.icon as "Bell"} size={16} />
                 </div>
                 <div>
                   <p className="text-sm font-medium group-hover:text-primary transition-colors">{tpl.label}</p>
@@ -124,12 +133,20 @@ export default function ScenarioList({ scenarios, loading, onEdit, onDelete, onS
               </button>
             ))}
           </div>
-          <Button size="sm" variant="outline" onClick={onNew} className="gap-1.5 w-full">
-            <Icon name="Plus" size={14} />
-            Создать с нуля
-          </Button>
         </div>
-      ) : (
+      )}
+
+      {scenarios.length === 0 && !showTemplates && (
+        <div className="text-center py-10 border-2 border-dashed rounded-2xl">
+          <Icon name="Bell" size={32} className="mx-auto text-muted-foreground/30 mb-3" />
+          <p className="text-sm text-muted-foreground">Сценариев пока нет</p>
+          <p className="text-xs text-muted-foreground mt-1 mb-4">
+            Нажмите «Из шаблона» чтобы выбрать готовый или создайте свой
+          </p>
+        </div>
+      )}
+
+      {scenarios.length > 0 && (
         <div className="space-y-2">
           {scenarios.map((sc) => (
             <div key={sc.id} className={`rounded-xl border p-4 transition-all ${sc.is_active ? "bg-card" : "bg-muted/30 opacity-60"}`}>
