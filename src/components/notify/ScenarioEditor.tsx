@@ -139,13 +139,32 @@ export default function ScenarioEditor({ scenario, onSave, onCancel }: Props) {
                     )}
                     {t === "on_status_change" && form.trigger_type === t && (
                       <div className="mt-1.5">
-                        <Input
-                          value={form.trigger_status || ""}
-                          onChange={(e) => set("trigger_status", e.target.value)}
-                          placeholder="confirmed / cancelled / attended"
-                          className="h-7 text-xs"
-                          onClick={(e) => e.stopPropagation()}
-                        />
+                        <div className="space-y-1">
+                          <Input
+                            value={form.trigger_status || ""}
+                            onChange={(e) => set("trigger_status", e.target.value)}
+                            placeholder="confirmed / cancelled / completed"
+                            className="h-7 text-xs"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <div className="flex gap-1 flex-wrap">
+                            {[
+                              { value: "confirmed", label: "Подтверждён" },
+                              { value: "cancelled", label: "Отменён" },
+                              { value: "completed", label: "Завершён" },
+                              { value: "no_show", label: "Неявка" },
+                            ].map((s) => (
+                              <button
+                                key={s.value}
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); set("trigger_status", s.value); }}
+                                className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${form.trigger_status === s.value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
+                              >
+                                {s.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
