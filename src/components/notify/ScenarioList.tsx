@@ -2,7 +2,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Icon from "@/components/ui/icon";
-import { NotifyScenario, TRIGGER_LABELS, CHANNEL_LABELS, CHANNEL_ICONS, NotifyChannel } from "@/lib/notify-api";
+import { NotifyScenario, TRIGGER_LABELS, CHANNEL_LABELS, CHANNEL_ICONS, NotifyChannel, TriggerType } from "@/lib/notify-api";
+
+const TRIGGER_ICON: Record<TriggerType, { icon: string; color: string }> = {
+  before_event: { icon: "Bell", color: "text-blue-500" },
+  after_event:  { icon: "Star", color: "text-amber-500" },
+  on_signup:    { icon: "UserCheck", color: "text-emerald-500" },
+  on_status_change: { icon: "RefreshCw", color: "text-violet-500" },
+  manual:       { icon: "Send", color: "text-violet-500" },
+};
 
 interface Props {
   scenarios: NotifyScenario[];
@@ -151,6 +159,9 @@ export default function ScenarioList({ scenarios, loading, onEdit, onDelete, onS
           {scenarios.map((sc) => (
             <div key={sc.id} className={`rounded-xl border p-4 transition-all ${sc.is_active ? "bg-card" : "bg-muted/30 opacity-60"}`}>
               <div className="flex items-start justify-between gap-3">
+                <div className={`mt-0.5 shrink-0 ${TRIGGER_ICON[sc.trigger_type]?.color ?? "text-muted-foreground"}`}>
+                  <Icon name={(TRIGGER_ICON[sc.trigger_type]?.icon ?? "Zap") as "Bell"} size={18} />
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-sm truncate">{sc.name}</span>
