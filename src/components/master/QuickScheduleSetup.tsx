@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import MasterServices, { MasterServicesRef } from "@/components/admin/MasterServices";
 
 
@@ -69,6 +70,7 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
   const [savingBuffer, setSavingBuffer] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Настройки
   const [timezone, setTimezone] = useState("Europe/Moscow");
@@ -152,22 +154,25 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
   })();
 
   // Генерация окон доступности
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (selectedDays.size === 0) {
       toast.error("Выберите хотя бы один день недели");
       return;
     }
+    const [sh, sm] = startTime.split(":").map(Number);
+    const [eh, em] = endTime.split(":").map(Number);
+    if (eh * 60 + em <= sh * 60 + sm) {
+      toast.error("Время окончания должно быть позже начала");
+      return;
+    }
+    setConfirmOpen(true);
+  };
 
+  const doGenerate = async () => {
     const [sh, sm] = startTime.split(":").map(Number);
     const [eh, em] = endTime.split(":").map(Number);
     const startMin = sh * 60 + sm;
     const endMin = eh * 60 + em;
-    if (endMin <= startMin) {
-      toast.error("Время окончания должно быть позже начала");
-      return;
-    }
-
-    if (!confirm(`Создать ${windowsCount} окон доступности на ${weeks} нед.?`)) return;
 
     setGenerating(true);
     try {
@@ -550,6 +555,24 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
           )}
         </div>
       </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Создать окна доступности?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Будет создано {windowsCount} окон на {weeks} {weeks === 1 ? "неделю" : weeks < 5 ? "недели" : "недель"} по выбранным дням.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={doGenerate} disabled={generating}>
+              {generating && <Icon name="Loader2" size={14} className="animate-spin mr-1.5" />}
+              Создать
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );
