@@ -455,6 +455,7 @@ def handle_events(event, method, params, cur, conn, user_id, schema, headers):
             elif action == 'draft':
                 sets.append("status = 'draft'")
                 sets.append("is_visible = false")
+            # action == 'save': сохраняем поля без изменения статуса и видимости
         if 'program' in body:
             p = body['program']
             sets.append(f"program = {'ARRAY[' + ','.join(chr(39)+x.replace(chr(39),chr(39)*2)+chr(39) for x in p) + ']::text[]' if p else 'ARRAY[]::text[]'}")

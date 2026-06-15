@@ -353,7 +353,10 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                 const merged = { ...formDataRef.current, ...(override || {}) } as OrgEvent & { submit_action?: string };
                 setOrgFormLoading(true);
                 try {
-                  const submitAction = merged.submit_action || "draft";
+                  const currentStatus = selectedEvent?.status || merged.status || "draft";
+                  const isAlreadyPublished = currentStatus === "published" || currentStatus === "private";
+                  // Для опубликованных/приватных: не передаём submit_action — статус и видимость не меняются
+                  const submitAction = merged.submit_action || (isAlreadyPublished ? "save" : "draft");
                   const existingId = selectedEvent?.id || merged.id;
                   if (existingId) {
                     const updated = await organizerApi.updateEvent({ ...merged, id: existingId, submit_action: submitAction } as OrgEvent & { id: number; submit_action: string });
@@ -362,7 +365,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
                     }
                     setFormData({ ...updated });
                     setSelectedEvent(updated);
-                    toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : "Черновик сохранён" });
+                    toast({ title: submitAction === "submit" ? "Событие отправлено на модерацию" : submitAction === "save" ? "Изменения сохранены" : "Черновик сохранён" });
                     if (submitAction === "submit") setOrgView("dashboard");
                   } else {
                     const created = await organizerApi.createEvent({ ...merged, submit_action: submitAction } as Parameters<typeof organizerApi.createEvent>[0]);
