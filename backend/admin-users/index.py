@@ -12,6 +12,7 @@ def get_user_full(cur, schema, user_id):
         SELECT
             u.id, u.name, u.email, u.phone, u.telegram,
             u.is_active, u.blocked_reason, u.created_at, u.updated_at, u.consent_photo,
+            u.admin_note,
             COALESCE(json_agg(
                 json_build_object('id', r.id, 'name', r.name, 'slug', r.slug, 'icon', r.icon, 'status', ur.status)
             ) FILTER (WHERE ur.id IS NOT NULL), '[]') as roles
@@ -207,6 +208,7 @@ def handler(event, context):
             s = search.replace("'", "''")
             where = f"""WHERE (
                 u.name ILIKE '%{s}%' OR u.email ILIKE '%{s}%' OR u.phone ILIKE '%{s}%'
+                OR u.admin_note ILIKE '%{s}%'
                 OR EXISTS (
                     SELECT 1 FROM {schema}.crm_notes cn
                     WHERE cn.client_key = 'user:' || u.id AND cn.body ILIKE '%{s}%'
@@ -220,6 +222,7 @@ def handler(event, context):
             SELECT
                 u.id, u.name, u.email, u.phone, u.telegram,
                 u.is_active, u.blocked_reason, u.created_at, u.consent_photo,
+                u.admin_note,
                 COALESCE(json_agg(
                     json_build_object('id', r.id, 'name', r.name, 'slug', r.slug, 'icon', r.icon, 'status', ur.status)
                 ) FILTER (WHERE ur.id IS NOT NULL), '[]') as roles
@@ -323,6 +326,12 @@ def handler(event, context):
                 fields.append(f"phone = '{str(body['phone']).replace(chr(39), chr(39)*2)}'")
             if 'telegram' in body:
                 fields.append(f"telegram = '{str(body['telegram']).replace(chr(39), chr(39)*2)}'")
+            if 'admin_note' in body:
+                note_val = body['admin_note']
+                if note_val:
+                    fields.append(f"admin_note = '{str(note_val).replace(chr(39), chr(39)*2)}'")
+                else:
+                    fields.append("admin_note = NULL")
             if not fields:
                 conn.close()
                 return respond(400, {'error': 'Нет данных для обновления'})

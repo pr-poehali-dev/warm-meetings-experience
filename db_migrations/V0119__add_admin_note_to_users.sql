@@ -1,0 +1,1 @@
+ALTER TABLE t_p99966623_warm_meetings_experi.users ADD COLUMN IF NOT EXISTS admin_note text NULL;

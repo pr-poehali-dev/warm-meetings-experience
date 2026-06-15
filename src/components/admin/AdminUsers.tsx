@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -43,6 +44,7 @@ interface User {
   blocked_reason: "banned" | "duplicate" | null;
   created_at: string;
   consent_photo?: "yes" | "no" | null;
+  admin_note?: string | null;
   roles: UserRole[];
 }
 
@@ -215,7 +217,7 @@ export default function AdminUsers() {
   // Диалог
   const [selected, setSelected] = useState<User | null>(null);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<{ name: string; phone: string; telegram: string }>({ name: "", phone: "", telegram: "" });
+  const [draft, setDraft] = useState<{ name: string; phone: string; telegram: string; admin_note: string }>({ name: "", phone: "", telegram: "", admin_note: "" });
   const [saving, setSaving] = useState(false);
   const [blockDialog, setBlockDialog] = useState(false);
   const [mergeHint, setMergeHint] = useState<MergeHint | null>(null);
@@ -254,7 +256,7 @@ export default function AdminUsers() {
   const openUser = (user: User) => {
     setSelected(user);
     setEditing(false);
-    setDraft({ name: user.name, phone: user.phone || "", telegram: user.telegram || "" });
+    setDraft({ name: user.name, phone: user.phone || "", telegram: user.telegram || "", admin_note: user.admin_note || "" });
   };
 
   const closeDialog = () => { setSelected(null); setEditing(false); };
@@ -500,29 +502,55 @@ export default function AdminUsers() {
                     <Label>Telegram</Label>
                     <Input value={draft.telegram} placeholder="@username" onChange={(e) => setDraft((d) => ({ ...d, telegram: e.target.value }))} />
                   </div>
+                  <div>
+                    <Label className="flex items-center gap-1.5">
+                      <Icon name="ShieldCheck" size={13} className="text-amber-600" />
+                      Заметка администратора
+                    </Label>
+                    <Textarea
+                      value={draft.admin_note}
+                      onChange={(e) => setDraft((d) => ({ ...d, admin_note: e.target.value }))}
+                      placeholder="Видна только администраторам..."
+                      rows={3}
+                      className="text-sm"
+                    />
+                  </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-                  <span className="text-gray-500">Email</span>
-                  <a href={`mailto:${selected.email}`} className="text-blue-600 hover:underline">{selected.email}</a>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+                    <span className="text-gray-500">Email</span>
+                    <a href={`mailto:${selected.email}`} className="text-blue-600 hover:underline">{selected.email}</a>
 
-                  <span className="text-gray-500">Телефон</span>
-                  {selected.phone
-                    ? <a href={`tel:${selected.phone}`} className="text-blue-600 hover:underline">{selected.phone}</a>
-                    : <span className="text-gray-400">—</span>}
+                    <span className="text-gray-500">Телефон</span>
+                    {selected.phone
+                      ? <a href={`tel:${selected.phone}`} className="text-blue-600 hover:underline">{selected.phone}</a>
+                      : <span className="text-gray-400">—</span>}
 
-                  <span className="text-gray-500">Telegram</span>
-                  {selected.telegram
-                    ? <a href={`https://t.me/${selected.telegram.replace("@", "")}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{selected.telegram}</a>
-                    : <span className="text-gray-400">—</span>}
+                    <span className="text-gray-500">Telegram</span>
+                    {selected.telegram
+                      ? <a href={`https://t.me/${selected.telegram.replace("@", "")}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{selected.telegram}</a>
+                      : <span className="text-gray-400">—</span>}
 
-                  <span className="text-gray-500">Регистрация</span>
-                  <span>{formatDate(selected.created_at)}</span>
+                    <span className="text-gray-500">Регистрация</span>
+                    <span>{formatDate(selected.created_at)}</span>
 
-                  <span className="text-gray-500">Фото в рекламе</span>
-                  {selected.consent_photo
-                    ? <ConsentPhotoBadge consent={selected.consent_photo} showLabel />
-                    : <span className="text-gray-400">Не указано</span>}
+                    <span className="text-gray-500">Фото в рекламе</span>
+                    {selected.consent_photo
+                      ? <ConsentPhotoBadge consent={selected.consent_photo} showLabel />
+                      : <span className="text-gray-400">Не указано</span>}
+                  </div>
+
+                  {/* Заметка администратора */}
+                  {selected.admin_note ? (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 mb-1">
+                        <Icon name="ShieldCheck" size={12} />
+                        Заметка администратора
+                      </div>
+                      <p className="text-sm text-amber-900 whitespace-pre-wrap">{selected.admin_note}</p>
+                    </div>
+                  ) : null}
                 </div>
               )}
 
