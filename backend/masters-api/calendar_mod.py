@@ -307,9 +307,11 @@ def handle_slots(event, method, params, schema, headers):
         date_to = params.get('date_to', '')
 
         query = f"""
-            SELECT s.*, ms.name as service_name, ms.duration_minutes, ms.price as service_price
+            SELECT s.*, ms.name as service_name, ms.duration_minutes, ms.price as service_price,
+                   a.address_text as slot_address, a.latitude as slot_latitude, a.longitude as slot_longitude
             FROM {schema}.master_slots s
             LEFT JOIN {schema}.master_services ms ON s.service_id = ms.id
+            LEFT JOIN {schema}.master_addresses a ON s.address_id = a.id
             WHERE s.master_id = {int(master_id)}
         """
         if date_from:
@@ -320,6 +322,11 @@ def handle_slots(event, method, params, schema, headers):
 
         cur.execute(query)
         rows = cur.fetchall()
+        for r in rows:
+            if r.get('slot_latitude') is not None:
+                r['slot_latitude'] = float(r['slot_latitude'])
+            if r.get('slot_longitude') is not None:
+                r['slot_longitude'] = float(r['slot_longitude'])
         slots_tz = fetch_master_tz(cur, schema, master_id)
         conn.close()
         localize_rows(rows, slots_tz)
@@ -1437,15 +1444,22 @@ def handle_week_view(event, method, params, schema, headers):
     master_tz = master_tz.replace("'", "''")
 
     cur.execute(f"""
-        SELECT s.*, ms.name as service_name, ms.duration_minutes, ms.price as service_price
+        SELECT s.*, ms.name as service_name, ms.duration_minutes, ms.price as service_price,
+               a.address_text as slot_address, a.latitude as slot_latitude, a.longitude as slot_longitude
         FROM {schema}.master_slots s
         LEFT JOIN {schema}.master_services ms ON s.service_id = ms.id
+        LEFT JOIN {schema}.master_addresses a ON s.address_id = a.id
         WHERE s.master_id = {int(master_id)}
           AND (s.datetime_start AT TIME ZONE '{master_tz}')::date >= '{start_d}'
           AND (s.datetime_start AT TIME ZONE '{master_tz}')::date <= '{end_d}'
         ORDER BY s.datetime_start
     """)
     slots = cur.fetchall()
+    for s in slots:
+        if s.get('slot_latitude') is not None:
+            s['slot_latitude'] = float(s['slot_latitude'])
+        if s.get('slot_longitude') is not None:
+            s['slot_longitude'] = float(s['slot_longitude'])
 
     cur.execute(f"""
         SELECT b.*, ms.name as service_name

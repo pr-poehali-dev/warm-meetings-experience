@@ -3,7 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { masterCalendarApi } from "@/lib/master-calendar-api";
-import type { ScheduleTemplate, TemplateRule, MasterService } from "@/lib/master-calendar-api";
+import type { ScheduleTemplate, TemplateRule, MasterService, MasterAddress } from "@/lib/master-calendar-api";
 import TemplateCard from "./templates/TemplateCard";
 import TemplateEditDialog from "./templates/TemplateEditDialog";
 import type { RuleForm } from "./templates/TemplateEditDialog";
@@ -20,6 +20,7 @@ const createEmptyRules = (): RuleForm[] =>
     service_id: "",
     max_clients: 1,
     is_day_off: i >= 6,
+    address_id: "",
   }));
 
 const formatDateISO = (date: Date): string => {
@@ -41,6 +42,7 @@ const getMonday = (date: Date): Date => {
 const MasterTemplates = ({ masterId }: { masterId: number }) => {
   const [templates, setTemplates] = useState<ScheduleTemplate[]>([]);
   const [services, setServices] = useState<MasterService[]>([]);
+  const [addresses, setAddresses] = useState<MasterAddress[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -62,6 +64,7 @@ const MasterTemplates = ({ masterId }: { masterId: number }) => {
   useEffect(() => {
     fetchTemplates();
     fetchServices();
+    fetchAddresses();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [masterId]);
 
@@ -90,6 +93,15 @@ const MasterTemplates = ({ masterId }: { masterId: number }) => {
     }
   };
 
+  const fetchAddresses = async () => {
+    try {
+      const data = await masterCalendarApi.getAddresses(masterId);
+      setAddresses(data);
+    } catch {
+      // non-critical
+    }
+  };
+
   const openCreate = () => {
     setEditingTemplate(null);
     setTemplateName("");
@@ -111,6 +123,7 @@ const MasterTemplates = ({ masterId }: { masterId: number }) => {
           service_id: rule.service_id ? String(rule.service_id) : "",
           max_clients: rule.max_clients || 1,
           is_day_off: rule.is_day_off,
+          address_id: rule.address_id ? String(rule.address_id) : "",
         }));
       // Дополняем дни, для которых нет правил, пустой "выходной" записью —
       // чтобы редактор мог показать все 7 дней
@@ -124,6 +137,7 @@ const MasterTemplates = ({ masterId }: { masterId: number }) => {
             service_id: "",
             max_clients: 1,
             is_day_off: true,
+            address_id: "",
           });
         }
       }
@@ -162,6 +176,7 @@ const MasterTemplates = ({ masterId }: { masterId: number }) => {
         service_id: "",
         max_clients: 1,
         is_day_off: false,
+        address_id: "",
       };
       const next = [...prev, newRule];
       next.sort((a, b) => a.day_of_week - b.day_of_week);
@@ -198,6 +213,7 @@ const MasterTemplates = ({ masterId }: { masterId: number }) => {
       service_id: r.service_id ? Number(r.service_id) : null,
       max_clients: r.max_clients,
       is_day_off: r.is_day_off,
+      address_id: r.address_id ? Number(r.address_id) : null,
     }));
 
     setSaving(true);
@@ -338,6 +354,7 @@ const MasterTemplates = ({ masterId }: { masterId: number }) => {
         onAddRuleForDay={addRuleForDay}
         onRemoveRule={removeRule}
         services={services}
+        addresses={addresses}
         saving={saving}
         onSave={handleSave}
       />

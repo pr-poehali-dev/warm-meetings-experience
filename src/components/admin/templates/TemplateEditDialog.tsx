@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import type { ScheduleTemplate, MasterService } from "@/lib/master-calendar-api";
+import type { ScheduleTemplate, MasterService, MasterAddress } from "@/lib/master-calendar-api";
 
 const DAY_NAMES = [
   "Понедельник",
@@ -28,6 +28,7 @@ export interface RuleForm {
   service_id: string;
   max_clients: number;
   is_day_off: boolean;
+  address_id: string;
 }
 
 interface TemplateEditDialogProps {
@@ -41,6 +42,7 @@ interface TemplateEditDialogProps {
   onAddRuleForDay: (dayOfWeek: number) => void;
   onRemoveRule: (index: number) => void;
   services: MasterService[];
+  addresses?: MasterAddress[];
   saving: boolean;
   onSave: () => void;
 }
@@ -55,6 +57,7 @@ const TemplateEditDialog = ({
   onUpdateRule,
   onAddRuleForDay,
   onRemoveRule,
+  addresses = [],
   saving,
   onSave,
 }: TemplateEditDialogProps) => {
@@ -174,35 +177,57 @@ const TemplateEditDialog = ({
                           return (
                             <div
                               key={ruleIdx}
-                              className="flex flex-wrap items-center gap-2 bg-gray-50 rounded-md p-2"
+                              className="bg-gray-50 rounded-md p-2 space-y-2"
                             >
-                              <Input
-                                type="time"
-                                value={rule.time_start}
-                                onChange={(e) =>
-                                  onUpdateRule(ruleIdx, { time_start: e.target.value })
-                                }
-                                className="w-[110px] h-8 text-sm"
-                              />
-                              <span className="text-gray-400 text-sm">—</span>
-                              <Input
-                                type="time"
-                                value={rule.time_end}
-                                onChange={(e) =>
-                                  onUpdateRule(ruleIdx, { time_end: e.target.value })
-                                }
-                                className="w-[110px] h-8 text-sm"
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 ml-auto"
-                                onClick={() => onRemoveRule(ruleIdx)}
-                                title="Удалить интервал"
-                              >
-                                <Icon name="Trash2" size={14} />
-                              </Button>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Input
+                                  type="time"
+                                  value={rule.time_start}
+                                  onChange={(e) =>
+                                    onUpdateRule(ruleIdx, { time_start: e.target.value })
+                                  }
+                                  className="w-[110px] h-8 text-sm"
+                                />
+                                <span className="text-gray-400 text-sm">—</span>
+                                <Input
+                                  type="time"
+                                  value={rule.time_end}
+                                  onChange={(e) =>
+                                    onUpdateRule(ruleIdx, { time_end: e.target.value })
+                                  }
+                                  className="w-[110px] h-8 text-sm"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 ml-auto"
+                                  onClick={() => onRemoveRule(ruleIdx)}
+                                  title="Удалить интервал"
+                                >
+                                  <Icon name="Trash2" size={14} />
+                                </Button>
+                              </div>
+                              {addresses.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                  <Icon name="MapPin" size={14} className="text-gray-400 shrink-0" />
+                                  <select
+                                    value={rule.address_id || ""}
+                                    onChange={(e) =>
+                                      onUpdateRule(ruleIdx, { address_id: e.target.value })
+                                    }
+                                    className="flex-1 h-8 text-sm rounded-md border border-input bg-background px-2"
+                                  >
+                                    <option value="">Адрес не указан</option>
+                                    {addresses.map((a) => (
+                                      <option key={a.id} value={String(a.id)}>
+                                        {a.address_text}
+                                        {a.is_primary ? " (основной)" : ""}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              )}
                             </div>
                           );
                         })}

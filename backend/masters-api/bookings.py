@@ -786,6 +786,24 @@ def handle_bookings(event, method, params, schema, headers):
         slot_val = f"{int(slot_id)}" if slot_id else "NULL"
         svc_val = f"{int(service_id)}" if service_id else "NULL"
 
+        # Если место встречи не задано вручную, но к слоту привязан адрес мастера —
+        # фиксируем его в брони (та же логика, что и в публичном бронировании).
+        if not meeting_address and slot_id:
+            cur.execute(f"""
+                SELECT a.address_text, a.latitude, a.longitude
+                FROM {schema}.master_slots s
+                JOIN {schema}.master_addresses a ON a.id = s.address_id
+                WHERE s.id = {int(slot_id)}
+            """)
+            _sa = cur.fetchone()
+            if _sa:
+                meeting_address = (_sa.get('address_text') or '').strip()[:500].replace("'", "''")
+                meeting_address_sql = f"'{meeting_address}'" if meeting_address else 'NULL'
+                if _sa.get('latitude') is not None:
+                    meeting_lat_sql = f"{float(_sa['latitude'])}"
+                if _sa.get('longitude') is not None:
+                    meeting_lng_sql = f"{float(_sa['longitude'])}"
+
         cur.execute(f"""
             SELECT auto_confirm FROM {schema}.master_calendar_settings
             WHERE master_id = {int(master_id)}
@@ -1049,9 +1067,14 @@ def handle_public_slots(event, method, params, schema, headers):
     cur.execute(f"""
         SELECT s.id, s.master_id, s.service_id, s.datetime_start, s.datetime_end,
                s.max_clients, s.booked_count, s.status,
-               ms.name as service_name, ms.duration_minutes, ms.price as service_price, ms.description as service_description
+               ms.name as service_name, ms.duration_minutes, ms.price as service_price, ms.description as service_description,
+               s.address_id,
+               a.address_text as slot_address,
+               a.latitude as slot_latitude,
+               a.longitude as slot_longitude
         FROM {schema}.master_slots s
         LEFT JOIN {schema}.master_services ms ON s.service_id = ms.id
+        LEFT JOIN {schema}.master_addresses a ON s.address_id = a.id
         WHERE s.master_id = {int(master_id)}
           AND s.status IN ('available', 'booked')
           AND s.datetime_start >= '{date_from}'
@@ -1059,6 +1082,11 @@ def handle_public_slots(event, method, params, schema, headers):
         ORDER BY s.datetime_start
     """)
     slots = cur.fetchall()
+    for s in slots:
+        if s.get('slot_latitude') is not None:
+            s['slot_latitude'] = float(s['slot_latitude'])
+        if s.get('slot_longitude') is not None:
+            s['slot_longitude'] = float(s['slot_longitude'])
 
     # Активные брони мастера в том же диапазоне
     cur.execute(f"""
@@ -1332,6 +1360,22 @@ def handle_public_book(event, method, params, schema, headers):
     contra_accepted_at_sql = 'CURRENT_TIMESTAMP' if contra_accepted else 'NULL'
     contra_ip_sql = f"'{client_ip}'" if (contra_accepted and client_ip) else 'NULL'
     contra_snapshot_sql = f"'{contra_snapshot}'" if (contra_accepted and contra_snapshot) else 'NULL'
+
+    # Если клиент не указал своё место встречи, но к слоту привязан адрес мастера
+    # (студия/салон/партнёрская точка) — фиксируем этот адрес в брони, чтобы
+    # клиент видел, куда приходить, а мастер — где принимать.
+    if not meeting_address and slot.get('address_id'):
+        cur.execute(f"""
+            SELECT address_text, latitude, longitude
+            FROM {schema}.master_addresses WHERE id = {int(slot['address_id'])}
+        """)
+        slot_addr = cur.fetchone()
+        if slot_addr:
+            meeting_address = (slot_addr.get('address_text') or '').strip()[:500].replace("'", "''")
+            if slot_addr.get('latitude') is not None:
+                meeting_lat = float(slot_addr['latitude'])
+            if slot_addr.get('longitude') is not None:
+                meeting_lng = float(slot_addr['longitude'])
 
     meeting_address_sql = f"'{meeting_address}'" if meeting_address else 'NULL'
     meeting_lat_sql = f"{meeting_lat}" if meeting_lat is not None else 'NULL'

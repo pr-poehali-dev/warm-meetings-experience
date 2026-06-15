@@ -60,6 +60,13 @@ export default function QuickActionsPopover({ event, anchor, timezone, onClose, 
   const isMobile = useIsMobile();
   const tz = timezone || "Europe/Moscow";
   const booking = event.kind === "booking" ? (event.raw as MasterBooking | undefined) : undefined;
+  const slot = event.kind !== "booking" ? (event.raw as MasterSlot | undefined) : undefined;
+  // Адрес: у брони — место встречи, у слота/перерыва — привязанный адрес окна.
+  const addressText =
+    (booking?.meeting_address || "").trim() ||
+    (slot?.slot_address || "").trim();
+  const addressLat = booking?.meeting_latitude ?? slot?.slot_latitude ?? null;
+  const addressLng = booking?.meeting_longitude ?? slot?.slot_longitude ?? null;
   const phone = (booking?.client_phone || "").replace(/\D/g, "");
   const status = booking?.status;
   const isActive = status === "pending" || status === "confirmed";
@@ -113,6 +120,23 @@ export default function QuickActionsPopover({ event, anchor, timezone, onClose, 
         )}
         {booking?.comment && (
           <div className="text-xs italic text-muted-foreground mt-1">«{booking.comment}»</div>
+        )}
+        {addressText && (
+          <div className="text-xs text-muted-foreground mt-1.5 flex items-start gap-1">
+            <Icon name="MapPin" size={12} className="mt-0.5 shrink-0 text-rose-500" />
+            {addressLat != null && addressLng != null ? (
+              <a
+                href={`https://yandex.ru/maps/?rtext=~${addressLat},${addressLng}&rtt=auto`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                {addressText}
+              </a>
+            ) : (
+              <span>{addressText}</span>
+            )}
+          </div>
         )}
       </div>
 

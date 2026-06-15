@@ -177,6 +177,23 @@ function BookingModal({ option, service, masterName, onClose, onSuccess }: Booki
               {fmt(service.price)} ₽
             </div>
           )}
+          {!isAtHome && option.slot.slot_address && (
+            <div className="flex items-start gap-1.5 mt-2 pt-2 border-t border-border/60">
+              <Icon name="MapPin" size={14} className="text-rose-500 mt-0.5 shrink-0" />
+              {option.slot.slot_latitude != null && option.slot.slot_longitude != null ? (
+                <a
+                  href={`https://yandex.ru/maps/?pt=${option.slot.slot_longitude},${option.slot.slot_latitude}&z=17&l=map`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline"
+                >
+                  {option.slot.slot_address}
+                </a>
+              ) : (
+                <span className="text-sm text-foreground">{option.slot.slot_address}</span>
+              )}
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">

@@ -26,6 +26,7 @@ const TIMEZONES = [
 import {
   masterCalendarApi,
   TemplateRule,
+  MasterAddress,
 } from "@/lib/master-calendar-api";
 import MasterTemplates from "@/components/admin/MasterTemplates";
 
@@ -72,6 +73,10 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // Адрес для создаваемых окон
+  const [addresses, setAddresses] = useState<MasterAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+
   // Настройки
   const [timezone, setTimezone] = useState("Europe/Moscow");
   const [autoConfirm, setAutoConfirm] = useState(false);
@@ -103,6 +108,17 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
     }
   }, [masterId]);
 
+  const loadAddresses = useCallback(async () => {
+    try {
+      const data = await masterCalendarApi.getAddresses(masterId);
+      setAddresses(data);
+      const primary = data.find((a) => a.is_primary);
+      if (primary?.id) setSelectedAddressId(String(primary.id));
+    } catch {
+      // адресов может не быть — это ок
+    }
+  }, [masterId]);
+
   const handleSaveSettings = async (tz: string, ac: boolean) => {
     setSavingSettings(true);
     try {
@@ -118,7 +134,8 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
   useEffect(() => {
     loadExisting();
     loadSettings();
-  }, [loadExisting, loadSettings]);
+    loadAddresses();
+  }, [loadExisting, loadSettings, loadAddresses]);
 
   const handleSaveBuffer = async (value: number) => {
     setSavingBuffer(true);
@@ -207,6 +224,7 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
                 datetime_start: toIsoLocal(startDate),
                 datetime_end: toIsoLocal(endDate),
                 max_clients: 1,
+                address_id: selectedAddressId ? Number(selectedAddressId) : null,
               })
               .then(() => {
                 created++;
@@ -343,6 +361,26 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
               <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
             </div>
           </div>
+
+          {/* Адрес окон */}
+          {addresses.length > 0 && (
+            <div>
+              <Label className="text-xs mb-1 block">Адрес приёма</Label>
+              <select
+                value={selectedAddressId}
+                onChange={(e) => setSelectedAddressId(e.target.value)}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">Без адреса</option>
+                {addresses.map((a) => (
+                  <option key={a.id} value={String(a.id)}>
+                    {a.address_text}{a.is_primary ? " (основной)" : ""}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-muted-foreground mt-1">Гость увидит, куда приходить. Адрес можно поменять для каждого окна позже.</p>
+            </div>
+          )}
 
           {/* Буфер между сеансами */}
           <div>

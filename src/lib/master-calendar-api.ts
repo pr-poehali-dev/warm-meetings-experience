@@ -51,6 +51,9 @@ export interface MasterSlot {
   duration_minutes?: number;
   service_price?: number;
   address_id?: number | null;
+  slot_address?: string | null;
+  slot_latitude?: number | null;
+  slot_longitude?: number | null;
   created_at?: string;
   updated_at?: string;
 }
