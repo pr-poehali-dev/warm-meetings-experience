@@ -32,10 +32,25 @@ def get_bot_token():
     return BOT_TOKEN
 
 
-def tg_api(method, data=None):
+def tg_api(method, data=None, retries=3, timeout=15):
     url = f"https://api.telegram.org/bot{get_bot_token()}/{method}"
-    r = requests.post(url, json=data or {}, timeout=10)
-    return r.json()
+    last_err = None
+    for attempt in range(retries):
+        try:
+            r = requests.post(url, json=data or {}, timeout=timeout)
+            return r.json()
+        except requests.exceptions.Timeout as e:
+            last_err = e
+            print(f"[tg_api] timeout attempt {attempt + 1}/{retries} for {method}")
+            if attempt < retries - 1:
+                import time
+                time.sleep(2 ** attempt)
+        except Exception as e:
+            last_err = e
+            print(f"[tg_api] error attempt {attempt + 1}/{retries} for {method}: {e}")
+            break
+    print(f"[tg_api] all attempts failed for {method}: {last_err}")
+    return {"ok": False, "description": f"ConnectTimeout after {retries} retries: {last_err}"}
 
 
 def send_message(chat_id, text, parse_mode='Markdown', reply_markup=None):
@@ -973,11 +988,14 @@ def handle_publish_event(body):
     errors = []
 
     for ch in channels:
+        # Пропускаем только успешно отправленные; ошибочные — повторяем
         cur.execute(f"""
-            SELECT id FROM {schema}.tg_publications
+            SELECT id, status FROM {schema}.tg_publications
             WHERE event_id = {event_id} AND channel_id = {ch['id']}
         """)
-        if cur.fetchone():
+        prev = cur.fetchone()
+        if prev and prev['status'] == 'sent':
+            published += 1
             continue
 
         template = ch['template'] or DEFAULT_TEMPLATE
@@ -989,17 +1007,20 @@ def handle_publish_event(body):
         photo_url = ev.get('image_url')
         result = None
 
-        if photo_url and ch['include_photo']:
-            result = tg_api('sendPhoto', {
-                'chat_id': ch['chat_id'],
-                'photo': photo_url,
-                'caption': text,
-                'parse_mode': 'Markdown'
-            })
-            if not result.get('ok'):
+        try:
+            if photo_url and ch['include_photo']:
+                result = tg_api('sendPhoto', {
+                    'chat_id': ch['chat_id'],
+                    'photo': photo_url,
+                    'caption': text,
+                    'parse_mode': 'Markdown'
+                })
+                if not result.get('ok'):
+                    result = send_message(ch['chat_id'], text)
+            else:
                 result = send_message(ch['chat_id'], text)
-        else:
-            result = send_message(ch['chat_id'], text)
+        except Exception as e:
+            result = {'ok': False, 'description': str(e)}
 
         status = 'sent' if result.get('ok') else 'error'
         msg_id = result.get('result', {}).get('message_id')
@@ -1008,10 +1029,31 @@ def handle_publish_event(body):
         if err_text:
             err_text = err_text.replace("'", "''")
 
+        print(f"[publish_event] event={event_id} channel={ch['chat_title']} status={status} msg_id={msg_id} err={err_text}")
+
+        # Сохраняем результат всегда — при ошибке пишем статус 'error',
+        # чтобы повторная попытка не пропускала канал как «уже отправленный»
         cur.execute(f"""
-            INSERT INTO {schema}.tg_publications (event_id, channel_id, message_id, status, error_text)
-            VALUES ({event_id}, {ch['id']}, {msg_id or 'NULL'}, '{status}', {f"'{err_text}'" if err_text else 'NULL'})
+            SELECT id, status FROM {schema}.tg_publications
+            WHERE event_id = {event_id} AND channel_id = {ch['id']}
         """)
+        existing = cur.fetchone()
+
+        if existing and existing['status'] == 'sent':
+            pass  # уже успешно отправлено ранее — не трогаем
+        elif existing:
+            cur.execute(f"""
+                UPDATE {schema}.tg_publications
+                SET status='{status}', message_id={msg_id or 'NULL'},
+                    error_text={f"'{err_text}'" if err_text else 'NULL'},
+                    created_at=NOW()
+                WHERE event_id = {event_id} AND channel_id = {ch['id']}
+            """)
+        else:
+            cur.execute(f"""
+                INSERT INTO {schema}.tg_publications (event_id, channel_id, message_id, status, error_text)
+                VALUES ({event_id}, {ch['id']}, {msg_id or 'NULL'}, '{status}', {f"'{err_text}'" if err_text else 'NULL'})
+            """)
 
         if status == 'sent':
             published += 1
