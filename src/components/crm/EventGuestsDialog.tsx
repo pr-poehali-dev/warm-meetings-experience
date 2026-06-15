@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -61,6 +62,7 @@ function fmtMoney(n: number | null | undefined) {
 }
 
 export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }: Props) {
+  const [confirm, ConfirmDialog] = useConfirm();
   const [guests, setGuests] = useState<CrmEventGuest[]>([]);
   const [stats, setStats] = useState({ total: 0, confirmed: 0, cancelled: 0, attended: 0, total_paid: 0 });
   const [loading, setLoading] = useState(true);
@@ -240,7 +242,7 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
   };
 
   const handleDelete = async (g: CrmEventGuest) => {
-    if (!confirm(`Удалить гостя «${g.name}» из события?`)) return;
+    if (!(await confirm({ description: "Удалить гостя? Это действие необратимо.", confirmLabel: "Удалить", variant: "destructive" }))) return;
     try {
       await crmApi.deleteEventGuest(g.signup_id);
       setGuests((prev) => prev.filter((x) => x.signup_id !== g.signup_id));
@@ -734,6 +736,7 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
         guestEmail={chatGuest?.email}
         onClose={() => setChatGuest(null)}
       />
+      {ConfirmDialog}
     </>
   );
 }

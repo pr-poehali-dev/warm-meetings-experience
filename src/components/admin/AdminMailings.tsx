@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,7 @@ const CHANNELS = [
 ];
 
 export default function AdminMailings() {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [mode, setMode] = useState<"broadcast" | "personal">("broadcast");
   const [audiences, setAudiences] = useState<Audience[]>([]);
   const [audience, setAudience] = useState<string>("");
@@ -153,7 +155,7 @@ export default function AdminMailings() {
       mode === "broadcast"
         ? `Отправить сообщение группе «${selectedAudience?.label}»?`
         : `Отправить сообщение ${selectedUsers.length} получателям?`;
-    if (!window.confirm(confirmText)) return;
+    if (!(await showConfirm({ title: "Отправить рассылку?", description: confirmText, confirmLabel: "Отправить" }))) return;
 
     setSending(true);
     setResult(null);
@@ -189,6 +191,7 @@ export default function AdminMailings() {
 
   return (
     <div className="space-y-4 max-w-3xl">
+      {ConfirmDialog}
       <div className="flex items-center gap-3">
         <Icon name="Megaphone" size={28} className="text-amber-600" />
         <div>

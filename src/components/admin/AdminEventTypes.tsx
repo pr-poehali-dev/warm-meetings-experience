@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { useEventTypes, createEventType, updateEventType, deleteEventType, Event
 const ICON_OPTIONS = ["Users", "Heart", "GraduationCap", "Coffee", "PartyPopper", "Dumbbell", "Sparkles", "Star", "Flame", "Zap", "Music", "Leaf", "Sun", "Moon", "Wind", "Droplets", "Shield", "Award", "Gift", "Camera", "Circle", "Briefcase", "Globe", "Laugh", "Handshake"];
 
 export default function AdminEventTypes() {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const { types, loading, reload } = useEventTypes();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -61,7 +63,7 @@ export default function AdminEventTypes() {
   };
 
   const handleDelete = async (t: EventType) => {
-    if (!confirm(`Удалить тип «${t.label}»?`)) return;
+    if (!(await showConfirm({ description: `Удалить тип «${t.label}»?`, confirmLabel: "Удалить", variant: "destructive" }))) return;
     try {
       await deleteEventType(t.id, '');
       toast({ title: 'Тип удалён' });
@@ -73,6 +75,7 @@ export default function AdminEventTypes() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Типы мероприятий</h2>

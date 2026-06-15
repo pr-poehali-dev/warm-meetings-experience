@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback, useImperativeHandle, forwardRef } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -112,6 +113,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     const api = calRef.current?.getApi();
     return (api ? api.formatIso(d) : d.toISOString()).slice(0, 10);
   }, []);
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [loading, setLoading] = useState(false);
   const [bookings, setBookings] = useState<MasterBooking[]>([]);
   const [slots, setSlots] = useState<MasterSlot[]>([]);
@@ -824,9 +826,12 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           reason: p.reason || "Выходной",
         });
         if (res.conflict) {
-          const ok = window.confirm(
-            `На этот день есть ${res.conflicts.length} активных записей. Заблокировать и отменить их?`
-          );
+          const ok = await showConfirm({
+            title: "Заблокировать день?",
+            description: `На этот день есть ${res.conflicts.length} активных записей. Они будут отменены.`,
+            confirmLabel: "Заблокировать",
+            variant: "destructive",
+          });
           if (!ok) { setDaySaving(false); return; }
           const forced = await masterCalendarApi.createBlock({
             master_id: masterId,
@@ -1339,6 +1344,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           }
         }}
       />
+      {ConfirmDialog}
     </div>
   );
 });

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { VideoItem } from "./VideoPlayer";
@@ -38,6 +39,7 @@ function statusBadge(status: string) {
 }
 
 export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: ExternalVideoBlockProps) {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [url, setUrl] = useState("");
@@ -87,7 +89,7 @@ export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: Ex
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Удалить это видео? Действие необратимо.")) return;
+    if (!(await showConfirm({ description: "Удалить видео? Действие необратимо.", confirmLabel: "Удалить", variant: "destructive" }))) return;
     try {
       const res = await fetch(`${VIDEOS_API}/?videos=1&me=1&video_id=${id}`, {
         method: "DELETE",
@@ -134,6 +136,7 @@ export default function ExternalVideoBlock({ ownerType, ownerId, userToken }: Ex
 
   return (
     <div>
+      {ConfirmDialog}
       <div className="flex items-center justify-between mb-3">
         <div>
           <h3 className="text-sm font-semibold">Видео</h3>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ function fmtDate(iso: string) {
 }
 
 export default function AdminMergeAccounts() {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [requests, setRequests] = useState<MergeRequest[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -97,7 +99,7 @@ export default function AdminMergeAccounts() {
   const handleManualMerge = async () => {
     if (!sourceUser || !targetUser) { toast.error("Выберите оба аккаунта"); return; }
     if (sourceUser.id === targetUser.id) { toast.error("Нельзя объединить аккаунт сам с собой"); return; }
-    if (!confirm(`Объединить #${sourceUser.id} → #${targetUser.id}? Это действие необратимо.`)) return;
+    if (!(await showConfirm({ title: "Объединить аккаунты?", description: `Объединить #${sourceUser.id} → #${targetUser.id}? Это действие необратимо.`, confirmLabel: "Объединить", variant: "destructive" }))) return;
     setMerging(true);
     setManualResult(null);
     try {
@@ -134,6 +136,7 @@ export default function AdminMergeAccounts() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div>
         <h2 className="text-xl font-bold">Объединение аккаунтов</h2>
         <p className="text-sm text-muted-foreground mt-1">

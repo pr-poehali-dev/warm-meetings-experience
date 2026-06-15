@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ interface ServiceArea {
 }
 
 const AdminServiceAreas = () => {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -106,7 +108,7 @@ const AdminServiceAreas = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Удалить эту зону обслуживания?")) return;
+    if (!(await showConfirm({ description: "Удалить эту зону обслуживания?", confirmLabel: "Удалить", variant: "destructive" }))) return;
 
     setLoading(true);
     try {
@@ -166,6 +168,7 @@ const AdminServiceAreas = () => {
 
   return (
     <div>
+      {ConfirmDialog}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Зоны обслуживания</h1>

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
 import { useMediaUpload } from "@/hooks/use-media-upload";
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function EventMediaUpload({ eventId }: Props) {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [photos, setPhotos] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,7 +49,7 @@ export default function EventMediaUpload({ eventId }: Props) {
   const handleFile = (file: File) => { uploadFile(file); };
 
   const handleDelete = async (item: MediaItem) => {
-    if (!confirm("Удалить фото? Действие необратимо.")) return;
+    if (!(await showConfirm({ description: "Удалить фото? Действие необратимо.", confirmLabel: "Удалить", variant: "destructive" }))) return;
     try {
       const res = await fetch(`${MEDIA_API}/?event_media=1&media_id=${item.id}`, {
         method: "DELETE",
@@ -66,6 +68,7 @@ export default function EventMediaUpload({ eventId }: Props) {
 
   return (
     <div className="space-y-5">
+      {ConfirmDialog}
       {/* Фото */}
       <div>
         <div className="flex items-center gap-2 mb-2">

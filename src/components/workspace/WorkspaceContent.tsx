@@ -1,4 +1,5 @@
 import Icon from "@/components/ui/icon";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { organizerApi, OrgEvent, DashboardData } from "@/lib/organizer-api";
@@ -113,6 +114,8 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     refreshTgInfo,
   } = props;
 
+  const [confirm, ConfirmDialog] = useConfirm();
+
   // Диалог гостей события (CRM)
   const [guestsDialog, setGuestsDialog] = useState<{ id: number; title: string } | null>(null);
 
@@ -126,14 +129,19 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     return <div className={`border-l-2 ${tint} rounded-r-xl pl-3 sm:pl-4 py-1`}>{node}</div>;
   };
 
-  const guestsDialogNode = guestsDialog ? (
-    <EventGuestsDialog
-      open={!!guestsDialog}
-      eventId={guestsDialog.id}
-      eventTitle={guestsDialog.title}
-      onClose={() => { setGuestsDialog(null); loadOrgEvents(); loadOrgDashboard(); }}
-    />
-  ) : null;
+  const guestsDialogNode = (
+    <>
+      {guestsDialog && (
+        <EventGuestsDialog
+          open={!!guestsDialog}
+          eventId={guestsDialog.id}
+          eventTitle={guestsDialog.title}
+          onClose={() => { setGuestsDialog(null); loadOrgEvents(); loadOrgDashboard(); }}
+        />
+      )}
+      {ConfirmDialog}
+    </>
+  );
 
   // ─── Универсальный раздел «Моя визитка» для всех коммерческих ролей ────────
   if (roleTab === "landing") {
@@ -333,7 +341,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
               } catch { toast({ title: "Ошибка", variant: "destructive" }); }
             }}
             onDeleteEvent={async (ev) => {
-              if (!confirm(`Скрыть событие «${ev.title}»?`)) return;
+              if (!(await confirm({ description: "Удалить событие? Это действие необратимо.", confirmLabel: "Удалить", variant: "destructive" }))) return;
               try { await organizerApi.deleteEvent(ev.id); await Promise.all([loadOrgEvents(), loadOrgDashboard()]); } catch { toast({ title: "Ошибка", variant: "destructive" }); }
             }}
           />

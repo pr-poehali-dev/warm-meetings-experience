@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ interface CalendarBlock {
 }
 
 const AdminAvailability = () => {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -120,7 +122,7 @@ const AdminAvailability = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Удалить эту блокировку?")) return;
+    if (!(await showConfirm({ description: "Удалить эту блокировку?", confirmLabel: "Удалить", variant: "destructive" }))) return;
 
     setLoading(true);
     try {
@@ -173,6 +175,7 @@ const AdminAvailability = () => {
 
   return (
     <div className="p-8">
+      {ConfirmDialog}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Управление занятостью</h1>

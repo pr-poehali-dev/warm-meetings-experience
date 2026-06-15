@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,7 @@ async function adminPost(body: object) {
 function AdminMergeFromUserDialog({
   open, sourceId, sourceName, onDone, onClose,
 }: { open: boolean; sourceId: number; sourceName: string; onDone: () => void; onClose: () => void }) {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [q, setQ] = useState("");
   const [candidates, setCandidates] = useState<{ id: number; name: string; email: string }[]>([]);
   const [searching, setSearching] = useState(false);
@@ -88,7 +90,7 @@ function AdminMergeFromUserDialog({
 
   const doMerge = async () => {
     if (!target) return;
-    if (!confirm(`Объединить #${sourceId} (${sourceName}) → #${target.id} (${target.name})? Необратимо.`)) return;
+    if (!(await showConfirm({ title: "Объединить аккаунты?", description: `Объединить #${sourceId} (${sourceName}) → #${target.id} (${target.name})? Необратимо.`, confirmLabel: "Объединить", variant: "destructive" }))) return;
     setMerging(true);
     try {
       const res = await fetch(`${MERGE_API}/?action=admin_merge`, {
@@ -196,6 +198,7 @@ function AdminMergeFromUserDialog({
           )}
         </div>
       </DialogContent>
+      {ConfirmDialog}
     </Dialog>
   );
 }

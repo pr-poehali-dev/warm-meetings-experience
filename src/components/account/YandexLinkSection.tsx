@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { YandexLoginButton } from "@/components/extensions/yandex-auth/YandexLoginButton";
 import { useYandexAuth } from "@/components/extensions/yandex-auth/useYandexAuth";
@@ -16,6 +17,7 @@ interface YandexLinkSectionProps {
 }
 
 export default function YandexLinkSection({ yandexId, hasPassword, onLinked, onUnlinked }: YandexLinkSectionProps) {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [unlinking, setUnlinking] = useState(false);
 
   const yandexAuth = useYandexAuth({
@@ -68,9 +70,7 @@ export default function YandexLinkSection({ yandexId, hasPassword, onLinked, onU
 
   const handleUnlink = async () => {
     if (!hasPassword) {
-      const confirmed = window.confirm(
-        "У вас не установлен пароль. После отвязки Яндекса единственным способом входа останется восстановление пароля через email. Продолжить?"
-      );
+      const confirmed = await showConfirm({ title: "Отвязать Яндекс?", description: "У вас не установлен пароль. После отвязки единственным способом входа останется восстановление пароля через email.", confirmLabel: "Отвязать", variant: "destructive" });
       if (!confirmed) return;
     }
     setUnlinking(true);
@@ -90,6 +90,7 @@ export default function YandexLinkSection({ yandexId, hasPassword, onLinked, onU
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
+      {ConfirmDialog}
       <div className="flex items-center gap-2 min-w-0">
         <svg className="w-4 h-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path fill="currentColor" d="M12.04.04C5.43.04.08,5.39.08,12s5.35,11.96,11.96,11.96,11.96-5.35,11.96-11.96S18.64.04,12.04.04ZM16.04,19.09h-2.47V6.82h-1.11c-2.03,0-3.09,1.03-3.09,2.54,0,1.71.74,2.51,2.25,3.54l1.25.84-3.59,5.37h-2.68l3.22-4.8c-1.85-1.33-2.89-2.62-2.89-4.8,0-2.74,1.91-4.6,5.53-4.6h3.59v14.19Z" />

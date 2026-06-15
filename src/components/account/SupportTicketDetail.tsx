@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,6 +43,7 @@ export default function SupportTicketDetail({
   ticketId: number;
   onBack: () => void;
 }) {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,7 +98,7 @@ export default function SupportTicketDetail({
   };
 
   const closeTicket = async () => {
-    if (!confirm("Закрыть это обращение? Открыть его заново нельзя.")) return;
+    if (!(await showConfirm({ title: "Закрыть обращение?", description: "После закрытия открыть его заново нельзя.", confirmLabel: "Закрыть" }))) return;
     setClosing(true);
     try {
       await supportApi.closeTicket(ticketId);
@@ -125,6 +127,7 @@ export default function SupportTicketDetail({
 
   return (
     <div className="space-y-3">
+      {ConfirmDialog}
       <div className="flex items-start justify-between gap-2">
         <button
           onClick={onBack}

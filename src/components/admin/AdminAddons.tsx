@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ interface Addon {
 }
 
 const AdminAddons = () => {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [addons, setAddons] = useState<Addon[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -110,7 +112,7 @@ const AdminAddons = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Удалить это дополнение?")) return;
+    if (!(await showConfirm({ description: "Удалить это дополнение?", confirmLabel: "Удалить", variant: "destructive" }))) return;
 
     setLoading(true);
     try {
@@ -170,6 +172,7 @@ const AdminAddons = () => {
 
   return (
     <div>
+      {ConfirmDialog}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Дополнительные услуги</h1>

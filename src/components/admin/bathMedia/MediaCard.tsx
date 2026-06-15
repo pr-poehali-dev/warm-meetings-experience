@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
 import { MediaItem, MEDIA_CONFIG } from "./bathMediaTypes";
@@ -13,13 +14,14 @@ interface MediaCardProps {
 }
 
 export default function MediaCard({ item, slug, onDeleted }: MediaCardProps) {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
   const isVideo = item.type !== "photo";
   const cfg = MEDIA_CONFIG[item.type];
 
   const handleDelete = async () => {
-    if (!confirm("Удалить файл? Действие необратимо.")) return;
+    if (!(await showConfirm({ description: "Удалить файл? Действие необратимо.", confirmLabel: "Удалить", variant: "destructive" }))) return;
     setDeleting(true);
     try {
       const res = await fetch(
@@ -41,6 +43,7 @@ export default function MediaCard({ item, slug, onDeleted }: MediaCardProps) {
 
   return (
     <div className="relative group rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+      {ConfirmDialog}
       {isVideo ? (
         <video
           src={item.url}

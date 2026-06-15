@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { toast } from "sonner";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export default function NotifyModule({ role = "organizer", eventId = null }: Props) {
+  const [confirm, ConfirmDialog] = useConfirm();
   const sendMode: "organizer" | "master" | "partner" =
     role === "master" ? "master" : role === "partner" ? "partner" : "organizer";
   const [tab, setTab] = useState<Tab>("scenarios");
@@ -74,7 +76,7 @@ export default function NotifyModule({ role = "organizer", eventId = null }: Pro
   };
 
   const handleDeleteScenario = async (id: number) => {
-    if (!confirm("Деактивировать сценарий?")) return;
+    if (!(await confirm({ description: "Деактивировать сценарий?", confirmLabel: "Деактивировать", variant: "destructive" }))) return;
     await notifyApi.deleteScenario(id);
     toast.success("Сценарий деактивирован");
     loadScenarios();
@@ -118,6 +120,7 @@ export default function NotifyModule({ role = "organizer", eventId = null }: Pro
 
   return (
     <div className="space-y-4">
+      {ConfirmDialog}
       {/* Шапка */}
       <div className="flex items-center justify-between">
         <div>

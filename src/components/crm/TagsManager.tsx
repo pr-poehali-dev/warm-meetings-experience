@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +13,7 @@ const COLORS = [
 ];
 
 export default function TagsManager() {
+  const [confirm, ConfirmDialog] = useConfirm();
   const [tags, setTags] = useState<CrmTag[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
@@ -44,13 +46,14 @@ export default function TagsManager() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Удалить тег? Он исчезнет у всех клиентов.")) return;
+    if (!(await confirm({ description: "Удалить тег? Он исчезнет у всех клиентов.", confirmLabel: "Удалить", variant: "destructive" }))) return;
     await crmApi.deleteTag(id);
     await load();
   };
 
   return (
     <div className="space-y-4">
+      {ConfirmDialog}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4 space-y-3">
           <div className="text-sm font-medium">Создать новый тег</div>

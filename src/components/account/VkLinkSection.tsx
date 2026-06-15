@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/button";
 import { VkLoginButton } from "@/components/extensions/vk-auth/VkLoginButton";
 import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
@@ -16,6 +17,7 @@ interface VkLinkSectionProps {
 }
 
 export default function VkLinkSection({ vkId, hasPassword, onLinked, onUnlinked }: VkLinkSectionProps) {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [unlinking, setUnlinking] = useState(false);
 
   const vkAuth = useVkAuth({
@@ -70,9 +72,7 @@ export default function VkLinkSection({ vkId, hasPassword, onLinked, onUnlinked 
 
   const handleUnlink = async () => {
     if (!hasPassword) {
-      const confirmed = window.confirm(
-        "У вас не установлен пароль. После отвязки VK единственным способом входа останется восстановление пароля через email. Продолжить?"
-      );
+      const confirmed = await showConfirm({ title: "Отвязать VK?", description: "У вас не установлен пароль. После отвязки единственным способом входа останется восстановление пароля через email.", confirmLabel: "Отвязать", variant: "destructive" });
       if (!confirmed) return;
     }
     setUnlinking(true);
@@ -92,6 +92,7 @@ export default function VkLinkSection({ vkId, hasPassword, onLinked, onUnlinked 
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
+      {ConfirmDialog}
       <div className="flex items-center gap-2 min-w-0">
         <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 shrink-0 text-muted-foreground">
           <path d="M12.785 16.241s.288-.032.436-.194c.136-.148.132-.427.132-.427s-.02-1.304.587-1.496c.596-.19 1.365 1.26 2.179 1.818.615.42 1.083.328 1.083.328l2.175-.03s1.138-.07.598-.964c-.044-.073-.314-.661-1.618-1.869-1.366-1.266-1.183-1.061.462-3.252.999-1.333 1.398-2.146 1.273-2.494-.12-.332-.854-.244-.854-.244l-2.449.015s-.182-.025-.316.056c-.131.079-.216.264-.216.264s-.386 1.028-.901 1.902c-1.088 1.848-1.523 1.946-1.7 1.832-.413-.267-.31-1.075-.31-1.649 0-1.794.272-2.541-.529-2.735-.266-.064-.462-.107-1.142-.114-.873-.009-1.612.003-2.03.208-.279.137-.494.442-.363.459.162.021.529.099.723.364.251.342.242 1.11.242 1.11s.144 2.111-.336 2.372c-.33.18-.783-.187-1.755-1.866-.498-.859-.874-1.81-.874-1.81s-.072-.177-.201-.272c-.156-.115-.375-.151-.375-.151l-2.327.015s-.349.01-.477.161c-.114.135-.009.413-.009.413s1.816 4.25 3.87 6.392c1.883 1.965 4.022 1.836 4.022 1.836h.97z" />

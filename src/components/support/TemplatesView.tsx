@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/hooks/useConfirm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { toast } from "sonner";
 import { CATEGORY_LABELS } from "./SupportConstants";
 
 export default function TemplatesView() {
+  const [showConfirm, ConfirmDialog] = useConfirm();
   const [templates, setTemplates] = useState<SupportTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<SupportTemplate> | null>(null);
@@ -47,7 +49,7 @@ export default function TemplatesView() {
   };
 
   const archive = async (id: number) => {
-    if (!confirm("Скрыть этот шаблон? Он перестанет показываться при ответах.")) return;
+    if (!(await showConfirm({ description: "Скрыть шаблон? Он перестанет показываться при ответах.", confirmLabel: "Скрыть" }))) return;
     try {
       await supportAdminApi.archiveTemplate(id);
       toast.success("Шаблон скрыт");
@@ -60,6 +62,7 @@ export default function TemplatesView() {
   if (editing) {
     return (
       <Card className="border-0 shadow-sm">
+        {ConfirmDialog}
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">
@@ -129,6 +132,7 @@ export default function TemplatesView() {
 
   return (
     <div className="space-y-3">
+      {ConfirmDialog}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           Готовые ответы для быстрой работы операторов.
