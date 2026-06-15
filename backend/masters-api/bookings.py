@@ -262,9 +262,9 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
         # Приоритет: запись в tg_linked_accounts (бот точно привязан),
         # запасной вариант — users.tg_chat_id.
         tg_chat_id = m.get('linked_tg') or m.get('user_tg')
-        # Уважаем только явный отказ (false). По умолчанию (None) — отправляем,
-        # потому что наличие привязки в tg_linked_accounts = пользователь сам подключил бота.
-        tg_disabled = m.get('notify_telegram') is False and not m.get('linked_tg')
+        # Отправляем только если notify_telegram явно не False.
+        # None (не задано) → разрешаем, если есть chat_id.
+        tg_disabled = m.get('notify_telegram') is False
         if tg_chat_id and not tg_disabled:
             lines = [
                 '🎫 <b>Новая запись на сеанс</b>',
@@ -313,9 +313,6 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                     user_id=m.get('user_id'),
                     related_id=booking.get('id'),
                     payload={'master_id': master_id, 'client_name': client_name})
-                _alert_admin_critical('telegram', 'send_failed',
-                                      'shared.tg_send returned False',
-                                      recipient=str(tg_chat_id or ''))
 
         # === VK ===
         if vk_id and notify_vk_effective:
