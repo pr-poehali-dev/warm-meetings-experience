@@ -164,77 +164,37 @@ export default function LiveEventEditor({
       {/* Sticky bottom action bar */}
       <div className="fixed bottom-0 left-0 right-0 z-20 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            disabled={loading}
-          >
+          <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
             Отмена
           </Button>
-          {isEditing ? (
-            <>
-              <Button type="submit" disabled={loading}>
-                {loading ? (
-                  <>
-                    <Icon name="Loader2" size={16} className="animate-spin mr-2" />
-                    Сохранение...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="Save" size={16} className="mr-2" />
-                    {isPublished ? "Сохранить изменения" : "Сохранить черновик"}
-                  </>
-                )}
-              </Button>
-              {!isPending && !isPublished && !isPrivate && (
-                <Button type="button" onClick={handleSubmitForReview} disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Icon name="Loader2" size={16} className="animate-spin mr-2" />
-                      Отправка...
-                    </>
-                  ) : (
-                    <>
-                      <Icon name="Send" size={16} className="mr-2" />
-                      Отправить на модерацию
-                    </>
-                  )}
-                </Button>
-              )}
-            </>
+
+          {loading ? (
+            <Button disabled>
+              <Icon name="Loader2" size={16} className="animate-spin mr-2" />
+              Сохранение...
+            </Button>
+          ) : isPublished || isPrivate ? (
+            /* Опубликовано / Приватное — одна кнопка, событие остаётся видимым */
+            <Button type="submit">
+              <Icon name="Save" size={16} className="mr-2" />
+              Сохранить изменения
+            </Button>
+          ) : isPending ? (
+            /* На модерации — одна кнопка, сохранить правки пока ждёт */
+            <Button type="submit">
+              <Icon name="Save" size={16} className="mr-2" />
+              Сохранить
+            </Button>
           ) : (
+            /* Черновик / Отклонено / Новое — черновик + модерация */
             <>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleSaveAsDraft}
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <Icon name="Loader2" size={16} className="animate-spin mr-2" />
-                    Сохранение...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="FileEdit" size={16} className="mr-2" />
-                    Черновик
-                  </>
-                )}
+              <Button type="button" variant="outline" onClick={handleSaveAsDraft}>
+                <Icon name="FileEdit" size={16} className="mr-2" />
+                {isEditing ? "Сохранить черновик" : "Черновик"}
               </Button>
-              <Button type="button" onClick={handleSubmitForReview} disabled={loading}>
-                {loading ? (
-                  <>
-                    <Icon name="Loader2" size={16} className="animate-spin mr-2" />
-                    Отправка...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="Send" size={16} className="mr-2" />
-                    Отправить на модерацию
-                  </>
-                )}
+              <Button type="button" onClick={handleSubmitForReview}>
+                <Icon name="Send" size={16} className="mr-2" />
+                Отправить на модерацию
               </Button>
             </>
           )}
