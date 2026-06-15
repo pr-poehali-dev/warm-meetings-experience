@@ -624,7 +624,18 @@ export default function EventGuestsDialog({ open, eventId, eventTitle, onClose }
                                     {g.guests.map((guest, gi) => (
                                       <div key={gi} className="flex items-center gap-1.5 pl-2">
                                         <Icon name="User" size={10} className="shrink-0" />
-                                        <span>{guest.name || "—"}</span>
+                                        {guest.client_key ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => setOpenCard(guest.client_key!)}
+                                            className="hover:text-foreground hover:underline text-left"
+                                            title="Открыть карточку участника"
+                                          >
+                                            {guest.name || "—"}
+                                          </button>
+                                        ) : (
+                                          <span>{guest.name || "—"}</span>
+                                        )}
                                         {guest.phone && (
                                           <a href={`tel:${guest.phone}`} className="hover:text-foreground">{guest.phone}</a>
                                         )}

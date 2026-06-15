@@ -158,6 +158,46 @@ def canonical_key(client_id):
     return f"cid:{int(client_id)}"
 
 
+def resolve_companion(cur, schema, owner_id, signup_id, index, *, name=None, phone=None):
+    """Находит/создаёт canonical-клиента для спутника (доп. гостя из event_signups.guests).
+
+    Если у спутника есть телефон — используем обычный резолвер (склейка по телефону).
+    Если телефона нет — привязываем к стабильной идентичности companion:<signup_id>:<index>,
+    чтобы повторное чтение не плодило дубликаты.
+    Возвращает client_id или None.
+    """
+    ph = norm_phone(phone)
+    if ph:
+        return resolve_client_id(cur, schema, owner_id, phone=phone, name=name)
+
+    if not (name and name.strip()):
+        return None
+
+    comp_value = f"{int(signup_id)}:{int(index)}"
+    cur.execute(f"""
+        SELECT client_id FROM {schema}.crm_client_identities
+        WHERE owner_id = {int(owner_id)} AND identity_type = 'companion'
+          AND identity_value = '{_esc(comp_value)}'
+        LIMIT 1
+    """)
+    row = cur.fetchone()
+    if row:
+        return row['client_id']
+
+    cur.execute(f"""
+        INSERT INTO {schema}.crm_clients (owner_id, name)
+        VALUES ({int(owner_id)}, '{_esc(name.strip()[:255])}')
+        RETURNING id
+    """)
+    client_id = cur.fetchone()['id']
+    cur.execute(f"""
+        INSERT INTO {schema}.crm_client_identities (owner_id, client_id, identity_type, identity_value)
+        VALUES ({int(owner_id)}, {int(client_id)}, 'companion', '{_esc(comp_value)}')
+        ON CONFLICT (owner_id, identity_type, identity_value) DO NOTHING
+    """)
+    return client_id
+
+
 def resolve_key_to_client_id(cur, schema, owner_id, key):
     """Превращает любой client_key (cid:/user:/phone:/email:/signup:/booking:/ext:)
     в canonical client_id. Если cid: — возвращает напрямую.
@@ -184,6 +224,16 @@ def resolve_key_to_client_id(cur, schema, owner_id, key):
             return None
         return resolve_client_id(cur, schema, owner_id, name=r['name'], phone=r['phone'],
                                  email=r['email'], telegram=r['telegram'], vk=r['vk'])
+    if kind == 'companion':
+        # ключ вида companion:<signup_id>:<index>
+        cur.execute(f"""
+            SELECT client_id FROM {schema}.crm_client_identities
+            WHERE owner_id = {int(owner_id)} AND identity_type = 'companion'
+              AND identity_value = '{_esc(val)}'
+            LIMIT 1
+        """)
+        row = cur.fetchone()
+        return row['client_id'] if row else None
     if kind == 'signup':
         if not val.isdigit():
             return None

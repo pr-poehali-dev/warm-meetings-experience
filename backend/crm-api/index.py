@@ -8,7 +8,7 @@ import psycopg2.extras
 
 from crm_clients import (
     resolve_client_id, resolve_key_to_client_id, canonical_key,
-    norm_phone, norm_email,
+    resolve_companion, norm_phone, norm_email,
 )
 
 CORS_HEADERS = {
@@ -159,12 +159,13 @@ def list_clients(cur, conn, user_id, schema, params):
 
     event_id_filter = params.get('event_id')
     if event_id_filter and str(event_id_filter).isdigit():
-        return list_event_guests(cur, user_id, schema, int(event_id_filter), search_sql)
+        return list_event_guests(cur, conn, user_id, schema, int(event_id_filter), search_sql)
 
     # 1. Гости событий (event_signups) — для организатора
     cur.execute(f"""
         SELECT s.id AS signup_id, s.user_id, s.name, s.phone, s.email, s.telegram,
                s.status, s.payment_amount, s.created_at, s.preferred_channel,
+               s.guests,
                e.id AS event_id, e.title AS event_title, e.event_date,
                e.organizer_id
         FROM {schema}.event_signups s
@@ -252,6 +253,7 @@ def list_clients(cur, conn, user_id, schema, params):
             return f"email:{row['email'].lower().strip()}"
         return None
 
+    companions = []  # для резолва в canonical после агрегации
     for s in signups:
         key = contact_key(s) or f"signup:{s['signup_id']}"
         add_visit(key, s, {
@@ -259,6 +261,24 @@ def list_clients(cur, conn, user_id, schema, params):
             'amount': s.get('payment_amount') or 0,
             'source': 'event',
         })
+        # Спутники — отдельные клиенты
+        comp_list = s.get('guests') or []
+        if isinstance(comp_list, list):
+            for idx, comp in enumerate(comp_list):
+                if not isinstance(comp, dict):
+                    continue
+                cname = (comp.get('name') or '').strip()
+                cphone = (comp.get('phone') or '').strip()
+                if not (cname or cphone):
+                    continue
+                ph = norm_phone(cphone)
+                ckey = f"phone:{ph}" if ph else f"companion:{s['signup_id']}:{idx}"
+                add_visit(ckey, {'name': cname, 'phone': cphone}, {
+                    'date': s.get('created_at'),
+                    'amount': 0,
+                    'source': 'event',
+                })
+                companions.append((s['signup_id'], idx, cname, cphone, ckey))
 
     for mb in master_bookings:
         key = contact_key(mb) or f"booking:{mb['booking_id']}"
@@ -276,6 +296,12 @@ def list_clients(cur, conn, user_id, schema, params):
             'source': 'external',
         })
 
+    # Создаём canonical-клиентов для спутников (без телефона — через companion-идентичность)
+    if companions:
+        for sid, idx, cname, cphone, _ckey in companions:
+            resolve_companion(cur, schema, user_id, sid, idx, name=cname, phone=cphone)
+        conn.commit()
+
     # Маппинг legacy-ключей -> canonical cid: через идентичности владельца (1 запрос)
     cur.execute(f"""
         SELECT identity_type, identity_value, client_id
@@ -287,7 +313,7 @@ def list_clients(cur, conn, user_id, schema, params):
         ident_to_cid[f"{r['identity_type']}:{r['identity_value']}"] = r['client_id']
 
     def to_canonical(legacy_key):
-        # legacy_key уже в формате user:/phone:/email:/signup:/booking:/ext:
+        # legacy_key уже в формате user:/phone:/email:/signup:/booking:/ext:/companion:
         cid = ident_to_cid.get(legacy_key)
         return canonical_key(cid) if cid else legacy_key
 
@@ -387,7 +413,7 @@ def _compute_segments(c):
     return segs
 
 
-def list_event_guests(cur, user_id, schema, event_id, search_sql):
+def list_event_guests(cur, conn, user_id, schema, event_id, search_sql):
     """Гости конкретного события. Доступ для:
     - organizer_id события
     - admin (любые события)
@@ -490,6 +516,23 @@ def list_event_guests(cur, user_id, schema, event_id, search_sql):
             for t in tags_by_key.get(src_key, []):
                 merged[t['id']] = t
         g['tags'] = list(merged.values())
+
+        # Спутники → полноценные клиенты с собственным client_key
+        comp_list = g.get('guests') or []
+        if isinstance(comp_list, list) and comp_list:
+            enriched = []
+            for idx, comp in enumerate(comp_list):
+                if not isinstance(comp, dict):
+                    continue
+                comp_cid = resolve_companion(
+                    cur, schema, user_id, r['signup_id'], idx,
+                    name=comp.get('name'), phone=comp.get('phone'),
+                )
+                comp_out = dict(comp)
+                if comp_cid:
+                    comp_out['client_key'] = canonical_key(comp_cid)
+                enriched.append(comp_out)
+            g['guests'] = enriched
         guests.append(g)
 
     # Статистика
@@ -498,6 +541,9 @@ def list_event_guests(cur, user_id, schema, event_id, search_sql):
     cancelled = sum(1 for g in guests if g.get('status') in ('cancelled', 'отменено', 'refused'))
     total_paid = sum(int(g.get('payment_amount') or 0) for g in guests)
     attended = sum(1 for g in guests if g.get('attended') is True)
+
+    # Спутники могли создать новых canonical-клиентов — фиксируем
+    conn.commit()
 
     return respond(200, {
         'mode': 'event_guests',

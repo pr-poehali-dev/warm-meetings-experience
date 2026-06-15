@@ -94,7 +94,7 @@ export interface CrmEventGuest {
   topup_amount: number;
   joined_after_freeze: boolean;
   avatar_url: string | null;
-  guests: { name: string; phone: string }[] | null;
+  guests: { name: string; phone: string; client_key?: string }[] | null;
   tags: CrmTag[];
 }
 
