@@ -205,7 +205,13 @@ def handler(event, context):
         where = ''
         if search:
             s = search.replace("'", "''")
-            where = f"WHERE u.name ILIKE '%{s}%' OR u.email ILIKE '%{s}%' OR u.phone ILIKE '%{s}%'"
+            where = f"""WHERE (
+                u.name ILIKE '%{s}%' OR u.email ILIKE '%{s}%' OR u.phone ILIKE '%{s}%'
+                OR EXISTS (
+                    SELECT 1 FROM {schema}.crm_notes cn
+                    WHERE cn.client_key = 'user:' || u.id AND cn.body ILIKE '%{s}%'
+                )
+            )"""
 
         cur.execute(f"SELECT COUNT(*) as total FROM {schema}.users u {where}")
         total = cur.fetchone()['total']

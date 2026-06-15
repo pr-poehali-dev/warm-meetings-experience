@@ -354,7 +354,7 @@ export default function AdminUsers() {
         <CardHeader className="pb-3">
           <div className="flex gap-2">
             <Input
-              placeholder="Поиск по имени, email или телефону..."
+              placeholder="Поиск по имени, email, телефону или заметкам..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
