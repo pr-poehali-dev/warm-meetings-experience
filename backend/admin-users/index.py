@@ -108,8 +108,64 @@ def handler(event, context):
             'stats_24h': stats_n,
         })
 
-    # Подресурс: рассылки и личные сообщения
+    # Подресурс: публикации в Telegram-каналы
     resource = params.get('resource') or ''
+    if resource == 'tg_publications' and method == 'GET':
+        page = max(1, int(params.get('page', 1)))
+        per_page = min(100, max(1, int(params.get('per_page', 30))))
+        offset = (page - 1) * per_page
+        status_f = (params.get('status') or '').strip()
+        search_f = (params.get('search') or '').strip()
+
+        filters = []
+        if status_f in ('sent', 'error'):
+            filters.append(f"tp.status = '{status_f}'")
+        if search_f:
+            s = search_f.replace("'", "''")
+            filters.append(f"(e.title ILIKE '%{s}%' OR tc.chat_title ILIKE '%{s}%' OR tp.error_text ILIKE '%{s}%')")
+        where = ('WHERE ' + ' AND '.join(filters)) if filters else ''
+
+        cur.execute(f"""
+            SELECT COUNT(*) AS total
+            FROM {schema}.tg_publications tp
+            JOIN {schema}.events e ON e.id = tp.event_id
+            JOIN {schema}.tg_channels tc ON tc.id = tp.channel_id
+            {where}
+        """)
+        total_p = cur.fetchone()['total']
+
+        cur.execute(f"""
+            SELECT tp.id, tp.event_id, tp.channel_id, tp.message_id,
+                   tp.status, tp.error_text, tp.published_at,
+                   e.title AS event_title, e.slug AS event_slug,
+                   tc.chat_title, tc.chat_id
+            FROM {schema}.tg_publications tp
+            JOIN {schema}.events e ON e.id = tp.event_id
+            JOIN {schema}.tg_channels tc ON tc.id = tp.channel_id
+            {where}
+            ORDER BY tp.published_at DESC NULLS LAST
+            LIMIT {per_page} OFFSET {offset}
+        """)
+        rows_p = [dict(r) for r in cur.fetchall()]
+
+        cur.execute(f"""
+            SELECT
+                COUNT(*) FILTER (WHERE status = 'sent') AS sent_total,
+                COUNT(*) FILTER (WHERE status = 'error') AS error_total
+            FROM {schema}.tg_publications
+        """)
+        stats_p = dict(cur.fetchone() or {})
+
+        conn.close()
+        return respond(200, {
+            'items': rows_p,
+            'total': total_p,
+            'page': page,
+            'per_page': per_page,
+            'stats': stats_p,
+        })
+
+    # Подресурс: рассылки и личные сообщения
     if resource == 'audiences' and method == 'GET':
         from broadcast import handle_audiences
         resp = handle_audiences(cur, schema)
