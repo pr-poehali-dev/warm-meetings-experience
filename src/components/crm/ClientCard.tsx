@@ -228,7 +228,14 @@ export default function ClientCard({ clientKey, onClose, onChanged }: ClientCard
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <Badge variant="outline" className="text-[10px]">{h.status}</Badge>
+                            <Badge variant="outline" className="text-[10px]">
+                              {({
+                                new: "Новый", wrote: "Написал", confirmed: "Подтверждён",
+                                paid: "Оплачен", cancelled: "Отменён", canceled: "Отменён",
+                                attended: "Пришёл", refused: "Отказ", pending: "Ожидает",
+                                completed: "Завершён", active: "Активна",
+                              } as Record<string, string>)[h.status] ?? h.status}
+                            </Badge>
                             {h.amount > 0 && <div className="text-xs mt-0.5">{formatMoney(h.amount)}</div>}
                           </div>
                         </CardContent>
