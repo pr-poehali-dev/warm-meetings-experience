@@ -63,9 +63,7 @@ export default function PricingCalculator({ lines, onTotalChange }: PricingCalcu
   return (
     <div className="rounded-xl border border-border bg-muted/30 overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b border-border">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-          Состав участия
-        </span>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Отмечайте нужные пункты </span>
         {hasPrices && items.length > 1 && (
           <button
             type="button"
