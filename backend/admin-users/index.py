@@ -213,6 +213,11 @@ def handler(event, context):
                     SELECT 1 FROM {schema}.crm_notes cn
                     WHERE cn.client_key = 'user:' || u.id AND cn.body ILIKE '%{s}%'
                 )
+                OR EXISTS (
+                    SELECT 1 FROM {schema}.admin_audit_log aal
+                    WHERE aal.entity_type = 'user' AND aal.entity_id = u.id::text
+                      AND aal.action = 'comment' AND aal.comment ILIKE '%{s}%'
+                )
             )"""
 
         cur.execute(f"SELECT COUNT(*) as total FROM {schema}.users u {where}")
