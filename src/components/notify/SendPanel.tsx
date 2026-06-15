@@ -355,7 +355,9 @@ export default function SendPanel({ scenario, eventId: eventIdProp, onClose, onS
                         {hasContact ? `Доставка: ${chLabel}` : "Нет доступного канала"}
                       </div>
                     </div>
-                    <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">{r.status}</Badge>
+                    <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">
+                      {({ new: "Новый", wrote: "Написал", confirmed: "Подтверждён", paid: "Оплачен", cancelled: "Отменён", attended: "Пришёл", refused: "Отказ" } as Record<string, string>)[r.status] ?? r.status}
+                    </Badge>
                   </div>
                 );
               })}
