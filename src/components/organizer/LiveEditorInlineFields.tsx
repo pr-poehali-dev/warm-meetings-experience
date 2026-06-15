@@ -214,9 +214,8 @@ export function InlinePricingLines({ lines, onChange }: InlinePricingLinesProps)
     >
       <ul className="space-y-1">
         {lines.filter(Boolean).map((line, i) => (
-          <li key={i} className="flex items-start gap-1.5 text-sm text-foreground">
-            <span className="flex-shrink-0">🔹</span>
-            <span>{line}</span>
+          <li key={i} className="text-sm text-foreground">
+            {line}
           </li>
         ))}
       </ul>
