@@ -335,7 +335,7 @@ def list_clients(cur, conn, user_id, schema, params):
         cur.execute(f"""
             SELECT gt.client_key, t.id, t.name, t.color
             FROM {schema}.crm_guest_tags gt
-            JOIN {schema}.crm_tags t ON t.id = gt.tag_id
+            JOIN {schema}.crm_tags t ON t.id = gt.tag_id AND t.is_active = true
             WHERE gt.owner_id = {user_id} AND gt.client_key IN ({keys_sql})
         """)
         for r in cur.fetchall():
@@ -493,7 +493,7 @@ def list_event_guests(cur, conn, user_id, schema, event_id, search_sql):
         cur.execute(f"""
             SELECT gt.client_key, t.id, t.name, t.color
             FROM {schema}.crm_guest_tags gt
-            JOIN {schema}.crm_tags t ON t.id = gt.tag_id
+            JOIN {schema}.crm_tags t ON t.id = gt.tag_id AND t.is_active = true
             WHERE gt.owner_id = {user_id} AND gt.client_key IN ({keys_sql})
         """)
         for r in cur.fetchall():
@@ -889,7 +889,7 @@ def list_tags(cur, conn, user_id, schema):
         SELECT t.id, t.name, t.color, t.created_at,
                (SELECT COUNT(*) FROM {schema}.crm_guest_tags gt WHERE gt.tag_id = t.id) AS clients_count
         FROM {schema}.crm_tags t
-        WHERE t.owner_id = {user_id}
+        WHERE t.owner_id = {user_id} AND t.is_active = true
         ORDER BY t.name
     """)
     return respond(200, {'tags': [dict(r) for r in cur.fetchall()]})
@@ -917,7 +917,11 @@ def delete_tag(cur, conn, user_id, schema, params):
     tag_id = params.get('id')
     if not tag_id or not str(tag_id).isdigit():
         return respond(400, {'error': 'id required'})
-    cur.execute(f"UPDATE {schema}.crm_tags SET name = name || '__deleted_' || id WHERE id = {int(tag_id)} AND owner_id = {user_id}")
+    tid = int(tag_id)
+    cur.execute(f"SELECT 1 FROM {schema}.crm_tags WHERE id = {tid} AND owner_id = {user_id}")
+    if not cur.fetchone():
+        return respond(404, {'error': 'Тег не найден'})
+    cur.execute(f"UPDATE {schema}.crm_tags SET is_active = false WHERE id = {tid} AND owner_id = {user_id}")
     conn.commit()
     return respond(200, {'ok': True})
 
