@@ -174,14 +174,17 @@ export default function LiveEventEditor({
           </Button>
           {isEditing ? (
             <>
-              <Button type="submit" variant="outline" disabled={loading}>
+              <Button type="submit" disabled={loading}>
                 {loading ? (
                   <>
                     <Icon name="Loader2" size={16} className="animate-spin mr-2" />
                     Сохранение...
                   </>
                 ) : (
-                  "Сохранить черновик"
+                  <>
+                    <Icon name="Save" size={16} className="mr-2" />
+                    {isPublished ? "Сохранить изменения" : "Сохранить черновик"}
+                  </>
                 )}
               </Button>
               {!isPending && !isPublished && !isPrivate && (
