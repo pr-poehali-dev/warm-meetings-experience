@@ -5,6 +5,11 @@ import urllib.request
 import psycopg2
 import psycopg2.extras
 
+from crm_clients import (
+    resolve_client_id, resolve_key_to_client_id, canonical_key,
+    norm_phone, norm_email,
+)
+
 CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -126,6 +131,8 @@ def handler(event: dict, context) -> dict:
                 return delete_event_guest(cur, conn, user_id, schema, params)
         if resource == 'guest_invite' and method == 'POST':
             return send_guest_invite(cur, conn, user_id, user, schema, event)
+        if resource == 'backfill_clients' and method == 'POST':
+            return backfill_clients(cur, conn, user_id, schema)
     finally:
         try:
             conn.close()
@@ -268,11 +275,36 @@ def list_clients(cur, conn, user_id, schema, params):
             'source': 'external',
         })
 
-    # Подтягиваем теги одним запросом
-    keys = list(clients.keys())
+    # Маппинг legacy-ключей -> canonical cid: через идентичности владельца (1 запрос)
+    cur.execute(f"""
+        SELECT identity_type, identity_value, client_id
+        FROM {schema}.crm_client_identities
+        WHERE owner_id = {user_id}
+    """)
+    ident_to_cid = {}
+    for r in cur.fetchall():
+        ident_to_cid[f"{r['identity_type']}:{r['identity_value']}"] = r['client_id']
+
+    def to_canonical(legacy_key):
+        # legacy_key уже в формате user:/phone:/email:/signup:/booking:/ext:
+        cid = ident_to_cid.get(legacy_key)
+        return canonical_key(cid) if cid else legacy_key
+
+    # Привязываем canonical-ключ к каждому агрегированному клиенту
+    for c in clients.values():
+        c['client_key'] = to_canonical(c['client_key'])
+
+    # Подтягиваем теги: по canonical-ключам И по legacy (на случай если backfill не прошёл)
+    all_keys = set()
+    for c in clients.values():
+        all_keys.add(c['client_key'])
+    # плюс исходные legacy-ключи
+    for k in list(clients.keys()):
+        all_keys.add(k)
+
     tags_by_client = {}
-    if keys:
-        keys_sql = ', '.join(f"'{k}'" for k in keys)
+    if all_keys:
+        keys_sql = ', '.join(f"'{k.replace(chr(39), chr(39)*2)}'" for k in all_keys)
         cur.execute(f"""
             SELECT gt.client_key, t.id, t.name, t.color
             FROM {schema}.crm_guest_tags gt
@@ -280,14 +312,14 @@ def list_clients(cur, conn, user_id, schema, params):
             WHERE gt.owner_id = {user_id} AND gt.client_key IN ({keys_sql})
         """)
         for r in cur.fetchall():
-            tags_by_client.setdefault(r['client_key'], []).append({
-                'id': r['id'], 'name': r['name'], 'color': r['color']
-            })
+            ck = to_canonical(r['client_key'])
+            bucket = tags_by_client.setdefault(ck, {})
+            bucket[r['id']] = {'id': r['id'], 'name': r['name'], 'color': r['color']}
 
     result = []
     for c in clients.values():
         c['sources'] = list(c['sources'])
-        c['tags'] = tags_by_client.get(c['client_key'], [])
+        c['tags'] = list(tags_by_client.get(c['client_key'], {}).values())
         result.append(c)
 
     result.sort(key=lambda x: str(x.get('last_visit_at') or ''), reverse=True)
@@ -335,22 +367,42 @@ def list_event_guests(cur, user_id, schema, event_id, search_sql):
     """)
     rows = cur.fetchall()
 
-    # Подтягиваем теги CRM для каждой записи
-    keys = []
-    for r in rows:
+    # Маппинг legacy-ключей -> canonical cid: (1 запрос на владельца)
+    cur.execute(f"""
+        SELECT identity_type, identity_value, client_id
+        FROM {schema}.crm_client_identities
+        WHERE owner_id = {user_id}
+    """)
+    ident_to_cid = {}
+    for r in cur.fetchall():
+        ident_to_cid[f"{r['identity_type']}:{r['identity_value']}"] = r['client_id']
+
+    def legacy_key_for(r):
         if r.get('user_id'):
-            keys.append(f"user:{r['user_id']}")
-        elif r.get('phone'):
+            return f"user:{r['user_id']}"
+        if r.get('phone'):
             digits = ''.join(ch for ch in r['phone'] if ch.isdigit())
             if digits:
-                keys.append(f"phone:{digits[-10:]}")
-        elif r.get('email'):
-            keys.append(f"email:{r['email'].lower().strip()}")
-        keys.append(f"signup:{r['signup_id']}")
+                return f"phone:{digits[-10:]}"
+        if r.get('email'):
+            return f"email:{r['email'].lower().strip()}"
+        return f"signup:{r['signup_id']}"
+
+    def canon_for(r):
+        lk = legacy_key_for(r)
+        cid = ident_to_cid.get(lk)
+        return canonical_key(cid) if cid else lk
+
+    # Собираем все ключи (legacy + canonical + signup) для запроса тегов
+    keys = set()
+    for r in rows:
+        keys.add(legacy_key_for(r))
+        keys.add(canon_for(r))
+        keys.add(f"signup:{r['signup_id']}")
 
     tags_by_key = {}
     if keys:
-        keys_sql = ', '.join(f"'{k}'" for k in set(keys))
+        keys_sql = ', '.join(f"'{k.replace(chr(39), chr(39)*2)}'" for k in keys)
         cur.execute(f"""
             SELECT gt.client_key, t.id, t.name, t.color
             FROM {schema}.crm_guest_tags gt
@@ -364,23 +416,19 @@ def list_event_guests(cur, user_id, schema, event_id, search_sql):
 
     guests = []
     for r in rows:
-        if r.get('user_id'):
-            ckey = f"user:{r['user_id']}"
-        elif r.get('phone'):
-            digits = ''.join(ch for ch in r['phone'] if ch.isdigit())
-            ckey = f"phone:{digits[-10:]}" if digits else f"signup:{r['signup_id']}"
-        elif r.get('email'):
-            ckey = f"email:{r['email'].lower().strip()}"
-        else:
-            ckey = f"signup:{r['signup_id']}"
-
+        ckey = canon_for(r)
         g = dict(r)
         # Сериализация datetime
         for k in ('created_at', 'wrote_at'):
             if g.get(k):
                 g[k] = str(g[k])
         g['client_key'] = ckey
-        g['tags'] = tags_by_key.get(ckey, []) + tags_by_key.get(f"signup:{r['signup_id']}", [])
+        # Теги: по canonical + legacy + signup, без дублей по id
+        merged = {}
+        for src_key in (ckey, legacy_key_for(r), f"signup:{r['signup_id']}"):
+            for t in tags_by_key.get(src_key, []):
+                merged[t['id']] = t
+        g['tags'] = list(merged.values())
         guests.append(g)
 
     # Статистика
@@ -505,6 +553,11 @@ def add_event_guest(cur, conn, user_id, schema, event):
     row = dict(cur.fetchone())
     if row.get('created_at'):
         row['created_at'] = str(row['created_at'])
+    # Создаём/привязываем canonical-клиента
+    cid = resolve_client_id(cur, schema, user_id, name=name, phone=phone,
+                            email=body.get('email'), telegram=body.get('telegram'))
+    if cid:
+        row['client_key'] = canonical_key(cid)
     conn.commit()
     return respond(200, {'guest': row})
 
@@ -552,7 +605,34 @@ def get_client(cur, conn, user_id, schema, params):
     external_id = None
     signup_id = None
 
-    if kind == 'user':
+    # cid: — стабильный клиент. Разворачиваем в набор контактов по идентичностям
+    # и по карточке crm_clients, чтобы собрать всю историю.
+    note_keys = [key]
+    cc = None
+    if kind == 'cid' and val.isdigit():
+        client_id = int(val)
+        cur.execute(f"""
+            SELECT identity_type, identity_value FROM {schema}.crm_client_identities
+            WHERE owner_id = {user_id} AND client_id = {client_id}
+        """)
+        for r in cur.fetchall():
+            t, v = r['identity_type'], r['identity_value']
+            if t == 'user' and v.isdigit():
+                user_filter = int(v)
+                note_keys.append(f"user:{v}")
+            elif t == 'phone':
+                phone_filter = v
+                note_keys.append(f"phone:{v}")
+            elif t == 'email':
+                email_filter = v
+                note_keys.append(f"email:{v}")
+            elif t == 'signup' and v.isdigit():
+                signup_id = int(v)
+                note_keys.append(f"signup:{v}")
+        # Контакты из самой карточки (для отображения имени/телефона)
+        cur.execute(f"SELECT name, phone, email, telegram, vk, user_id FROM {schema}.crm_clients WHERE id = {client_id} AND owner_id = {user_id}")
+        cc = cur.fetchone()
+    elif kind == 'user':
         user_filter = int(val) if val.isdigit() else None
     elif kind == 'phone':
         phone_filter = val
@@ -566,6 +646,11 @@ def get_client(cur, conn, user_id, schema, params):
 
     # Базовая инфа о клиенте — пробуем найти в users
     client_info = {'name': '', 'phone': '', 'email': '', 'telegram': '', 'vk': '', 'user_id': None, 'avatar_url': None}
+    # Из canonical-карточки (если открыт по cid:)
+    if cc:
+        client_info.update({'name': cc['name'] or '', 'phone': cc['phone'] or '',
+                            'email': cc['email'] or '', 'telegram': cc['telegram'] or '',
+                            'vk': cc['vk'] or '', 'user_id': cc['user_id']})
     if user_filter:
         cur.execute(f"SELECT id, name, phone, email, telegram, vk_id AS vk, avatar_url FROM {schema}.users WHERE id = {user_filter}")
         u = cur.fetchone()
@@ -655,22 +740,22 @@ def get_client(cur, conn, user_id, schema, params):
         except Exception:
             pass
 
-    # Заметки
-    k = key.replace("'", "''")
+    # Заметки и теги собираем по canonical-ключу И всем legacy-ключам клиента
+    keys_sql = ', '.join(f"'{nk.replace(chr(39), chr(39)*2)}'" for nk in set(note_keys))
     cur.execute(f"""
         SELECT id, body, created_at, updated_at
         FROM {schema}.crm_notes
-        WHERE owner_id = {user_id} AND client_key = '{k}'
+        WHERE owner_id = {user_id} AND client_key IN ({keys_sql})
         ORDER BY created_at DESC
     """)
     notes = [dict(r) for r in cur.fetchall()]
 
-    # Теги клиента
+    # Теги клиента (DISTINCT — один тег мог быть на разных legacy-ключах)
     cur.execute(f"""
-        SELECT t.id, t.name, t.color
+        SELECT DISTINCT t.id, t.name, t.color
         FROM {schema}.crm_guest_tags gt
         JOIN {schema}.crm_tags t ON t.id = gt.tag_id
-        WHERE gt.owner_id = {user_id} AND gt.client_key = '{k}'
+        WHERE gt.owner_id = {user_id} AND gt.client_key IN ({keys_sql})
         ORDER BY t.name
     """)
     tags = [dict(r) for r in cur.fetchall()]
@@ -737,6 +822,10 @@ def toggle_client_tag(cur, conn, user_id, schema, event):
     action = body.get('action', 'add')
     if not client_key or not tag_id:
         return respond(400, {'error': 'client_key and tag_id required'})
+    # Стабильный ключ — тег не потеряется при регистрации гостя
+    cid = resolve_key_to_client_id(cur, schema, user_id, client_key)
+    if cid:
+        client_key = canonical_key(cid)
     k = client_key.replace("'", "''")[:64]
     tid = int(tag_id)
 
@@ -775,6 +864,10 @@ def create_note(cur, conn, user_id, schema, event):
     text = (body_raw.get('body') or '').strip()
     if not client_key or not text:
         return respond(400, {'error': 'client_key and body required'})
+    # Переводим любой ключ на стабильный cid:, чтобы заметка не «отвязалась»
+    cid = resolve_key_to_client_id(cur, schema, user_id, client_key)
+    if cid:
+        client_key = canonical_key(cid)
     k = client_key.replace("'", "''")[:64]
     t = text.replace("'", "''")[:5000]
     cur.execute(f"""
@@ -849,8 +942,15 @@ def create_external_guest(cur, conn, user_id, schema, event):
         VALUES ({user_id}, '{n}', NULLIF('{phone}',''), NULLIF('{email}',''), NULLIF('{tg}',''), NULLIF('{vk}',''), '{source}')
         RETURNING id, name, phone, email, telegram, vk, source, created_at
     """)
+    guest_row = dict(cur.fetchone())
+    # Создаём/привязываем canonical-клиента
+    cid = resolve_client_id(cur, schema, user_id, name=body.get('name'),
+                            phone=body.get('phone'), email=body.get('email'),
+                            telegram=body.get('telegram'), vk=body.get('vk'))
+    if cid:
+        guest_row['client_key'] = canonical_key(cid)
     conn.commit()
-    return respond(200, {'guest': dict(cur.fetchone()), 'created': True})
+    return respond(200, {'guest': guest_row, 'created': True})
 
 
 def _norm_phone(p):
@@ -1072,3 +1172,105 @@ def send_guest_invite(cur, conn, user_id, user, schema, event):
     if not ok:
         return respond(500, {'error': 'Не удалось отправить письмо. Проверьте настройки почты.'})
     return respond(200, {'ok': True, 'sent_to': email, 'referral_link': link})
+
+
+def backfill_clients(cur, conn, owner_id, schema):
+    """Разовая засейка canonical-клиентов из всех источников владельца и
+    перевод заметок/тегов со старых client_key на стабильные cid:.
+
+    Идемпотентна: повторный запуск не плодит дубли (resolve_client_id
+    переиспользует существующих клиентов по идентичностям).
+    """
+    stats = {'signups': 0, 'bookings': 0, 'externals': 0,
+             'notes_migrated': 0, 'tags_migrated': 0, 'clients_total': 0}
+
+    # 1. Гости событий организатора
+    cur.execute(f"""
+        SELECT s.id AS signup_id, s.user_id, s.name, s.phone, s.email, s.telegram
+        FROM {schema}.event_signups s
+        JOIN {schema}.events e ON e.id = s.event_id
+        WHERE e.organizer_id = {owner_id}
+    """)
+    for r in cur.fetchall():
+        cid = resolve_client_id(cur, schema, owner_id, user_id=r['user_id'],
+                                phone=r['phone'], email=r['email'],
+                                telegram=r['telegram'], name=r['name'])
+        if cid:
+            stats['signups'] += 1
+            _migrate_legacy_key(cur, schema, owner_id, _legacy_key(r['user_id'], r['phone'], r['email'], f"signup:{r['signup_id']}"), cid, stats)
+
+    # 2. Записи к мастеру (если пользователь — мастер)
+    cur.execute(f"""
+        SELECT mb.id AS booking_id, mb.client_id AS user_id,
+               mb.client_name AS name, mb.client_phone AS phone, mb.client_email AS email
+        FROM {schema}.master_bookings mb
+        JOIN {schema}.masters m ON m.id = mb.master_id
+        WHERE m.user_id = {owner_id}
+    """)
+    for r in cur.fetchall():
+        cid = resolve_client_id(cur, schema, owner_id, user_id=r['user_id'],
+                                phone=r['phone'], email=r['email'], name=r['name'])
+        if cid:
+            stats['bookings'] += 1
+            _migrate_legacy_key(cur, schema, owner_id, _legacy_key(r['user_id'], r['phone'], r['email'], f"booking:{r['booking_id']}"), cid, stats)
+
+    # 3. Внешние клиенты
+    cur.execute(f"""
+        SELECT id, name, phone, email, telegram, vk
+        FROM {schema}.crm_external_guests
+        WHERE owner_id = {owner_id}
+    """)
+    for r in cur.fetchall():
+        cid = resolve_client_id(cur, schema, owner_id, phone=r['phone'], email=r['email'],
+                                telegram=r['telegram'], vk=r['vk'], name=r['name'])
+        if cid:
+            stats['externals'] += 1
+            _migrate_legacy_key(cur, schema, owner_id, _legacy_key(None, r['phone'], r['email'], f"ext:{r['id']}"), cid, stats)
+
+    cur.execute(f"SELECT COUNT(*) AS c FROM {schema}.crm_clients WHERE owner_id = {owner_id} AND merged_into IS NULL")
+    stats['clients_total'] = cur.fetchone()['c']
+
+    conn.commit()
+    return respond(200, {'ok': True, 'stats': stats})
+
+
+def _legacy_key(user_id, phone, email, fallback):
+    """Воспроизводит старую логику contact_key для поиска legacy-записей."""
+    if user_id:
+        return f"user:{user_id}"
+    ph = norm_phone(phone)
+    if ph:
+        return f"phone:{ph}"
+    em = norm_email(email)
+    if em:
+        return f"email:{em}"
+    return fallback
+
+
+def _migrate_legacy_key(cur, schema, owner_id, legacy_key, client_id, stats):
+    """Переносит заметки и теги со старого client_key на canonical cid:."""
+    new_key = canonical_key(client_id)
+    if legacy_key == new_key:
+        return
+    lk = legacy_key.replace("'", "''")
+    nk = new_key.replace("'", "''")
+
+    # Заметки: переносим, но не дублируем уже перенесённые
+    cur.execute(f"""
+        UPDATE {schema}.crm_notes
+        SET client_key = '{nk}'
+        WHERE owner_id = {owner_id} AND client_key = '{lk}'
+    """)
+    stats['notes_migrated'] += cur.rowcount or 0
+
+    # Теги: переносим с защитой от конфликта уникальности
+    cur.execute(f"""
+        UPDATE {schema}.crm_guest_tags gt
+        SET client_key = '{nk}'
+        WHERE gt.owner_id = {owner_id} AND gt.client_key = '{lk}'
+          AND NOT EXISTS (
+              SELECT 1 FROM {schema}.crm_guest_tags x
+              WHERE x.owner_id = gt.owner_id AND x.tag_id = gt.tag_id AND x.client_key = '{nk}'
+          )
+    """)
+    stats['tags_migrated'] += cur.rowcount or 0
