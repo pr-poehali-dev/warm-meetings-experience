@@ -220,7 +220,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
       case "dashboard": return roleAccent("orange", <MasterDashboardSection masterId={masterId} />);
       case "profile": return roleAccent("orange", <>{backBtn}<MasterProfileSection masterId={masterId} /></>);
       case "settings": return roleAccent("orange", <>{backBtn}<div className="space-y-5"><h2 className="text-xl font-bold">Настройки</h2><MasterScheduleSettings masterId={masterId} /><MasterAddresses masterId={masterId} /></div></>);
-      case "schedule": return roleAccent("orange", <>{backBtn}<MasterScheduleSection masterId={masterId} masterSlug={masterSlug} onGoToServices={() => switchMasterSection("services")} /></>);
+      case "schedule": return roleAccent("orange", <>{backBtn}<MasterScheduleSection masterId={masterId} masterSlug={masterSlug} onGoToServices={() => switchMasterSection("services")} onGoToSettings={() => switchMasterSection("settings")} /></>);
       case "services": return roleAccent("orange", <>{backBtn}<MasterServicesSection masterId={masterId} /></>);
       case "bookings": return roleAccent("orange", <>{backBtn}<MasterBookingsSection masterId={masterId} /></>);
       case "messages": return roleAccent("orange", <>{backBtn}<MasterMessages masterId={masterId} /></>);

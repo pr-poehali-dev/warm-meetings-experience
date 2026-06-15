@@ -525,7 +525,7 @@ export function MasterServicesSection({ masterId }: { masterId: number }) {
   return <MasterServices masterId={masterId} />;
 }
 
-export function MasterScheduleSection({ masterId, masterSlug, onGoToServices }: { masterId: number; masterSlug: string; onGoToServices?: () => void }) {
+export function MasterScheduleSection({ masterId, masterSlug, onGoToServices, onGoToSettings }: { masterId: number; masterSlug: string; onGoToServices?: () => void; onGoToSettings?: () => void }) {
   const [quickOpen, setQuickOpen] = useState(false);
   const calRef = useRef<MasterCalendarDndRef>(null);
   return (
@@ -587,6 +587,21 @@ export function MasterScheduleSection({ masterId, masterSlug, onGoToServices }: 
           </Dialog>
         </div>
       </div>
+
+      {onGoToSettings && (
+        <button
+          onClick={onGoToSettings}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-muted/40 hover:bg-muted/70 transition-colors text-left group"
+        >
+          <Icon name="MapPin" size={16} className="text-rose-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-sm font-medium">Адреса приёма гостей</span>
+            <span className="text-xs text-muted-foreground ml-2">настраиваются в разделе «Настройки»</span>
+          </div>
+          <Icon name="ChevronRight" size={15} className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+        </button>
+      )}
+
       <MasterCalendar ref={calRef} masterId={masterId} />
     </div>
   );
