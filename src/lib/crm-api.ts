@@ -11,6 +11,8 @@ export interface CrmTag {
   created_at?: string;
 }
 
+export type CrmSegment = "vip" | "regular" | "newbie" | "sleeping";
+
 export interface CrmClient {
   client_key: string;
   name: string;
@@ -24,6 +26,21 @@ export interface CrmClient {
   first_visit_at: string | null;
   sources: string[];
   tags: CrmTag[];
+  segments: CrmSegment[];
+}
+
+export interface CrmClientsResponse {
+  clients: CrmClient[];
+  total: number;
+  total_all?: number;
+  segment_counts?: Record<CrmSegment, number>;
+}
+
+export interface CrmClientsFilters {
+  search?: string;
+  segment?: CrmSegment;
+  tag_id?: number;
+  source?: "event" | "master" | "external";
 }
 
 export interface CrmHistoryItem {
@@ -89,9 +106,14 @@ export interface CrmEventGuestsResponse {
 }
 
 export const crmApi = {
-  listClients: (search?: string): Promise<{ clients: CrmClient[]; total: number }> => {
+  listClients: (filters?: CrmClientsFilters | string): Promise<CrmClientsResponse> => {
     const qs = new URLSearchParams({ resource: "clients" });
-    if (search) qs.set("search", search);
+    // Обратная совместимость: если передали строку — это поиск
+    const f: CrmClientsFilters = typeof filters === "string" ? { search: filters } : (filters || {});
+    if (f.search) qs.set("search", f.search);
+    if (f.segment) qs.set("segment", f.segment);
+    if (f.tag_id) qs.set("tag_id", String(f.tag_id));
+    if (f.source) qs.set("source", f.source);
     return authenticatedRequest(`${BASE}/?${qs.toString()}`);
   },
 

@@ -1,5 +1,6 @@
 import json
 import os
+import datetime as _dt
 import secrets as _secrets
 import urllib.request
 import psycopg2
@@ -320,10 +321,70 @@ def list_clients(cur, conn, user_id, schema, params):
     for c in clients.values():
         c['sources'] = list(c['sources'])
         c['tags'] = list(tags_by_client.get(c['client_key'], {}).values())
+        c['segments'] = _compute_segments(c)
         result.append(c)
 
     result.sort(key=lambda x: str(x.get('last_visit_at') or ''), reverse=True)
-    return respond(200, {'clients': result, 'total': len(result)})
+
+    # Считаем размеры сегментов по ВСЕЙ базе (до фильтрации)
+    seg_counts = {'vip': 0, 'regular': 0, 'newbie': 0, 'sleeping': 0}
+    for c in result:
+        for s in c['segments']:
+            if s in seg_counts:
+                seg_counts[s] += 1
+
+    # Серверная фильтрация по сегменту / тегу / источнику
+    seg = (params.get('segment') or '').strip()
+    tag_id = params.get('tag_id')
+    source = (params.get('source') or '').strip()
+
+    filtered = result
+    if seg and seg in seg_counts:
+        filtered = [c for c in filtered if seg in c['segments']]
+    if tag_id and str(tag_id).isdigit():
+        tid = int(tag_id)
+        filtered = [c for c in filtered if any(t['id'] == tid for t in c['tags'])]
+    if source in ('event', 'master', 'external'):
+        filtered = [c for c in filtered if source in c['sources']]
+
+    return respond(200, {
+        'clients': filtered,
+        'total': len(filtered),
+        'total_all': len(result),
+        'segment_counts': seg_counts,
+    })
+
+
+# Пороги сегментов (в рублях / днях / визитах)
+SEG_VIP_SPENT = 10000
+SEG_REGULAR_VISITS = 3
+SEG_SLEEPING_DAYS = 90
+
+
+def _compute_segments(c):
+    """Вычисляет умные сегменты клиента на основе его метрик.
+    Сегменты не взаимоисключающие (VIP может быть и постоянным)."""
+    segs = []
+    spent = int(c.get('total_spent') or 0)
+    visits = int(c.get('visits_count') or 0)
+
+    if spent >= SEG_VIP_SPENT:
+        segs.append('vip')
+    if visits >= SEG_REGULAR_VISITS:
+        segs.append('regular')
+    elif visits <= 1:
+        segs.append('newbie')
+
+    last = c.get('last_visit_at')
+    if last:
+        try:
+            ds = str(last)[:10]
+            d = _dt.date.fromisoformat(ds)
+            if (_dt.date.today() - d).days > SEG_SLEEPING_DAYS:
+                segs.append('sleeping')
+        except Exception:
+            pass
+    return segs
 
 
 def list_event_guests(cur, user_id, schema, event_id, search_sql):
