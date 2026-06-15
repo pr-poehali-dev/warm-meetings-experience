@@ -943,21 +943,25 @@ def handle_publish_event(body):
         return respond(404, {'error': 'Событие не найдено. Возможно, оно было удалено.'})
 
     ev = dict(ev)
-    date_str = ''
-    if ev.get('event_date'):
-        months = ['января','февраля','марта','апреля','мая','июня',
-                  'июля','августа','сентября','октября','ноября','декабря']
-        d = ev['event_date']
+    _months = ['января','февраля','марта','апреля','мая','июня',
+               'июля','августа','сентября','октября','ноября','декабря']
+
+    def _fmt_date(d):
+        if not d: return ''
         if hasattr(d, 'day'):
-            date_str = f"{d.day} {months[d.month - 1]} {d.year}"
-        else:
-            date_str = str(d)
+            return f"{d.day} {_months[d.month - 1]} {d.year}"
+        return str(d)
+
+    date_str = _fmt_date(ev.get('event_date'))
+    end_date = ev.get('end_date')
+    if end_date and str(end_date) != str(ev.get('event_date') or ''):
+        date_str = f"{date_str} — {_fmt_date(end_date)}"
 
     time_str = ''
     if ev.get('start_time'):
         st = ev['start_time']
         start = st.strftime('%H:%M') if hasattr(st, 'strftime') else str(st)[:5]
-        if ev.get('end_time'):
+        if ev.get('end_time') and not end_date:
             et = ev['end_time']
             end = et.strftime('%H:%M') if hasattr(et, 'strftime') else str(et)[:5]
             time_str = f"{start} — {end}"
@@ -1113,19 +1117,24 @@ def _format_content(content_type, data, channel_template=None):
 
     if content_type == 'event':
         ev = data
-        date_str = ''
-        if ev.get('event_date'):
-            d = ev['event_date']
+
+        def _fmt_d(d):
+            if not d: return ''
             if hasattr(d, 'day'):
-                date_str = f"{d.day} {months[d.month - 1]} {d.year}"
-            else:
-                date_str = str(d)
+                return f"{d.day} {months[d.month - 1]} {d.year}"
+            return str(d)
+
+        date_str = _fmt_d(ev.get('event_date'))
+        end_date = ev.get('end_date')
+        if end_date and str(end_date) != str(ev.get('event_date') or ''):
+            date_str = f"{date_str} — {_fmt_d(end_date)}"
+
         time_str = ''
         if ev.get('start_time'):
             st = ev['start_time']
             start = st.strftime('%H:%M') if hasattr(st, 'strftime') else str(st)[:5]
             end_t = ev.get('end_time')
-            if end_t:
+            if end_t and not end_date:
                 end = end_t.strftime('%H:%M') if hasattr(end_t, 'strftime') else str(end_t)[:5]
                 time_str = f"{start} — {end}"
             else:
