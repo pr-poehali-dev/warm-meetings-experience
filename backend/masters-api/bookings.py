@@ -167,6 +167,65 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
         vk_id = m.get('vk_id')
         notify_vk_effective = m.get('notify_vk') or (bool(vk_id) and is_fake_email)
 
+        # === Telegram ===
+        # Шлём ПЕРВЫМ — это самый быстрый и приоритетный канал.
+        # Раньше Telegram стоял после Email: медленный ответ Unisender
+        # съедал время выполнения функции, и отправка в TG падала по таймауту.
+        # Приоритет chat_id: tg_linked_accounts (бот точно привязан),
+        # запасной вариант — users.tg_chat_id.
+        tg_chat_id = m.get('linked_tg') or m.get('user_tg')
+        # Отправляем только если notify_telegram явно не False.
+        # None (не задано) → разрешаем, если есть chat_id.
+        tg_disabled = m.get('notify_telegram') is False
+        if tg_chat_id and not tg_disabled:
+            lines = [
+                '🎫 <b>Новая запись на сеанс</b>',
+                '',
+                f'📌 {service_name or "Услуга"}',
+                f'📅 {dt_human}',
+                f'💰 {int(float(price))} ₽',
+                '',
+                f'👤 <b>{client_name}</b>',
+                f'📞 {client_phone}',
+            ]
+            if client_email:
+                lines.append(f'✉️ {client_email}')
+            if comment:
+                lines.append(f'💬 {comment}')
+            if meeting_address or maps_url:
+                lines.append('')
+                if meeting_address:
+                    lines.append(f'📍 <b>Выезд:</b> {meeting_address}')
+                if maps_url:
+                    lines.append(f'🗺 <a href="{maps_url}">Открыть на карте</a>')
+            if contra_accepted:
+                when = contra_at_human or 'только что'
+                ip_part = f' · IP {contra_ip}' if contra_ip else ''
+                lines.append('')
+                lines.append('✅ <i>Клиент ознакомлен с противопоказаниями</i>')
+                lines.append(f'<i>{when}{ip_part}</i>')
+            lines.append('')
+            lines.append(f'<i>Статус: {status_human}</i>')
+            ok_tg = tg_send(tg_chat_id, '\n'.join(lines))
+            if ok_tg:
+                print(f"[notify_master] telegram sent to chat_id={tg_chat_id}")
+                _log_notification(cur, schema,
+                    channel='telegram', event_type='master_booking_new',
+                    recipient=str(tg_chat_id), subject='Новая запись на сеанс',
+                    status='success', user_id=m.get('user_id'),
+                    related_id=booking.get('id'),
+                    payload={'master_id': master_id, 'client_name': client_name})
+            else:
+                print(f"[notify_master] telegram FAILED chat_id={tg_chat_id}")
+                _log_notification(cur, schema,
+                    channel='telegram', event_type='master_booking_new',
+                    recipient=str(tg_chat_id), subject='Новая запись на сеанс',
+                    status='failed', error_code='send_failed',
+                    error_text='shared.tg_send returned False',
+                    user_id=m.get('user_id'),
+                    related_id=booking.get('id'),
+                    payload={'master_id': master_id, 'client_name': client_name})
+
         # === Email ===
         if m.get('notify_email') and raw_email and not is_fake_email:
             if os.environ.get('UNISENDER_API_KEY') and os.environ.get('UNISENDER_SENDER_EMAIL'):
@@ -255,64 +314,6 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                     _alert_admin_critical('email (Unisender)', 'send_failed',
                                           'shared.send_email returned False',
                                           recipient=m.get('email') or '')
-
-        # === Telegram ===
-        # Если у мастера в аккаунте привязан Telegram (через бота организатора)
-        # — шлём туда уведомление о записи, как это сделано для событий.
-        # Приоритет: запись в tg_linked_accounts (бот точно привязан),
-        # запасной вариант — users.tg_chat_id.
-        tg_chat_id = m.get('linked_tg') or m.get('user_tg')
-        # Отправляем только если notify_telegram явно не False.
-        # None (не задано) → разрешаем, если есть chat_id.
-        tg_disabled = m.get('notify_telegram') is False
-        if tg_chat_id and not tg_disabled:
-            lines = [
-                '🎫 <b>Новая запись на сеанс</b>',
-                '',
-                f'📌 {service_name or "Услуга"}',
-                f'📅 {dt_human}',
-                f'💰 {int(float(price))} ₽',
-                '',
-                f'👤 <b>{client_name}</b>',
-                f'📞 {client_phone}',
-            ]
-            if client_email:
-                lines.append(f'✉️ {client_email}')
-            if comment:
-                lines.append(f'💬 {comment}')
-            if meeting_address or maps_url:
-                lines.append('')
-                if meeting_address:
-                    lines.append(f'📍 <b>Выезд:</b> {meeting_address}')
-                if maps_url:
-                    lines.append(f'🗺 <a href="{maps_url}">Открыть на карте</a>')
-            if contra_accepted:
-                when = contra_at_human or 'только что'
-                ip_part = f' · IP {contra_ip}' if contra_ip else ''
-                lines.append('')
-                lines.append('✅ <i>Клиент ознакомлен с противопоказаниями</i>')
-                lines.append(f'<i>{when}{ip_part}</i>')
-            lines.append('')
-            lines.append(f'<i>Статус: {status_human}</i>')
-            ok_tg = tg_send(tg_chat_id, '\n'.join(lines))
-            if ok_tg:
-                print(f"[notify_master] telegram sent to chat_id={tg_chat_id}")
-                _log_notification(cur, schema,
-                    channel='telegram', event_type='master_booking_new',
-                    recipient=str(tg_chat_id), subject='Новая запись на сеанс',
-                    status='success', user_id=m.get('user_id'),
-                    related_id=booking.get('id'),
-                    payload={'master_id': master_id, 'client_name': client_name})
-            else:
-                print(f"[notify_master] telegram FAILED chat_id={tg_chat_id}")
-                _log_notification(cur, schema,
-                    channel='telegram', event_type='master_booking_new',
-                    recipient=str(tg_chat_id), subject='Новая запись на сеанс',
-                    status='failed', error_code='send_failed',
-                    error_text='shared.tg_send returned False',
-                    user_id=m.get('user_id'),
-                    related_id=booking.get('id'),
-                    payload={'master_id': master_id, 'client_name': client_name})
 
         # === VK ===
         if vk_id and notify_vk_effective:
