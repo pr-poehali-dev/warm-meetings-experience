@@ -3,13 +3,15 @@ import Icon from "@/components/ui/icon";
 import HubStats from "./notification-hub/HubStats";
 import HubTemplates from "./notification-hub/HubTemplates";
 import HubLogs from "./notification-hub/HubLogs";
+import HubUserChannels from "./notification-hub/HubUserChannels";
 
-type Tab = "stats" | "templates" | "logs";
+type Tab = "stats" | "templates" | "logs" | "user_channels";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "stats", label: "Статистика", icon: "BarChart3" },
   { id: "templates", label: "Шаблоны", icon: "FileText" },
   { id: "logs", label: "Журнал доставки", icon: "ScrollText" },
+  { id: "user_channels", label: "Каналы пользователей", icon: "Users" },
 ];
 
 export default function AdminNotificationHub() {
@@ -47,6 +49,7 @@ export default function AdminNotificationHub() {
       {tab === "stats" && <HubStats />}
       {tab === "templates" && <HubTemplates />}
       {tab === "logs" && <HubLogs />}
+      {tab === "user_channels" && <HubUserChannels />}
     </div>
   );
 }

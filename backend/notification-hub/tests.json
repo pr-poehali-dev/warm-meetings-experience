@@ -38,6 +38,19 @@
       "expectedStatus": 403
     },
     {
+      "name": "Каналы пользователей без admin-токена — 403",
+      "method": "GET",
+      "path": "/?resource=user_channels",
+      "expectedStatus": 403
+    },
+    {
+      "name": "Отключение канала без admin-токена — 403",
+      "method": "POST",
+      "path": "/?resource=user_channels",
+      "body": {"user_id": 1, "channel": "email", "active": false},
+      "expectedStatus": 403
+    },
+    {
       "name": "Неизвестный ресурс — 404",
       "method": "GET",
       "path": "/?resource=unknown",

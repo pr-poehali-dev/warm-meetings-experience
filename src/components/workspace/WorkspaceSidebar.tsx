@@ -204,6 +204,13 @@ export default function WorkspaceSidebar({
           accent="text-sky-500"
         />
         <NavItem
+          active={roleTab === "notifications"}
+          onClick={() => switchRoleTab("notifications")}
+          icon="Bell"
+          label="Центр уведомлений"
+          accent="text-violet-500"
+        />
+        <NavItem
           active={roleTab === "blog"}
           onClick={() => switchRoleTab("blog")}
           icon="BookOpen"

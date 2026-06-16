@@ -7,6 +7,7 @@
 
 import json
 import re
+from datetime import datetime, timezone, timedelta
 
 from shared import tg_send, send_email, vk_send
 
@@ -106,6 +107,77 @@ def _resolve_recipient(cur, schema, user_id, direct):
     return rec
 
 
+# ─── Персональные настройки получателя (подписки + тихие часы) ──────────────
+
+# Минимальная карта смещений таймзон (без зависимости от pytz/zoneinfo).
+_TZ_OFFSETS = {
+    'Europe/Kaliningrad': 2, 'Europe/Moscow': 3, 'Europe/Samara': 4,
+    'Asia/Yekaterinburg': 5, 'Asia/Omsk': 6, 'Asia/Krasnoyarsk': 7,
+    'Asia/Irkutsk': 8, 'Asia/Yakutsk': 9, 'Asia/Vladivostok': 10,
+    'Asia/Magadan': 11, 'Asia/Kamchatka': 12, 'UTC': 0,
+}
+
+
+def _load_prefs(cur, schema, user_id, event_type):
+    """Загружает подписку пользователя на тип события и его расписание.
+
+    Возвращает dict:
+      {'enabled': bool, 'channels': {ch: bool}, 'quiet': {...} | None}
+    Если записей нет — подписка считается включённой (opt-out).
+    """
+    prefs = {'enabled': True, 'channels': {}, 'quiet': None}
+    if not user_id:
+        return prefs
+    try:
+        cur.execute(f"""
+            SELECT channels, enabled
+            FROM {schema}.notify_event_subscriptions
+            WHERE user_id = {int(user_id)} AND event_type = %s
+        """, (event_type,))
+        row = cur.fetchone()
+        if row:
+            prefs['enabled'] = bool(row['enabled'])
+            ch = row['channels']
+            if ch is not None and not isinstance(ch, dict):
+                ch = json.loads(ch or '{}')
+            prefs['channels'] = ch or {}
+    except Exception:
+        pass
+
+    try:
+        cur.execute(f"""
+            SELECT timezone, quiet_enabled, quiet_from, quiet_to
+            FROM {schema}.notify_schedule
+            WHERE user_id = {int(user_id)}
+        """)
+        sch = cur.fetchone()
+        if sch and sch.get('quiet_enabled'):
+            prefs['quiet'] = {
+                'timezone': sch.get('timezone') or 'Europe/Moscow',
+                'from': int(sch.get('quiet_from', 22)),
+                'to': int(sch.get('quiet_to', 8)),
+            }
+    except Exception:
+        pass
+    return prefs
+
+
+def _in_quiet_hours(quiet):
+    """True, если сейчас (в таймзоне пользователя) — тихие часы."""
+    if not quiet:
+        return False
+    offset = _TZ_OFFSETS.get(quiet.get('timezone'), 3)
+    now_local = datetime.now(timezone.utc) + timedelta(hours=offset)
+    h = now_local.hour
+    q_from, q_to = quiet['from'], quiet['to']
+    if q_from == q_to:
+        return False
+    if q_from < q_to:
+        return q_from <= h < q_to
+    # интервал через полночь (например, 22 → 8)
+    return h >= q_from or h < q_to
+
+
 # ─── Лог ───────────────────────────────────────────────────────────────────
 
 def _log(cur, schema, *, channel, event_type, recipient, status,
@@ -168,10 +240,13 @@ def get_effective_bodies(cur, schema, event_type, owner_id=None):
 
 
 def send_notification(cur, schema, event_type, *, user_id=None, variables=None,
-                      channels=None, direct=None, related_id=None, owner_id=None):
+                      channels=None, direct=None, related_id=None, owner_id=None,
+                      respect_prefs=True):
     """Отправляет уведомление по шаблону на выбранные каналы.
 
     owner_id — если задан, применяются персональные тексты этого владельца.
+    respect_prefs — учитывать подписки получателя на тип события и тихие часы.
+        Поставьте False для критичных/системных уведомлений (нельзя отключить).
     Возвращает: {ok, event_type, results: {channel: 'success'|'failed'|'skipped'}}.
     """
     variables = variables or {}
@@ -187,6 +262,19 @@ def send_notification(cur, schema, event_type, *, user_id=None, variables=None,
 
     # 2. Получатель
     rec = _resolve_recipient(cur, schema, user_id, direct)
+
+    # 2.1. Персональные настройки получателя: подписка на тип события + тихие часы.
+    # respect_prefs=False (системные/критичные уведомления) — пропускаем проверки.
+    prefs = _load_prefs(cur, schema, user_id, event_type) if respect_prefs else {
+        'enabled': True, 'channels': {}, 'quiet': None}
+
+    # Событие целиком отключено пользователем — не шлём никуда.
+    if not prefs['enabled']:
+        return {'ok': True, 'event_type': event_type, 'results': {}, 'skipped_reason': 'unsubscribed'}
+
+    # Тихие часы — не беспокоим (пока режим 'skip').
+    if _in_quiet_hours(prefs.get('quiet')):
+        return {'ok': True, 'event_type': event_type, 'results': {}, 'skipped_reason': 'quiet_hours'}
 
     # 3. Какие каналы шлём
     want = channels if channels else default_channels
@@ -205,6 +293,11 @@ def send_notification(cur, schema, event_type, *, user_id=None, variables=None,
 
         # Уважаем настройку пользователя (None = не задано = разрешаем)
         if rec['notify'].get(ch) is False:
+            results[ch] = 'skipped'
+            continue
+
+        # Подписка на этот тип события в данный канал (opt-out: нет ключа = разрешено)
+        if prefs['channels'].get(ch) is False:
             results[ch] = 'skipped'
             continue
 

@@ -27,8 +27,8 @@ import {
   MasterBookingsSection,
   MasterReviewsSection,
   MasterFinancesSection,
-  MasterNotificationsSection,
 } from "./MasterSections";
+import NotificationsCenterSection from "@/components/workspace/NotificationsCenterSection";
 import MasterAddresses from "@/components/master/addresses/MasterAddresses";
 import MasterScheduleSettings from "@/components/master/MasterScheduleSettings";
 import MasterMessages from "@/components/master/MasterMessages";
@@ -169,11 +169,19 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     );
   }
 
-  // ─── Уведомления — общий раздел для всех коммерческих ролей ────────────────
+  // ─── Центр уведомлений — общий раздел для всех коммерческих ролей ──────────
   if (roleTab === "notifications") {
+    const ncRole: "organizer" | "master" | "partner" =
+      isPartner ? "partner" : isOrganizer ? "organizer" : isMaster ? "master" : "organizer";
     return (
-      <div className="max-w-2xl mx-auto">
-        <MasterNotificationsSection masterId={masterId} />
+      <div className="max-w-3xl mx-auto">
+        <NotificationsCenterSection
+          masterId={masterId}
+          userRole={ncRole}
+          tgLinked={tgLinked}
+          tgChannelsCount={tgChannelsCount}
+          refreshTgInfo={refreshTgInfo}
+        />
       </div>
     );
   }

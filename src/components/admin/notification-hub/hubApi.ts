@@ -74,4 +74,35 @@ export const hubApi = {
     page: number;
     pages: number;
   }> => call(`?resource=logs${params}`),
+
+  userChannels: (params = ""): Promise<{
+    users: UserChannelRow[];
+    total: number;
+    page: number;
+    pages: number;
+  }> => call(`?resource=user_channels${params}`),
+
+  setUserChannel: (
+    user_id: number,
+    channel: string,
+    active: boolean
+  ): Promise<{ ok: boolean }> =>
+    call("?resource=user_channels", {
+      method: "POST",
+      body: JSON.stringify({ user_id, channel, active }),
+    }),
 };
+
+export interface UserChannelState {
+  connected: boolean;
+  active: boolean;
+}
+
+export interface UserChannelRow {
+  id: number;
+  name: string;
+  email: string | null;
+  roles: string[];
+  quiet_enabled: boolean;
+  channels: Record<"telegram" | "email" | "vk", UserChannelState>;
+}

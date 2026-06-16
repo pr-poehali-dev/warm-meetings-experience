@@ -22,6 +22,7 @@ import requests
 
 from shared import *
 from channels import handle_channels_router, CHANNEL_ACTIONS
+from notify_center import handle_notify_center, NOTIFY_CENTER_ACTIONS
 
 VK_API_URL = "https://api.vk.com/method"
 VK_API_VERSION = "5.131"
@@ -1115,6 +1116,20 @@ def handler(event: dict, context) -> dict:
     action = params.get("action") or body.get("action", "")
     if action in CHANNEL_ACTIONS:
         return handle_channels_router(event, method, params, body)
+
+    # Единый центр настройки уведомлений (подписки на события + расписание)
+    if action in NOTIFY_CENTER_ACTIONS:
+        headers = event.get("headers") or {}
+        nc_token = headers.get("X-Session-Token", "") or headers.get("X-Auth-Token", "") or \
+            headers.get("X-Authorization", "").replace("Bearer ", "")
+        nc_conn = get_conn()
+        try:
+            return handle_notify_center(method, params, body, nc_conn, nc_token)
+        finally:
+            try:
+                nc_conn.close()
+            except Exception:
+                pass
 
     token = (event.get("headers") or {}).get("X-Session-Token") or \
             (event.get("headers") or {}).get("x-session-token") or \

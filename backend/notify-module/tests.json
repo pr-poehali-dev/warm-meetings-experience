@@ -103,6 +103,26 @@
       "path": "/?action=send_broadcast",
       "body": {"message": "test"},
       "expectedStatus": 403
+    },
+    {
+      "name": "Центр — notify_center без токена",
+      "method": "GET",
+      "path": "/?action=notify_center",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Центр — set_event_sub без токена",
+      "method": "POST",
+      "path": "/?action=set_event_sub",
+      "body": {"event_type": "master_booking_new", "enabled": true},
+      "expectedStatus": 401
+    },
+    {
+      "name": "Центр — set_schedule без токена",
+      "method": "POST",
+      "path": "/?action=set_schedule",
+      "body": {"quiet_enabled": true, "quiet_from": 22, "quiet_to": 8},
+      "expectedStatus": 401
     }
   ]
 }

@@ -136,6 +136,70 @@ export const notifyApi = {
   },
 };
 
+// ─── Центр настройки уведомлений (каналы + события + расписание) ───────────────
+
+export type CenterChannel = "telegram" | "email" | "vk";
+
+export interface CenterChannelState {
+  connected: boolean;
+  active: boolean;
+  value?: string | null;
+}
+
+export interface CenterEvent {
+  event_type: string;
+  name: string;
+  description: string;
+  category: string;
+  available_channels: CenterChannel[];
+  enabled: boolean;
+  channels: Record<string, boolean>;
+}
+
+export interface CenterSchedule {
+  timezone: string;
+  quiet_enabled: boolean;
+  quiet_from: number;
+  quiet_to: number;
+}
+
+export interface NotifyCenterState {
+  channels: Record<CenterChannel, CenterChannelState>;
+  events: CenterEvent[];
+  schedule: CenterSchedule;
+}
+
+export const notifyCenterApi = {
+  get(): Promise<NotifyCenterState> {
+    return req(`${BASE}?action=notify_center`);
+  },
+
+  setChannel(channel: CenterChannel | "sms", active: boolean): Promise<{ ok: boolean }> {
+    return req(`${BASE}?action=set_channel`, {
+      method: "POST",
+      body: JSON.stringify({ channel, active }),
+    });
+  },
+
+  setEventSub(
+    event_type: string,
+    enabled: boolean,
+    channels: Record<string, boolean>
+  ): Promise<{ ok: boolean }> {
+    return req(`${BASE}?action=set_event_sub`, {
+      method: "POST",
+      body: JSON.stringify({ event_type, enabled, channels }),
+    });
+  },
+
+  setSchedule(s: CenterSchedule): Promise<{ ok: boolean }> {
+    return req(`${BASE}?action=set_schedule`, {
+      method: "POST",
+      body: JSON.stringify(s),
+    });
+  },
+};
+
 export interface MasterBookingShort {
   id: number;
   client_name: string;

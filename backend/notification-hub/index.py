@@ -31,6 +31,7 @@ from shared import (
 from engine import send_notification, CHANNELS
 from templates import handle_templates
 from logs import handle_logs
+from user_channels import handle_user_channels
 
 
 def handler(event, context):
@@ -70,6 +71,17 @@ def handler(event, context):
                 return respond(403, {'error': 'Доступ запрещён'})
             return handle_logs(cur, schema, method, params)
 
+        # Обзор каналов пользователей + отключение — только админ
+        if resource == 'user_channels':
+            admin_token = headers_in.get('X-Admin-Token') or headers_in.get('x-admin-token') or ''
+            if not verify_admin_token(admin_token):
+                return respond(403, {'error': 'Доступ запрещён'})
+            try:
+                uc_body = json.loads(event.get('body') or '{}')
+            except Exception:
+                uc_body = {}
+            return handle_user_channels(cur, conn, schema, method, params, uc_body)
+
         return err('Неизвестный ресурс', 404)
     finally:
         conn.close()
@@ -106,6 +118,7 @@ def _route_send(cur, conn, schema, event):
         channels=channels, direct=direct,
         related_id=body.get('related_id'),
         owner_id=body.get('owner_id'),
+        respect_prefs=body.get('respect_prefs', True),
     )
     conn.commit()
     return respond(200, result)
