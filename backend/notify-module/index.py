@@ -120,32 +120,15 @@ def vk_shorten_url(url):
 
 
 def send_vk_message(vk_user_id, message):
-    """Отправка ЛС в VK от имени сообщества. Возвращает (ok, error)."""
-    token = os.environ.get("VK_COMMUNITY_TOKEN", "")
-    community_id = os.environ.get("VK_COMMUNITY_ID", "0")
-    if not token:
+    """Отправка ЛС в VK от имени сообщества. Возвращает (ok, error).
+
+    Делегирует единому shared.vk_send (Центр уведомлений). Сохраняем контракт
+    (ok, error), которого ждёт вызывающий код.
+    """
+    if not os.environ.get("VK_COMMUNITY_TOKEN"):
         return False, "VK_COMMUNITY_TOKEN not set"
-    try:
-        r = requests.post(
-            f"{VK_API_URL}/messages.send",
-            data={
-                "peer_id": int(vk_user_id),
-                "message": message,
-                "random_id": random.randint(1, 2**31),
-                "group_id": int(community_id) if community_id else 0,
-                "dont_parse_links": 0,
-                "access_token": token,
-                "v": VK_API_VERSION,
-            },
-            timeout=10,
-        )
-        result = r.json()
-        if "error" in result:
-            err = result["error"]
-            return False, f"code={err.get('error_code')} {err.get('error_msg')}"
-        return True, None
-    except Exception as e:
-        return False, str(e)
+    ok_sent = vk_send(vk_user_id, message)
+    return (True, None) if ok_sent else (False, "VK send failed")
 
 
 def send_telegram_message(chat_id, message):

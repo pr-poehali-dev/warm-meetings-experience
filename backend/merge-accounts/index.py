@@ -12,46 +12,7 @@ from datetime import datetime, timedelta
 import psycopg2
 import psycopg2.extras
 
-
-def send_email(to_email, subject, body_html, to_name=None, tags=None):
-    """Отправляет письмо через Unisender Go (актуальный формат from_email/from_name).
-
-    Не падает при ошибках, возвращает True/False.
-    """
-    api_key = os.environ.get('UNISENDER_API_KEY', '')
-    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
-    sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
-    if not api_key or not sender_email or not to_email:
-        return False
-    recipient = {'email': to_email}
-    if to_name:
-        recipient['name'] = to_name
-    message = {
-        'recipients': [recipient],
-        'from_email': sender_email,
-        'subject': subject,
-        'body': {'html': body_html},
-        'track_links': 1,
-        'track_read': 1,
-    }
-    if sender_name:
-        message['from_name'] = sender_name
-    if tags:
-        message['tags'] = tags if isinstance(tags, list) else [str(tags)]
-    payload = json.dumps({'message': message}).encode('utf-8')
-    req = urllib.request.Request(
-        'https://go2.unisender.ru/ru/transactional/api/v1/email/send.json',
-        data=payload,
-        headers={'X-API-KEY': api_key, 'Content-Type': 'application/json'},
-    )
-    try:
-        resp = urllib.request.urlopen(req, timeout=10)
-        data = json.loads(resp.read().decode('utf-8', 'replace') or '{}')
-        if data.get('status') == 'error' or data.get('failed_emails'):
-            return False
-        return True
-    except Exception:
-        return False
+from shared import send_email
 
 # ---------------------------------------------------------------------------
 # Константы
