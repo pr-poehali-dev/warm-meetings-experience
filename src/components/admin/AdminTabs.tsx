@@ -100,9 +100,9 @@ const NAV: NavGroup[] = [
       },
       {
         view: "notifications",
-        label: "Уведомления",
-        icon: "Bell",
-        hint: "Журнал отправок email/Telegram",
+        label: "Публикации в TG",
+        icon: "Send",
+        hint: "Автопубликации событий в Telegram-каналы",
       },
       {
         view: "mailings",
