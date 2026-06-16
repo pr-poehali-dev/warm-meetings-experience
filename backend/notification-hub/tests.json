@@ -26,6 +26,18 @@
       "expectedStatus": 403
     },
     {
+      "name": "Журнал без admin-токена — 403",
+      "method": "GET",
+      "path": "/?resource=logs",
+      "expectedStatus": 403
+    },
+    {
+      "name": "Статистика без admin-токена — 403",
+      "method": "GET",
+      "path": "/?resource=logs&action=stats",
+      "expectedStatus": 403
+    },
+    {
       "name": "Неизвестный ресурс — 404",
       "method": "GET",
       "path": "/?resource=unknown",

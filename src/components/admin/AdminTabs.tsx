@@ -93,6 +93,12 @@ const NAV: NavGroup[] = [
         badgeKey: "support",
       },
       {
+        view: "notification-hub",
+        label: "Центр уведомлений",
+        icon: "BellRing",
+        hint: "Шаблоны, каналы и журнал доставки",
+      },
+      {
         view: "notifications",
         label: "Уведомления",
         icon: "Bell",

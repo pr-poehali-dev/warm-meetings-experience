@@ -42,6 +42,36 @@ def _log_notification(cur, schema, *, channel, event_type, recipient, status,
         pass
 
 
+_TPL_VAR_RE = _re.compile(r'\{(\w+)\}')
+
+
+def _render_template(cur, schema, event_type, channel, field, variables, fallback):
+    """Берёт текст канала из центрального шаблона notification_templates и
+    подставляет переменные {var}. Если шаблона нет/отключён — вернёт fallback.
+    Никогда не падает.
+    """
+    try:
+        cur.execute(f"""
+            SELECT bodies, is_active
+            FROM {schema}.notification_templates
+            WHERE event_type = %s
+        """, (event_type,))
+        row = cur.fetchone()
+        if not row or not row.get('is_active'):
+            return fallback
+        bodies = row['bodies'] if isinstance(row['bodies'], dict) else json.loads(row['bodies'] or '{}')
+        raw = (bodies.get(channel) or {}).get(field)
+        if not raw:
+            return fallback
+
+        def repl(m):
+            v = variables.get(m.group(1))
+            return '' if v is None else str(v)
+        return _TPL_VAR_RE.sub(repl, raw)
+    except Exception:
+        return fallback
+
+
 def _alert_admin_critical(channel, error_code, error_text, recipient=''):
     """При критических сбоях (401/403/Forbidden) шлёт письмо админу проекта
     и дублирует в Telegram через единый shared.send_email/tg_send.
@@ -206,7 +236,23 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                 lines.append(f'<i>{when}{ip_part}</i>')
             lines.append('')
             lines.append(f'<i>Статус: {status_human}</i>')
-            ok_tg = tg_send(tg_chat_id, '\n'.join(lines))
+            # Богатое авто-сообщение — это fallback. Если админ настроил
+            # центральный шаблон (notification_templates) — используем его текст,
+            # чтобы тексты редактировались из «Центра уведомлений» без кода.
+            tpl_vars = {
+                'service_name': service_name or 'Услуга',
+                'date': dt_human,
+                'time': '',
+                'price': int(float(price)) if price else 0,
+                'client_name': client_name,
+                'client_phone': client_phone,
+                'status': status_human,
+            }
+            tg_text = _render_template(
+                cur, schema, 'master_booking_new', 'telegram', 'text',
+                tpl_vars, '\n'.join(lines),
+            )
+            ok_tg = tg_send(tg_chat_id, tg_text)
             if ok_tg:
                 print(f"[notify_master] telegram sent to chat_id={tg_chat_id}")
                 _log_notification(cur, schema,

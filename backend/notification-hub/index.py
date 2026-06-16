@@ -30,6 +30,7 @@ from shared import (
 )
 from engine import send_notification, CHANNELS
 from templates import handle_templates
+from logs import handle_logs
 
 
 def handler(event, context):
@@ -61,6 +62,13 @@ def handler(event, context):
             if not verify_admin_token(admin_token):
                 return respond(403, {'error': 'Доступ запрещён'})
             return handle_templates(cur, conn, schema, method, params, event)
+
+        # Журнал доставки и статистика — только админ
+        if resource == 'logs':
+            admin_token = headers_in.get('X-Admin-Token') or headers_in.get('x-admin-token') or ''
+            if not verify_admin_token(admin_token):
+                return respond(403, {'error': 'Доступ запрещён'})
+            return handle_logs(cur, schema, method, params)
 
         return err('Неизвестный ресурс', 404)
     finally:
