@@ -1,0 +1,35 @@
+{
+  "tests": [
+    {
+      "name": "CORS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Список каналов (публично)",
+      "method": "GET",
+      "path": "/?resource=channels",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Send без авторизации — 403",
+      "method": "POST",
+      "path": "/?resource=send",
+      "body": {"event_type": "test", "user_id": 1},
+      "expectedStatus": 403
+    },
+    {
+      "name": "Templates без admin-токена — 403",
+      "method": "GET",
+      "path": "/?resource=templates",
+      "expectedStatus": 403
+    },
+    {
+      "name": "Неизвестный ресурс — 404",
+      "method": "GET",
+      "path": "/?resource=unknown",
+      "expectedStatus": 404
+    }
+  ]
+}

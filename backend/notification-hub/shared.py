@@ -20,6 +20,7 @@ import urllib.error
 import psycopg2
 import psycopg2.extras
 
+
 # --- DB ---
 
 def get_conn():
@@ -36,7 +37,7 @@ def get_cursor(conn):
 CORS_HEADERS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Authorization, X-Session-Token, X-Admin-Token',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Authorization, X-Session-Token, X-Admin-Token, X-Internal-Token',
     'Access-Control-Max-Age': '86400',
     'Content-Type': 'application/json',
 }
@@ -54,22 +55,11 @@ def err(message, status=400):
     return respond(status, {'error': message})
 
 # --- Process-local memo cache (TTL) ---
-#
-# Простой in-memory кэш для счётчиков публичных списков и справочников.
-# Живёт в памяти Cloud Function между холодными стартами (пока контейнер тёплый).
-# Не подходит для авторизованных персональных данных — используй только для
-# того, что одинаково для всех клиентов: total публичных списков, справочники,
-# агрегаты по событиям/мастерам/баням.
-#
-# Использование:
-#     from shared import cached
-#     total = cached('events:total', 60, lambda: _query_events_total(cur, schema))
 
 _MEMO: dict = {}  # key -> (expires_at_ts, value)
 
 
 def memo_get(key: str):
-    """Возвращает значение из кэша, если не протухло. Иначе None."""
     item = _MEMO.get(key)
     if not item:
         return None
@@ -81,13 +71,11 @@ def memo_get(key: str):
 
 
 def memo_set(key: str, value, ttl_seconds: int = 60):
-    """Кладёт значение в кэш с TTL (по умолчанию 60 секунд)."""
     _MEMO[key] = (time.time() + max(1, int(ttl_seconds)), value)
     return value
 
 
 def memo_invalidate(prefix: str = ''):
-    """Сбрасывает кэш (полностью или по префиксу ключа)."""
     if not prefix:
         _MEMO.clear()
         return
@@ -97,10 +85,6 @@ def memo_invalidate(prefix: str = ''):
 
 
 def cached(key: str, ttl_seconds: int, loader):
-    """Удобная обёртка: вернуть из кэша или вызвать loader() и закэшировать.
-
-    loader — callable без аргументов, возвращающий JSON-сериализуемое значение.
-    """
     hit = memo_get(key)
     if hit is not None:
         return hit
@@ -151,10 +135,6 @@ def has_role(cur, schema, user_id, *slugs):
     """)
     return cur.fetchone() is not None
 
-def has_commercial_role(cur, schema, user_id):
-    """True, если у пользователя есть хотя бы одна "коммерческая" роль."""
-    return has_role(cur, schema, user_id, 'parmaster', 'organizer', 'partner', 'bath_owner', 'admin')
-
 def verify_admin_token(token):
     if not token:
         return False
@@ -163,58 +143,6 @@ def verify_admin_token(token):
         return False
     expected = hashlib.sha256(f"{admin_pwd}:{int(time.time() // 86400)}".encode()).hexdigest()
     return token == expected
-
-# --- Audit log ---
-
-def _esc(v):
-    if v is None:
-        return 'NULL'
-    return "'" + str(v).replace("'", "''") + "'"
-
-def audit_log(cur, schema, entity_type, entity_id, action,
-              field=None, old_value=None, new_value=None,
-              actor_type='admin', actor_id=None, actor_name=None, comment=None):
-    """Записывает событие в admin_audit_log. Никогда не падает.
-
-    Использование:
-        audit_log(cur, schema, 'ticket', ticket_id, 'status_change',
-                  field='status', old_value='open', new_value='closed')
-    """
-    try:
-        def _trunc(v, n=2000):
-            if v is None:
-                return None
-            return str(v)[:n]
-        cur.execute(f"""
-            INSERT INTO {schema}.admin_audit_log
-                (entity_type, entity_id, action, field, old_value, new_value,
-                 actor_type, actor_id, actor_name, comment)
-            VALUES ({_esc(entity_type)}, {_esc(str(entity_id))}, {_esc(action)},
-                    {_esc(field)}, {_esc(_trunc(old_value))}, {_esc(_trunc(new_value))},
-                    {_esc(actor_type)},
-                    {'NULL' if actor_id is None else int(actor_id)},
-                    {_esc(actor_name)}, {_esc(_trunc(comment))})
-        """)
-    except Exception:
-        # audit лог никогда не должен ронять основную операцию
-        pass
-
-# --- Slugify ---
-
-_TRANSLIT = {
-    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
-    'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
-    'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts',
-    'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
-    ' ': '-',
-}
-
-def slugify(text, max_length=80, fallback='item'):
-    text = text.lower().strip()
-    result = ''.join(_TRANSLIT.get(c, c) for c in text)
-    result = re.sub(r'[^a-z0-9-]', '', result)
-    result = re.sub(r'-+', '-', result).strip('-')
-    return (result or fallback)[:max_length]
 
 # --- Telegram ---
 
@@ -240,7 +168,6 @@ def tg_send(chat_id, text, token=None, parse_mode='HTML'):
             urllib.request.urlopen(req, timeout=10)
             return True
         except urllib.error.HTTPError as e:
-            # 4xx (заблокирован бот, неверный chat_id, ошибка разметки) — повтор бессмыслен
             try:
                 err_body = e.read().decode('utf-8')
             except Exception:
@@ -254,12 +181,6 @@ def tg_send(chat_id, text, token=None, parse_mode='HTML'):
     return False
 
 def tg_notify_admin(text, token=None):
-    """Уведомление администратору (TELEGRAM_CHAT_ID).
-
-    Всегда шлём через АДМИН-бота (TELEGRAM_BOT_TOKEN), а не через бота
-    публикаций (TG_PUBLISH_BOT_TOKEN). Иначе уведомления поддержки уходят
-    от имени бота организатора и могут не доставляться.
-    """
     admin_token = token or os.environ.get('TELEGRAM_BOT_TOKEN', '')
     return tg_send(os.environ.get('TELEGRAM_CHAT_ID', ''), text, token=admin_token)
 
@@ -302,10 +223,7 @@ def vk_send(vk_user_id, text):
 # --- Email (Unisender Go) ---
 
 def send_email(to_email, subject, body_html, to_name=None, tags=None):
-    """Отправляет письмо через Unisender Go. Возвращает True/False, не падает при ошибках.
-
-    Использует актуальный endpoint go2.unisender.ru и заголовок X-API-KEY.
-    """
+    """Отправляет письмо через Unisender Go. Возвращает True/False, не падает при ошибках."""
     api_key = os.environ.get('UNISENDER_API_KEY', '')
     sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
     sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
@@ -316,8 +234,6 @@ def send_email(to_email, subject, body_html, to_name=None, tags=None):
     recipient = {'email': to_email}
     if to_name:
         recipient['name'] = to_name
-    # Unisender Go transactional API ждёт from_email/from_name,
-    # а НЕ sender_email/sender_name — иначе запрос отклоняется.
     message = {
         'recipients': [recipient],
         'from_email': sender_email,
@@ -339,12 +255,10 @@ def send_email(to_email, subject, body_html, to_name=None, tags=None):
     try:
         resp = urllib.request.urlopen(req, timeout=10)
         raw = resp.read().decode('utf-8', 'replace')
-        # Unisender Go даже при HTTP 200 может вернуть отказ по получателю.
         try:
             data = json.loads(raw)
         except Exception:
             data = {}
-        # Успех: status == 'success' ИЛИ есть failed_emails пустой/отсутствует.
         failed = data.get('failed_emails') or {}
         if data.get('status') == 'error' or failed:
             print(f'[send_email] FAIL to={to_email}: provider_resp={raw[:500]}')
@@ -363,5 +277,4 @@ def send_email(to_email, subject, body_html, to_name=None, tags=None):
         return False
 
 def admin_email():
-    """Email администратора для уведомлений (env SUPPORT_ADMIN_EMAIL или UNISENDER_SENDER_EMAIL)."""
     return os.environ.get('SUPPORT_ADMIN_EMAIL') or os.environ.get('UNISENDER_SENDER_EMAIL', '')
