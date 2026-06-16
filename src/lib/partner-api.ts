@@ -80,4 +80,41 @@ export const partnerApi = {
 
   getStats: (bath_id?: number): Promise<PartnerStats> =>
     authenticatedRequest(`${PARTNER_API}/?resource=stats${bath_id ? `&id=${bath_id}` : ""}`),
+
+  listNotifyTemplates: (): Promise<{ templates: NotifyTemplate[] }> =>
+    authenticatedRequest(`${PARTNER_API}/?resource=notify_templates`),
+
+  saveNotifyTemplate: (
+    event_type: string,
+    bodies: Record<string, NotifyChannelBody>
+  ): Promise<{ ok: boolean }> =>
+    authenticatedRequest(`${PARTNER_API}/?resource=notify_templates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_type, bodies }),
+    }),
+
+  resetNotifyTemplate: (event_type: string): Promise<{ ok: boolean }> =>
+    authenticatedRequest(
+      `${PARTNER_API}/?resource=notify_templates&event_type=${encodeURIComponent(event_type)}`,
+      { method: "DELETE" }
+    ),
 };
+
+export interface NotifyChannelBody {
+  text?: string;
+  subject?: string;
+  html?: string;
+}
+
+export interface NotifyTemplate {
+  event_type: string;
+  name: string;
+  description: string;
+  category: string;
+  variables: string[];
+  global_bodies: Record<string, NotifyChannelBody>;
+  owner_bodies: Record<string, NotifyChannelBody> | null;
+  default_channels: string[];
+  customized: boolean;
+}

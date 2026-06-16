@@ -4,6 +4,7 @@ import psycopg2
 import psycopg2.extras
 
 from shared import *
+from notify_templates import handle_notify_templates
 
 
 def check_partner_role(cur, schema, user_id):
@@ -79,6 +80,9 @@ def handler(event, context):
         if method == 'POST':
             body = json.loads(event.get('body', '{}'))
             return handle_deactivate_bath(cur, conn, schema, user, body)
+
+    if resource == 'notify_templates':
+        return handle_notify_templates(cur, conn, schema, user, method, params, event)
 
     conn.close()
     return respond(400, {'error': 'Unknown resource'})

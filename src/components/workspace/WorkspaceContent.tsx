@@ -16,6 +16,7 @@ import CrmModule from "@/components/crm/CrmModule";
 import BathCard from "@/components/partner/BathCard";
 import BathForm from "@/components/partner/BathForm";
 import PartnerStats from "@/components/partner/PartnerStats";
+import PartnerNotifications from "@/components/partner/PartnerNotifications";
 import WorkspaceDashboard from "@/components/workspace/WorkspaceDashboard";
 import LandingSection from "@/components/workspace/landing/LandingSection";
 import {
@@ -299,6 +300,9 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
           />
         </div>
       );
+    }
+    if (partnerView === "notifications") {
+      return roleAccent("violet", <PartnerNotifications />);
     }
   }
 

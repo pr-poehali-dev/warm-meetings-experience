@@ -177,6 +177,12 @@ export default function WorkspaceSidebar({
             icon="Plus"
             label="Добавить баню"
           />
+          <NavItem
+            active={roleTab === "partner" && partnerView === "notifications"}
+            onClick={() => switchPartnerView("notifications")}
+            icon="Bell"
+            label="Тексты уведомлений"
+          />
         </CollapsibleSection>
       )}
 

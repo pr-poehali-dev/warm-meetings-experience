@@ -105,6 +105,7 @@ def _route_send(cur, conn, schema, event):
         user_id=user_id, variables=variables,
         channels=channels, direct=direct,
         related_id=body.get('related_id'),
+        owner_id=body.get('owner_id'),
     )
     conn.commit()
     return respond(200, result)

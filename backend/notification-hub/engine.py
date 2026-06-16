@@ -130,16 +130,11 @@ def _log(cur, schema, *, channel, event_type, recipient, status,
 
 # ─── Главный движок ──────────────────────────────────────────────────────────
 
-def send_notification(cur, schema, event_type, *, user_id=None, variables=None,
-                      channels=None, direct=None, related_id=None):
-    """Отправляет уведомление по шаблону на выбранные каналы.
-
-    Возвращает: {ok, event_type, results: {channel: 'success'|'failed'|'skipped'}}.
+def get_effective_bodies(cur, schema, event_type, owner_id=None):
+    """Возвращает (bodies, default_channels, is_active, template_id) с учётом
+    персонального шаблона владельца. Персональные тексты канала имеют приоритет
+    над глобальными; недостающие каналы берутся из глобального шаблона.
     """
-    variables = variables or {}
-    direct = direct or {}
-
-    # 1. Шаблон
     cur.execute(f"""
         SELECT id, bodies, default_channels, is_active
         FROM {schema}.notification_templates
@@ -147,14 +142,48 @@ def send_notification(cur, schema, event_type, *, user_id=None, variables=None,
     """, (event_type,))
     tpl = cur.fetchone()
     if not tpl:
-        return {'ok': False, 'error': f'Нет шаблона для event_type={event_type}'}
-    if not tpl.get('is_active'):
-        return {'ok': False, 'error': 'Шаблон отключён', 'results': {}}
+        return None, None, None, None
 
-    template_id = tpl['id']
     bodies = tpl['bodies'] if isinstance(tpl['bodies'], dict) else json.loads(tpl['bodies'] or '{}')
     default_channels = tpl['default_channels'] if isinstance(tpl['default_channels'], list) \
         else json.loads(tpl['default_channels'] or '[]')
+
+    # Накладываем персональный шаблон владельца (если есть и активен)
+    if owner_id:
+        cur.execute(f"""
+            SELECT bodies, is_active
+            FROM {schema}.notification_templates_owner
+            WHERE owner_id = %s AND event_type = %s
+        """, (int(owner_id), event_type))
+        own = cur.fetchone()
+        if own and own.get('is_active'):
+            own_bodies = own['bodies'] if isinstance(own['bodies'], dict) else json.loads(own['bodies'] or '{}')
+            merged = dict(bodies)
+            for ch, body in own_bodies.items():
+                if body:
+                    merged[ch] = body
+            bodies = merged
+
+    return bodies, default_channels, tpl.get('is_active'), tpl['id']
+
+
+def send_notification(cur, schema, event_type, *, user_id=None, variables=None,
+                      channels=None, direct=None, related_id=None, owner_id=None):
+    """Отправляет уведомление по шаблону на выбранные каналы.
+
+    owner_id — если задан, применяются персональные тексты этого владельца.
+    Возвращает: {ok, event_type, results: {channel: 'success'|'failed'|'skipped'}}.
+    """
+    variables = variables or {}
+    direct = direct or {}
+
+    # 1. Шаблон (с учётом персонального шаблона владельца)
+    bodies, default_channels, is_active, template_id = get_effective_bodies(
+        cur, schema, event_type, owner_id=owner_id)
+    if bodies is None:
+        return {'ok': False, 'error': f'Нет шаблона для event_type={event_type}'}
+    if not is_active:
+        return {'ok': False, 'error': 'Шаблон отключён', 'results': {}}
 
     # 2. Получатель
     rec = _resolve_recipient(cur, schema, user_id, direct)

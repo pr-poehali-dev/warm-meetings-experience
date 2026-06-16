@@ -730,6 +730,51 @@ def send_organizer_vk(vk_user_id, event_title, event_date, event_time,
         return False
 
 
+import re as _re
+_NTPL_VAR_RE = _re.compile(r'\{(\w+)\}')
+
+
+def _render_notify_template(cur, schema, event_type, channel, field, variables, owner_id=None):
+    """Возвращает текст канала из шаблона уведомления с учётом персонального
+    переопределения владельца (owner_id). Если шаблона/текста нет — None.
+    Никогда не падает.
+    """
+    try:
+        cur.execute(f"""
+            SELECT bodies, is_active, owner_editable
+            FROM {schema}.notification_templates
+            WHERE event_type = %s
+        """, (event_type,))
+        row = cur.fetchone()
+        if not row or not row.get('is_active'):
+            return None
+        bodies = row['bodies'] if isinstance(row['bodies'], dict) else json.loads(row['bodies'] or '{}')
+
+        # Персональный шаблон владельца имеет приоритет
+        if owner_id:
+            cur.execute(f"""
+                SELECT bodies, is_active
+                FROM {schema}.notification_templates_owner
+                WHERE owner_id = {int(owner_id)} AND event_type = %s
+            """, (event_type,))
+            own = cur.fetchone()
+            if own and own.get('is_active'):
+                own_bodies = own['bodies'] if isinstance(own['bodies'], dict) else json.loads(own['bodies'] or '{}')
+                if (own_bodies.get(channel) or {}).get(field):
+                    bodies = {**bodies, channel: own_bodies[channel]}
+
+        raw = (bodies.get(channel) or {}).get(field)
+        if not raw:
+            return None
+
+        def repl(m):
+            v = variables.get(m.group(1))
+            return '' if v is None else str(v)
+        return _NTPL_VAR_RE.sub(repl, raw)
+    except Exception:
+        return None
+
+
 def handle_notify_signup(body):
     organizer_id = body.get('organizer_id')
     if not organizer_id:
@@ -772,6 +817,20 @@ def handle_notify_signup(body):
         WHERE user_id = {organizer_id}
     """)
     tg_link = cur.fetchone()
+
+    # Персональный/центральный шаблон Telegram-текста (если организатор настроил)
+    tpl_vars = {
+        'event_name': event_title,
+        'date': event_date,
+        'time': event_time,
+        'bath_name': bath_name,
+        'guest_name': signup_name,
+        'guest_phone': signup_phone,
+        'spots_left': spots_left,
+    }
+    custom_tg_text = _render_notify_template(
+        cur, schema, 'event_signup_new', 'telegram', 'text',
+        tpl_vars, organizer_id)
     conn.close()
 
     if not organizer:
@@ -781,27 +840,32 @@ def handle_notify_signup(body):
 
     # ── Telegram ──────────────────────────────────────────────────────────────
     if organizer['notify_telegram'] and tg_link:
-        tg_text = (
-            f"🎫 *Новая запись на событие!*\n\n"
-            f"📌 {event_title}\n"
-            f"📅 {event_date}, {event_time}\n"
-            f"🏠 {bath_name}\n\n"
-            f"👤 {signup_name}\n"
-            f"📞 {signup_phone}\n"
-            f"📧 {signup_email}\n"
-        )
-        if signup_telegram:
-            tg_text += f"✈️ {signup_telegram}\n"
-        if guests:
-            tg_text += f"\n👥 Доп. участники ({len(guests)}):\n"
-            for g in guests:
-                g_name = g.get('name') or '—'
-                g_phone = g.get('phone') or ''
-                tg_text += f"  • {g_name}" + (f" {g_phone}" if g_phone else "") + "\n"
-        if comment:
-            tg_text += f"\n💬 Комментарий: {comment}\n"
-        tg_text += f"\n🪑 Осталось мест: {spots_left}"
-        result = send_message(tg_link['telegram_user_id'], tg_text)
+        if custom_tg_text:
+            tg_text = custom_tg_text
+        else:
+            tg_text = (
+                f"🎫 *Новая запись на событие!*\n\n"
+                f"📌 {event_title}\n"
+                f"📅 {event_date}, {event_time}\n"
+                f"🏠 {bath_name}\n\n"
+                f"👤 {signup_name}\n"
+                f"📞 {signup_phone}\n"
+                f"📧 {signup_email}\n"
+            )
+            if signup_telegram:
+                tg_text += f"✈️ {signup_telegram}\n"
+            if guests:
+                tg_text += f"\n👥 Доп. участники ({len(guests)}):\n"
+                for g in guests:
+                    g_name = g.get('name') or '—'
+                    g_phone = g.get('phone') or ''
+                    tg_text += f"  • {g_name}" + (f" {g_phone}" if g_phone else "") + "\n"
+            if comment:
+                tg_text += f"\n💬 Комментарий: {comment}\n"
+            tg_text += f"\n🪑 Осталось мест: {spots_left}"
+        # Кастомный текст — HTML (как в шаблонах), авто-текст — Markdown
+        parse_mode = 'HTML' if custom_tg_text else 'Markdown'
+        result = send_message(tg_link['telegram_user_id'], tg_text, parse_mode=parse_mode)
         print(f"[notify_signup] tg_user_id={tg_link['telegram_user_id']} result={result}")
         results['telegram'] = result.get('ok', False)
         if not result.get('ok'):
