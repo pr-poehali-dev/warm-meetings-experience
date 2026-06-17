@@ -39,7 +39,7 @@ def handle_notify_center(method, params, body, conn, token):
     action = params.get("action") or body.get("action", "")
 
     if method == "GET" and action == "notify_center":
-        return _get_center(cur, schema, uid)
+        return _get_center(cur, schema, uid, user)
     if method == "POST" and action == "set_event_sub":
         return _set_event_sub(cur, conn, schema, uid, body)
     if method == "POST" and action == "set_schedule":
@@ -50,7 +50,21 @@ def handle_notify_center(method, params, body, conn, token):
     return respond(400, {"error": "Неизвестное действие"})
 
 
-def _get_center(cur, schema, uid):
+def _get_center(cur, schema, uid, user=None):
+    # 0. Роли пользователя для фильтрации событий
+    cur.execute(f"""
+        SELECT r.slug FROM {schema}.user_roles ur
+        JOIN {schema}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = {int(uid)} AND ur.status = 'active'
+    """)
+    user_roles = {row['slug'] for row in cur.fetchall()}
+    # Маппинг: slug роли → название в recipient_roles
+    ROLE_MAP = {'parmaster': 'master', 'organizer': 'organizer', 'partner': 'partner',
+                'bath_owner': 'partner', 'admin': 'admin'}
+    user_recipient_roles = {ROLE_MAP[s] for s in user_roles if s in ROLE_MAP}
+    if not user_recipient_roles:
+        user_recipient_roles = {'master'}  # fallback
+
     # 1. Состояние каналов
     cur.execute(f"""
         SELECT u.email, u.vk_id, u.vk_notify_allowed, u.tg_chat_id, u.tg_notify_allowed,
@@ -91,7 +105,7 @@ def _get_center(cur, schema, uid):
     # 2. Доступные типы событий (для бизнес-аудитории) + текущие подписки
     cur.execute(f"""
         SELECT t.event_type, t.name, t.description, t.category,
-               t.default_channels,
+               t.default_channels, t.recipient_roles,
                s.channels AS sub_channels, s.enabled AS sub_enabled
         FROM {schema}.notification_templates t
         LEFT JOIN {schema}.notify_event_subscriptions s
@@ -101,6 +115,13 @@ def _get_center(cur, schema, uid):
     """)
     events = []
     for r in cur.fetchall():
+        # Фильтр по ролям: показываем событие только если роль пользователя входит в recipient_roles
+        rec_roles = r['recipient_roles']
+        if rec_roles is not None and not isinstance(rec_roles, list):
+            rec_roles = json.loads(rec_roles or '[]')
+        if rec_roles and not user_recipient_roles.intersection(set(rec_roles)):
+            continue
+
         default_ch = r['default_channels'] if isinstance(r['default_channels'], list) \
             else json.loads(r['default_channels'] or '[]')
         sub_ch = r['sub_channels']
