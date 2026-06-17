@@ -305,30 +305,14 @@ const ROLE_LABELS: Record<string, string> = {
   partner: "Управляющий",
 };
 
-function EventsPanel({
+function EventsTable({
   events,
-  userRoles,
   onChange,
 }: {
   events: CenterEvent[];
-  userRoles: string[];
   onChange: (e: CenterEvent) => void;
 }) {
-  const hasMultipleRoles = userRoles.length > 1;
-  const [activeRole, setActiveRole] = useState<string>(() => userRoles[0] ?? "");
-
-  // Фильтрация по выбранной роли (если ролей > 1)
-  const visibleEvents = hasMultipleRoles && activeRole
-    ? events.filter((e) =>
-        !e.recipient_roles?.length || e.recipient_roles.includes(activeRole)
-      )
-    : events;
-
-  // группировка по категориям
-  const groups: Record<string, CenterEvent[]> = {};
-  visibleEvents.forEach((e) => {
-    (groups[e.category] = groups[e.category] || []).push(e);
-  });
+  const allChannels: CenterChannel[] = ["telegram", "email", "vk"];
 
   const saveSub = async (
     ev: CenterEvent,
@@ -347,107 +331,166 @@ function EventsPanel({
     }
   };
 
-  const allChannels: CenterChannel[] = ["telegram", "email", "vk"];
+  const groups: Record<string, CenterEvent[]> = {};
+  events.forEach((e) => {
+    (groups[e.category] = groups[e.category] || []).push(e);
+  });
+
+  return (
+    <div className="bg-card border rounded-2xl overflow-hidden">
+      {/* шапка */}
+      <div className="hidden sm:grid grid-cols-[1fr_auto] gap-2 px-4 py-2.5 bg-muted/40 text-xs font-medium text-muted-foreground border-b">
+        <div>Событие</div>
+        <div className="flex gap-1">
+          {allChannels.map((ch) => (
+            <span key={ch} className="w-20 text-center">
+              {CHANNEL_META[ch].label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {Object.entries(groups).map(([cat, list]) => (
+        <div key={cat}>
+          <div className="px-4 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground bg-muted/20">
+            {CATEGORY_LABEL[cat] || cat}
+          </div>
+          {list.map((ev) => (
+            <div
+              key={ev.event_type}
+              className="px-4 py-3 border-b last:border-0 flex flex-col sm:flex-row sm:items-center gap-3"
+            >
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <Switch
+                  checked={ev.enabled}
+                  onCheckedChange={(v) => saveSub(ev, { enabled: v })}
+                />
+                <div className="min-w-0">
+                  <div className={`text-sm font-medium ${!ev.enabled ? "text-muted-foreground" : ""}`}>
+                    {ev.name}
+                  </div>
+                  {ev.description && (
+                    <div className="text-xs text-muted-foreground truncate">{ev.description}</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-1 pl-11 sm:pl-0">
+                {allChannels.map((ch) => {
+                  const available = ev.available_channels.includes(ch);
+                  const checked = available && ev.enabled && ev.channels[ch] !== false;
+                  return (
+                    <div key={ch} className="w-20 flex flex-col items-center gap-1">
+                      <span className={`text-[10px] font-medium ${CHANNEL_META[ch].color} sm:hidden`}>
+                        {CHANNEL_META[ch].label}
+                      </span>
+                      {available ? (
+                        <button
+                          type="button"
+                          disabled={!ev.enabled}
+                          onClick={() => saveSub(ev, { channels: { [ch]: !checked } })}
+                          className={`
+                            w-7 h-7 rounded-full flex items-center justify-center
+                            transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary/30
+                            disabled:opacity-40 disabled:cursor-not-allowed
+                            ${checked
+                              ? "bg-green-500 text-white shadow-sm"
+                              : "bg-background border-2 border-border hover:border-primary/50"
+                            }
+                          `}
+                          aria-label={`${ev.name} — ${CHANNEL_META[ch].label}`}
+                          aria-pressed={checked}
+                        >
+                          {checked && <Icon name="Check" size={14} className="text-white" />}
+                        </button>
+                      ) : (
+                        <span className="text-muted-foreground/30 text-xs h-7 flex items-center">—</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EventsPanel({
+  events,
+  userRoles,
+  onChange,
+}: {
+  events: CenterEvent[];
+  userRoles: string[];
+  onChange: (e: CenterEvent) => void;
+}) {
+  const hasMultipleRoles = userRoles.length > 1;
+  // По умолчанию все секции открыты
+  const [openRoles, setOpenRoles] = useState<Set<string>>(() => new Set(userRoles));
+
+  const toggleRole = (role: string) => {
+    setOpenRoles((prev) => {
+      const next = new Set(prev);
+      if (next.has(role)) next.delete(role);
+      else next.add(role);
+      return next;
+    });
+  };
+
+  // Для одной роли — просто таблица без аккордеона
+  if (!hasMultipleRoles) {
+    return (
+      <div className="space-y-2">
+        <p className="font-semibold text-sm">О каких событиях уведомлять</p>
+        <EventsTable events={events} onChange={onChange} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <p className="font-semibold text-sm">О каких событиях уведомлять</p>
-        {hasMultipleRoles && (
-          <Select value={activeRole} onValueChange={setActiveRole}>
-            <SelectTrigger className="w-44 h-8 text-xs rounded-xl border-border bg-card">
-              <SelectValue placeholder="Роль" />
-            </SelectTrigger>
-            <SelectContent>
-              {userRoles.map((r) => (
-                <SelectItem key={r} value={r}>
-                  {ROLE_LABELS[r] ?? r}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
-      <div className="bg-card border rounded-2xl overflow-hidden">
-        {/* шапка */}
-        <div className="hidden sm:grid grid-cols-[1fr_auto] gap-2 px-4 py-2.5 bg-muted/40 text-xs font-medium text-muted-foreground border-b">
-          <div>Событие</div>
-          <div className="flex gap-1">
-            {allChannels.map((ch) => (
-              <span key={ch} className="w-20 text-center">
-                {CHANNEL_META[ch].label}
-              </span>
-            ))}
-          </div>
-        </div>
+      <p className="font-semibold text-sm">О каких событиях уведомлять</p>
+      <div className="space-y-2">
+        {userRoles.map((role) => {
+          const roleEvents = events.filter(
+            (e) => !e.recipient_roles?.length || e.recipient_roles.includes(role)
+          );
+          const isOpen = openRoles.has(role);
+          const enabledCount = roleEvents.filter((e) => e.enabled).length;
 
-        {Object.entries(groups).map(([cat, list]) => (
-          <div key={cat}>
-            <div className="px-4 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground bg-muted/20">
-              {CATEGORY_LABEL[cat] || cat}
-            </div>
-            {list.map((ev) => (
-              <div
-                key={ev.event_type}
-                className="px-4 py-3 border-b last:border-0 flex flex-col sm:flex-row sm:items-center gap-3"
+          return (
+            <div key={role} className="border rounded-2xl overflow-hidden bg-card">
+              {/* Заголовок аккордеона */}
+              <button
+                type="button"
+                onClick={() => toggleRole(role)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
               >
-                {/* Название события + переключатель строки */}
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <Switch
-                    checked={ev.enabled}
-                    onCheckedChange={(v) => saveSub(ev, { enabled: v })}
-                  />
-                  <div className="min-w-0">
-                    <div className={`text-sm font-medium ${!ev.enabled ? "text-muted-foreground" : ""}`}>
-                      {ev.name}
-                    </div>
-                    {ev.description && (
-                      <div className="text-xs text-muted-foreground truncate">{ev.description}</div>
-                    )}
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm">{ROLE_LABELS[role] ?? role}</span>
+                  <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">
+                    {enabledCount} из {roleEvents.length}
+                  </span>
                 </div>
+                <Icon
+                  name="ChevronDown"
+                  size={16}
+                  className={`text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                />
+              </button>
 
-                {/* Чекбоксы каналов */}
-                <div className="flex gap-1 pl-11 sm:pl-0">
-                  {allChannels.map((ch) => {
-                    const available = ev.available_channels.includes(ch);
-                    const checked = available && ev.enabled && ev.channels[ch] !== false;
-                    return (
-                      <div key={ch} className="w-20 flex flex-col items-center gap-1">
-                        {/* Подпись канала — всегда видна */}
-                        <span className={`text-[10px] font-medium ${CHANNEL_META[ch].color} sm:hidden`}>
-                          {CHANNEL_META[ch].label}
-                        </span>
-                        {available ? (
-                          <button
-                            type="button"
-                            disabled={!ev.enabled}
-                            onClick={() => saveSub(ev, { channels: { [ch]: !checked } })}
-                            className={`
-                              w-7 h-7 rounded-full flex items-center justify-center
-                              transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary/30
-                              disabled:opacity-40 disabled:cursor-not-allowed
-                              ${checked
-                                ? "bg-green-500 text-white shadow-sm"
-                                : "bg-background border-2 border-border hover:border-primary/50"
-                              }
-                            `}
-                            aria-label={`${ev.name} — ${CHANNEL_META[ch].label}`}
-                            aria-pressed={checked}
-                          >
-                            {checked && <Icon name="Check" size={14} className="text-white" />}
-                          </button>
-                        ) : (
-                          <span className="text-muted-foreground/30 text-xs h-7 flex items-center">—</span>
-                        )}
-                      </div>
-                    );
-                  })}
+              {/* Тело аккордеона */}
+              {isOpen && (
+                <div className="border-t">
+                  <EventsTable events={roleEvents} onChange={onChange} />
                 </div>
-              </div>
-            ))}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
