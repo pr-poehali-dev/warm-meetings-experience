@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import MergeAccountModal, { MergeHint } from "@/components/admin/MergeAccountModal";
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
-const USER_PROFILE_URL = "https://functions.poehali.dev/5a86a75b-0df6-4bdf-9a70-7cee5a2de2e3";
+const USER_PROFILE_URL = "https://functions.poehali.dev/5322ffd0-7079-40ce-9d4e-8d7fee29624c";
 const VK_COMMUNITY = "sparcom";
 const VK_WRITE_URL = `https://vk.com/write-${VK_COMMUNITY}`;
 

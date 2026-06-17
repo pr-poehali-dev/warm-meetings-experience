@@ -9,7 +9,7 @@ import MergeAccountModal, { MergeHint } from "@/components/admin/MergeAccountMod
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 const USER_AUTH_URL = "https://functions.poehali.dev/d5d9f568-ba92-4605-9b95-646ba409fd8d";
-const USER_PROFILE_URL = "https://functions.poehali.dev/5a86a75b-0df6-4bdf-9a70-7cee5a2de2e3";
+const USER_PROFILE_URL = "https://functions.poehali.dev/5322ffd0-7079-40ce-9d4e-8d7fee29624c";
 
 function getStoredCodeVerifier(): string | null {
   return sessionStorage.getItem("vk_auth_code_verifier");
