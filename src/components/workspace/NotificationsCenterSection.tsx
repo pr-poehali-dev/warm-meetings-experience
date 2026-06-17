@@ -428,14 +428,21 @@ function EventsPanel({
   onChange: (e: CenterEvent) => void;
 }) {
   const hasMultipleRoles = userRoles.length > 1;
-  // По умолчанию все секции открыты
-  const [openRoles, setOpenRoles] = useState<Set<string>>(() => new Set(userRoles));
+  const STORAGE_KEY = "notify_accordion_open_roles";
+  const [openRoles, setOpenRoles] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return new Set(JSON.parse(saved) as string[]);
+    } catch (e) { void e; }
+    return new Set(userRoles);
+  });
 
   const toggleRole = (role: string) => {
     setOpenRoles((prev) => {
       const next = new Set(prev);
       if (next.has(role)) next.delete(role);
       else next.add(role);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...next])); } catch (e) { void e; }
       return next;
     });
   };
