@@ -2,6 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import TelegramSettings from "@/components/organizer/TelegramSettings";
 import VkConnectBanner from "@/components/shared/VkConnectBanner";
@@ -24,12 +31,21 @@ const CATEGORY_LABEL: Record<string, string> = {
   service: "Служебные",
 };
 
+export interface UserOption {
+  id: number;
+  name: string;
+  role?: string;
+}
+
 interface Props {
   masterId: number;
   userRole: "organizer" | "master" | "partner";
   tgLinked: boolean;
   tgChannelsCount: number;
   refreshTgInfo: () => void;
+  userOptions?: UserOption[];
+  selectedUserId?: number;
+  onUserChange?: (userId: number) => void;
 }
 
 export default function NotificationsCenterSection({
@@ -38,6 +54,9 @@ export default function NotificationsCenterSection({
   tgLinked,
   tgChannelsCount,
   refreshTgInfo,
+  userOptions,
+  selectedUserId,
+  onUserChange,
 }: Props) {
   const [state, setState] = useState<NotifyCenterState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,6 +92,31 @@ export default function NotificationsCenterSection({
           Подключите каналы и выберите, о чём вас уведомлять
         </p>
       </div>
+
+      {/* ── Выбор пользователя (если передан список) ── */}
+      {userOptions && userOptions.length > 1 && onUserChange && (
+        <div className="flex items-center gap-3">
+          <Icon name="User" size={15} className="text-muted-foreground shrink-0" />
+          <Select
+            value={String(selectedUserId ?? masterId)}
+            onValueChange={(v) => onUserChange(Number(v))}
+          >
+            <SelectTrigger className="w-full sm:w-72 rounded-xl border-border bg-card h-9 text-sm">
+              <SelectValue placeholder="Выберите пользователя" />
+            </SelectTrigger>
+            <SelectContent>
+              {userOptions.map((u) => (
+                <SelectItem key={u.id} value={String(u.id)}>
+                  <span className="font-medium">{u.name}</span>
+                  {u.role && (
+                    <span className="ml-2 text-xs text-muted-foreground">{u.role}</span>
+                  )}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* ── Верхняя панель: статусы каналов ── */}
       <ChannelsPanel
@@ -299,9 +343,9 @@ function EventsPanel({
         {/* шапка */}
         <div className="hidden sm:grid grid-cols-[1fr_auto] gap-2 px-4 py-2.5 bg-muted/40 text-xs font-medium text-muted-foreground border-b">
           <div>Событие</div>
-          <div className="flex gap-4">
+          <div className="flex gap-1">
             {allChannels.map((ch) => (
-              <span key={ch} className="w-16 text-center">
+              <span key={ch} className="w-20 text-center">
                 {CHANNEL_META[ch].label}
               </span>
             ))}
@@ -318,6 +362,7 @@ function EventsPanel({
                 key={ev.event_type}
                 className="px-4 py-3 border-b last:border-0 flex flex-col sm:flex-row sm:items-center gap-3"
               >
+                {/* Название события + переключатель строки */}
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <Switch
                     checked={ev.enabled}
@@ -332,20 +377,37 @@ function EventsPanel({
                     )}
                   </div>
                 </div>
-                <div className="flex gap-4 pl-11 sm:pl-0">
+
+                {/* Чекбоксы каналов */}
+                <div className="flex gap-1 pl-11 sm:pl-0">
                   {allChannels.map((ch) => {
                     const available = ev.available_channels.includes(ch);
                     const checked = available && ev.enabled && ev.channels[ch] !== false;
                     return (
-                      <div key={ch} className="w-16 flex justify-center">
+                      <div key={ch} className="w-20 flex justify-center">
                         {available ? (
-                          <Switch
-                            checked={checked}
+                          <button
+                            type="button"
                             disabled={!ev.enabled}
-                            onCheckedChange={(v) => saveSub(ev, { channels: { [ch]: v } })}
-                          />
+                            onClick={() => saveSub(ev, { channels: { [ch]: !checked } })}
+                            className={`
+                              w-6 h-6 rounded-md border-2 flex items-center justify-center
+                              transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary/30
+                              disabled:opacity-40 disabled:cursor-not-allowed
+                              ${checked
+                                ? "bg-green-500 border-green-500 text-white"
+                                : "bg-background border-border hover:border-primary/50"
+                              }
+                            `}
+                            aria-label={`${ev.name} — ${CHANNEL_META[ch].label}`}
+                            aria-pressed={checked}
+                          >
+                            {checked && (
+                              <Icon name="Check" size={13} className="text-white" />
+                            )}
+                          </button>
                         ) : (
-                          <span className="text-muted-foreground/40 text-xs">—</span>
+                          <span className="text-muted-foreground/30 text-xs leading-6">—</span>
                         )}
                       </div>
                     );
