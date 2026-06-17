@@ -12,6 +12,7 @@ from time_utils import (
     fetch_master_tz, parse_client_dt, to_master_iso, localize_rows,
 )
 import re as _re
+from notify_utils import hub_notify, get_master_user_id, fmt_dt
 
 
 def _log_notification(cur, schema, *, channel, event_type, recipient, status,
@@ -896,6 +897,21 @@ def handle_bookings(event, method, params, schema, headers):
         except Exception:
             pass
 
+        # Уведомление мастеру через hub: master_booking_new (с учётом подписок)
+        try:
+            _uid = get_master_user_id(cur, schema, master_id)
+            if _uid:
+                _bdate, _btime = fmt_dt(booking.get('datetime_start'))
+                hub_notify('master_booking_new', user_id=_uid, related_id=booking.get('id'), owner_id=_uid,
+                           variables={
+                               'client_name': booking.get('client_name', ''),
+                               'service_name': svc_name_for_notify,
+                               'date': _bdate, 'time': _btime,
+                               'master_name': '',
+                           })
+        except Exception:
+            pass
+
         conn.close()
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(booking, default=str)}
 
@@ -1001,6 +1017,22 @@ def handle_bookings(event, method, params, schema, headers):
             except Exception:
                 pass
 
+            # Уведомление через hub: booking_rescheduled
+            try:
+                _uid = get_master_user_id(cur, schema, master_id)
+                if _uid:
+                    _old_date, _old_time = fmt_dt(curr_b.get('datetime_start'))
+                    _new_date, _new_time = fmt_dt(row.get('datetime_start'))
+                    hub_notify('booking_rescheduled', user_id=_uid, related_id=booking_id, owner_id=_uid,
+                               variables={
+                                   'client_name': row.get('client_name', ''),
+                                   'service_name': svc_name,
+                                   'old_date': _old_date, 'old_time': _old_time,
+                                   'new_date': _new_date, 'new_time': _new_time,
+                               })
+            except Exception:
+                pass
+
             conn.close()
             return {'statusCode': 200, 'headers': headers, 'body': json.dumps(row, default=str)}
 
@@ -1053,10 +1085,31 @@ def handle_bookings(event, method, params, schema, headers):
                 try:
                     canceled_booking = cur.fetchone()
                     if canceled_booking:
+                        _cb = dict(canceled_booking)
                         _notify_client_about_cancellation(
-                            cur, schema, canceled_booking['master_id'],
-                            dict(canceled_booking), body.get('cancel_reason') or '',
+                            cur, schema, _cb['master_id'], _cb,
+                            body.get('cancel_reason') or '',
                         )
+                        # Уведомление мастеру через hub: booking_cancelled
+                        try:
+                            _uid = get_master_user_id(cur, schema, _cb['master_id'])
+                            if _uid:
+                                _svc_name = ''
+                                if _cb.get('service_id'):
+                                    cur.execute(f"SELECT name FROM {schema}.master_services WHERE id = {int(_cb['service_id'])}")
+                                    _s = cur.fetchone()
+                                    if _s:
+                                        _svc_name = _s.get('name') or ''
+                                _bdate, _btime = fmt_dt(_cb.get('datetime_start'))
+                                hub_notify('booking_cancelled', user_id=_uid, related_id=booking_id, owner_id=_uid,
+                                           variables={
+                                               'client_name': _cb.get('client_name', ''),
+                                               'service_name': _svc_name,
+                                               'date': _bdate, 'time': _btime,
+                                               'master_name': '',
+                                           })
+                        except Exception:
+                            pass
                     # Возвращаем курсор на нужную запись для return ниже
                     cur.execute(f"SELECT * FROM {schema}.master_bookings WHERE id = {int(booking_id)}")
                 except Exception:
@@ -1539,6 +1592,21 @@ def handle_reviews(event, method, params, schema, headers):
         """)
 
         conn.commit()
+
+        # Уведомление мастеру через hub: review_new
+        try:
+            _uid = get_master_user_id(cur, schema, master_id)
+            if _uid and review:
+                hub_notify('review_new', user_id=_uid, related_id=review.get('id'), owner_id=_uid,
+                           variables={
+                               'client_name': body.get('client_name', '').strip(),
+                               'rating': str(rating),
+                               'text': body.get('text', '').strip(),
+                               'service_name': '',
+                           })
+        except Exception:
+            pass
+
         conn.close()
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(review, default=str)}
 

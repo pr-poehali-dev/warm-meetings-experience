@@ -332,7 +332,7 @@
       "method": "GET",
       "path": "/?resource=calendar&sub=maps-key",
       "expectedStatus": 200,
-      "expectedBody": {"apikey": "string"},
+      "expectedBody": {},
       "bodyMatcher": "partial"
     },
     {

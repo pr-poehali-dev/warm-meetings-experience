@@ -1,4 +1,4 @@
-import json
+import json  # noqa
 from shared import CORS_HEADERS, options_response, get_schema
 from profile import handle_profile
 from calendar_mod import handle_calendar
