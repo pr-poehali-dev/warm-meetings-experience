@@ -591,8 +591,8 @@ def handle_verify_vk(cur, conn, schema, user):
         print(f'[user-profile] verify-vk error: {e}')
         return respond(502, {'error': 'Не удалось связаться с VK'})
 
-    # Включаем notify_vk
-    cur.execute(f"UPDATE {schema}.users SET notify_vk = true, updated_at = NOW() WHERE id = {user['id']}")
+    # Включаем notify_vk и vk_notify_allowed (пользователь подтвердил согласие написав сообществу)
+    cur.execute(f"UPDATE {schema}.users SET notify_vk = true, vk_notify_allowed = true, updated_at = NOW() WHERE id = {user['id']}")
     conn.commit()
 
     return respond(200, {'ok': True, 'message': 'Уведомления ВКонтакте подключены'})

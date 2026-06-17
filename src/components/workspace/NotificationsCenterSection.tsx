@@ -306,13 +306,21 @@ function ChannelsPanel({
                     }
                   : undefined
               }
-              className={`bg-card border rounded-2xl p-4 flex items-center gap-3 transition-colors ${
-                clickable
+              className={[
+                "border rounded-2xl p-4 flex items-center gap-3 transition-colors",
+                st.connected
+                  ? "bg-green-50/60 border-green-200 dark:bg-green-950/20 dark:border-green-800"
+                  : "bg-card",
+                clickable && !st.connected
                   ? "cursor-pointer hover:border-sky-300 hover:bg-sky-50/40 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                  : ""
-              }`}
+                  : clickable ? "cursor-pointer" : "",
+              ].join(" ")}
             >
-              <Icon name={meta.icon} size={18} className={`${meta.color} shrink-0`} />
+              <Icon
+                name={meta.icon}
+                size={18}
+                className={`${st.connected ? "text-green-500" : meta.color} shrink-0`}
+              />
               <div className="min-w-0 flex-1">
                 <div className="font-medium text-sm">{meta.label}</div>
                 <div className="text-xs">
