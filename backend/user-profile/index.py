@@ -511,7 +511,7 @@ def handle_link_vk(cur, conn, schema, user, body, ip=None):
     conn.commit()
     conn.close()
 
-    # Отправляем приветственное сообщение от пользователя сообществу
+    # Отправляем приветственное сообщение сообщества пользователю
     try:
         community_token = os.environ.get('VK_COMMUNITY_TOKEN', '')
         community_id = os.environ.get('VK_COMMUNITY_ID', '')
@@ -532,9 +532,11 @@ def handle_link_vk(cur, conn, schema, user, body, ip=None):
                 f'https://api.vk.com/method/messages.send?{params}',
                 method='GET'
             )
-            urllib.request.urlopen(req, timeout=5)
-    except Exception:
-        pass
+            resp = urllib.request.urlopen(req, timeout=5)
+            resp_body = resp.read().decode('utf-8')
+            print(f'[user-profile] vk messages.send response: {resp_body}')
+    except Exception as e:
+        print(f'[user-profile] vk messages.send error: {e}')
 
     return respond(200, {'message': 'ВКонтакте успешно привязан', 'vk_id': vk_id})
 
