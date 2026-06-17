@@ -384,30 +384,32 @@ function EventsPanel({
                     const available = ev.available_channels.includes(ch);
                     const checked = available && ev.enabled && ev.channels[ch] !== false;
                     return (
-                      <div key={ch} className="w-20 flex justify-center">
+                      <div key={ch} className="w-20 flex flex-col items-center gap-1">
+                        {/* Подпись канала — всегда видна */}
+                        <span className={`text-[10px] font-medium ${CHANNEL_META[ch].color} sm:hidden`}>
+                          {CHANNEL_META[ch].label}
+                        </span>
                         {available ? (
                           <button
                             type="button"
                             disabled={!ev.enabled}
                             onClick={() => saveSub(ev, { channels: { [ch]: !checked } })}
                             className={`
-                              w-6 h-6 rounded-md border-2 flex items-center justify-center
+                              w-7 h-7 rounded-full flex items-center justify-center
                               transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-primary/30
                               disabled:opacity-40 disabled:cursor-not-allowed
                               ${checked
-                                ? "bg-green-500 border-green-500 text-white"
-                                : "bg-background border-border hover:border-primary/50"
+                                ? "bg-green-500 text-white shadow-sm"
+                                : "bg-background border-2 border-border hover:border-primary/50"
                               }
                             `}
                             aria-label={`${ev.name} — ${CHANNEL_META[ch].label}`}
                             aria-pressed={checked}
                           >
-                            {checked && (
-                              <Icon name="Check" size={13} className="text-white" />
-                            )}
+                            {checked && <Icon name="Check" size={14} className="text-white" />}
                           </button>
                         ) : (
-                          <span className="text-muted-foreground/30 text-xs leading-6">—</span>
+                          <span className="text-muted-foreground/30 text-xs h-7 flex items-center">—</span>
                         )}
                       </div>
                     );
