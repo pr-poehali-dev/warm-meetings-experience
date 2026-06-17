@@ -42,6 +42,7 @@ function fmtDate(str: string | null) {
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Europe/Moscow",
   });
 }
 
