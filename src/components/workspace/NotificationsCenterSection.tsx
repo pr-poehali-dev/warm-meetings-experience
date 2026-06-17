@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import TelegramSettings from "@/components/organizer/TelegramSettings";
@@ -151,20 +150,6 @@ export default function NotificationsCenterSection({
         <EmailWizard
           currentEmail={state.channels.email.value || null}
           onClose={() => setWizard(null)}
-          onDone={(email) => {
-            setState((p) =>
-              p
-                ? {
-                    ...p,
-                    channels: {
-                      ...p.channels,
-                      email: { ...p.channels.email, connected: true, active: true, value: email },
-                    },
-                  }
-                : p
-            );
-            setWizard(null);
-          }}
         />
       )}
 
@@ -459,33 +444,11 @@ function HourSelect({ value, onChange }: { value: number; onChange: (h: number) 
 function EmailWizard({
   currentEmail,
   onClose,
-  onDone,
 }: {
   currentEmail: string | null;
   onClose: () => void;
-  onDone: (email: string) => void;
 }) {
-  const [email, setEmail] = useState(currentEmail || "");
-  const [saving, setSaving] = useState(false);
   const alreadyHas = !!currentEmail;
-
-  const save = async () => {
-    const v = email.trim();
-    if (!alreadyHas && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) {
-      toast.error("Укажите корректный email");
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await notifyCenterApi.setEmail(v);
-      toast.success("Email подключён");
-      onDone(res.email || v);
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4 space-y-3">
@@ -499,28 +462,42 @@ function EmailWizard({
         </button>
       </div>
       {alreadyHas ? (
-        <p className="text-xs text-muted-foreground">
-          Уведомления будут приходить на <b>{currentEmail}</b> — адрес вашего аккаунта.
-          Нажмите «Включить», чтобы активировать канал.
-        </p>
-      ) : (
-        <>
+        /* Уже есть email — показываем адрес и статус «Подключён» */
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
+            <Icon name="CircleCheck" size={16} className="text-green-600 shrink-0" />
+            <span className="text-sm font-medium text-green-800">{currentEmail}</span>
+          </div>
           <p className="text-xs text-muted-foreground">
-            Укажите email — на него будут приходить подтверждения, напоминания и важные уведомления.
+            Уведомления приходят на этот адрес. Изменить email можно в разделе{" "}
+            <a href="/account" className="text-blue-600 hover:underline">Профиль</a>.
           </p>
-          <Input
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") save(); }}
-          />
-        </>
+          <Button
+            size="sm"
+            className="gap-1.5 bg-green-600 hover:bg-green-700 text-white"
+            disabled
+          >
+            <Icon name="Check" size={14} />
+            Подключён
+          </Button>
+        </div>
+      ) : (
+        /* Email не задан — ссылка в профиль */
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Добавьте email в профиле — и уведомления начнут приходить на почту.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => { window.location.href = "/account"; }}
+          >
+            <Icon name="UserRound" size={14} />
+            Добавить в профиле
+          </Button>
+        </div>
       )}
-      <Button size="sm" onClick={save} disabled={saving} className="gap-1.5">
-        {saving && <Icon name="Loader2" size={13} className="animate-spin" />}
-        {alreadyHas ? "Включить" : "Подключить"}
-      </Button>
     </div>
   );
 }
