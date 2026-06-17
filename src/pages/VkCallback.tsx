@@ -139,7 +139,7 @@ export default function VkCallback() {
           const token = localStorage.getItem("user_token");
           const linkRes = await fetch(`${USER_PROFILE_URL}/?resource=link-vk`, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+            headers: { "Content-Type": "application/json", "X-Session-Token": token || "" },
             body: JSON.stringify({ vk_id: String(cbData.user.vk_id), access_token: cbData.access_token }),
           });
           const linkData = await linkRes.json();
