@@ -2,6 +2,9 @@ import json
 import os
 import hashlib
 import secrets
+import urllib.request
+import urllib.parse
+import random
 
 import bcrypt
 import pyotp
@@ -507,6 +510,32 @@ def handle_link_vk(cur, conn, schema, user, body, ip=None):
     write_audit_log(cur, schema, user['id'], 'link_vk', 'users', user['id'], ip)
     conn.commit()
     conn.close()
+
+    # Отправляем приветственное сообщение от пользователя сообществу
+    try:
+        community_token = os.environ.get('VK_COMMUNITY_TOKEN', '')
+        community_id = os.environ.get('VK_COMMUNITY_ID', '')
+        if community_token and community_id and vk_id:
+            msg = (
+                'Я подключаю уведомления от СПАРКОМ. '
+                'Согласен получать сообщения о моих записях, бронированиях и новостях платформы. '
+                'Буду рад быть на связи!'
+            )
+            params = urllib.parse.urlencode({
+                'user_id': vk_id,
+                'message': msg,
+                'random_id': random.randint(0, 2**31),
+                'access_token': community_token,
+                'v': '5.131',
+            })
+            req = urllib.request.Request(
+                f'https://api.vk.com/method/messages.send?{params}',
+                method='GET'
+            )
+            urllib.request.urlopen(req, timeout=5)
+    except Exception:
+        pass
+
     return respond(200, {'message': 'ВКонтакте успешно привязан', 'vk_id': vk_id})
 
 
