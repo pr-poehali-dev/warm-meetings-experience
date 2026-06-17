@@ -18,6 +18,7 @@ import {
   CenterChannel,
   CenterEvent,
 } from "@/lib/notify-api";
+import { userProfileApi } from "@/lib/user-api";
 
 const CHANNEL_META: Record<CenterChannel, { label: string; icon: string; color: string }> = {
   telegram: { label: "Telegram", icon: "Send", color: "text-sky-500" },
@@ -61,6 +62,8 @@ export default function NotificationsCenterSection({
   const [state, setState] = useState<NotifyCenterState | null>(null);
   const [loading, setLoading] = useState(true);
   const [wizard, setWizard] = useState<"telegram" | "vk" | "email" | null>(null);
+  const [vkStep, setVkStep] = useState<1 | 2 | 3>(1);
+  const [vkVerifying, setVkVerifying] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -171,25 +174,78 @@ export default function NotificationsCenterSection({
               Подключение ВКонтакте
             </h3>
             <button
-              onClick={() => setWizard(null)}
+              onClick={() => { setWizard(null); setVkStep(1); }}
               className="text-muted-foreground hover:text-foreground"
             >
               <Icon name="X" size={18} />
             </button>
           </div>
+
+          {/* Шаги */}
           <ol className="text-xs text-[#4a5c8a] space-y-1 list-decimal pl-4">
-            <li>Привяжите VK-аккаунт через кнопку ниже (один клик).</li>
-            <li>Нажмите «Написать сообществу» — текст согласия скопируется автоматически, вставьте его в диалог (Ctrl+V / ⌘V) и отправьте.</li>
+            <li className={vkStep > 1 ? "line-through opacity-50" : ""}>Привяжите VK-аккаунт через кнопку ниже (один клик).</li>
+            <li className={vkStep > 2 ? "line-through opacity-50" : vkStep < 2 ? "opacity-50" : ""}>
+              Нажмите «Написать сообществу» — текст согласия скопируется автоматически, вставьте его в диалог (Ctrl+V / ⌘V) и отправьте.
+            </li>
+            <li className={vkStep < 3 ? "opacity-50" : ""}>Нажмите «Я отправил — подключить уведомления».</li>
           </ol>
+
+          {/* Шаг 1 и 2: привязка + написать */}
           <VkConnectBanner
             vkId={state.channels.vk.vk_id}
             variant="inline"
-            onLinked={() => { setWizard(null); load(); }}
+            onLinked={() => {
+              setVkStep(2);
+              load();
+            }}
           />
-          <Button size="sm" variant="ghost" onClick={load} className="gap-1.5">
-            <Icon name="RefreshCw" size={13} />
-            Я подключил — проверить
-          </Button>
+
+          {/* Шаг 2 → 3: переход после написания */}
+          {(vkStep === 2 || (vkStep === 1 && state.channels.vk.vk_id)) && (
+            <Button size="sm" variant="outline" onClick={() => setVkStep(3)} className="gap-1.5 w-full border-[#b8cff7] text-[#0077FF]">
+              <Icon name="CheckCheck" size={13} />
+              Я отправил сообщение — перейти к шагу 3
+            </Button>
+          )}
+
+          {/* Шаг 3: проверка и включение */}
+          {vkStep === 3 && (
+            <div className="bg-white/80 dark:bg-blue-900/40 border border-[#b8cff7] rounded-xl p-3 space-y-2">
+              <p className="text-xs text-[#4a5c8a]">
+                Нажмите кнопку — мы попробуем отправить вам сообщение от сообщества и включим уведомления.
+              </p>
+              <Button
+                size="sm"
+                disabled={vkVerifying}
+                onClick={async () => {
+                  setVkVerifying(true);
+                  try {
+                    await userProfileApi.verifyVk();
+                    toast.success("Уведомления ВКонтакте подключены!");
+                    setWizard(null);
+                    setVkStep(1);
+                    load();
+                  } catch (e: unknown) {
+                    const err = e as { status?: number; message?: string };
+                    if (err?.status === 403) {
+                      toast.error("Сначала напишите сообществу — вернитесь на шаг 2");
+                      setVkStep(2);
+                    } else {
+                      toast.error((e as Error).message || "Ошибка проверки");
+                    }
+                  } finally {
+                    setVkVerifying(false);
+                  }
+                }}
+                className="gap-1.5 w-full bg-[#0077FF] hover:bg-[#005fcc] text-white"
+              >
+                {vkVerifying
+                  ? <><Icon name="Loader2" size={13} className="animate-spin" />Проверяем...</>
+                  : <><Icon name="BellRing" size={13} />Я отправил — подключить уведомления</>
+                }
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

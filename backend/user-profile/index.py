@@ -123,6 +123,10 @@ def handler(event, context):
         if method == 'DELETE':
             return handle_unlink_vk(cur, conn, schema, user, ip)
 
+    if resource == 'verify-vk':
+        if method == 'POST':
+            return handle_verify_vk(cur, conn, schema, user)
+
     if resource == 'link-yandex':
         if method == 'POST':
             body = json.loads(event.get('body', '{}'))
@@ -539,6 +543,59 @@ def handle_link_vk(cur, conn, schema, user, body, ip=None):
         print(f'[user-profile] vk messages.send error: {e}')
 
     return respond(200, {'message': 'ВКонтакте успешно привязан', 'vk_id': vk_id})
+
+
+def handle_verify_vk(cur, conn, schema, user):
+    """Отправляет приветственное сообщение от сообщества пользователю и включает notify_vk."""
+    cur.execute(f"SELECT vk_id, notify_vk FROM {schema}.users WHERE id = {user['id']}")
+    row = cur.fetchone()
+    if not row or not row.get('vk_id'):
+        return respond(400, {'error': 'VK не привязан'})
+
+    vk_id = row['vk_id']
+    token = os.environ.get('VK_COMMUNITY_TOKEN', '')
+    community_id = os.environ.get('VK_COMMUNITY_ID', '0')
+
+    if not token:
+        return respond(500, {'error': 'Токен сообщества не настроен'})
+
+    msg = (
+        '✨ СПАРКОМ — ваш помощник в мире бани!\n\n'
+        'Теперь вы будете получать уведомления о записях и бронированиях прямо в этом чате.\n'
+        'Это удобно, чтобы ничего не пропустить.'
+    )
+    params = urllib.parse.urlencode({
+        'peer_id': str(int(vk_id)),
+        'message': msg,
+        'random_id': random.randint(1, 2 ** 31),
+        'access_token': token,
+        'v': '5.199',
+        **(({'group_id': str(int(community_id))} if community_id and community_id != '0' else {})),
+    })
+    req = urllib.request.Request(
+        'https://api.vk.com/method/messages.send',
+        data=params.encode('utf-8'),
+        headers={'Content-Type': 'application/x-www-form-urlencoded'},
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=6)
+        result = json.loads(resp.read().decode('utf-8'))
+        print(f'[user-profile] verify-vk messages.send result: {result}')
+        if 'error' in result:
+            code = result['error'].get('error_code')
+            # 901 — пользователь не написал сообществу первым
+            if code == 901:
+                return respond(403, {'error': 'Сначала напишите сообществу — тогда уведомления будут приходить', 'vk_error': 901})
+            return respond(502, {'error': f'Ошибка VK: {result["error"].get("error_msg", "")}', 'vk_error': code})
+    except Exception as e:
+        print(f'[user-profile] verify-vk error: {e}')
+        return respond(502, {'error': 'Не удалось связаться с VK'})
+
+    # Включаем notify_vk
+    cur.execute(f"UPDATE {schema}.users SET notify_vk = true, updated_at = NOW() WHERE id = {user['id']}")
+    conn.commit()
+
+    return respond(200, {'ok': True, 'message': 'Уведомления ВКонтакте подключены'})
 
 
 def handle_unlink_vk(cur, conn, schema, user, ip=None):

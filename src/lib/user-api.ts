@@ -101,6 +101,9 @@ export const userProfileApi = {
   unlinkVk: (): Promise<{ message: string }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=link-vk`, { method: "DELETE" }),
 
+  verifyVk: (): Promise<{ ok: boolean; message: string }> =>
+    profileRequest(`${USER_PROFILE_API}/?resource=verify-vk`, { method: "POST" }),
+
   linkYandex: (yandex_id: string, access_token: string): Promise<{ message: string; yandex_id: string }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=link-yandex`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ yandex_id, access_token }) }),
 
