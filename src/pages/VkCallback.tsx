@@ -9,6 +9,7 @@ import MergeAccountModal, { MergeHint } from "@/components/admin/MergeAccountMod
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 const USER_AUTH_URL = "https://functions.poehali.dev/d5d9f568-ba92-4605-9b95-646ba409fd8d";
+const USER_PROFILE_URL = "https://functions.poehali.dev/5a86a75b-0df6-4bdf-9a70-7cee5a2de2e3";
 
 function getStoredCodeVerifier(): string | null {
   return sessionStorage.getItem("vk_auth_code_verifier");
@@ -102,10 +103,67 @@ export default function VkCallback() {
 
     if (isLinkFlow) {
       const returnPath = sessionStorage.getItem("vk_link_return_url") || "/account";
+      const linkCode = params.get("code");
+      const linkVerifier = sessionStorage.getItem("vk_auth_code_verifier") || "";
+      const linkDeviceId = params.get("device_id") || "";
+      sessionStorage.removeItem("vk_link_pending");
       sessionStorage.removeItem("vk_link_return_url");
-      const returnUrl = new URL(`${window.location.origin}${returnPath}`);
-      params.forEach((v, k) => returnUrl.searchParams.set(k, v));
-      window.location.replace(returnUrl.toString());
+      sessionStorage.removeItem("vk_auth_code_verifier");
+
+      if (!linkCode) {
+        toast.error("Не получен код авторизации от ВКонтакте");
+        navigate(returnPath, { replace: true });
+        return;
+      }
+
+      setPendingNav(returnPath);
+      (async () => {
+        try {
+          // 1. Обмениваем code на access_token
+          const cbRes = await fetch(`${VK_AUTH_URL}?action=callback`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: linkCode, code_verifier: linkVerifier, device_id: linkDeviceId }),
+          });
+          const cbData = await cbRes.json();
+          if (!cbRes.ok || !cbData.user?.vk_id) {
+            toast.error(cbData.error || "Не удалось получить данные VK");
+            navigate(returnPath, { replace: true });
+            return;
+          }
+
+          // 2. Привязываем к текущему аккаунту
+          const token = localStorage.getItem("user_token");
+          const linkRes = await fetch(`${USER_PROFILE_URL}/?resource=link-vk`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+            body: JSON.stringify({ vk_id: String(cbData.user.vk_id), access_token: cbData.access_token }),
+          });
+          const linkData = await linkRes.json();
+          if (!linkRes.ok) {
+            // VK уже привязан к аккаунту-дублю → предлагаем объединить
+            if (linkRes.status === 409 && linkData.code === "vk_already_linked" && linkData.other_user_id) {
+              setMergeHint({
+                source_user_id: linkData.other_user_id,
+                target_user_id: linkData.current_user_id,
+                target_email_masked: linkData.current_email_masked || "",
+                target_name: linkData.current_name || "",
+                reason: "name_match",
+              });
+              return;
+            }
+            toast.error(linkData.error || "Не удалось привязать VK");
+            navigate(returnPath, { replace: true });
+            return;
+          }
+
+          toast.success("ВКонтакте успешно привязан");
+          navigate(returnPath, { replace: true });
+        } catch {
+          toast.error("Ошибка привязки ВКонтакте");
+          navigate(returnPath, { replace: true });
+        }
+      })();
       return;
     }
 
