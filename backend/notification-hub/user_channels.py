@@ -46,11 +46,17 @@ def _list(cur, schema, params):
                COALESCE(u.notify_email, true)    AS notify_email,
                COALESCE(u.notify_telegram, false) AS notify_telegram,
                COALESCE(u.notify_vk, false)      AS notify_vk,
+               la.telegram_user_id AS linked_tg,
                (SELECT string_agg(r.slug, ',') FROM {schema}.user_roles ur
                 JOIN {schema}.roles r ON r.id = ur.role_id
                 WHERE ur.user_id = u.id AND ur.status = 'active') AS roles,
                (SELECT quiet_enabled FROM {schema}.notify_schedule ns WHERE ns.user_id = u.id) AS quiet_enabled
         FROM {schema}.users u
+        LEFT JOIN (
+            SELECT DISTINCT ON (user_id) user_id, telegram_user_id
+            FROM {schema}.tg_linked_accounts
+            ORDER BY user_id, linked_at DESC
+        ) la ON la.user_id = u.id
         WHERE {where_sql}
         ORDER BY u.id DESC
         LIMIT {per_page} OFFSET {offset}
@@ -66,7 +72,7 @@ def _list(cur, schema, params):
             'quiet_enabled': bool(r['quiet_enabled']),
             'channels': {
                 'telegram': {
-                    'connected': bool(r['tg_chat_id']),
+                    'connected': bool(r['tg_chat_id'] or r['linked_tg']),
                     'active': bool(r['notify_telegram']),
                 },
                 'email': {

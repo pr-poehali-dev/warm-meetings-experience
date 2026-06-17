@@ -48,17 +48,26 @@ def handle_notify_center(method, params, body, conn, token):
 def _get_center(cur, schema, uid):
     # 1. Состояние каналов
     cur.execute(f"""
-        SELECT email, vk_id, vk_notify_allowed, tg_chat_id, tg_notify_allowed,
-               COALESCE(notify_email, true)  AS notify_email,
-               COALESCE(notify_telegram, false) AS notify_telegram,
-               COALESCE(notify_vk, false)    AS notify_vk
-        FROM {schema}.users WHERE id = {int(uid)}
+        SELECT u.email, u.vk_id, u.vk_notify_allowed, u.tg_chat_id, u.tg_notify_allowed,
+               COALESCE(u.notify_email, true)  AS notify_email,
+               COALESCE(u.notify_telegram, false) AS notify_telegram,
+               COALESCE(u.notify_vk, false)    AS notify_vk,
+               la.telegram_user_id AS linked_tg
+        FROM {schema}.users u
+        LEFT JOIN (
+            SELECT DISTINCT ON (user_id) user_id, telegram_user_id
+            FROM {schema}.tg_linked_accounts
+            ORDER BY user_id, linked_at DESC
+        ) la ON la.user_id = u.id
+        WHERE u.id = {int(uid)}
     """)
     u = cur.fetchone() or {}
     email_ok = bool(u.get('email') and '@vk.local' not in (u.get('email') or ''))
+    # Telegram подключён, если есть chat_id ИЛИ привязка через бота (tg_linked_accounts)
+    tg_connected = bool(u.get('tg_chat_id') or u.get('linked_tg'))
     channels = {
         "telegram": {
-            "connected": bool(u.get('tg_chat_id')),
+            "connected": tg_connected,
             "active": bool(u.get('notify_telegram')),
         },
         "email": {
