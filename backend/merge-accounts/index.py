@@ -221,6 +221,9 @@ def _do_merge(cur, conn, schema, source_id: int, target_id: int) -> dict:
         """)
         vk_linked = cur.rowcount > 0
         print(f"[merge-accounts] _do_merge: vk_linked={vk_linked}")
+        # Очищаем vk_id у source чтобы избежать повторного детекта дубля
+        if vk_linked:
+            cur.execute(f"UPDATE {schema}.users SET vk_id = NULL WHERE id = {source_id}")
     except Exception as exc:
         print(f"[merge-accounts] _do_merge: vk_id transfer error: {exc}")
 
@@ -398,15 +401,16 @@ def handle_request_merge(event, params, cur, conn, schema):
     if source_user_id == target_user_id:
         return respond(400, {'error': 'source и target не могут быть одним пользователем'})
 
-    # 1. Проверить что оба пользователя существуют и активны
+    # 1. Проверить что оба пользователя существуют
+    # Source (дубль) может быть неактивным — он мог быть заблокирован после предыдущего слияния
     cur.execute(f"""
         SELECT id, name, email, vk_id
         FROM {schema}.users
-        WHERE id = {source_user_id} AND is_active = true
+        WHERE id = {source_user_id}
     """)
     source = cur.fetchone()
     if not source:
-        return respond(404, {'error': 'Source пользователь не найден или неактивен'})
+        return respond(404, {'error': 'Source пользователь не найден'})
 
     cur.execute(f"""
         SELECT id, name, email
