@@ -201,6 +201,7 @@ export default function NotificationsCenterSection({
       <EventsPanel
         events={state.events}
         userRoles={state.user_roles ?? []}
+        channelState={state.channels}
         onChange={(updated) =>
           setState((p) =>
             p
@@ -314,9 +315,11 @@ const ROLE_STYLE: Record<string, { icon: string; accent: string; bg: string; bor
 function EventsTable({
   events,
   onChange,
+  channelState,
 }: {
   events: CenterEvent[];
   onChange: (e: CenterEvent) => void;
+  channelState?: NotifyCenterState["channels"];
 }) {
   const allChannels: CenterChannel[] = ["telegram", "email", "vk"];
 
@@ -384,13 +387,23 @@ function EventsTable({
               <div className="flex gap-1 pl-11 sm:pl-0">
                 {allChannels.map((ch) => {
                   const available = ev.available_channels.includes(ch);
+                  const connected = channelState ? channelState[ch]?.connected : true;
                   const checked = available && ev.enabled && ev.channels[ch] !== false;
                   return (
                     <div key={ch} className="w-20 flex flex-col items-center gap-1">
                       <span className={`text-[10px] font-medium ${CHANNEL_META[ch].color} sm:hidden`}>
                         {CHANNEL_META[ch].label}
                       </span>
-                      {available ? (
+                      {!available ? (
+                        <span className="text-muted-foreground/30 text-xs h-7 flex items-center">—</span>
+                      ) : !connected ? (
+                        <div
+                          title={`${CHANNEL_META[ch].label} не подключён`}
+                          className="w-7 h-7 rounded-full flex items-center justify-center bg-muted border border-dashed border-border cursor-default"
+                        >
+                          <Icon name="Lock" size={11} className="text-muted-foreground/50" />
+                        </div>
+                      ) : (
                         <button
                           type="button"
                           disabled={!ev.enabled}
@@ -409,8 +422,6 @@ function EventsTable({
                         >
                           {checked && <Icon name="Check" size={14} className="text-white" />}
                         </button>
-                      ) : (
-                        <span className="text-muted-foreground/30 text-xs h-7 flex items-center">—</span>
                       )}
                     </div>
                   );
@@ -427,10 +438,12 @@ function EventsTable({
 function EventsPanel({
   events,
   userRoles,
+  channelState,
   onChange,
 }: {
   events: CenterEvent[];
   userRoles: string[];
+  channelState?: NotifyCenterState["channels"];
   onChange: (e: CenterEvent) => void;
 }) {
   const hasMultipleRoles = userRoles.length > 1;
@@ -458,7 +471,7 @@ function EventsPanel({
     return (
       <div className="space-y-2">
         <p className="font-semibold text-sm">О каких событиях уведомлять</p>
-        <EventsTable events={events} onChange={onChange} />
+        <EventsTable events={events} onChange={onChange} channelState={channelState} />
       </div>
     );
   }
@@ -501,7 +514,7 @@ function EventsPanel({
               {/* Тело аккордеона */}
               {isOpen && (
                 <div className="border-t">
-                  <EventsTable events={roleEvents} onChange={onChange} />
+                  <EventsTable events={roleEvents} onChange={onChange} channelState={channelState} />
                 </div>
               )}
             </div>
