@@ -60,7 +60,7 @@ def _get_center(cur, schema, uid, user=None):
     user_roles = {row['slug'] for row in cur.fetchall()}
     # Маппинг: slug роли → название в recipient_roles
     ROLE_MAP = {'parmaster': 'master', 'organizer': 'organizer', 'partner': 'partner',
-                'bath_owner': 'partner', 'admin': 'admin'}
+                'bath_owner': 'partner'}
     user_recipient_roles = {ROLE_MAP[s] for s in user_roles if s in ROLE_MAP}
     if not user_recipient_roles:
         user_recipient_roles = {'master'}  # fallback
