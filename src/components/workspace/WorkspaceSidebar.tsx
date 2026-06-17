@@ -195,14 +195,7 @@ export default function WorkspaceSidebar({
           label="Моя визитка"
           accent="text-orange-500"
         />
-        <NavItem
-          active={roleTab === "telegram"}
-          onClick={() => switchRoleTab("telegram")}
-          icon="Send"
-          label="Telegram-каналы"
-          badge={tgChannelsCount ? `${tgChannelsCount} подкл.` : undefined}
-          accent="text-sky-500"
-        />
+
         <NavItem
           active={roleTab === "notifications"}
           onClick={() => switchRoleTab("notifications")}
