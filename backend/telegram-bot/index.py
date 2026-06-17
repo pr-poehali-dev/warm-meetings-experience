@@ -304,6 +304,13 @@ def handle_verify(chat_id, tg_user_id, tg_user, code):
         DO UPDATE SET user_id = {user_id}, telegram_username = '{username}', telegram_first_name = '{first_name}', linked_at = NOW()
     """)
 
+    # Автоматически включаем Telegram-уведомления — пользователь только что подключил канал
+    cur.execute(f"""
+        UPDATE {schema}.users
+        SET notify_telegram = TRUE, tg_notify_allowed = TRUE
+        WHERE id = {user_id} AND (notify_telegram IS NULL OR notify_telegram = FALSE)
+    """)
+
     conn.commit()
     conn.close()
 
