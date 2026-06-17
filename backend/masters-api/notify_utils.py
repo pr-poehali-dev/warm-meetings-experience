@@ -2,9 +2,12 @@
 
 Отправляет уведомления мастеру (owner) через централизованный hub,
 который учитывает подписки, тихие часы и шаблоны пользователя.
+
+ВАЖНО: hub_notify работает fire-and-forget через поток — не блокирует основной запрос.
 """
 import json
 import os
+import threading
 import urllib.request
 import urllib.error
 
@@ -19,10 +22,36 @@ def _hub_url():
     return _HUB_URL
 
 
+def _do_notify(url, body, token, event_type, user_id):
+    req = urllib.request.Request(
+        f'{url}?resource=send',
+        data=body,
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Token': token,
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            raw = resp.read().decode('utf-8', 'replace')
+            print(f'[hub_notify] {event_type} user={user_id} → {raw[:200]}')
+    except urllib.error.HTTPError as e:
+        body_err = ''
+        try:
+            body_err = e.read().decode('utf-8', 'replace')[:300]
+        except Exception:
+            pass
+        print(f'[hub_notify] HTTP {e.code} event={event_type}: {body_err}')
+    except Exception as exc:
+        print(f'[hub_notify] EXC event={event_type}: {type(exc).__name__}: {exc}')
+
+
 def hub_notify(event_type, *, user_id, variables=None, related_id=None, owner_id=None):
     """Отправляет событие в notification-hub для конкретного пользователя.
 
     Не бросает исключений — ошибки логируются в stdout.
+    Работает асинхронно: не блокирует основной запрос.
     """
     url = _hub_url()
     if not url:
@@ -42,28 +71,12 @@ def hub_notify(event_type, *, user_id, variables=None, related_id=None, owner_id
         payload['owner_id'] = owner_id
 
     body = json.dumps(payload).encode('utf-8')
-    req = urllib.request.Request(
-        f'{url}?resource=send',
-        data=body,
-        headers={
-            'Content-Type': 'application/json',
-            'X-Internal-Token': token,
-        },
-        method='POST',
+    t = threading.Thread(
+        target=_do_notify,
+        args=(url, body, token, event_type, user_id),
+        daemon=True,
     )
-    try:
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            raw = resp.read().decode('utf-8', 'replace')
-            print(f'[hub_notify] {event_type} user={user_id} → {raw[:200]}')
-    except urllib.error.HTTPError as e:
-        body_err = ''
-        try:
-            body_err = e.read().decode('utf-8', 'replace')[:300]
-        except Exception:
-            pass
-        print(f'[hub_notify] HTTP {e.code} event={event_type}: {body_err}')
-    except Exception as exc:
-        print(f'[hub_notify] EXC event={event_type}: {type(exc).__name__}: {exc}')
+    t.start()
 
 
 def get_master_user_id(cur, schema, master_id):
@@ -76,12 +89,10 @@ def get_master_user_id(cur, schema, master_id):
 def fmt_dt(dt_str, tz='Europe/Moscow'):
     """Форматирует datetime строку в читаемый вид 'ДД.ММ.ГГГГ ЧЧ:ММ'."""
     try:
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta
         import re
-        # Убираем миллисекунды и timezone для простого парсинга
         s = re.sub(r'\.\d+', '', str(dt_str)).replace('+00:00', '').replace('Z', '').strip()
         dt = datetime.strptime(s[:19], '%Y-%m-%d %H:%M:%S')
-        # Смещение для Europe/Moscow = UTC+3
         dt = dt + timedelta(hours=3)
         return dt.strftime('%d.%m.%Y'), dt.strftime('%H:%M')
     except Exception:
