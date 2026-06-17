@@ -510,6 +510,24 @@ def handle_signups(event, method, params, schema, headers):
         send_signup_telegram(name, phone, email, telegram, ev, preferred_channel, preferred_contact_value)
         notify_organizer_telegram(ev, name, phone, email, telegram, preferred_channel, preferred_contact_value, comment=comment, guests=guests)
 
+        # Уведомление организатору через Хаб (учитывает подписки и тихие часы)
+        try:
+            from notify_utils import hub_notify, fmt_event_dt
+            _org_id = ev.get('organizer_id')
+            if _org_id:
+                _ed, _et = fmt_event_dt(ev.get('event_date'), ev.get('start_time'))
+                hub_notify('event_signup_new', user_id=_org_id,
+                           related_id=row.get('id'), owner_id=_org_id,
+                           variables={
+                               'event_name': ev.get('title', ''),
+                               'date': _ed, 'time': _et,
+                               'guest_name': name,
+                               'guest_phone': phone,
+                               'spots_left': str(ev.get('spots_left', '')),
+                           })
+        except Exception:
+            pass
+
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(dict(row), default=str)}
 
     if method == 'PUT':
@@ -535,6 +553,34 @@ def handle_signups(event, method, params, schema, headers):
         cur.execute(f"UPDATE {schema}.event_signups SET {', '.join(updates)} WHERE id = {signup_id} RETURNING *")
         row = cur.fetchone()
         conn.commit()
+
+        # Уведомление организатору при отмене/оплате гостем
+        new_status = str(body.get('status', '')).lower()
+        if row and new_status in ('cancelled', 'canceled', 'отменено', 'paid', 'оплачено'):
+            try:
+                from notify_utils import hub_notify, fmt_event_dt
+                cur.execute(f"""
+                    SELECT title, organizer_id, event_date, start_time
+                    FROM {schema}.events WHERE id = {int(row['event_id'])}
+                """)
+                _ev = cur.fetchone()
+                if _ev and _ev.get('organizer_id'):
+                    _ed, _et = fmt_event_dt(_ev.get('event_date'), _ev.get('start_time'))
+                    _etype = 'booking_cancelled' if new_status in ('cancelled', 'canceled', 'отменено') else 'booking_paid'
+                    _vars = {
+                        'client_name': row.get('name', ''),
+                        'service_name': _ev.get('title', ''),
+                        'date': _ed, 'time': _et,
+                        'master_name': '',
+                    }
+                    if _etype == 'booking_paid':
+                        _vars['amount'] = str(row.get('payment_amount', '') or '')
+                    hub_notify(_etype, user_id=_ev['organizer_id'],
+                               related_id=row.get('id'), owner_id=_ev['organizer_id'],
+                               variables=_vars)
+            except Exception:
+                pass
+
         conn.close()
         if not row:
             return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Not found'})}
