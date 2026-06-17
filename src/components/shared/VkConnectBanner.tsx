@@ -12,10 +12,12 @@
  *   dismissKey — ключ в localStorage для запоминания «закрыт»
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
+import { toast } from "sonner";
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
+const USER_PROFILE_URL = "https://functions.poehali.dev/5a86a75b-0df6-4bdf-9a70-7cee5a2de2e3";
 const VK_COMMUNITY = "sparcom";
 const VK_WRITE_URL = `https://vk.com/write-${VK_COMMUNITY}`;
 
@@ -24,10 +26,66 @@ interface Props {
   variant?: "banner" | "inline";
   onDismiss?: () => void;
   dismissKey?: string;
+  onLinked?: (vkId: string) => void;
 }
 
-export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, dismissKey }: Props) {
+export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, dismissKey, onLinked }: Props) {
   const isLinked = Boolean(vkId);
+
+  // Обработка возврата с VK OAuth (если вернулись на эту же страницу)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const isLinkFlow = sessionStorage.getItem("vk_link_pending") === "1";
+    if (!isLinkFlow || !code) return;
+
+    sessionStorage.removeItem("vk_link_pending");
+    sessionStorage.removeItem("vk_link_return_url");
+
+    const codeVerifier = sessionStorage.getItem("vk_auth_code_verifier") || "";
+    const deviceId = params.get("device_id") || "";
+
+    (async () => {
+      try {
+        // 1. Обмениваем code на access_token через VK-auth
+        const cbRes = await fetch(`${VK_AUTH_URL}?action=callback`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code, code_verifier: codeVerifier, device_id: deviceId }),
+        });
+        const cbData = await cbRes.json();
+        if (!cbRes.ok || !cbData.user?.vk_id) {
+          toast.error(cbData.error || "Не удалось получить данные VK");
+          return;
+        }
+
+        // 2. Привязываем к текущему аккаунту
+        const token = localStorage.getItem("user_token");
+        const linkRes = await fetch(`${USER_PROFILE_URL}/?resource=link-vk`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+          body: JSON.stringify({ vk_id: String(cbData.user.vk_id), access_token: cbData.access_token }),
+        });
+        const linkData = await linkRes.json();
+        if (!linkRes.ok) {
+          toast.error(linkData.error || "Не удалось привязать VK");
+          return;
+        }
+
+        toast.success("ВКонтакте успешно привязан");
+        onLinked?.(String(cbData.user.vk_id));
+      } catch {
+        toast.error("Ошибка привязки ВКонтакте");
+      } finally {
+        // Убираем параметры из URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete("code");
+        url.searchParams.delete("state");
+        url.searchParams.delete("device_id");
+        window.history.replaceState({}, "", url.toString());
+      }
+    })();
+  }, [onLinked]);
 
   // Крестик работает только если VK уже привязан (сценарий «написать сообществу»).
   // Пока VK не привязан — баннер не скрывается, чтобы пользователь не потерял возможность подключить.
@@ -57,6 +115,7 @@ export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, d
         if (data.state) sessionStorage.setItem("vk_auth_state", data.state);
         if (data.code_verifier) sessionStorage.setItem("vk_auth_code_verifier", data.code_verifier);
         sessionStorage.setItem("vk_link_pending", "1");
+        sessionStorage.setItem("vk_link_return_url", window.location.pathname + window.location.search);
         window.location.href = data.auth_url;
       }
     } catch {

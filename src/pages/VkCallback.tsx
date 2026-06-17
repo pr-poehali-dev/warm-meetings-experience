@@ -101,9 +101,11 @@ export default function VkCallback() {
     }
 
     if (isLinkFlow) {
-      const accountUrl = new URL(`${window.location.origin}/account`);
-      params.forEach((v, k) => accountUrl.searchParams.set(k, v));
-      window.location.replace(accountUrl.toString());
+      const returnPath = sessionStorage.getItem("vk_link_return_url") || "/account";
+      sessionStorage.removeItem("vk_link_return_url");
+      const returnUrl = new URL(`${window.location.origin}${returnPath}`);
+      params.forEach((v, k) => returnUrl.searchParams.set(k, v));
+      window.location.replace(returnUrl.toString());
       return;
     }
 

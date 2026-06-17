@@ -181,7 +181,11 @@ export default function NotificationsCenterSection({
             <li>Привяжите VK-аккаунт через кнопку ниже (один клик).</li>
             <li>Напишите сообществу одно сообщение — это разрешит нам отправлять уведомления вам в личку.</li>
           </ol>
-          <VkConnectBanner vkId={state.channels.vk.vk_id} variant="inline" />
+          <VkConnectBanner
+            vkId={state.channels.vk.vk_id}
+            variant="inline"
+            onLinked={() => { setWizard(null); load(); }}
+          />
           <Button size="sm" variant="ghost" onClick={load} className="gap-1.5">
             <Icon name="RefreshCw" size={13} />
             Я подключил — проверить
