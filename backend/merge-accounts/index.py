@@ -5,7 +5,9 @@ import os
 import hashlib
 import secrets
 import re
+import random
 import urllib.request
+import urllib.parse
 import urllib.error
 from datetime import datetime, timedelta
 
@@ -255,6 +257,34 @@ def _do_merge(cur, conn, schema, source_id: int, target_id: int) -> dict:
         'roles_moved': roles_moved,
         'vk_linked': vk_linked,
     }
+
+
+def _send_vk_consent_message(vk_id):
+    """Отправляет приветственное сообщение пользователю от сообщества после успешного объединения аккаунтов."""
+    try:
+        community_token = os.environ.get('VK_COMMUNITY_TOKEN', '')
+        community_id = os.environ.get('VK_COMMUNITY_ID', '')
+        if not community_token or not community_id or not vk_id:
+            return
+        msg = (
+            'Я подключаю уведомления от СПАРКОМ. '
+            'Согласен получать сообщения о моих записях, бронированиях и новостях платформы. '
+            'Буду рад быть на связи!'
+        )
+        params = urllib.parse.urlencode({
+            'user_id': vk_id,
+            'message': msg,
+            'random_id': random.randint(0, 2**31),
+            'access_token': community_token,
+            'v': '5.131',
+        })
+        req = urllib.request.Request(
+            f'https://api.vk.com/method/messages.send?{params}',
+            method='GET'
+        )
+        urllib.request.urlopen(req, timeout=5)
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -544,6 +574,17 @@ def handle_verify_code(event, params, cur, conn, schema):
 
     print(f"[merge-accounts] handle_verify_code: merge completed, summary={summary}")
 
+    # Отправляем согласие на уведомления в VK, если vk_id есть у итогового аккаунта
+    if summary.get('vk_linked'):
+        try:
+            cur2 = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur2.execute(f"SELECT vk_id FROM {schema}.users WHERE id = {target_id}")
+            row = cur2.fetchone()
+            if row and row.get('vk_id'):
+                _send_vk_consent_message(row['vk_id'])
+        except Exception:
+            pass
+
     return respond(200, {'ok': True, 'summary': summary})
 
 
@@ -682,6 +723,17 @@ def handle_admin_merge(event, params, cur, conn, schema):
     conn.commit()
 
     print(f"[merge-accounts] handle_admin_merge: completed, summary={summary}")
+
+    # Отправляем согласие на уведомления в VK, если vk_id есть у итогового аккаунта
+    if summary.get('vk_linked'):
+        try:
+            cur2 = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur2.execute(f"SELECT vk_id FROM {schema}.users WHERE id = {target_user_id}")
+            row = cur2.fetchone()
+            if row and row.get('vk_id'):
+                _send_vk_consent_message(row['vk_id'])
+        except Exception:
+            pass
 
     return respond(200, {'ok': True, 'summary': summary})
 
