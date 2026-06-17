@@ -198,28 +198,50 @@ function ChannelsPanel({
         {channels.map((ch) => {
           const meta = CHANNEL_META[ch];
           const st = state.channels[ch];
+          const clickable = hasWizard(ch);
           return (
-            <div key={ch} className="bg-card border rounded-2xl p-4 flex items-center gap-3">
+            <div
+              key={ch}
+              role={clickable ? "button" : undefined}
+              tabIndex={clickable ? 0 : undefined}
+              onClick={clickable ? () => onOpenWizard(ch) : undefined}
+              onKeyDown={
+                clickable
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onOpenWizard(ch);
+                      }
+                    }
+                  : undefined
+              }
+              className={`bg-card border rounded-2xl p-4 flex items-center gap-3 transition-colors ${
+                clickable
+                  ? "cursor-pointer hover:border-sky-300 hover:bg-sky-50/40 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                  : ""
+              }`}
+            >
               <Icon name={meta.icon} size={18} className={`${meta.color} shrink-0`} />
               <div className="min-w-0 flex-1">
                 <div className="font-medium text-sm">{meta.label}</div>
                 <div className="text-xs">
                   {st.connected ? (
                     <span className="text-green-600">Подключён</span>
-                  ) : hasWizard(ch) ? (
-                    <button onClick={() => onOpenWizard(ch)} className="text-sky-600 hover:underline">
-                      Не подключён
-                    </button>
+                  ) : clickable ? (
+                    <span className="text-sky-600">Подключить →</span>
                   ) : (
                     <span className="text-muted-foreground">Не подключён</span>
                   )}
                 </div>
               </div>
-              <Switch
-                checked={st.active && st.connected}
-                disabled={!st.connected}
-                onCheckedChange={(v) => onToggle(ch, v)}
-              />
+              {/* клик по тумблеру не должен открывать мастер */}
+              <div onClick={(e) => e.stopPropagation()}>
+                <Switch
+                  checked={st.active && st.connected}
+                  disabled={!st.connected}
+                  onCheckedChange={(v) => onToggle(ch, v)}
+                />
+              </div>
             </div>
           );
         })}
