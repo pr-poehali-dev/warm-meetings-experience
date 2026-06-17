@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import TelegramSettings from "@/components/organizer/TelegramSettings";
+import VkConnectBanner from "@/components/shared/VkConnectBanner";
 import {
   notifyCenterApi,
   NotifyCenterState,
@@ -40,7 +41,7 @@ export default function NotificationsCenterSection({
 }: Props) {
   const [state, setState] = useState<NotifyCenterState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizard, setWizard] = useState<"telegram" | "vk" | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -86,11 +87,11 @@ export default function NotificationsCenterSection({
             toast.error((e as Error).message);
           }
         }}
-        onOpenWizard={() => setWizardOpen(true)}
+        onOpenWizard={(ch) => setWizard(ch === "email" ? "telegram" : ch)}
       />
 
-      {/* ── Мастер подключения каналов ── */}
-      {wizardOpen && (
+      {/* ── Мастер подключения Telegram ── */}
+      {wizard === "telegram" && (
         <div className="rounded-2xl border border-sky-200 bg-sky-50/40 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -98,7 +99,7 @@ export default function NotificationsCenterSection({
               Подключение Telegram
             </h3>
             <button
-              onClick={() => setWizardOpen(false)}
+              onClick={() => setWizard(null)}
               className="text-muted-foreground hover:text-foreground"
             >
               <Icon name="X" size={18} />
@@ -114,6 +115,33 @@ export default function NotificationsCenterSection({
             }}
             userRole={userRole}
           />
+        </div>
+      )}
+
+      {/* ── Мастер подключения ВКонтакте ── */}
+      {wizard === "vk" && (
+        <div className="rounded-2xl border border-[#b8cff7] bg-[#e8f0fc]/40 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <Icon name="Wand2" size={15} className="text-[#0077FF]" />
+              Подключение ВКонтакте
+            </h3>
+            <button
+              onClick={() => setWizard(null)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Icon name="X" size={18} />
+            </button>
+          </div>
+          <ol className="text-xs text-[#4a5c8a] space-y-1 list-decimal pl-4">
+            <li>Привяжите VK-аккаунт через кнопку ниже (один клик).</li>
+            <li>Напишите сообществу одно сообщение — это разрешит нам писать вам в личку.</li>
+          </ol>
+          <VkConnectBanner vkId={state.channels.vk.vk_id} variant="inline" />
+          <Button size="sm" variant="ghost" onClick={load} className="gap-1.5">
+            <Icon name="RefreshCw" size={13} />
+            Я подключил — проверить
+          </Button>
         </div>
       )}
 
@@ -152,14 +180,16 @@ function ChannelsPanel({
 }: {
   state: NotifyCenterState;
   onToggle: (ch: CenterChannel, active: boolean) => void;
-  onOpenWizard: () => void;
+  onOpenWizard: (ch: CenterChannel) => void;
 }) {
   const channels = Object.keys(CHANNEL_META) as CenterChannel[];
+  // Email подключается через профиль — мастер открываем только для Telegram/VK
+  const hasWizard = (ch: CenterChannel) => ch === "telegram" || ch === "vk";
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <p className="font-semibold text-sm">Каналы получения</p>
-        <Button size="sm" variant="outline" onClick={onOpenWizard} className="gap-1.5">
+        <Button size="sm" variant="outline" onClick={() => onOpenWizard("telegram")} className="gap-1.5">
           <Icon name="Plus" size={14} />
           Настроить каналы
         </Button>
@@ -176,10 +206,12 @@ function ChannelsPanel({
                 <div className="text-xs">
                   {st.connected ? (
                     <span className="text-green-600">Подключён</span>
-                  ) : (
-                    <button onClick={onOpenWizard} className="text-sky-600 hover:underline">
+                  ) : hasWizard(ch) ? (
+                    <button onClick={() => onOpenWizard(ch)} className="text-sky-600 hover:underline">
                       Не подключён
                     </button>
+                  ) : (
+                    <span className="text-muted-foreground">Не подключён</span>
                   )}
                 </div>
               </div>

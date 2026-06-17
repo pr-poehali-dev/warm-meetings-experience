@@ -144,6 +144,8 @@ export interface CenterChannelState {
   connected: boolean;
   active: boolean;
   value?: string | null;
+  vk_id?: string | null;
+  allowed?: boolean;
 }
 
 export interface CenterEvent {

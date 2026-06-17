@@ -78,6 +78,8 @@ def _get_center(cur, schema, uid):
         "vk": {
             "connected": bool(u.get('vk_id')),
             "active": bool(u.get('notify_vk') and u.get('vk_notify_allowed')),
+            "vk_id": u.get('vk_id') or None,
+            "allowed": bool(u.get('vk_notify_allowed')),
         },
     }
 
