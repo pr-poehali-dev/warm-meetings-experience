@@ -15,6 +15,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
+import MergeAccountModal, { MergeHint } from "@/components/admin/MergeAccountModal";
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 const USER_PROFILE_URL = "https://functions.poehali.dev/5a86a75b-0df6-4bdf-9a70-7cee5a2de2e3";
@@ -31,6 +32,7 @@ interface Props {
 
 export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, dismissKey, onLinked }: Props) {
   const isLinked = Boolean(vkId);
+  const [mergeHint, setMergeHint] = useState<MergeHint | null>(null);
 
   // Обработка возврата с VK OAuth (если вернулись на эту же страницу)
   useEffect(() => {
@@ -68,6 +70,17 @@ export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, d
         });
         const linkData = await linkRes.json();
         if (!linkRes.ok) {
+          // VK уже привязан к аккаунту-дублю → предлагаем объединить
+          if (linkRes.status === 409 && linkData.code === "vk_already_linked" && linkData.other_user_id) {
+            setMergeHint({
+              source_user_id: linkData.other_user_id,
+              target_user_id: linkData.current_user_id,
+              target_email_masked: linkData.current_email_masked || "",
+              target_name: linkData.current_name || "",
+              reason: "name_match",
+            });
+            return;
+          }
           toast.error(linkData.error || "Не удалось привязать VK");
           return;
         }
@@ -140,8 +153,19 @@ export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, d
     ? "Достаточно одного сообщения — это разрешит нам писать вам."
     : "Займёт несколько секунд — один клик через VK.";
 
+  const mergeModal = mergeHint && (
+    <MergeAccountModal
+      open={!!mergeHint}
+      hint={mergeHint}
+      onMerged={() => { setMergeHint(null); onLinked?.(""); }}
+      onSkip={() => setMergeHint(null)}
+    />
+  );
+
   if (variant === "inline") {
     return (
+      <>
+      {mergeModal}
       <div className="bg-[#e8f0fc] dark:bg-blue-950/40 border border-[#b8cff7] dark:border-blue-800 rounded-xl px-4 py-3">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-6 h-6 rounded-full bg-[#0077FF] flex items-center justify-center flex-shrink-0">
@@ -169,10 +193,13 @@ export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, d
           )}
         </div>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+    {mergeModal}
     <div className="bg-gradient-to-br from-[#e8f0fc] to-[#dce9ff] dark:from-blue-950/50 dark:to-blue-900/30 border border-[#b8cff7] dark:border-blue-800 rounded-2xl p-5">
       <div className="flex items-center gap-3 mb-3">
         <div className="w-9 h-9 rounded-xl bg-[#0077FF] flex items-center justify-center flex-shrink-0 shadow-sm">
@@ -206,5 +233,6 @@ export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, d
         )}
       </div>
     </div>
+    </>
   );
 }

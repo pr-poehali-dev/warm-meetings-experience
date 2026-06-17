@@ -484,7 +484,7 @@ def handle_link_vk(cur, conn, schema, user, body, ip=None):
 
     # Проверяем что vk_id не занят другим пользователем
     safe_vk_id = vk_id.replace("'", "''")
-    cur.execute(f"SELECT id, email FROM {schema}.users WHERE vk_id = '{safe_vk_id}' AND id != {user['id']}")
+    cur.execute(f"SELECT id, email, name FROM {schema}.users WHERE vk_id = '{safe_vk_id}' AND id != {user['id']}")
     other = cur.fetchone()
     if other:
         conn.close()
@@ -493,6 +493,11 @@ def handle_link_vk(cur, conn, schema, user, body, ip=None):
             'error': f'Этот ВКонтакте уже привязан к другому аккаунту ({masked}). Войдите в тот аккаунт, если он ваш, или используйте другой ВК.',
             'code': 'vk_already_linked',
             'masked_email': masked,
+            'other_user_id': other.get('id'),
+            'other_name': other.get('name') or '',
+            'current_user_id': user['id'],
+            'current_email_masked': mask_email(user.get('email') or ''),
+            'current_name': user.get('name') or '',
         })
 
     cur.execute(f"""
