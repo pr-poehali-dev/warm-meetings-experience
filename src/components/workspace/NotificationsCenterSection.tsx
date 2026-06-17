@@ -240,13 +240,7 @@ function ChannelsPanel({
   const hasWizard = (_ch: CenterChannel) => true;
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="font-semibold text-sm">Каналы получения</p>
-        <Button size="sm" variant="outline" onClick={() => onOpenWizard("telegram")} className="gap-1.5">
-          <Icon name="Plus" size={14} />
-          Настроить каналы
-        </Button>
-      </div>
+      <p className="font-semibold text-sm">Каналы получения</p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {channels.map((ch) => {
           const meta = CHANNEL_META[ch];
