@@ -156,6 +156,7 @@ export interface CenterEvent {
   available_channels: CenterChannel[];
   enabled: boolean;
   channels: Record<string, boolean>;
+  recipient_roles: string[];
 }
 
 export interface CenterSchedule {
@@ -169,6 +170,7 @@ export interface NotifyCenterState {
   channels: Record<CenterChannel, CenterChannelState>;
   events: CenterEvent[];
   schedule: CenterSchedule;
+  user_roles: string[];
 }
 
 export const notifyCenterApi = {

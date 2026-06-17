@@ -143,6 +143,7 @@ def _get_center(cur, schema, uid, user=None):
             "available_channels": [c for c in VALID_CHANNELS if c in default_ch],
             "enabled": True if r['sub_enabled'] is None else bool(r['sub_enabled']),
             "channels": per_channel,
+            "recipient_roles": rec_roles if rec_roles else [],
         })
 
     # 3. Расписание
@@ -162,6 +163,7 @@ def _get_center(cur, schema, uid, user=None):
         "channels": channels,
         "events": events,
         "schedule": schedule,
+        "user_roles": sorted(user_recipient_roles),
     })
 
 

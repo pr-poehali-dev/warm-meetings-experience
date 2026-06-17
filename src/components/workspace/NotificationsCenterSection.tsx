@@ -200,6 +200,7 @@ export default function NotificationsCenterSection({
       {/* ── Нижняя панель: события × каналы ── */}
       <EventsPanel
         events={state.events}
+        userRoles={state.user_roles ?? []}
         onChange={(updated) =>
           setState((p) =>
             p
@@ -304,16 +305,34 @@ function ChannelsPanel({
 
 // ─── Нижняя панель: события × каналы ──────────────────────────────────────────
 
+const ROLE_LABELS: Record<string, string> = {
+  master: "Мастер",
+  organizer: "Организатор",
+  partner: "Управляющий",
+};
+
 function EventsPanel({
   events,
+  userRoles,
   onChange,
 }: {
   events: CenterEvent[];
+  userRoles: string[];
   onChange: (e: CenterEvent) => void;
 }) {
+  const hasMultipleRoles = userRoles.length > 1;
+  const [activeRole, setActiveRole] = useState<string>(() => userRoles[0] ?? "");
+
+  // Фильтрация по выбранной роли (если ролей > 1)
+  const visibleEvents = hasMultipleRoles && activeRole
+    ? events.filter((e) =>
+        !e.recipient_roles?.length || e.recipient_roles.includes(activeRole)
+      )
+    : events;
+
   // группировка по категориям
   const groups: Record<string, CenterEvent[]> = {};
-  events.forEach((e) => {
+  visibleEvents.forEach((e) => {
     (groups[e.category] = groups[e.category] || []).push(e);
   });
 
@@ -338,7 +357,23 @@ function EventsPanel({
 
   return (
     <div className="space-y-2">
-      <p className="font-semibold text-sm">О каких событиях уведомлять</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="font-semibold text-sm">О каких событиях уведомлять</p>
+        {hasMultipleRoles && (
+          <Select value={activeRole} onValueChange={setActiveRole}>
+            <SelectTrigger className="w-44 h-8 text-xs rounded-xl border-border bg-card">
+              <SelectValue placeholder="Роль" />
+            </SelectTrigger>
+            <SelectContent>
+              {userRoles.map((r) => (
+                <SelectItem key={r} value={r}>
+                  {ROLE_LABELS[r] ?? r}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
       <div className="bg-card border rounded-2xl overflow-hidden">
         {/* шапка */}
         <div className="hidden sm:grid grid-cols-[1fr_auto] gap-2 px-4 py-2.5 bg-muted/40 text-xs font-medium text-muted-foreground border-b">
