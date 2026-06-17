@@ -20,7 +20,8 @@ import MergeAccountModal, { MergeHint } from "@/components/admin/MergeAccountMod
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 const USER_PROFILE_URL = "https://functions.poehali.dev/5322ffd0-7079-40ce-9d4e-8d7fee29624c";
 const VK_COMMUNITY = "sparcom";
-const VK_WRITE_URL = `https://vk.com/${VK_COMMUNITY}`;
+const VK_WRITE_URL = `https://vk.com/write-${VK_COMMUNITY}`;
+const VK_CONSENT_MSG = "Я подключаю уведомления от СПАРКОМ. Согласен получать сообщения о моих записях, бронированиях и новостях платформы. Буду рад быть на связи!";
 
 interface Props {
   vkId?: string | null;
@@ -136,8 +137,14 @@ export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, d
     }
   };
 
-  // Сценарий 2: VK привязан → написать сообществу
-  const handleWriteCommunity = () => {
+  // Сценарий 2: VK привязан → написать сообществу с предзаполненным текстом
+  const handleWriteCommunity = async () => {
+    try {
+      await navigator.clipboard.writeText(VK_CONSENT_MSG);
+      toast.info("Текст сообщения скопирован — вставьте его в диалог (Ctrl+V)", { duration: 6000 });
+    } catch {
+      // clipboard недоступен — просто откроем диалог
+    }
     window.open(VK_WRITE_URL, "_blank", "noopener,noreferrer");
   };
 
