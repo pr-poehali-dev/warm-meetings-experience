@@ -200,6 +200,13 @@ export const notifyCenterApi = {
       body: JSON.stringify(s),
     });
   },
+
+  setEmail(email: string): Promise<{ ok: boolean; email: string }> {
+    return req(`${BASE}?action=set_email`, {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  },
 };
 
 export interface MasterBookingShort {

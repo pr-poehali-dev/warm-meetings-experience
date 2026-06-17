@@ -10,6 +10,7 @@
 """
 
 import json
+import re
 
 import psycopg2.extras
 
@@ -17,6 +18,8 @@ from shared import get_user_from_token, respond
 
 
 VALID_CHANNELS = ('telegram', 'email', 'vk')
+
+_EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 
 def _user(cur, schema, token):
@@ -41,6 +44,8 @@ def handle_notify_center(method, params, body, conn, token):
         return _set_event_sub(cur, conn, schema, uid, body)
     if method == "POST" and action == "set_schedule":
         return _set_schedule(cur, conn, schema, uid, body)
+    if method == "POST" and action == "set_email":
+        return _set_email(cur, conn, schema, uid, user, body)
 
     return respond(400, {"error": "Неизвестное действие"})
 
@@ -197,4 +202,41 @@ def _set_schedule(cur, conn, schema, uid, body):
     return respond(200, {"ok": True})
 
 
-NOTIFY_CENTER_ACTIONS = {"notify_center", "set_event_sub", "set_schedule"}
+def _set_email(cur, conn, schema, uid, user, body):
+    """Сохраняет email для уведомлений и включает Email-канал.
+
+    Если у пользователя уже есть настоящий email (логин) — менять его нельзя,
+    только включаем канал. Заглушку @vk.local разрешено заменить реальным адресом.
+    """
+    new_email = (body.get("email") or "").strip().lower()
+    current = (user.get("email") or "").strip()
+    has_real = bool(current and "@vk.local" not in current)
+
+    if has_real:
+        # email уже задан и используется для входа — просто включаем канал
+        cur.execute(f"UPDATE {schema}.users SET notify_email = TRUE WHERE id = {int(uid)}")
+        conn.commit()
+        return respond(200, {"ok": True, "email": current})
+
+    if not _EMAIL_RE.match(new_email):
+        return respond(400, {"error": "Укажите корректный email"})
+
+    # email не должен быть занят другим аккаунтом
+    safe = new_email.replace("'", "''")
+    cur.execute(f"""
+        SELECT id FROM {schema}.users
+        WHERE lower(email) = '{safe}' AND id <> {int(uid)} LIMIT 1
+    """)
+    if cur.fetchone():
+        return respond(409, {"error": "Этот email уже привязан к другому аккаунту"})
+
+    cur.execute(f"""
+        UPDATE {schema}.users
+        SET email = '{safe}', notify_email = TRUE
+        WHERE id = {int(uid)}
+    """)
+    conn.commit()
+    return respond(200, {"ok": True, "email": new_email})
+
+
+NOTIFY_CENTER_ACTIONS = {"notify_center", "set_event_sub", "set_schedule", "set_email"}

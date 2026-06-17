@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import TelegramSettings from "@/components/organizer/TelegramSettings";
@@ -41,7 +42,7 @@ export default function NotificationsCenterSection({
 }: Props) {
   const [state, setState] = useState<NotifyCenterState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [wizard, setWizard] = useState<"telegram" | "vk" | null>(null);
+  const [wizard, setWizard] = useState<"telegram" | "vk" | "email" | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -87,7 +88,7 @@ export default function NotificationsCenterSection({
             toast.error((e as Error).message);
           }
         }}
-        onOpenWizard={(ch) => setWizard(ch === "email" ? "telegram" : ch)}
+        onOpenWizard={(ch) => setWizard(ch)}
       />
 
       {/* ── Мастер подключения Telegram ── */}
@@ -145,6 +146,28 @@ export default function NotificationsCenterSection({
         </div>
       )}
 
+      {/* ── Мастер подключения Email ── */}
+      {wizard === "email" && (
+        <EmailWizard
+          currentEmail={state.channels.email.value || null}
+          onClose={() => setWizard(null)}
+          onDone={(email) => {
+            setState((p) =>
+              p
+                ? {
+                    ...p,
+                    channels: {
+                      ...p.channels,
+                      email: { ...p.channels.email, connected: true, active: true, value: email },
+                    },
+                  }
+                : p
+            );
+            setWizard(null);
+          }}
+        />
+      )}
+
       {/* ── Нижняя панель: события × каналы ── */}
       <EventsPanel
         events={state.events}
@@ -183,8 +206,8 @@ function ChannelsPanel({
   onOpenWizard: (ch: CenterChannel) => void;
 }) {
   const channels = Object.keys(CHANNEL_META) as CenterChannel[];
-  // Email подключается через профиль — мастер открываем только для Telegram/VK
-  const hasWizard = (ch: CenterChannel) => ch === "telegram" || ch === "vk";
+  // Все каналы имеют мастер подключения
+  const hasWizard = (_ch: CenterChannel) => true;
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -428,5 +451,76 @@ function HourSelect({ value, onChange }: { value: number; onChange: (h: number) 
         </option>
       ))}
     </select>
+  );
+}
+
+// ─── Мастер подключения Email ─────────────────────────────────────────────────
+
+function EmailWizard({
+  currentEmail,
+  onClose,
+  onDone,
+}: {
+  currentEmail: string | null;
+  onClose: () => void;
+  onDone: (email: string) => void;
+}) {
+  const [email, setEmail] = useState(currentEmail || "");
+  const [saving, setSaving] = useState(false);
+  const alreadyHas = !!currentEmail;
+
+  const save = async () => {
+    const v = email.trim();
+    if (!alreadyHas && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) {
+      toast.error("Укажите корректный email");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await notifyCenterApi.setEmail(v);
+      toast.success("Email подключён");
+      onDone(res.email || v);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-sm flex items-center gap-2">
+          <Icon name="Wand2" size={15} className="text-blue-500" />
+          Подключение Email
+        </h3>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <Icon name="X" size={18} />
+        </button>
+      </div>
+      {alreadyHas ? (
+        <p className="text-xs text-muted-foreground">
+          Уведомления будут приходить на <b>{currentEmail}</b> — адрес вашего аккаунта.
+          Нажмите «Включить», чтобы активировать канал.
+        </p>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Укажите email — на него будут приходить подтверждения, напоминания и важные уведомления.
+          </p>
+          <Input
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") save(); }}
+          />
+        </>
+      )}
+      <Button size="sm" onClick={save} disabled={saving} className="gap-1.5">
+        {saving && <Icon name="Loader2" size={13} className="animate-spin" />}
+        {alreadyHas ? "Включить" : "Подключить"}
+      </Button>
+    </div>
   );
 }
