@@ -1,5 +1,6 @@
 import json
 import os
+import threading
 import psycopg2.extras
 from datetime import datetime
 from shared import CORS_HEADERS, get_conn, get_schema, send_email, tg_send, vk_send, admin_email
@@ -888,14 +889,6 @@ def handle_bookings(event, method, params, schema, headers):
                     svc_name_for_notify = _svc.get('name') or ''
             except Exception:
                 pass
-        try:
-            _notify_master_about_booking(cur, schema, master_id, dict(booking), svc_name_for_notify)
-        except Exception:
-            pass
-        try:
-            _notify_client_about_new_booking(cur, schema, master_id, dict(booking), svc_name_for_notify)
-        except Exception:
-            pass
 
         # Уведомление мастеру через hub: master_booking_new (с учётом подписок)
         try:
@@ -911,6 +904,31 @@ def handle_bookings(event, method, params, schema, headers):
                            })
         except Exception:
             pass
+
+        # Email/Telegram/VK уведомления — в фоновом потоке, чтобы не блокировать ответ
+        _booking_snap = dict(booking)
+        _svc_snap = svc_name_for_notify
+        _schema_snap = schema
+        _mid_snap = master_id
+
+        def _bg_notify():
+            try:
+                _c = get_conn()
+                _cur = _c.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+                try:
+                    _notify_master_about_booking(_cur, _schema_snap, _mid_snap, _booking_snap, _svc_snap)
+                except Exception:
+                    pass
+                try:
+                    _notify_client_about_new_booking(_cur, _schema_snap, _mid_snap, _booking_snap, _svc_snap)
+                except Exception:
+                    pass
+                _c.commit()
+                _c.close()
+            except Exception:
+                pass
+
+        threading.Thread(target=_bg_notify, daemon=True).start()
 
         conn.close()
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(booking, default=str)}
