@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -13,11 +11,39 @@ import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { hubApi, LogEntry } from "./hubApi";
 
+const CHANNEL_ICONS: Record<string, string> = {
+  telegram: "Send",
+  email: "Mail",
+  vk: "MessageCircle",
+};
+
 const CHANNEL_LABELS: Record<string, string> = {
   telegram: "Telegram",
   email: "Email",
   vk: "ВКонтакте",
 };
+
+const STATUS_STYLES: Record<string, string> = {
+  success: "bg-green-100 text-green-700",
+  failed: "bg-red-100 text-red-700",
+  pending: "bg-amber-100 text-amber-700",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  success: "Доставлено",
+  failed: "Ошибка",
+  pending: "В очереди",
+};
+
+function fmtDate(str: string | null) {
+  if (!str) return "—";
+  return new Date(str).toLocaleString("ru-RU", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default function HubLogs() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -76,49 +102,62 @@ export default function HubLogs() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <Icon name="Loader2" size={28} className="animate-spin text-muted-foreground" />
+        <div className="flex items-center justify-center py-12">
+          <Icon name="Loader2" size={22} className="animate-spin text-muted-foreground" />
         </div>
       ) : logs.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            Нет записей
-          </CardContent>
-        </Card>
+        <div className="text-center py-10 border-2 border-dashed rounded-2xl">
+          <Icon name="History" size={32} className="mx-auto text-muted-foreground/30 mb-3" />
+          <p className="text-sm text-muted-foreground">Нет записей</p>
+        </div>
       ) : (
         <div className="space-y-2">
           {logs.map((l) => (
-            <Card key={l.id}>
-              <CardContent className="p-3 flex items-center gap-3">
-                <Icon
-                  name={l.status === "success" ? "CheckCircle2" : "XCircle"}
-                  size={18}
-                  className={l.status === "success" ? "text-green-500" : "text-red-500"}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className="text-[10px]">
-                      {CHANNEL_LABELS[l.channel] || l.channel}
-                    </Badge>
-                    <span className="text-sm font-medium">{l.event_type}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {l.recipient}
-                    {l.error_text && (
-                      <span className="text-red-500"> · {l.error_text}</span>
-                    )}
-                  </div>
+            <div key={l.id} className="rounded-xl border p-3 space-y-1.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Icon
+                    name={(CHANNEL_ICONS[l.channel] || "Bell") as "Mail"}
+                    size={13}
+                    className="text-muted-foreground shrink-0"
+                  />
+                  <span className="text-sm font-medium truncate">
+                    {l.recipient || "—"}
+                  </span>
                 </div>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {new Date(l.created_at).toLocaleString("ru-RU", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md shrink-0 ${STATUS_STYLES[l.status] || "bg-muted text-muted-foreground"}`}>
+                  {STATUS_LABELS[l.status] || l.status}
                 </span>
-              </CardContent>
-            </Card>
+              </div>
+
+              {l.subject && (
+                <p className="text-xs text-muted-foreground truncate">
+                  <span className="font-medium text-foreground">Тема:</span> {l.subject}
+                </p>
+              )}
+
+              <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
+                <span className="flex items-center gap-1">
+                  <Icon name="Zap" size={9} />
+                  {l.event_type}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Icon name={(CHANNEL_ICONS[l.channel] || "Bell") as "Mail"} size={9} />
+                  {CHANNEL_LABELS[l.channel] || l.channel}
+                </span>
+                <span className="flex items-center gap-1 ml-auto">
+                  <Icon name="Clock" size={9} />
+                  {fmtDate(l.created_at)}
+                </span>
+              </div>
+
+              {l.status === "failed" && l.error_text && (
+                <div className="text-[11px] text-red-600 bg-red-50 rounded-lg px-2 py-1.5 flex gap-1.5">
+                  <Icon name="AlertCircle" size={11} className="shrink-0 mt-0.5" />
+                  {l.error_text}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
