@@ -181,53 +181,88 @@ export default function NotificationsCenterSection({
             </button>
           </div>
 
-          {/* Шаги */}
-          <ol className="text-xs text-[#4a5c8a] space-y-1 list-decimal pl-4">
-            <li className={vkStep > 1 ? "line-through opacity-50" : ""}>Привяжите VK-аккаунт (один клик).</li>
-            <li className={vkStep < 2 ? "opacity-50" : ""}>
-              Нажмите «Написать сообществу» — текст согласия скопируется автоматически, вставьте его (Ctrl+V) и отправьте.
-            </li>
-            <li className={vkStep < 2 ? "opacity-50" : ""}>Нажмите «Проверить» — мы пришлём вам приветствие и включим уведомления.</li>
-          </ol>
+          {/* Уже подключён — показываем статус */}
+          {state.channels.vk.connected && state.channels.vk.active ? (
+            <div className="space-y-3">
+              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-3 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+                  <Icon name="CheckCircle" size={18} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-green-700 dark:text-green-400">Всё настроено!</p>
+                  <p className="text-xs text-green-600 dark:text-green-500">Уведомления в ВКонтакте активны</p>
+                </div>
+              </div>
+              {state.channels.vk.vk_id && (
+                <div className="bg-white/70 dark:bg-blue-900/30 border border-[#b8cff7] rounded-xl p-3 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#e8f0fc] flex items-center justify-center shrink-0">
+                    <Icon name="MessageCircle" size={15} className="text-[#0077FF]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-[#0d1b4b] dark:text-blue-100">
+                      <a href={`https://vk.com/id${state.channels.vk.vk_id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                        vk.com/id{state.channels.vk.vk_id}
+                      </a>
+                    </p>
+                    <p className="text-[11px] text-[#4a5c8a]">
+                      Сообщество:{" "}
+                      <a href="https://vk.com/sparcom" target="_blank" rel="noopener noreferrer" className="text-[#0077FF] hover:underline">
+                        vk.com/sparcom
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Шаги */}
+              <ol className="text-xs text-[#4a5c8a] space-y-1 list-decimal pl-4">
+                <li className={vkStep > 1 ? "line-through opacity-50" : ""}>Привяжите VK-аккаунт (один клик).</li>
+                <li className={vkStep < 2 ? "opacity-50" : ""}>
+                  Нажмите «Написать сообществу» — текст согласия скопируется автоматически, вставьте его (Ctrl+V) и отправьте.
+                </li>
+                <li className={vkStep < 2 ? "opacity-50" : ""}>Нажмите «Проверить» — мы пришлём вам приветствие и включим уведомления.</li>
+              </ol>
 
-          {/* Шаг 1 и 2: привязка + написать */}
-          <VkConnectBanner
-            vkId={state.channels.vk.vk_id}
-            variant="inline"
-            onLinked={() => { setVkStep(2); load(); }}
-          />
+              {/* Шаг 1 и 2: привязка + написать */}
+              <VkConnectBanner
+                vkId={state.channels.vk.vk_id}
+                variant="inline"
+                onLinked={() => { setVkStep(2); load(); }}
+              />
 
-          {/* Шаг 3: проверить — показываем сразу после привязки */}
-          {(vkStep >= 2 || state.channels.vk.vk_id) && (
-            <Button
-              size="sm"
-              disabled={vkVerifying}
-              onClick={async () => {
-                setVkVerifying(true);
-                try {
-                  await userProfileApi.verifyVk();
-                  toast.success("Уведомления ВКонтакте подключены! Проверьте личку ВКонтакте.");
-                  setWizard(null);
-                  setVkStep(1);
-                  load();
-                } catch (e: unknown) {
-                  const err = e as { status?: number; message?: string };
-                  if (err?.status === 403) {
-                    toast.error("Сначала напишите сообществу — нажмите «Написать сообществу» выше");
-                  } else {
-                    toast.error((e as Error).message || "Ошибка проверки");
+              {/* Шаг 3: проверить — показываем сразу после привязки */}
+              {(vkStep >= 2 || state.channels.vk.vk_id) && (
+                <Button
+                  size="sm"
+                  disabled={vkVerifying}
+                  onClick={async () => {
+                    setVkVerifying(true);
+                    try {
+                      await userProfileApi.verifyVk();
+                      toast.success("Уведомления ВКонтакте подключены! Проверьте личку ВКонтакте.");
+                      load();
+                    } catch (e: unknown) {
+                      const err = e as { status?: number; message?: string };
+                      if (err?.status === 403) {
+                        toast.error("Сначала напишите сообществу — нажмите «Написать сообществу» выше");
+                      } else {
+                        toast.error((e as Error).message || "Ошибка проверки");
+                      }
+                    } finally {
+                      setVkVerifying(false);
+                    }
+                  }}
+                  className="gap-1.5 w-full bg-[#0077FF] hover:bg-[#005fcc] text-white"
+                >
+                  {vkVerifying
+                    ? <><Icon name="Loader2" size={13} className="animate-spin" />Проверяем...</>
+                    : <><Icon name="CheckCircle" size={13} />Проверить и включить уведомления</>
                   }
-                } finally {
-                  setVkVerifying(false);
-                }
-              }}
-              className="gap-1.5 w-full bg-[#0077FF] hover:bg-[#005fcc] text-white"
-            >
-              {vkVerifying
-                ? <><Icon name="Loader2" size={13} className="animate-spin" />Проверяем...</>
-                : <><Icon name="CheckCircle" size={13} />Проверить и включить уведомления</>
-              }
-            </Button>
+                </Button>
+              )}
+            </>
           )}
         </div>
       )}
@@ -332,31 +367,7 @@ function ChannelsPanel({
                     <span className="text-muted-foreground">Не подключён</span>
                   )}
                 </div>
-                {/* VK: детали подключения */}
-                {ch === "vk" && st.connected && st.vk_id && (
-                  <div className="mt-1 space-y-0.5">
-                    <a
-                      href={`https://vk.com/id${st.vk_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-[10px] text-[#0077FF] hover:underline flex items-center gap-0.5"
-                    >
-                      <Icon name="User" size={10} />
-                      vk.com/id{st.vk_id}
-                    </a>
-                    <a
-                      href="https://vk.com/sparcom"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-[10px] text-[#0077FF] hover:underline flex items-center gap-0.5"
-                    >
-                      <Icon name="Users" size={10} />
-                      vk.com/sparcom
-                    </a>
-                  </div>
-                )}
+
               </div>
               {/* клик по тумблеру не должен открывать мастер */}
               <div onClick={(e) => e.stopPropagation()}>
