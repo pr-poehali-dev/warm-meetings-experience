@@ -181,6 +181,12 @@ export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, d
           <p className="text-sm font-medium text-[#0d1b4b] dark:text-blue-100">{title}</p>
         </div>
         <p className="text-xs text-[#4a5c8a] dark:text-blue-300 mb-3 leading-relaxed">{description}</p>
+        {isLinked && (
+          <div className="bg-white/70 dark:bg-blue-900/40 border border-[#b8cff7] rounded-lg px-3 py-2 mb-3">
+            <p className="text-[10px] text-[#7a8fb5] mb-1 font-medium uppercase tracking-wide">Будет скопировано в буфер</p>
+            <p className="text-xs text-[#0d1b4b] dark:text-blue-100 italic leading-relaxed">«{VK_CONSENT_MSG}»</p>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <button
             onClick={handleClick}
@@ -219,6 +225,12 @@ export default function VkConnectBanner({ vkId, variant = "banner", onDismiss, d
       <p className="text-sm text-[#4a5c8a] dark:text-blue-300 leading-relaxed mb-4">
         {description}
       </p>
+      {isLinked && (
+        <div className="bg-white/70 dark:bg-blue-900/40 border border-[#b8cff7] rounded-lg px-3 py-2 mb-4">
+          <p className="text-[10px] text-[#7a8fb5] mb-1 font-medium uppercase tracking-wide">Будет скопировано в буфер</p>
+          <p className="text-xs text-[#0d1b4b] dark:text-blue-100 italic leading-relaxed">«{VK_CONSENT_MSG}»</p>
+        </div>
+      )}
       <div className="flex items-center gap-3">
         <button
           onClick={handleClick}
