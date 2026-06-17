@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import re
+import threading
 import uuid
 import psycopg2
 import psycopg2.extras
@@ -312,15 +313,30 @@ def create_ticket(cur, conn, schema, body, user):
     conn.commit()
 
     short = (message[:200] + '…') if len(message) > 200 else message
-    tg_notify_admin(
+    _tg_text = (
         f"🛟 <b>Новое обращение #{ticket_id}</b>\n"
         f"<b>Тема:</b> {subject}\n"
         f"<b>От:</b> {name} ({email})\n"
         f"<b>Категория:</b> {category} · <b>Приоритет:</b> {priority}\n\n"
         f"{short}"
     )
-    email_admin_new_ticket(ticket_id, subject, name, email, category, priority, message)
-    email_user_ticket_created(email, name, ticket_id, subject)
+    _tid, _subj, _nm, _em, _cat, _prio, _msg = ticket_id, subject, name, email, category, priority, message
+
+    def _bg():
+        try:
+            tg_notify_admin(_tg_text)
+        except Exception as e:
+            print(f'[support] tg_notify_admin err: {e}')
+        try:
+            email_admin_new_ticket(_tid, _subj, _nm, _em, _cat, _prio, _msg)
+        except Exception as e:
+            print(f'[support] email_admin err: {e}')
+        try:
+            email_user_ticket_created(_em, _nm, _tid, _subj)
+        except Exception as e:
+            print(f'[support] email_user err: {e}')
+
+    threading.Thread(target=_bg, daemon=True).start()
 
     return ok({'ticket': row_ticket(ticket)})
 
