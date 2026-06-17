@@ -179,7 +179,7 @@ export default function NotificationsCenterSection({
           </div>
           <ol className="text-xs text-[#4a5c8a] space-y-1 list-decimal pl-4">
             <li>Привяжите VK-аккаунт через кнопку ниже (один клик).</li>
-            <li>Напишите сообществу одно сообщение — это разрешит нам писать вам в личку.</li>
+            <li>Напишите сообществу одно сообщение — это разрешит нам отправлять уведомления вам в личку.</li>
           </ol>
           <VkConnectBanner vkId={state.channels.vk.vk_id} variant="inline" />
           <Button size="sm" variant="ghost" onClick={load} className="gap-1.5">
