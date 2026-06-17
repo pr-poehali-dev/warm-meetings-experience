@@ -305,6 +305,12 @@ const ROLE_LABELS: Record<string, string> = {
   partner: "Управляющий",
 };
 
+const ROLE_STYLE: Record<string, { icon: string; accent: string; bg: string; border: string; badge: string }> = {
+  master:    { icon: "Flame",        accent: "text-orange-500", bg: "bg-orange-500/[0.04]",  border: "border-orange-500/20", badge: "bg-orange-500/10 text-orange-700" },
+  organizer: { icon: "CalendarDays", accent: "text-emerald-500", bg: "bg-emerald-500/[0.04]", border: "border-emerald-500/20", badge: "bg-emerald-500/10 text-emerald-700" },
+  partner:   { icon: "Building2",    accent: "text-violet-500", bg: "bg-violet-500/[0.04]",  border: "border-violet-500/20", badge: "bg-violet-500/10 text-violet-700" },
+};
+
 function EventsTable({
   events,
   onChange,
@@ -468,17 +474,20 @@ function EventsPanel({
           const isOpen = openRoles.has(role);
           const enabledCount = roleEvents.filter((e) => e.enabled).length;
 
+          const style = ROLE_STYLE[role] ?? ROLE_STYLE.master;
+
           return (
-            <div key={role} className="border rounded-2xl overflow-hidden bg-card">
+            <div key={role} className={`border rounded-2xl overflow-hidden ${style.border}`}>
               {/* Заголовок аккордеона */}
               <button
                 type="button"
                 onClick={() => toggleRole(role)}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+                className={`w-full flex items-center justify-between px-4 py-3 transition-colors ${style.bg} hover:brightness-95`}
               >
                 <div className="flex items-center gap-2">
+                  <Icon name={style.icon} size={15} className={style.accent} />
                   <span className="font-semibold text-sm">{ROLE_LABELS[role] ?? role}</span>
-                  <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">
+                  <span className={`text-xs rounded-full px-2 py-0.5 ${style.badge}`}>
                     {enabledCount} из {roleEvents.length}
                   </span>
                 </div>
