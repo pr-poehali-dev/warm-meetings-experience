@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Icon from "@/components/ui/icon";
@@ -38,8 +38,11 @@ export default function VkCallback() {
   const { updateUser, loginWithToken } = useAuth();
   const [mergeHint, setMergeHint] = useState<MergeHint | null>(null);
   const [pendingNav, setPendingNav] = useState<string | null>(null);
+  const startedRef = useRef(false);
 
   useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
     const params = new URLSearchParams(window.location.search);
     const isLinkFlow = sessionStorage.getItem("vk_link_pending") === "1";
     const urlStateEarly = params.get("state");
