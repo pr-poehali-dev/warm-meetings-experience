@@ -210,8 +210,9 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
         # None (не задано) → разрешаем, если есть chat_id.
         tg_disabled = m.get('notify_telegram') is False
         if tg_chat_id and not tg_disabled:
+            tg_header = '🔄 <b>Перенос записи</b>' if is_reschedule else '🎫 <b>Новая запись на сеанс</b>'
             lines = [
-                '🎫 <b>Новая запись на сеанс</b>',
+                tg_header,
                 '',
                 f'📌 {service_name or "Услуга"}',
                 f'📅 {dt_human}',
@@ -250,8 +251,9 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                 'client_phone': client_phone,
                 'status': status_human,
             }
+            tg_event_type = 'booking_rescheduled' if is_reschedule else 'master_booking_new'
             tg_text = _render_template(
-                cur, schema, 'master_booking_new', 'telegram', 'text',
+                cur, schema, tg_event_type, 'telegram', 'text',
                 tpl_vars, '\n'.join(lines),
             )
             ok_tg = tg_send(tg_chat_id, tg_text)
@@ -315,7 +317,7 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                 body_html = f"""
                 <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #2d2318;">
                     <div style="background: linear-gradient(135deg,#C8834A,#8FA89A); color: #fff; padding: 24px; border-radius: 16px 16px 0 0;">
-                        <h1 style="margin: 0; font-size: 22px;">Новая запись на сеанс</h1>
+                        <h1 style="margin: 0; font-size: 22px;">{'Перенос записи' if is_reschedule else 'Новая запись на сеанс'}</h1>
                         <p style="margin: 6px 0 0; opacity: .9; font-size: 14px;">Запись {status_human}</p>
                     </div>
                     <div style="background: #fff; border: 1px solid #eee; border-top: none; padding: 20px; border-radius: 0 0 16px 16px;">
@@ -366,7 +368,7 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
         # === VK ===
         if vk_id and notify_vk_effective:
             vk_lines = [
-                f'🎫 Новая запись на сеанс',
+                '🔄 Перенос записи' if is_reschedule else '🎫 Новая запись на сеанс',
                 '',
                 f'📌 {service_name or "Услуга"}',
                 f'📅 {dt_human}',
