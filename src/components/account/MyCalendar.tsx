@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { rolesApi } from "@/lib/roles-api";
 import { mastersApi } from "@/lib/masters-api";
 import Icon from "@/components/ui/icon";
-import MasterCalendar from "@/components/admin/MasterCalendar";
+import MasterCalendarDnd, { MasterCalendarDndRef } from "@/components/admin/calendar-dnd/MasterCalendarDnd";
 import MasterBookingsList from "@/components/admin/MasterBookingsList";
 import MasterServices from "@/components/admin/MasterServices";
 import MasterTemplates from "@/components/admin/MasterTemplates";
@@ -26,6 +26,7 @@ const MyCalendar = () => {
   const [masterId, setMasterId] = useState<number | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [tab, setTab] = useState<MasterTab>("calendar");
+  const calendarRef = useRef<MasterCalendarDndRef>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,7 +107,7 @@ const MyCalendar = () => {
   const renderTab = () => {
     switch (tab) {
       case "calendar":
-        return <MasterCalendar masterId={masterId} />;
+        return <MasterCalendarDnd ref={calendarRef} masterId={masterId} />;
       case "bookings":
         return <MasterBookingsList masterId={masterId} />;
       case "services":
