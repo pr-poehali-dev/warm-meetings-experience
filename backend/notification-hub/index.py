@@ -93,13 +93,18 @@ def _route_send(cur, conn, schema, event):
     except Exception:
         return err('Некорректный JSON')
 
-    # Авторизация отправки: либо внутренний токен (равен ADMIN_PASSWORD),
-    # либо валидный admin-токен дня. Так чужие сайты не смогут слать спам.
+    # Авторизация отправки: токен можно передать в заголовке ИЛИ в теле запроса.
+    # Передача в теле (auth_token) нужна для вызовов между бэкенд-функциями —
+    # платформенный прокси может фильтровать кастомные заголовки.
     headers_in = event.get('headers') or {}
     internal = headers_in.get('X-Internal-Token') or headers_in.get('x-internal-token') or ''
     admin_token = headers_in.get('X-Admin-Token') or headers_in.get('x-admin-token') or ''
-    internal_ok = bool(internal) and internal == os.environ.get('ADMIN_PASSWORD', '__none__')
-    if not (internal_ok or verify_admin_token(admin_token)):
+    body_token = body.get('auth_token') or ''
+    admin_pwd = os.environ.get('ADMIN_PASSWORD', '__none__')
+    internal_ok = bool(internal) and internal == admin_pwd
+    body_internal_ok = bool(body_token) and body_token == admin_pwd
+    if not (internal_ok or body_internal_ok
+            or verify_admin_token(admin_token) or verify_admin_token(body_token)):
         return respond(403, {'error': 'Доступ запрещён'})
 
     event_type = (body.get('event_type') or '').strip()

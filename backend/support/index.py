@@ -18,26 +18,17 @@ from shared import (
 )
 
 
-def _make_admin_token():
-    """Генерирует дневной admin-токен (sha256 пароля и дня) — тот же алгоритм что в shared.verify_admin_token."""
-    import hashlib, time
-    pwd = os.environ.get('ADMIN_PASSWORD', '')
-    if not pwd:
-        return ''
-    return hashlib.sha256(f"{pwd}:{int(time.time() // 86400)}".encode()).hexdigest()
-
-
 def _hub_notify_admin(event_type, variables):
-    """Отправляет уведомление администратору через Notification Hub (telegram).
+    """Уведомление администратору через Notification Hub (telegram).
 
-    Использует direct.tg_chat_id = TELEGRAM_CHAT_ID, чтобы не зависеть от user_id.
-    Авторизуется X-Admin-Token (дневной хэш) — тот же механизм что у фронта.
+    Токен авторизации передаётся в ТЕЛЕ запроса (auth_token), т.к. платформенный
+    прокси может отфильтровать кастомные заголовки при вызове между функциями.
     """
     hub_url = os.environ.get('NOTIFICATION_HUB_URL', '')
     chat_id = os.environ.get('TELEGRAM_CHAT_ID', '')
-    token = _make_admin_token()
-    if not hub_url or not chat_id or not token:
-        print(f'[support] hub_notify_admin SKIP: hub={bool(hub_url)} chat={bool(chat_id)} token={bool(token)}')
+    pwd = os.environ.get('ADMIN_PASSWORD', '')
+    if not hub_url or not chat_id or not pwd:
+        print(f'[support] hub SKIP: hub={bool(hub_url)} chat={bool(chat_id)} pwd={bool(pwd)}')
         return
     payload = json.dumps({
         'event_type': event_type,
@@ -45,22 +36,27 @@ def _hub_notify_admin(event_type, variables):
         'channels': ['telegram'],
         'direct': {'tg_chat_id': chat_id},
         'respect_prefs': False,
+        'auth_token': pwd,
     }).encode('utf-8')
     req = urllib.request.Request(
         f'{hub_url}?resource=send',
         data=payload,
-        headers={
-            'Content-Type': 'application/json',
-            'X-Admin-Token': token,
-        },
+        headers={'Content-Type': 'application/json'},
         method='POST',
     )
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:
             raw = resp.read().decode('utf-8', 'replace')
-            print(f'[support] hub_notify_admin {event_type} → {raw[:200]}')
+            print(f'[support] hub_notify {event_type} → {raw[:200]}')
+    except urllib.error.HTTPError as e:
+        body = ''
+        try:
+            body = e.read().decode('utf-8', 'replace')[:300]
+        except Exception:
+            pass
+        print(f'[support] hub HTTP {e.code} {event_type}: {body}')
     except Exception as e:
-        print(f'[support] hub_notify_admin EXC {event_type}: {type(e).__name__}: {e}')
+        print(f'[support] hub EXC {event_type}: {type(e).__name__}: {e}')
 
 
 # --- S3 ---
