@@ -2,6 +2,8 @@ import base64
 import json
 import os
 import re
+import urllib.request
+import urllib.error
 import uuid
 import psycopg2
 import psycopg2.extras
@@ -11,10 +13,44 @@ import boto3
 from shared import (
     get_conn, get_schema, get_cursor,
     options_response, respond, ok, err,
-    get_user_from_token, tg_notify_admin,
-    verify_admin_token, send_email, admin_email,
-    audit_log,
+    get_user_from_token, verify_admin_token,
+    send_email, admin_email, audit_log,
 )
+
+
+def _hub_notify_admin(event_type, variables):
+    """Отправляет уведомление администратору через Notification Hub (telegram).
+
+    Использует direct.tg_chat_id = TELEGRAM_CHAT_ID, чтобы не зависеть от user_id.
+    Вызывается синхронно — hub работает внутри инфраструктуры и отвечает быстро.
+    """
+    hub_url = os.environ.get('NOTIFICATION_HUB_URL', '')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID', '')
+    if not hub_url or not chat_id:
+        print(f'[support] hub_notify_admin SKIP: hub_url={bool(hub_url)} chat_id={bool(chat_id)}')
+        return
+    payload = json.dumps({
+        'event_type': event_type,
+        'variables': variables,
+        'channels': ['telegram'],
+        'direct': {'tg_chat_id': chat_id},
+        'respect_prefs': False,
+    }).encode('utf-8')
+    req = urllib.request.Request(
+        f'{hub_url}?resource=send',
+        data=payload,
+        headers={
+            'Content-Type': 'application/json',
+            'X-Internal-Token': os.environ.get('ADMIN_PASSWORD', ''),
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read().decode('utf-8', 'replace')
+            print(f'[support] hub_notify_admin {event_type} → {raw[:200]}')
+    except Exception as e:
+        print(f'[support] hub_notify_admin EXC {event_type}: {type(e).__name__}: {e}')
 
 
 # --- S3 ---
@@ -312,17 +348,15 @@ def create_ticket(cur, conn, schema, body, user):
     conn.commit()
 
     short = (message[:200] + '…') if len(message) > 200 else message
-    _tg_text = (
-        f"🛟 <b>Новое обращение #{ticket_id}</b>\n"
-        f"<b>Тема:</b> {subject}\n"
-        f"<b>От:</b> {name} ({email})\n"
-        f"<b>Категория:</b> {category} · <b>Приоритет:</b> {priority}\n\n"
-        f"{short}"
-    )
-    try:
-        tg_notify_admin(_tg_text)
-    except Exception as e:
-        print(f'[support] tg_notify_admin err: {e}')
+    _hub_notify_admin('support_ticket_new', {
+        'ticket_id': ticket_id,
+        'subject': subject,
+        'name': name,
+        'email': email,
+        'category': category,
+        'priority': priority,
+        'message': short,
+    })
     try:
         email_admin_new_ticket(ticket_id, subject, name, email, category, priority, message)
     except Exception as e:
@@ -402,11 +436,12 @@ def post_message(cur, conn, schema, user, ticket_id, body):
     """)
     conn.commit()
 
-    tg_notify_admin(
-        f"💬 <b>Новый ответ в #{ticket_id}</b>\n"
-        f"<b>Тема:</b> {t['subject']}\n"
-        f"<b>От:</b> {user['name']} ({user['email']})"
-    )
+    _hub_notify_admin('support_ticket_user_reply', {
+        'ticket_id': ticket_id,
+        'subject': t['subject'],
+        'name': user['name'],
+        'email': user['email'],
+    })
     email_admin_user_reply(ticket_id, t['subject'], user['name'], user['email'])
 
     return ok({'message': row_message(msg)})
