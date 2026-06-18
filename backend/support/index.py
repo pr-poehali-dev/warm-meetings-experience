@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import re
+import threading
 import urllib.request
 import urllib.error
 import uuid
@@ -23,12 +24,15 @@ def _hub_notify_admin(event_type, variables):
 
     Токен авторизации передаётся в ТЕЛЕ запроса (auth_token), т.к. платформенный
     прокси может отфильтровать кастомные заголовки при вызове между функциями.
+
+    ВАЖНО: используем прямой URL notification-hub, а не секрет NOTIFICATION_HUB_URL —
+    последний указывает на notify-module (другой сервис без шаблонов тикетов).
     """
-    hub_url = os.environ.get('NOTIFICATION_HUB_URL', '')
+    hub_url = 'https://functions.poehali.dev/97c298d6-818a-47f3-8061-6a5d49c7375b'
     chat_id = os.environ.get('TELEGRAM_CHAT_ID', '')
     pwd = os.environ.get('ADMIN_PASSWORD', '')
-    if not hub_url or not chat_id or not pwd:
-        print(f'[support] hub SKIP: hub={bool(hub_url)} chat={bool(chat_id)} pwd={bool(pwd)}')
+    if not chat_id or not pwd:
+        print(f'[support] hub SKIP: chat={bool(chat_id)} pwd={bool(pwd)}')
         return
     payload = json.dumps({
         'event_type': event_type,
@@ -45,7 +49,7 @@ def _hub_notify_admin(event_type, variables):
         method='POST',
     )
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        with urllib.request.urlopen(req, timeout=5) as resp:
             raw = resp.read().decode('utf-8', 'replace')
             print(f'[support] hub_notify {event_type} → {raw[:200]}')
     except urllib.error.HTTPError as e:
@@ -354,23 +358,29 @@ def create_ticket(cur, conn, schema, body, user):
     conn.commit()
 
     short = (message[:200] + '…') if len(message) > 200 else message
-    _hub_notify_admin('support_ticket_new', {
-        'ticket_id': ticket_id,
-        'subject': subject,
-        'name': name,
-        'email': email,
-        'category': category,
-        'priority': priority,
-        'message': short,
-    })
-    try:
-        email_admin_new_ticket(ticket_id, subject, name, email, category, priority, message)
-    except Exception as e:
-        print(f'[support] email_admin err: {e}')
-    try:
-        email_user_ticket_created(email, name, ticket_id, subject)
-    except Exception as e:
-        print(f'[support] email_user err: {e}')
+
+    def _notify():
+        _hub_notify_admin('support_ticket_new', {
+            'ticket_id': ticket_id,
+            'subject': subject,
+            'name': name,
+            'email': email,
+            'category': category,
+            'priority': priority,
+            'message': short,
+        })
+        try:
+            email_admin_new_ticket(ticket_id, subject, name, email, category, priority, message)
+        except Exception as e:
+            print(f'[support] email_admin err: {e}')
+        try:
+            email_user_ticket_created(email, name, ticket_id, subject)
+        except Exception as e:
+            print(f'[support] email_user err: {e}')
+
+    t = threading.Thread(target=_notify)
+    t.start()
+    t.join(timeout=12)  # ждём отправку, но не дольше 12с — иначе не блокируем ответ
 
     return ok({'ticket': row_ticket(ticket)})
 
@@ -442,13 +452,21 @@ def post_message(cur, conn, schema, user, ticket_id, body):
     """)
     conn.commit()
 
-    _hub_notify_admin('support_ticket_user_reply', {
-        'ticket_id': ticket_id,
-        'subject': t['subject'],
-        'name': user['name'],
-        'email': user['email'],
-    })
-    email_admin_user_reply(ticket_id, t['subject'], user['name'], user['email'])
+    def _notify_reply():
+        _hub_notify_admin('support_ticket_user_reply', {
+            'ticket_id': ticket_id,
+            'subject': t['subject'],
+            'name': user['name'],
+            'email': user['email'],
+        })
+        try:
+            email_admin_user_reply(ticket_id, t['subject'], user['name'], user['email'])
+        except Exception as e:
+            print(f'[support] email_admin_reply err: {e}')
+
+    t_notify = threading.Thread(target=_notify_reply)
+    t_notify.start()
+    t_notify.join(timeout=12)
 
     return ok({'message': row_message(msg)})
 
