@@ -896,6 +896,7 @@ def handle_bookings(event, method, params, schema, headers):
             if _uid:
                 _bdate, _btime = fmt_dt(booking.get('datetime_start'))
                 hub_notify('master_booking_new', user_id=_uid, related_id=booking.get('id'), owner_id=_uid,
+                           block=True,
                            variables={
                                'client_name': booking.get('client_name', ''),
                                'service_name': svc_name_for_notify,
@@ -1042,6 +1043,7 @@ def handle_bookings(event, method, params, schema, headers):
                     _old_date, _old_time = fmt_dt(curr_b.get('datetime_start'))
                     _new_date, _new_time = fmt_dt(row.get('datetime_start'))
                     hub_notify('booking_rescheduled', user_id=_uid, related_id=booking_id, owner_id=_uid,
+                               block=True,
                                variables={
                                    'client_name': row.get('client_name', ''),
                                    'service_name': svc_name,
@@ -1062,10 +1064,32 @@ def handle_bookings(event, method, params, schema, headers):
             """)
             confirmed_row = cur.fetchone()
             if confirmed_row:
+                _cr = dict(confirmed_row)
                 try:
                     _notify_client_about_confirmation(
-                        cur, schema, confirmed_row['master_id'], dict(confirmed_row),
+                        cur, schema, _cr['master_id'], _cr,
                     )
+                except Exception:
+                    pass
+                # Уведомление мастеру через hub: booking_confirmed
+                try:
+                    _uid = get_master_user_id(cur, schema, _cr['master_id'])
+                    if _uid:
+                        _svc_name = ''
+                        if _cr.get('service_id'):
+                            cur.execute(f"SELECT name FROM {schema}.master_services WHERE id = {int(_cr['service_id'])}")
+                            _s = cur.fetchone()
+                            if _s:
+                                _svc_name = _s.get('name') or ''
+                        _bdate, _btime = fmt_dt(_cr.get('datetime_start'))
+                        hub_notify('booking_confirmed', user_id=_uid, related_id=booking_id, owner_id=_uid,
+                                   block=True,
+                                   variables={
+                                       'client_name': _cr.get('client_name', ''),
+                                       'service_name': _svc_name,
+                                       'date': _bdate, 'time': _btime,
+                                       'master_name': '',
+                                   })
                 except Exception:
                     pass
                 # Возвращаем курсор к строке для общего return ниже
@@ -1120,6 +1144,7 @@ def handle_bookings(event, method, params, schema, headers):
                                         _svc_name = _s.get('name') or ''
                                 _bdate, _btime = fmt_dt(_cb.get('datetime_start'))
                                 hub_notify('booking_cancelled', user_id=_uid, related_id=booking_id, owner_id=_uid,
+                                           block=True,
                                            variables={
                                                'client_name': _cb.get('client_name', ''),
                                                'service_name': _svc_name,

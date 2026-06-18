@@ -47,11 +47,16 @@ def _do_notify(url, body, token, event_type, user_id):
         print(f'[hub_notify] EXC event={event_type}: {type(exc).__name__}: {exc}')
 
 
-def hub_notify(event_type, *, user_id, variables=None, related_id=None, owner_id=None):
+def hub_notify(event_type, *, user_id, variables=None, related_id=None, owner_id=None, block=False):
     """Отправляет событие в notification-hub для конкретного пользователя.
 
     Не бросает исключений — ошибки логируются в stdout.
-    Работает асинхронно: не блокирует основной запрос.
+
+    block=False — fire-and-forget через поток (для случаев, когда после вызова
+        ещё идёт работа и поток успеет отправить запрос).
+    block=True — синхронная отправка. ОБЯЗАТЕЛЬНО используйте перед самым
+        return/conn.close(): иначе рантайм заморозит функцию и daemon-поток
+        не успеет достучаться до хаба — уведомление потеряется.
     """
     url = _hub_url()
     if not url:
@@ -71,6 +76,11 @@ def hub_notify(event_type, *, user_id, variables=None, related_id=None, owner_id
         payload['owner_id'] = owner_id
 
     body = json.dumps(payload).encode('utf-8')
+
+    if block:
+        _do_notify(url, body, token, event_type, user_id)
+        return
+
     t = threading.Thread(
         target=_do_notify,
         args=(url, body, token, event_type, user_id),
