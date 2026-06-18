@@ -126,6 +126,32 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
     }
   };
 
+  // При выборе услуги пересчитываем время окончания: конец = начало + длительность.
+  const handleServiceChange = (val: string) => {
+    setServiceId(val);
+    const svc = services.find((s) => String(s.id) === val);
+    if (svc?.duration_minutes && timeStart) {
+      const [h, m] = timeStart.split(":").map(Number);
+      const total = h * 60 + m + svc.duration_minutes;
+      const eh = Math.floor((total % 1440) / 60);
+      const em = total % 60;
+      setTimeEnd(`${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`);
+    }
+  };
+
+  // При изменении времени начала сдвигаем конец, сохраняя длительность услуги.
+  const handleStartChange = (val: string) => {
+    setTimeStart(val);
+    const svc = services.find((s) => String(s.id) === serviceId);
+    if (svc?.duration_minutes && val) {
+      const [h, m] = val.split(":").map(Number);
+      const total = h * 60 + m + svc.duration_minutes;
+      const eh = Math.floor((total % 1440) / 60);
+      const em = total % 60;
+      setTimeEnd(`${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`);
+    }
+  };
+
   const title =
     step === "choose" ? "Что создать?" :
     mode === "booking" ? "Новая бронь" :
@@ -199,7 +225,7 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
                   <div className="flex items-center gap-2">
                     <div className="flex-1">
                       <label className="text-[11px] text-muted-foreground mb-1 block">Начало</label>
-                      <Input type="time" value={timeStart} onChange={(e) => setTimeStart(e.target.value)} className="h-9" />
+                      <Input type="time" value={timeStart} onChange={(e) => handleStartChange(e.target.value)} className="h-9" />
                     </div>
                     <span className="text-muted-foreground mt-5">–</span>
                     <div className="flex-1">
@@ -220,7 +246,7 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
                   onChange={(e) => setClientPhone(e.target.value)}
                 />
                 {services.length > 0 && (
-                  <Select value={serviceId} onValueChange={setServiceId}>
+                  <Select value={serviceId} onValueChange={handleServiceChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Процедура (длительность подставится)" />
                     </SelectTrigger>
