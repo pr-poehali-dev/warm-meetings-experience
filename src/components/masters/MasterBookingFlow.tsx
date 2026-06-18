@@ -141,9 +141,17 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
       const winStart = parseLocalISO(slot.datetime_start);
       const winEnd = parseLocalISO(slot.datetime_end);
 
-      // Занятые промежутки этого интервала, расширенные на буфер
+      // Занятые промежутки этого интервала, расширенные на буфер.
+      // Учитываем не только брони, привязанные к слоту (slot_id), но и любые
+      // активные брони мастера, пересекающиеся по времени с этим интервалом —
+      // иначе слот покажется свободным, а бэкенд отклонит запись как «занято».
       const slotBookings = bookings
-        .filter((b) => b.slot_id === slot.id)
+        .filter((b) => {
+          if (b.slot_id === slot.id) return true;
+          const bs = parseLocalISO(b.datetime_start);
+          const be = parseLocalISO(b.datetime_end);
+          return bs < winEnd && be > winStart;
+        })
         .map((b) => {
           const bs = parseLocalISO(b.datetime_start);
           const be = parseLocalISO(b.datetime_end);
