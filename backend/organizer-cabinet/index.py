@@ -3,6 +3,7 @@ import json
 import os
 import random
 import secrets
+import threading
 from datetime import datetime, timedelta
 
 import psycopg2
@@ -626,7 +627,7 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
                 )
             if is_private_event:
                 cur.execute(f"UPDATE {schema}.events SET status = 'private', is_visible = true, has_pending_changes = false, pending_changed_fields = NULL, last_moderated_at = CURRENT_TIMESTAMP WHERE id = {event_id}")
-                tg_notify_admin(
+                _tg_text = (
                     f"🔒 <b>Событие одобрено (приватное)</b>\n\n"
                     f"🎪 <b>{ev['title']}</b>\n"
                     f"📅 {ev['event_date']}  🕐 {str(ev.get('start_time', ''))[:5]}\n"
@@ -639,7 +640,7 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
                 publish_to_telegram = body.get('publish_to_telegram', True)
                 if publish_to_telegram:
                     trigger_tg_publish(event_id, ev['organizer_id'])
-                tg_notify_admin(
+                _tg_text = (
                     f"✅ <b>Событие одобрено</b>\n\n"
                     f"🎪 <b>{ev['title']}</b>\n"
                     f"📅 {ev['event_date']}  🕐 {str(ev.get('start_time', ''))[:5]}\n"
@@ -652,12 +653,11 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
             _r = cur.fetchone()
             _is_pending_changes = bool(_r and _r.get('has_pending_changes') and _r.get('status') in ('published', 'private'))
             if _is_pending_changes:
-                # Откатываем правки: сбрасываем флаги, статус оставляем (можно восстановить старое из event_versions при необходимости)
                 cur.execute(f"UPDATE {schema}.events SET has_pending_changes = false, pending_changed_fields = NULL, last_moderated_at = CURRENT_TIMESTAMP WHERE id = {event_id}")
             else:
                 cur.execute(f"UPDATE {schema}.events SET status = 'rejected', is_visible = false, has_pending_changes = false, pending_changed_fields = NULL WHERE id = {event_id}")
             reason_display = reason.replace("''", "'") or 'не указана'
-            tg_notify_admin(
+            _tg_text = (
                 f"❌ <b>Событие отклонено</b>\n\n"
                 f"🎪 <b>{ev['title']}</b>\n"
                 f"📅 {ev['event_date']}  🕐 {str(ev.get('start_time', ''))[:5]}\n"
@@ -670,8 +670,11 @@ def handle_moderation(event, method, params, cur, conn, user_id, schema, headers
             INSERT INTO {schema}.event_moderation_logs (event_id, admin_id, action, reason)
             VALUES ({event_id}, {user_id}, '{action}', '{reason}')
         """)
+        # commit ДО отправки в Telegram — иначе медленный tg_send может
+        # съесть таймаут функции и транзакция откатится, хотя должна быть применена
         conn.commit()
         conn.close()
+        threading.Thread(target=tg_notify_admin, args=(_tg_text,), daemon=True).start()
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'action': action})}
 
     conn.close()
