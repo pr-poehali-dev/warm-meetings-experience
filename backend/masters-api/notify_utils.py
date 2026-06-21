@@ -69,6 +69,7 @@ def hub_notify(event_type, *, user_id, variables=None, related_id=None, owner_id
         'user_id': user_id,
         'variables': variables or {},
         'respect_prefs': True,
+        'auth_token': token,
     }
     if related_id is not None:
         payload['related_id'] = related_id
