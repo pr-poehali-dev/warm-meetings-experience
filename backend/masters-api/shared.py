@@ -204,9 +204,15 @@ def slugify(text, max_length=80, fallback='item'):
 
 def tg_send(chat_id, text, token=None, parse_mode='HTML'):
     """Отправляет сообщение в Telegram. Не падает при ошибках.
-    Делает до 2 попыток (на случай медленного ответа Telegram API)."""
-    bot_token = token or os.environ.get('TG_PUBLISH_BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+
+    Личные/админские уведомления шлём ОСНОВНЫМ ботом (TELEGRAM_BOT_TOKEN);
+    бот публикаций (TG_PUBLISH_BOT_TOKEN) — только если основной не задан.
+    Делает до 4 попыток с паузами — api.telegram.org из облака иногда
+    отвечает таймаутом, ретраи существенно повышают доставляемость."""
+    import time as _time
+    bot_token = token or os.environ.get('TELEGRAM_BOT_TOKEN') or os.environ.get('TG_PUBLISH_BOT_TOKEN', '')
     if not bot_token or not chat_id:
+        print(f'[tg_send] SKIP: bot_token={bool(bot_token)} chat_id={bool(chat_id)}')
         return False
     payload = json.dumps({
         'chat_id': int(chat_id) if str(chat_id).lstrip('-').isdigit() else chat_id,
@@ -215,25 +221,27 @@ def tg_send(chat_id, text, token=None, parse_mode='HTML'):
     }).encode('utf-8')
     url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
     last_err = None
-    for attempt in range(2):
+    for attempt in range(4):
         req = urllib.request.Request(
             url, data=payload, headers={'Content-Type': 'application/json'},
         )
         try:
-            urllib.request.urlopen(req, timeout=10)
+            urllib.request.urlopen(req, timeout=6)
             return True
         except urllib.error.HTTPError as e:
-            # 4xx (например, заблокирован бот, неверный chat_id) — повтор бессмыслен
+            # 4xx (заблокирован бот, неверный chat_id, ошибка разметки) — повтор бессмыслен
             try:
-                body = e.read().decode('utf-8', 'replace')[:300]
+                err_body = e.read().decode('utf-8')
             except Exception:
-                body = ''
-            print(f"[tg_send] HTTP {e.code} chat_id={chat_id}: {body}")
+                err_body = ''
+            print(f'[tg_send] HTTP {e.code} chat_id={chat_id}: {err_body}')
             return False
         except Exception as e:
             last_err = e
+            print(f'[tg_send] attempt {attempt + 1} timeout chat_id={chat_id}')
+            _time.sleep(0.5)
             continue
-    print(f"[tg_send] failed after retries chat_id={chat_id}: {last_err}")
+    print(f'[tg_send] failed after retries chat_id={chat_id}: {last_err}')
     return False
 
 def tg_notify_admin(text, token=None):

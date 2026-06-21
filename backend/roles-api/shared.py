@@ -15,6 +15,7 @@ import os
 import re
 import time
 import urllib.request
+import urllib.error
 
 import psycopg2
 import psycopg2.extras
@@ -53,11 +54,22 @@ def err(message, status=400):
     return respond(status, {'error': message})
 
 # --- Process-local memo cache (TTL) ---
+#
+# Простой in-memory кэш для счётчиков публичных списков и справочников.
+# Живёт в памяти Cloud Function между холодными стартами (пока контейнер тёплый).
+# Не подходит для авторизованных персональных данных — используй только для
+# того, что одинаково для всех клиентов: total публичных списков, справочники,
+# агрегаты по событиям/мастерам/баням.
+#
+# Использование:
+#     from shared import cached
+#     total = cached('events:total', 60, lambda: _query_events_total(cur, schema))
 
-_MEMO: dict = {}
+_MEMO: dict = {}  # key -> (expires_at_ts, value)
 
 
 def memo_get(key: str):
+    """Возвращает значение из кэша, если не протухло. Иначе None."""
     item = _MEMO.get(key)
     if not item:
         return None
@@ -69,11 +81,13 @@ def memo_get(key: str):
 
 
 def memo_set(key: str, value, ttl_seconds: int = 60):
+    """Кладёт значение в кэш с TTL (по умолчанию 60 секунд)."""
     _MEMO[key] = (time.time() + max(1, int(ttl_seconds)), value)
     return value
 
 
 def memo_invalidate(prefix: str = ''):
+    """Сбрасывает кэш (полностью или по префиксу ключа)."""
     if not prefix:
         _MEMO.clear()
         return
@@ -83,7 +97,10 @@ def memo_invalidate(prefix: str = ''):
 
 
 def cached(key: str, ttl_seconds: int, loader):
-    """Вернуть из кэша или вызвать loader() и закэшировать."""
+    """Удобная обёртка: вернуть из кэша или вызвать loader() и закэшировать.
+
+    loader — callable без аргументов, возвращающий JSON-сериализуемое значение.
+    """
     hit = memo_get(key)
     if hit is not None:
         return hit
@@ -202,50 +219,92 @@ def slugify(text, max_length=80, fallback='item'):
 # --- Telegram ---
 
 def tg_send(chat_id, text, token=None, parse_mode='HTML'):
-    """Отправляет сообщение в Telegram. Не падает при ошибках."""
-    bot_token = token or os.environ.get('TELEGRAM_BOT_TOKEN', '')
-    if not bot_token:
-        print(f'[tg_send] SKIP: TELEGRAM_BOT_TOKEN not set')
-        return False
-    if not chat_id:
-        print(f'[tg_send] SKIP: chat_id is empty')
+    """Отправляет сообщение в Telegram. Не падает при ошибках.
+
+    Личные/админские уведомления шлём ОСНОВНЫМ ботом (TELEGRAM_BOT_TOKEN);
+    бот публикаций (TG_PUBLISH_BOT_TOKEN) — только если основной не задан.
+    Делает до 4 попыток с паузами — api.telegram.org из облака иногда
+    отвечает таймаутом, ретраи существенно повышают доставляемость."""
+    import time as _time
+    bot_token = token or os.environ.get('TELEGRAM_BOT_TOKEN') or os.environ.get('TG_PUBLISH_BOT_TOKEN', '')
+    if not bot_token or not chat_id:
+        print(f'[tg_send] SKIP: bot_token={bool(bot_token)} chat_id={bool(chat_id)}')
         return False
     payload = json.dumps({
         'chat_id': int(chat_id) if str(chat_id).lstrip('-').isdigit() else chat_id,
         'text': text,
         'parse_mode': parse_mode,
     }).encode('utf-8')
-    req = urllib.request.Request(
-        f'https://api.telegram.org/bot{bot_token}/sendMessage',
-        data=payload,
-        headers={'Content-Type': 'application/json'},
-    )
-    try:
-        urllib.request.urlopen(req, timeout=6)
-        return True
-    except urllib.error.HTTPError as e:
-        body = ''
+    url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
+    last_err = None
+    for attempt in range(4):
+        req = urllib.request.Request(
+            url, data=payload, headers={'Content-Type': 'application/json'},
+        )
         try:
-            body = e.read().decode('utf-8', 'replace')[:300]
-        except Exception:
-            pass
-        print(f'[tg_send] HTTP {e.code} chat_id={chat_id}: {body}')
-        return False
-    except Exception as e:
-        print(f'[tg_send] EXC chat_id={chat_id}: {type(e).__name__}: {e}')
-        return False
+            urllib.request.urlopen(req, timeout=6)
+            return True
+        except urllib.error.HTTPError as e:
+            # 4xx (заблокирован бот, неверный chat_id, ошибка разметки) — повтор бессмыслен
+            try:
+                err_body = e.read().decode('utf-8')
+            except Exception:
+                err_body = ''
+            print(f'[tg_send] HTTP {e.code} chat_id={chat_id}: {err_body}')
+            return False
+        except Exception as e:
+            last_err = e
+            print(f'[tg_send] attempt {attempt + 1} timeout chat_id={chat_id}')
+            _time.sleep(0.5)
+            continue
+    print(f'[tg_send] failed after retries chat_id={chat_id}: {last_err}')
+    return False
 
 def tg_notify_admin(text, token=None):
     """Уведомление администратору (TELEGRAM_CHAT_ID).
 
-    Всегда шлём через TELEGRAM_BOT_TOKEN, а не через бота публикаций.
+    Всегда шлём через АДМИН-бота (TELEGRAM_BOT_TOKEN), а не через бота
+    публикаций (TG_PUBLISH_BOT_TOKEN). Иначе уведомления поддержки уходят
+    от имени бота организатора и могут не доставляться.
     """
     admin_token = token or os.environ.get('TELEGRAM_BOT_TOKEN', '')
-    chat_id = os.environ.get('TELEGRAM_CHAT_ID', '')
-    if not chat_id:
-        print(f'[tg_notify_admin] SKIP: TELEGRAM_CHAT_ID not set')
+    return tg_send(os.environ.get('TELEGRAM_CHAT_ID', ''), text, token=admin_token)
+
+# --- VK (сообщения сообщества) ---
+
+def vk_send(vk_user_id, text):
+    """Личное сообщение ВКонтакте от имени сообщества. True/False, не падает."""
+    token = os.environ.get('VK_COMMUNITY_TOKEN', '')
+    community_id = os.environ.get('VK_COMMUNITY_ID', '0')
+    if not token or not vk_user_id:
         return False
-    return tg_send(chat_id, text, token=admin_token)
+    import random as _random
+    import urllib.parse as _urlparse
+    params = {
+        'peer_id': str(int(vk_user_id)),
+        'message': text,
+        'random_id': str(_random.randint(1, 2 ** 31)),
+        'access_token': token,
+        'v': '5.199',
+    }
+    if community_id and community_id != '0':
+        params['group_id'] = str(int(community_id))
+    payload = _urlparse.urlencode(params).encode('utf-8')
+    req = urllib.request.Request(
+        'https://api.vk.com/method/messages.send',
+        data=payload,
+        headers={'Content-Type': 'application/x-www-form-urlencoded'},
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=6)
+        result = json.loads(resp.read().decode('utf-8'))
+        if 'error' in result:
+            print(f'[vk_send] error vk_id={vk_user_id}: {result["error"]}')
+            return False
+        return True
+    except Exception as e:
+        print(f'[vk_send] exception vk_id={vk_user_id}: {e}')
+        return False
 
 # --- Email (Unisender Go) ---
 
@@ -258,10 +317,14 @@ def send_email(to_email, subject, body_html, to_name=None, tags=None):
     sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
     sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
     if not api_key or not sender_email or not to_email:
+        print(f'[send_email] SKIP: missing config '
+              f'(api_key={bool(api_key)}, sender={bool(sender_email)}, to={bool(to_email)})')
         return False
     recipient = {'email': to_email}
     if to_name:
         recipient['name'] = to_name
+    # Unisender Go transactional API ждёт from_email/from_name,
+    # а НЕ sender_email/sender_name — иначе запрос отклоняется.
     message = {
         'recipients': [recipient],
         'from_email': sender_email,
@@ -281,9 +344,29 @@ def send_email(to_email, subject, body_html, to_name=None, tags=None):
         headers={'X-API-KEY': api_key, 'Content-Type': 'application/json'},
     )
     try:
-        urllib.request.urlopen(req, timeout=10)
+        resp = urllib.request.urlopen(req, timeout=10)
+        raw = resp.read().decode('utf-8', 'replace')
+        # Unisender Go даже при HTTP 200 может вернуть отказ по получателю.
+        try:
+            data = json.loads(raw)
+        except Exception:
+            data = {}
+        # Успех: status == 'success' ИЛИ есть failed_emails пустой/отсутствует.
+        failed = data.get('failed_emails') or {}
+        if data.get('status') == 'error' or failed:
+            print(f'[send_email] FAIL to={to_email}: provider_resp={raw[:500]}')
+            return False
         return True
-    except Exception:
+    except urllib.error.HTTPError as e:
+        body = ''
+        try:
+            body = e.read().decode('utf-8', 'replace')[:500]
+        except Exception:
+            pass
+        print(f'[send_email] HTTP {e.code} to={to_email}: {body}')
+        return False
+    except Exception as e:
+        print(f'[send_email] EXC to={to_email}: {type(e).__name__}: {e}')
         return False
 
 def admin_email():
