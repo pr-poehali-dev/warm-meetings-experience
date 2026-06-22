@@ -102,7 +102,7 @@ export default function RegisterChoice() {
           ) : (
             <>
               <div className="text-center mb-10">
-                <h2 className="text-2xl md:text-3xl font-bold mb-2">Кем вы будете?</h2>
+                <h2 className="text-2xl md:text-3xl font-bold mb-2">Как вы будете принимать гостей?</h2>
                 <p className="text-muted-foreground text-sm">
                   Доступ откроется сразу — профиль и публикации проходят проверку модератора
                 </p>
