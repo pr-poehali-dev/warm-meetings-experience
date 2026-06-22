@@ -17,6 +17,7 @@ import { useKeyboardAwareInputs } from "./hooks/useKeyboardAwareInputs";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import RegisterChoice from "./pages/RegisterChoice";
 import NotFoundPage from "./pages/NotFoundPage";
 import LandingPage from "./pages/LandingPage";
 
@@ -94,7 +95,8 @@ const AppContent = () => {
           <Route path="/auth/vk/callback" element={<VkCallback />} />
           <Route path="/auth/yandex/callback" element={<YandexCallback />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/register" element={<RegisterChoice />} />
+          <Route path="/register/form" element={<Register />} />
           <Route path="/account" element={<RoleGuard role="auth"><Account /></RoleGuard>} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />

@@ -18,7 +18,10 @@ export default function Register() {
   const { user, loading: authLoading, register } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/account";
+  const role = searchParams.get("role") || "guest";
+  const isSpecialist = role === "specialist";
+  const defaultRedirect = isSpecialist ? "/workspace" : "/account";
+  const redirectTo = searchParams.get("redirect") || defaultRedirect;
   const [registered, setRegistered] = useState(false);
   const [registeredName, setRegisteredName] = useState("");
   const [name, setName] = useState("");
@@ -88,7 +91,11 @@ export default function Register() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">Добро пожаловать{registeredName ? `, ${registeredName}` : ""}!</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Аккаунт создан. Теперь вы можете записываться к мастерам и участвовать в событиях.</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {isSpecialist
+                ? "Аккаунт создан. Теперь вы можете настроить профиль и начать принимать гостей."
+                : "Аккаунт создан. Теперь вы можете записываться к мастерам и участвовать в событиях."}
+            </p>
           </div>
           <VkConnectBanner
             vkId={user?.vk_id}
@@ -109,13 +116,18 @@ export default function Register() {
       <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4">
           <Link
-            to="/"
+            to={`/register${searchParams.get("redirect") ? `?redirect=${searchParams.get("redirect")}` : ""}`}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <Icon name="ArrowLeft" size={20} />
             <span className="text-sm font-medium">Назад</span>
           </Link>
-          <h1 className="text-lg font-semibold">Регистрация</h1>
+          <div>
+            <h1 className="text-lg font-semibold">Регистрация</h1>
+            <p className="text-xs text-muted-foreground leading-none mt-0.5">
+              {isSpecialist ? "🔥 Принимаю гостей" : "🛁 Хочу в баню"}
+            </p>
+          </div>
         </div>
       </header>
 
