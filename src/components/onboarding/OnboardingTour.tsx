@@ -71,38 +71,38 @@ export default function OnboardingTour({ steps, open, onClose, onFinish }: Onboa
   const next = () => (isLast ? onFinish() : setIndex((i) => i + 1));
   const prev = () => setIndex((i) => Math.max(0, i - 1));
 
-  // Позиция карточки: под выделенным элементом, либо по центру
+  // Позиция карточки: всегда полностью в пределах экрана
   const CARD_W = 320;
+  const CARD_H = 180; // примерная высота карточки
   const cardStyle: React.CSSProperties = (() => {
     if (!rect) {
       return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
     }
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const spaceBelow = vh - (rect.top + rect.height);
-    const placeBelow = spaceBelow > 220;
-    const top = placeBelow ? rect.top + rect.height + PADDING + 6 : rect.top - PADDING - 6;
+    const GAP = 10;
+    const SAFE = 12; // минимальный отступ от края
 
-    // Если элемент в левой части экрана — карточка правее него,
-    // если в правой — левее. Всегда остаётся в пределах экрана.
-    let idealLeft: number;
-    if (rect.left + rect.width / 2 < vw / 2) {
-      // элемент слева — карточка от правого края элемента или от отступа
-      idealLeft = Math.max(rect.right + 8, 12);
-      // если не помещается справа — кладём просто с отступом 12px от края
-      if (idealLeft + CARD_W > vw - 12) idealLeft = 12;
+    const elemCenterX = rect.left + rect.width / 2;
+    const elemCenterY = rect.top + rect.height / 2;
+
+    // По горизонтали: если элемент левее середины — карточка справа от него,
+    // иначе — слева. Если не влезает — прижимаем к ближайшему краю экрана.
+    let left: number;
+    if (elemCenterX < vw / 2) {
+      left = rect.right + GAP;
+      if (left + CARD_W > vw - SAFE) left = vw - CARD_W - SAFE;
     } else {
-      // элемент справа — карточка левее него
-      idealLeft = rect.left - CARD_W - 8;
-      if (idealLeft < 12) idealLeft = 12;
+      left = rect.left - CARD_W - GAP;
+      if (left < SAFE) left = SAFE;
     }
-    const left = Math.min(Math.max(idealLeft, 12), vw - CARD_W - 12);
+    left = Math.min(Math.max(left, SAFE), vw - CARD_W - SAFE);
 
-    return {
-      top,
-      left,
-      transform: placeBelow ? "none" : "translateY(-100%)",
-    };
+    // По вертикали: центрируем по элементу, зажимаем в безопасные границы
+    let top = elemCenterY - CARD_H / 2;
+    top = Math.min(Math.max(top, SAFE), vh - CARD_H - SAFE);
+
+    return { top, left };
   })();
 
   const highlightStyle: React.CSSProperties | undefined = rect
