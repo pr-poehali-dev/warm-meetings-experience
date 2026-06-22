@@ -72,14 +72,32 @@ export default function OnboardingTour({ steps, open, onClose, onFinish }: Onboa
   const prev = () => setIndex((i) => Math.max(0, i - 1));
 
   // Позиция карточки: под выделенным элементом, либо по центру
+  const CARD_W = 320;
   const cardStyle: React.CSSProperties = (() => {
     if (!rect) {
       return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
     }
-    const spaceBelow = window.innerHeight - (rect.top + rect.height);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const spaceBelow = vh - (rect.top + rect.height);
     const placeBelow = spaceBelow > 220;
     const top = placeBelow ? rect.top + rect.height + PADDING + 6 : rect.top - PADDING - 6;
-    const left = Math.min(Math.max(rect.left, 12), window.innerWidth - 332);
+
+    // Если элемент в левой части экрана — карточка правее него,
+    // если в правой — левее. Всегда остаётся в пределах экрана.
+    let idealLeft: number;
+    if (rect.left + rect.width / 2 < vw / 2) {
+      // элемент слева — карточка от правого края элемента или от отступа
+      idealLeft = Math.max(rect.right + 8, 12);
+      // если не помещается справа — кладём просто с отступом 12px от края
+      if (idealLeft + CARD_W > vw - 12) idealLeft = 12;
+    } else {
+      // элемент справа — карточка левее него
+      idealLeft = rect.left - CARD_W - 8;
+      if (idealLeft < 12) idealLeft = 12;
+    }
+    const left = Math.min(Math.max(idealLeft, 12), vw - CARD_W - 12);
+
     return {
       top,
       left,
