@@ -136,6 +136,15 @@ def handle_register(body, ip=None):
     if consent_photo not in ('yes', 'no', None):
         consent_photo = None
 
+    # Роли, выбранные на первом шаге регистрации («Принимаю гостей»).
+    # Выдаются сразу активными — дальнейшие действия модерируются по ходу
+    # (профиль мастера верифицируется, события модерируются, бани проверяются).
+    ALLOWED_SIGNUP_ROLES = {'parmaster', 'organizer', 'partner'}
+    raw_signup_roles = body.get('signup_roles') or []
+    if isinstance(raw_signup_roles, str):
+        raw_signup_roles = [raw_signup_roles]
+    signup_roles = [r for r in raw_signup_roles if r in ALLOWED_SIGNUP_ROLES]
+
     if not email or not name or not password:
         return respond(400, {'error': 'Заполните email, имя и пароль'})
     if '@' not in email:
@@ -189,14 +198,26 @@ def handle_register(body, ip=None):
         ON CONFLICT (user_id, role_id) DO NOTHING
     """)
 
+    if signup_roles:
+        slugs_sql = ', '.join("'" + s.replace("'", "''") + "'" for s in signup_roles)
+        cur.execute(f"""
+            INSERT INTO {schema}.user_roles (user_id, role_id, status, verified_at)
+            SELECT {user['id']}, r.id, 'active', CURRENT_TIMESTAMP
+            FROM {schema}.roles r WHERE r.slug IN ({slugs_sql})
+            ON CONFLICT (user_id, role_id) DO NOTHING
+        """)
+
     write_audit_log(cur, schema, user['id'], 'register', 'users', user['id'], ip)
+    roles = fetch_user_roles(cur, schema, user['id'])
     conn.commit()
     conn.close()
 
     send_welcome_email(email, name, user_id=user['id'])
 
+    user_data = dict(user)
+    user_data['roles'] = roles
     return respond(200, {
-        'user': dict(user),
+        'user': user_data,
         'token': token,
         'expires_at': expires
     })

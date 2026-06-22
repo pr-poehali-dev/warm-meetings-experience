@@ -20,7 +20,9 @@ export default function Register() {
   const [searchParams] = useSearchParams();
   const role = searchParams.get("role") || "guest";
   const isSpecialist = role === "specialist";
-  const defaultRedirect = isSpecialist ? "/account?tab=roles" : "/account";
+  const signupRoles = searchParams.getAll("signup_roles");
+  // Управляющий (partner) работает в кабинете партнёра, мастер/организатор — в /workspace
+  const defaultRedirect = isSpecialist ? "/workspace" : "/account";
   const redirectTo = searchParams.get("redirect") || defaultRedirect;
   const [registered, setRegistered] = useState(false);
   const [registeredName, setRegisteredName] = useState("");
@@ -64,7 +66,7 @@ export default function Register() {
 
     setSubmitting(true);
     try {
-      await register({ email, name, phone, password, consent_pd: consentPd, consent_photo: consentPhoto });
+      await register({ email, name, phone, password, consent_pd: consentPd, consent_photo: consentPhoto, signup_roles: signupRoles });
       setRegisteredName(name);
       setRegistered(true);
     } catch (err) {
@@ -93,7 +95,7 @@ export default function Register() {
             <h1 className="text-2xl font-bold">Добро пожаловать{registeredName ? `, ${registeredName}` : ""}!</h1>
             <p className="text-muted-foreground mt-1 text-sm">
               {isSpecialist
-                ? "Аккаунт создан. Следующий шаг — подать заявку на роль мастера или организатора. Администратор рассмотрит её и откроет доступ к рабочему кабинету."
+                ? "Аккаунт создан, доступ к рабочему кабинету уже открыт. Заполните профиль — он пройдёт быструю проверку модератора перед публикацией."
                 : "Аккаунт создан. Теперь вы можете записываться к мастерам и участвовать в событиях."}
             </p>
           </div>
@@ -104,7 +106,7 @@ export default function Register() {
             onDismiss={() => navigate(redirectTo)}
           />
           <Button className="w-full" onClick={() => navigate(redirectTo)}>
-            {isSpecialist ? "Подать заявку на роль" : "Перейти в личный кабинет"}
+            {isSpecialist ? "Перейти в рабочий кабинет" : "Перейти в личный кабинет"}
           </Button>
         </div>
       </div>
@@ -125,7 +127,11 @@ export default function Register() {
           <div>
             <h1 className="text-lg font-semibold">Регистрация</h1>
             <p className="text-xs text-muted-foreground leading-none mt-0.5">
-              {isSpecialist ? "🔥 Принимаю гостей" : "🛁 Хочу в баню"}
+              {!isSpecialist
+                ? "🛁 Хочу в баню"
+                : signupRoles.includes("partner")
+                  ? "🏢 Управляющий"
+                  : "🔥 Мастер и организатор"}
             </p>
           </div>
         </div>

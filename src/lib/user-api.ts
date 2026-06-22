@@ -54,7 +54,7 @@ export interface UserSignup {
 }
 
 export const userAuthApi = {
-  register: (data: { email: string; name: string; phone: string; password: string; consent_pd: boolean; consent_photo?: string | null }) =>
+  register: (data: { email: string; name: string; phone: string; password: string; consent_pd: boolean; consent_photo?: string | null; signup_roles?: string[] }) =>
     authRequest(`${USER_AUTH_API}/?action=register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
 
   login: (data: { email: string; password: string }) =>
