@@ -4,7 +4,6 @@ import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 
 export interface TourStep {
-  /** CSS-селектор целевого элемента (обычно [data-tour="..."]). Пусто = шаг по центру экрана. */
   target?: string;
   title: string;
   description: string;
@@ -23,13 +22,22 @@ interface Rect {
   left: number;
   width: number;
   height: number;
+  bottom: number;
+  right: number;
 }
 
-const PADDING = 8;
+const PADDING = 10;
+const CARD_W = 340;
+const CARD_H = 170;
+const GAP = 16;
+const SAFE = 16;
+const RADIUS = 12;
 
 export default function OnboardingTour({ steps, open, onClose, onFinish }: OnboardingTourProps) {
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
+  const [vw, setVw] = useState(window.innerWidth);
+  const [vh, setVh] = useState(window.innerHeight);
 
   const step = steps[index];
   const isLast = index === steps.length - 1;
@@ -39,18 +47,14 @@ export default function OnboardingTour({ steps, open, onClose, onFinish }: Onboa
   }, [open]);
 
   const measure = useCallback(() => {
-    if (!step?.target) {
-      setRect(null);
-      return;
-    }
+    setVw(window.innerWidth);
+    setVh(window.innerHeight);
+    if (!step?.target) { setRect(null); return; }
     const el = document.querySelector(step.target) as HTMLElement | null;
-    if (!el) {
-      setRect(null);
-      return;
-    }
+    if (!el) { setRect(null); return; }
     el.scrollIntoView({ behavior: "smooth", block: "center" });
     const r = el.getBoundingClientRect();
-    setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+    setRect({ top: r.top, left: r.left, width: r.width, height: r.height, bottom: r.bottom, right: r.right });
   }, [step]);
 
   useLayoutEffect(() => {
@@ -59,11 +63,7 @@ export default function OnboardingTour({ steps, open, onClose, onFinish }: Onboa
     const t = setTimeout(measure, 320);
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
-    };
+    return () => { clearTimeout(t); window.removeEventListener("resize", measure); window.removeEventListener("scroll", measure, true); };
   }, [open, measure]);
 
   if (!open || !step) return null;
@@ -71,14 +71,56 @@ export default function OnboardingTour({ steps, open, onClose, onFinish }: Onboa
   const next = () => (isLast ? onFinish() : setIndex((i) => i + 1));
   const prev = () => setIndex((i) => Math.max(0, i - 1));
 
+  const isMobile = vw < 640;
+
+  // Highlight area (с паддингом вокруг элемента)
+  const hl = rect ? {
+    x: rect.left - PADDING,
+    y: rect.top - PADDING,
+    w: rect.width + PADDING * 2,
+    h: rect.height + PADDING * 2,
+  } : null;
+
+  // SVG overlay с вырезанным окном
+  const svgOverlay = (
+    <svg
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ zIndex: 0 }}
+    >
+      <defs>
+        <mask id="tour-mask">
+          <rect width={vw} height={vh} fill="white" />
+          {hl && (
+            <rect
+              x={hl.x} y={hl.y} width={hl.w} height={hl.h}
+              rx={RADIUS} ry={RADIUS}
+              fill="black"
+            />
+          )}
+        </mask>
+      </defs>
+      <rect
+        width={vw} height={vh}
+        fill="rgba(0,0,0,0.65)"
+        mask="url(#tour-mask)"
+      />
+      {hl && (
+        <rect
+          x={hl.x} y={hl.y} width={hl.w} height={hl.h}
+          rx={RADIUS} ry={RADIUS}
+          fill="none"
+          stroke="var(--color-primary, #c2622a)"
+          strokeWidth="2"
+        />
+      )}
+    </svg>
+  );
+
   // Позиция карточки
-  const CARD_W = 340;
-  const CARD_H = 160;
-  const isMobile = window.innerWidth < 640;
   const cardStyle: React.CSSProperties = (() => {
-    // На мобильных — всегда снизу, по центру
     if (isMobile) {
       return {
+        position: "fixed",
         bottom: 24,
         left: "50%",
         transform: "translateX(-50%)",
@@ -86,77 +128,51 @@ export default function OnboardingTour({ steps, open, onClose, onFinish }: Onboa
         maxWidth: 400,
       };
     }
-    if (!rect) {
-      return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+    if (!hl) {
+      return { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: CARD_W };
     }
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const GAP = 14;
-    const SAFE = 16;
 
-    // Свободное место с каждой стороны от элемента
-    const spaceBelow = vh - rect.bottom;
-    const spaceAbove = rect.top;
-    const spaceRight = vw - rect.right;
-    const spaceLeft = rect.left;
+    const spaceBelow = vh - (hl.y + hl.h);
+    const spaceAbove = hl.y;
+    const spaceRight = vw - (hl.x + hl.w);
+    const spaceLeft = hl.x;
 
-    let top: number;
-    let left: number;
+    let top: number, left: number;
 
-    // Выбираем сторону: снизу → сверху → справа → слева
     if (spaceBelow >= CARD_H + GAP + SAFE) {
-      top = rect.bottom + GAP;
-      left = rect.left + rect.width / 2 - CARD_W / 2;
+      top = hl.y + hl.h + GAP;
+      left = hl.x + hl.w / 2 - CARD_W / 2;
     } else if (spaceAbove >= CARD_H + GAP + SAFE) {
-      top = rect.top - GAP - CARD_H;
-      left = rect.left + rect.width / 2 - CARD_W / 2;
+      top = hl.y - GAP - CARD_H;
+      left = hl.x + hl.w / 2 - CARD_W / 2;
     } else if (spaceRight >= CARD_W + GAP + SAFE) {
-      left = rect.right + GAP;
-      top = rect.top + rect.height / 2 - CARD_H / 2;
+      left = hl.x + hl.w + GAP;
+      top = hl.y + hl.h / 2 - CARD_H / 2;
     } else if (spaceLeft >= CARD_W + GAP + SAFE) {
-      left = rect.left - GAP - CARD_W;
-      top = rect.top + rect.height / 2 - CARD_H / 2;
+      left = hl.x - GAP - CARD_W;
+      top = hl.y + hl.h / 2 - CARD_H / 2;
     } else {
-      // Места нет нигде — кладём в сторону с максимальным запасом по вертикали
-      top = spaceBelow >= spaceAbove ? rect.bottom + GAP : rect.top - GAP - CARD_H;
-      left = rect.left + rect.width / 2 - CARD_W / 2;
+      top = spaceBelow >= spaceAbove ? hl.y + hl.h + GAP : hl.y - GAP - CARD_H;
+      left = hl.x + hl.w / 2 - CARD_W / 2;
     }
 
-    // Зажимаем в безопасные границы экрана
     left = Math.min(Math.max(left, SAFE), vw - CARD_W - SAFE);
     top = Math.min(Math.max(top, SAFE), vh - CARD_H - SAFE);
 
-    return { top, left, width: CARD_W };
+    return { position: "absolute", top, left, width: CARD_W };
   })();
-
-  const highlightStyle: React.CSSProperties | undefined = rect
-    ? {
-        top: rect.top - PADDING,
-        left: rect.left - PADDING,
-        width: rect.width + PADDING * 2,
-        height: rect.height + PADDING * 2,
-      }
-    : undefined;
 
   return createPortal(
     <div className="fixed inset-0 z-[100]">
-      {/* Затемнение с «дыркой» через box-shadow подсветки */}
-      <div className="absolute inset-0 bg-black/60 transition-opacity" onClick={onClose} />
+      {/* Клик по затемнению закрывает тур */}
+      <div className="absolute inset-0" onClick={onClose} />
 
-      {highlightStyle && (
-        <div
-          className="absolute rounded-xl ring-2 ring-primary pointer-events-none transition-all duration-300"
-          style={{
-            ...highlightStyle,
-            boxShadow: "0 0 0 9999px rgba(0,0,0,0.6)",
-          }}
-        />
-      )}
+      {svgOverlay}
 
       {/* Карточка с подсказкой */}
       <div
-        className={`${isMobile ? "fixed" : "absolute"} bg-card text-card-foreground rounded-2xl shadow-2xl border p-4 transition-all duration-300`}
-        style={cardStyle}
+        className="bg-card text-card-foreground rounded-2xl shadow-2xl border p-4 transition-all duration-300"
+        style={{ ...cardStyle, zIndex: 10 }}
       >
         <div className="flex items-start gap-3">
           {step.icon && (
