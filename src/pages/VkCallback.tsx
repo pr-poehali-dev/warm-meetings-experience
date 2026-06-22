@@ -194,17 +194,27 @@ export default function VkCallback() {
       return;
     }
 
+    // mode=login → вход только для зарегистрированных (не создавать аккаунт)
+    const loginOnly = sessionStorage.getItem("oauth_login_only") === "1";
+    sessionStorage.removeItem("oauth_login_only");
+
     (async () => {
       try {
         // 1. Обмениваем code на токены VK — получаем vk_id напрямую из ответа
         const vkRes = await fetch(`${VK_AUTH_URL}?action=callback`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code, code_verifier, device_id }),
+          body: JSON.stringify({ code, code_verifier, device_id, ...(loginOnly ? { mode: "login" } : {}) }),
         });
         const vkData = await vkRes.json();
 
         if (!vkRes.ok) {
+          // Аккаунта нет, а это вход — уводим на регистрацию
+          if (vkRes.status === 404 && vkData.error === "not_registered") {
+            toast.error("Аккаунт не найден. Пройдите регистрацию.");
+            navigate("/register", { replace: true });
+            return;
+          }
           toast.error(vkData.error || "Ошибка авторизации через ВКонтакте");
           navigate("/login", { replace: true });
           return;

@@ -239,10 +239,14 @@ def handle_callback(event: dict, origin: str) -> dict:
         payload = {}
 
     code = payload.get('code', '')
+    # mode=login → не создавать нового пользователя (вход только для зарегистрированных)
+    mode = (payload.get('mode') or '').strip().lower()
 
     if not code:
         query = event.get('queryStringParameters', {}) or {}
         code = query.get('code', '')
+        if not mode:
+            mode = (query.get('mode') or '').strip().lower()
 
     if not code:
         return error(400, 'Authorization code is required', origin)
@@ -321,6 +325,16 @@ def handle_callback(event: dict, origin: str) -> dict:
                     )
                     name = db_name or name
                     picture = db_avatar or picture
+                elif mode == 'login':
+                    # Вход с формы логина: аккаунта нет — не создаём,
+                    # отправляем пользователя на регистрацию.
+                    conn.rollback()
+                    conn.close()
+                    return response(404, {
+                        'error': 'not_registered',
+                        'message': 'Аккаунт не найден. Пройдите регистрацию.',
+                        'provider': 'yandex',
+                    }, origin)
                 else:
                     # 3. Create new user
                     cur.execute(

@@ -122,6 +122,8 @@ def handler(event, context):
         return handle_login_2fa_start_oauth(body, ip, user_agent)
     elif action == 'login_2fa_verify_oauth':
         return handle_login_2fa_verify_oauth(body, ip, user_agent)
+    elif action == 'resend_verify':
+        return handle_resend_verify(body, ip)
 
     return respond(400, {'error': 'Unknown action'})
 
@@ -184,13 +186,6 @@ def handle_register(body, ip=None):
     """)
     user = cur.fetchone()
 
-    token = generate_token()
-    expires = (datetime.utcnow() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
-    cur.execute(f"""
-        INSERT INTO {schema}.user_sessions (user_id, token, expires_at)
-        VALUES ({user['id']}, '{token}', '{expires}')
-    """)
-
     cur.execute(f"""
         INSERT INTO {schema}.user_roles (user_id, role_id, status, verified_at)
         SELECT {user['id']}, r.id, 'active', CURRENT_TIMESTAMP
@@ -208,19 +203,57 @@ def handle_register(body, ip=None):
         """)
 
     write_audit_log(cur, schema, user['id'], 'register', 'users', user['id'], ip)
-    roles = fetch_user_roles(cur, schema, user['id'])
+
+    # Вход разрешён только после подтверждения почты: сессию не выдаём,
+    # а отправляем письмо со ссылкой подтверждения.
+    create_and_send_verify_email(cur, schema, user['id'], email, name)
     conn.commit()
     conn.close()
 
-    send_welcome_email(email, name, user_id=user['id'])
-
-    user_data = dict(user)
-    user_data['roles'] = roles
     return respond(200, {
-        'user': user_data,
-        'token': token,
-        'expires_at': expires
+        'email_verification_required': True,
+        'email': email,
+        'message': 'Мы отправили письмо для подтверждения почты',
     })
+
+
+def handle_resend_verify(body, ip=None):
+    """Повторная отправка письма подтверждения почты по email (без авторизации).
+    Используется на форме входа, когда у аккаунта почта ещё не подтверждена."""
+    email = (body.get('email') or '').strip().lower()
+    if not email or '@' not in email:
+        return respond(400, {'error': 'Укажите корректный email'})
+
+    schema = get_schema()
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    e = email.replace("'", "''")
+    cur.execute(f"SELECT id, email, name, email_verified FROM {schema}.users WHERE LOWER(email) = LOWER('{e}')")
+    user = cur.fetchone()
+
+    # Не раскрываем, существует ли аккаунт — отвечаем одинаково.
+    if not user or user.get('email_verified'):
+        conn.close()
+        return respond(200, {'message': 'Если почта не подтверждена, мы отправили письмо повторно'})
+
+    # Антиспам: не чаще раза в 60 секунд
+    cur.execute(f"""
+        SELECT created_at FROM {schema}.email_verify_tokens
+        WHERE user_id = {user['id']} AND used = false AND expires_at > CURRENT_TIMESTAMP
+        ORDER BY created_at DESC LIMIT 1
+    """)
+    last = cur.fetchone()
+    if last and last.get('created_at'):
+        elapsed = (datetime.utcnow() - last['created_at'].replace(tzinfo=None)).total_seconds()
+        if elapsed < 60:
+            conn.close()
+            return respond(429, {'error': f'Подождите {int(60 - elapsed)} сек. перед повторной отправкой'})
+
+    create_and_send_verify_email(cur, schema, user['id'], user['email'], user.get('name') or '')
+    conn.commit()
+    conn.close()
+    return respond(200, {'message': 'Письмо отправлено повторно'})
 
 
 def handle_login(body, ip=None, user_agent=''):
@@ -235,7 +268,7 @@ def handle_login(body, ip=None, user_agent=''):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     e = email.replace("'", "''")
-    cur.execute(f"SELECT id, email, name, phone, password_hash, is_active, vk_id, yandex_id, totp_enabled, totp_secret, totp_backup_codes, login_2fa_method, created_at FROM {schema}.users WHERE LOWER(email) = LOWER('{e}')")
+    cur.execute(f"SELECT id, email, name, phone, password_hash, is_active, vk_id, yandex_id, email_verified, totp_enabled, totp_secret, totp_backup_codes, login_2fa_method, created_at FROM {schema}.users WHERE LOWER(email) = LOWER('{e}')")
     user = cur.fetchone()
 
     if not user:
@@ -253,6 +286,17 @@ def handle_login(body, ip=None, user_agent=''):
     if not verify_password(password, user['password_hash']):
         conn.close()
         return respond(401, {'error': 'Неверный email или пароль'})
+
+    # Вход по паролю запрещён без подтверждённой почты.
+    # email_verified IS NULL/false → возвращаем спец-код, чтобы фронт показал
+    # экран «Подтвердите почту» с кнопкой повторной отправки письма.
+    if not user.get('email_verified'):
+        conn.close()
+        return respond(403, {
+            'error': 'Подтвердите электронную почту, чтобы войти',
+            'code': 'email_not_verified',
+            'email': user['email'],
+        })
 
     stored = user['password_hash']
     if not (stored.startswith('$2b$') or stored.startswith('$2a$')):
@@ -1185,6 +1229,61 @@ def send_welcome_email(to_email, name, user_id=None):
                      error_text=None if sent_ok else 'send_email failed',
                      user_id=user_id,
                      payload={'name': name})
+
+
+def send_verify_email(to_email, name, token):
+    if to_email.endswith('.vk.local') or to_email.endswith('@vk.local'):
+        return
+    verify_url = f"https://sparcom.ru/verify-email?token={token}"
+
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fafafa;">
+        <div style="background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="width: 56px; height: 56px; background: #dcfce7; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 28px;">&#9993;</div>
+            </div>
+            <h1 style="color: #1a1a1a; font-size: 22px; text-align: center; margin: 0 0 8px;">Подтвердите email</h1>
+            <p style="color: #666; text-align: center; margin: 0 0 28px; font-size: 15px;">
+                {name}, остался один шаг — подтвердите адрес электронной почты, чтобы войти в аккаунт на sparcom.ru
+            </p>
+            <div style="text-align: center; margin-bottom: 24px;">
+                <a href="{verify_url}" style="display: inline-block; background: #1a1a1a; color: #ffffff; padding: 12px 32px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 600;">Подтвердить email</a>
+            </div>
+            <p style="color: #888; font-size: 13px; text-align: center; margin: 0 0 20px;">
+                Ссылка действительна 24 часа. Если вы не регистрировались — просто проигнорируйте это письмо.
+            </p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+            <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">
+                Это автоматическое письмо. Отвечать на него не нужно.
+            </p>
+        </div>
+    </div>
+    """
+
+    sent_ok = send_email(
+        to_email,
+        "Подтвердите email — Sparcom",
+        html,
+        to_name=name,
+        tags=["email-verify"],
+    )
+    log_notification('email', 'email_verify', to_email,
+                     'success' if sent_ok else 'failed',
+                     subject='Подтвердите email — Sparcom',
+                     error_text=None if sent_ok else 'send_email failed',
+                     payload={'name': name})
+
+
+def create_and_send_verify_email(cur, schema, user_id, email, name):
+    """Создаёт токен подтверждения почты и отправляет письмо со ссылкой."""
+    token = secrets.token_urlsafe(32)
+    expires = (datetime.utcnow() + timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+    t = token.replace("'", "''")
+    cur.execute(f"""
+        INSERT INTO {schema}.email_verify_tokens (user_id, token, expires_at)
+        VALUES ({user_id}, '{t}', '{expires}')
+    """)
+    send_verify_email(email, name, token)
 
 
 def send_reset_email(to_email, name, token):

@@ -131,6 +131,24 @@
       "expectedStatus": 400,
       "expectedBody": {"error": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Resend verify without email returns 400",
+      "method": "POST",
+      "path": "/?action=resend_verify",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Resend verify with unknown email returns 200",
+      "method": "POST",
+      "path": "/?action=resend_verify",
+      "body": {"email": "nonexistent-unverified@test.ru"},
+      "expectedStatus": 200,
+      "expectedBody": {"message": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }

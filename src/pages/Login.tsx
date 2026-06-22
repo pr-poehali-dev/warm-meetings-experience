@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
+import { userAuthApi } from "@/lib/user-api";
+import { HttpError } from "@/lib/http";
 import { toast } from "sonner";
 import { VkLoginButton } from "@/components/extensions/vk-auth/VkLoginButton";
 import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
@@ -40,6 +42,8 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
   const [challenge, setChallenge] = useState<{
     pendingToken: string;
     method: "totp" | "email" | "vk" | "yandex";
@@ -65,10 +69,17 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setUnverifiedEmail(null);
     try {
       await login(email, password);
       navigate(redirectPath);
     } catch (err) {
+      if (err instanceof HttpError && err.body?.code === "email_not_verified") {
+        const em = (err.body.email as string) || email;
+        setUnverifiedEmail(em);
+        setSubmitting(false);
+        return;
+      }
       if (err instanceof Error && err.message === "2FA_REQUIRED") {
         const x = err as Error & {
           pending_token?: string;
@@ -92,6 +103,27 @@ export default function Login() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleResend = async () => {
+    if (!unverifiedEmail) return;
+    setResending(true);
+    try {
+      await userAuthApi.resendVerify(unverifiedEmail);
+      toast.success("Письмо отправлено повторно");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось отправить письмо");
+    } finally {
+      setResending(false);
+    }
+  };
+
+  // Запускает вход через соцсеть в режиме «только вход»: если аккаунта нет —
+  // бэкенд не создаёт его, а callback уводит на регистрацию.
+  const startSocialLogin = (provider: "vk" | "yandex") => {
+    sessionStorage.setItem("oauth_login_only", "1");
+    if (provider === "vk") vkAuth.login();
+    else yandexAuth.login();
   };
 
   if (authLoading) {
@@ -173,6 +205,38 @@ export default function Login() {
                   </Button>
                 </form>
 
+                {unverifiedEmail && (
+                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/40 p-4">
+                    <div className="flex items-start gap-3">
+                      <Icon name="Mail" size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">Подтвердите электронную почту</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Мы отправили письмо со ссылкой на{" "}
+                          <span className="font-medium text-foreground">{unverifiedEmail}</span>.
+                          Перейдите по ней, чтобы войти.
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-3"
+                          onClick={handleResend}
+                          disabled={resending}
+                        >
+                          {resending ? (
+                            <>
+                              <Icon name="Loader2" size={14} className="animate-spin mr-2" />
+                              Отправляем...
+                            </>
+                          ) : (
+                            "Отправить письмо повторно"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-4 space-y-3">
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
@@ -183,12 +247,12 @@ export default function Login() {
                     </div>
                   </div>
                   <VkLoginButton
-                    onClick={vkAuth.login}
+                    onClick={() => startSocialLogin("vk")}
                     isLoading={vkAuth.isLoading}
                     className="w-full"
                   />
                   <YandexLoginButton
-                    onClick={yandexAuth.login}
+                    onClick={() => startSocialLogin("yandex")}
                     isLoading={yandexAuth.isLoading}
                     className="w-full"
                   />

@@ -268,12 +268,16 @@ def handle_callback(event: dict, origin: str) -> dict:
     code = payload.get('code', '')
     code_verifier = payload.get('code_verifier', '')
     device_id = payload.get('device_id', '')
+    # mode=login → не создавать нового пользователя (вход только для зарегистрированных)
+    mode = (payload.get('mode') or '').strip().lower()
 
     if not code:
         query = event.get('queryStringParameters', {}) or {}
         code = query.get('code', '')
         code_verifier = query.get('code_verifier', '')
         device_id = query.get('device_id', '')
+        if not mode:
+            mode = (query.get('mode') or '').strip().lower()
 
     if not code:
         return error(400, 'Не получен код авторизации', origin)
@@ -391,6 +395,16 @@ def handle_callback(event: dict, origin: str) -> dict:
                         email = safe_email
                         name = db_name or safe_name
                         photo_url = db_avatar or photo_url
+                    elif mode == 'login':
+                        # Вход с формы логина: аккаунта нет — не создаём,
+                        # отправляем пользователя на регистрацию.
+                        conn.rollback()
+                        conn.close()
+                        return response(404, {
+                            'error': 'not_registered',
+                            'message': 'Аккаунт не найден. Пройдите регистрацию.',
+                            'provider': 'vk',
+                        }, origin)
                     else:
                         cur.execute(
                             f"""INSERT INTO {S}users

@@ -1,8 +1,10 @@
 export class HttpError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  body?: Record<string, unknown>;
+  constructor(message: string, status: number, body?: Record<string, unknown>) {
     super(message);
     this.status = status;
+    this.body = body;
   }
 }
 
@@ -24,7 +26,7 @@ async function fetchWithRetry(url: string, options?: RequestInit, retries = 2): 
 export async function request(url: string, options?: RequestInit) {
   const res = await fetchWithRetry(url, options);
   const data = await res.json();
-  if (!res.ok) throw new HttpError(data.error || "Что-то пошло не так", res.status);
+  if (!res.ok) throw new HttpError(data.error || "Что-то пошло не так", res.status, data);
   return data;
 }
 

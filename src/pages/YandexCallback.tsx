@@ -107,16 +107,26 @@ export default function YandexCallback() {
       return;
     }
 
+    // mode=login → вход только для зарегистрированных (не создавать аккаунт)
+    const loginOnly = sessionStorage.getItem("oauth_login_only") === "1";
+    sessionStorage.removeItem("oauth_login_only");
+
     (async () => {
       try {
         const yaRes = await fetch(`${YANDEX_AUTH_URL}?action=callback`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code, ...(loginOnly ? { mode: "login" } : {}) }),
         });
         const yaData = await yaRes.json();
 
         if (!yaRes.ok) {
+          // Аккаунта нет, а это вход — уводим на регистрацию
+          if (yaRes.status === 404 && yaData.error === "not_registered") {
+            toast.error("Аккаунт не найден. Пройдите регистрацию.");
+            navigate("/register", { replace: true });
+            return;
+          }
           toast.error(yaData.error || "Ошибка авторизации через Яндекс");
           navigate("/login", { replace: true });
           return;

@@ -7,12 +7,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
+import { userAuthApi } from "@/lib/user-api";
 import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
 import AppendixLinkModal from "@/components/AppendixLinkModal";
 import BathCaptcha, { useBathCaptcha } from "@/components/BathCaptcha";
-import VkConnectBanner from "@/components/shared/VkConnectBanner";
 
 export default function Register() {
   const { user, loading: authLoading, register } = useAuth();
@@ -26,6 +26,8 @@ export default function Register() {
   const redirectTo = searchParams.get("redirect") || defaultRedirect;
   const [registered, setRegistered] = useState(false);
   const [registeredName, setRegisteredName] = useState("");
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  const [resending, setResending] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -68,6 +70,7 @@ export default function Register() {
     try {
       await register({ email, name, phone, password, consent_pd: consentPd, consent_photo: consentPhoto, signup_roles: signupRoles });
       setRegisteredName(name);
+      setRegisteredEmail(email);
       setRegistered(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Ошибка регистрации");
@@ -84,29 +87,54 @@ export default function Register() {
     );
   }
 
+  const handleResend = async () => {
+    if (!registeredEmail) return;
+    setResending(true);
+    try {
+      await userAuthApi.resendVerify(registeredEmail);
+      toast.success("Письмо отправлено повторно");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось отправить письмо");
+    } finally {
+      setResending(false);
+    }
+  };
+
   if (registered) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="w-full max-w-md space-y-5 text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-            <Icon name="Check" size={32} className="text-green-600" />
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
+            <Icon name="Mail" size={32} className="text-amber-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Добро пожаловать{registeredName ? `, ${registeredName}` : ""}!</h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {isSpecialist
-                ? "Аккаунт создан, доступ к рабочему кабинету уже открыт. Заполните профиль — он пройдёт быструю проверку модератора перед публикацией."
-                : "Аккаунт создан. Теперь вы можете записываться к мастерам и участвовать в событиях."}
+            <h1 className="text-2xl font-bold">Подтвердите почту{registeredName ? `, ${registeredName}` : ""}</h1>
+            <p className="text-muted-foreground mt-2 text-sm">
+              Мы отправили письмо со ссылкой на{" "}
+              <span className="font-medium text-foreground">{registeredEmail}</span>.
+              Перейдите по ссылке из письма, чтобы войти в аккаунт.
+            </p>
+            <p className="text-muted-foreground mt-2 text-xs">
+              Не пришло письмо? Проверьте папку «Спам» или отправьте повторно.
             </p>
           </div>
-          <VkConnectBanner
-            vkId={user?.vk_id}
-            variant="banner"
-            dismissKey="vk_banner_register"
-            onDismiss={() => navigate(redirectTo)}
-          />
-          <Button className="w-full" onClick={() => navigate(redirectTo)}>
-            {isSpecialist ? "Перейти в рабочий кабинет" : "Перейти в личный кабинет"}
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleResend}
+            disabled={resending}
+          >
+            {resending ? (
+              <>
+                <Icon name="Loader2" size={16} className="animate-spin mr-2" />
+                Отправляем...
+              </>
+            ) : (
+              "Отправить письмо повторно"
+            )}
+          </Button>
+          <Button variant="ghost" className="w-full" onClick={() => navigate("/login")}>
+            Перейти ко входу
           </Button>
         </div>
       </div>

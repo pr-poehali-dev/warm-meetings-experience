@@ -60,6 +60,9 @@ export const userAuthApi = {
   login: (data: { email: string; password: string }) =>
     authRequest(`${USER_AUTH_API}/?action=login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
 
+  resendVerify: (email: string): Promise<{ message: string }> =>
+    authRequest(`${USER_AUTH_API}/?action=resend_verify`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }),
+
   forgot: (email: string) =>
     authRequest(`${USER_AUTH_API}/?action=forgot`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }),
 
