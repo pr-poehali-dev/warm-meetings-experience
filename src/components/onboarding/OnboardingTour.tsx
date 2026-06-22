@@ -71,23 +71,32 @@ export default function OnboardingTour({ steps, open, onClose, onFinish }: Onboa
   const next = () => (isLast ? onFinish() : setIndex((i) => i + 1));
   const prev = () => setIndex((i) => Math.max(0, i - 1));
 
-  // Позиция карточки: всегда полностью в пределах экрана
+  // Позиция карточки
   const CARD_W = 320;
-  const CARD_H = 180; // примерная высота карточки
+  const CARD_H = 200;
+  const isMobile = window.innerWidth < 640;
   const cardStyle: React.CSSProperties = (() => {
+    // На мобильных — всегда снизу, по центру
+    if (isMobile) {
+      return {
+        bottom: 24,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: `calc(100vw - 32px)`,
+        maxWidth: 400,
+      };
+    }
     if (!rect) {
       return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
     }
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const GAP = 10;
-    const SAFE = 12; // минимальный отступ от края
+    const SAFE = 12;
 
     const elemCenterX = rect.left + rect.width / 2;
     const elemCenterY = rect.top + rect.height / 2;
 
-    // По горизонтали: если элемент левее середины — карточка справа от него,
-    // иначе — слева. Если не влезает — прижимаем к ближайшему краю экрана.
     let left: number;
     if (elemCenterX < vw / 2) {
       left = rect.right + GAP;
@@ -98,7 +107,6 @@ export default function OnboardingTour({ steps, open, onClose, onFinish }: Onboa
     }
     left = Math.min(Math.max(left, SAFE), vw - CARD_W - SAFE);
 
-    // По вертикали: центрируем по элементу, зажимаем в безопасные границы
     let top = elemCenterY - CARD_H / 2;
     top = Math.min(Math.max(top, SAFE), vh - CARD_H - SAFE);
 
@@ -131,7 +139,7 @@ export default function OnboardingTour({ steps, open, onClose, onFinish }: Onboa
 
       {/* Карточка с подсказкой */}
       <div
-        className="absolute w-[320px] max-w-[calc(100vw-24px)] bg-card text-card-foreground rounded-2xl shadow-2xl border p-4 transition-all duration-300"
+        className={`${isMobile ? "fixed" : "absolute"} bg-card text-card-foreground rounded-2xl shadow-2xl border p-4 transition-all duration-300`}
         style={cardStyle}
       >
         <div className="flex items-start gap-3">
