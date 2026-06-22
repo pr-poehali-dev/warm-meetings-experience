@@ -124,6 +124,8 @@ def handler(event, context):
         return handle_login_2fa_verify_oauth(body, ip, user_agent)
     elif action == 'resend_verify':
         return handle_resend_verify(body, ip)
+    elif action == 'verify_email_code':
+        return handle_verify_email_code(body, ip)
 
     return respond(400, {'error': 'Unknown action'})
 
@@ -254,6 +256,56 @@ def handle_resend_verify(body, ip=None):
     conn.commit()
     conn.close()
     return respond(200, {'message': 'Письмо отправлено повторно'})
+
+
+def handle_verify_email_code(body, ip=None):
+    """Подтверждение почты по коду из темы письма (email + 6-значный код).
+    При успехе сразу выдаёт сессию — пользователь попадает в кабинет."""
+    email = (body.get('email') or '').strip().lower()
+    code = str(body.get('code') or '').strip()
+
+    if not email or not code:
+        return respond(400, {'error': 'Укажите email и код'})
+    if not code.isdigit() or len(code) != 6:
+        return respond(400, {'error': 'Код должен состоять из 6 цифр'})
+
+    schema = get_schema()
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    e = email.replace("'", "''")
+    c = code.replace("'", "''")
+    cur.execute(f"""
+        SELECT t.id AS token_id, u.id, u.email, u.name, u.phone, u.vk_id, u.created_at
+        FROM {schema}.email_verify_tokens t
+        JOIN {schema}.users u ON u.id = t.user_id
+        WHERE LOWER(u.email) = LOWER('{e}') AND t.code = '{c}'
+          AND t.used = false AND t.expires_at > CURRENT_TIMESTAMP
+        ORDER BY t.created_at DESC LIMIT 1
+    """)
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return respond(400, {'error': 'Неверный или истёкший код'})
+
+    cur.execute(f"UPDATE {schema}.users SET email_verified = true, updated_at = CURRENT_TIMESTAMP WHERE id = {row['id']}")
+    cur.execute(f"UPDATE {schema}.email_verify_tokens SET used = true WHERE id = {row['token_id']}")
+
+    token = generate_token()
+    expires = (datetime.utcnow() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+    cur.execute(f"""
+        INSERT INTO {schema}.user_sessions (user_id, token, expires_at)
+        VALUES ({row['id']}, '{token}', '{expires}')
+    """)
+    write_audit_log(cur, schema, row['id'], 'email_verified', 'users', row['id'], ip)
+    roles = fetch_user_roles(cur, schema, row['id'])
+    conn.commit()
+    conn.close()
+
+    user_data = {k: row[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'created_at']}
+    user_data['email_verified'] = True
+    user_data['roles'] = roles
+    return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
 
 
 def handle_login(body, ip=None, user_agent=''):
@@ -1231,59 +1283,80 @@ def send_welcome_email(to_email, name, user_id=None):
                      payload={'name': name})
 
 
-def send_verify_email(to_email, name, token):
+VERIFY_LOGO_URL = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/bucket/d2735e2c-6a4d-4538-b086-6156be8bd33a.png"
+BRAND_COLOR = "#c2622a"
+
+
+def send_verify_email(to_email, name, token, code):
     if to_email.endswith('.vk.local') or to_email.endswith('@vk.local'):
         return
     verify_url = f"https://sparcom.ru/verify-email?token={token}"
+    safe_name = (name or '').strip() or 'друг'
 
     html = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fafafa;">
-        <div style="background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-            <div style="text-align: center; margin-bottom: 24px;">
-                <div style="width: 56px; height: 56px; background: #dcfce7; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 28px;">&#9993;</div>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #f6f3ef;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <img src="{VERIFY_LOGO_URL}" alt="Sparcom" style="height: 38px; display: inline-block;" />
+        </div>
+        <div style="background: #ffffff; border-radius: 16px; padding: 36px 32px; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="width: 60px; height: 60px; background: #fbeadd; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 30px;">&#128293;</div>
             </div>
-            <h1 style="color: #1a1a1a; font-size: 22px; text-align: center; margin: 0 0 8px;">Подтвердите email</h1>
-            <p style="color: #666; text-align: center; margin: 0 0 28px; font-size: 15px;">
-                {name}, остался один шаг — подтвердите адрес электронной почты, чтобы войти в аккаунт на sparcom.ru
+            <h1 style="color: #1a1a1a; font-size: 23px; text-align: center; margin: 0 0 10px; font-weight: 700;">Подтвердите почту</h1>
+            <p style="color: #6b6b6b; text-align: center; margin: 0 0 28px; font-size: 15px; line-height: 1.6;">
+                {safe_name}, остался один шаг — подтвердите адрес, чтобы войти в аккаунт.<br>
+                Введите код из темы письма или нажмите кнопку ниже.
             </p>
-            <div style="text-align: center; margin-bottom: 24px;">
-                <a href="{verify_url}" style="display: inline-block; background: #1a1a1a; color: #ffffff; padding: 12px 32px; border-radius: 24px; text-decoration: none; font-size: 14px; font-weight: 600;">Подтвердить email</a>
+            <div style="background: #faf6f2; border: 1px solid #f0e3d8; border-radius: 12px; padding: 22px; margin-bottom: 26px; text-align: center;">
+                <p style="color: #9a8678; font-size: 12px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 2px;">Код подтверждения</p>
+                <p style="color: {BRAND_COLOR}; font-size: 34px; font-weight: 700; letter-spacing: 10px; margin: 0; font-family: 'Courier New', monospace;">{code}</p>
             </div>
-            <p style="color: #888; font-size: 13px; text-align: center; margin: 0 0 20px;">
-                Ссылка действительна 24 часа. Если вы не регистрировались — просто проигнорируйте это письмо.
+            <div style="text-align: center; margin-bottom: 22px;">
+                <a href="{verify_url}" style="display: inline-block; background: {BRAND_COLOR}; color: #ffffff; padding: 13px 36px; border-radius: 24px; text-decoration: none; font-size: 15px; font-weight: 600;">Подтвердить в один клик</a>
+            </div>
+            <p style="color: #999; font-size: 13px; text-align: center; margin: 0 0 4px;">
+                Код и ссылка действительны 24 часа.
             </p>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="color: #999; font-size: 12px; text-align: center; margin: 0;">
+            <p style="color: #b0b0b0; font-size: 12px; text-align: center; margin: 0;">
+                Если вы не регистрировались — просто проигнорируйте это письмо.
+            </p>
+            <hr style="border: none; border-top: 1px solid #f0ece7; margin: 24px 0 16px;">
+            <p style="color: #b8b0a8; font-size: 12px; text-align: center; margin: 0;">
                 Это автоматическое письмо. Отвечать на него не нужно.
             </p>
         </div>
+        <p style="color: #b8b0a8; font-size: 12px; text-align: center; margin: 18px 0 0;">
+            Sparcom — сообщество любителей бани
+        </p>
     </div>
     """
 
+    subject = f"Код подтверждения {code} — Sparcom"
     sent_ok = send_email(
         to_email,
-        "Подтвердите email — Sparcom",
+        subject,
         html,
         to_name=name,
         tags=["email-verify"],
     )
     log_notification('email', 'email_verify', to_email,
                      'success' if sent_ok else 'failed',
-                     subject='Подтвердите email — Sparcom',
+                     subject=subject,
                      error_text=None if sent_ok else 'send_email failed',
                      payload={'name': name})
 
 
 def create_and_send_verify_email(cur, schema, user_id, email, name):
-    """Создаёт токен подтверждения почты и отправляет письмо со ссылкой."""
+    """Создаёт токен + код подтверждения почты и отправляет письмо."""
     token = secrets.token_urlsafe(32)
+    code = f"{secrets.randbelow(900000) + 100000:06d}"
     expires = (datetime.utcnow() + timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
     t = token.replace("'", "''")
     cur.execute(f"""
-        INSERT INTO {schema}.email_verify_tokens (user_id, token, expires_at)
-        VALUES ({user_id}, '{t}', '{expires}')
+        INSERT INTO {schema}.email_verify_tokens (user_id, token, code, expires_at)
+        VALUES ({user_id}, '{t}', '{code}', '{expires}')
     """)
-    send_verify_email(email, name, token)
+    send_verify_email(email, name, token, code)
 
 
 def send_reset_email(to_email, name, token):

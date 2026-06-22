@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
-import { userAuthApi } from "@/lib/user-api";
 import { HttpError } from "@/lib/http";
+import EmailVerifyPanel from "@/components/auth/EmailVerifyPanel";
 import { toast } from "sonner";
 import { VkLoginButton } from "@/components/extensions/vk-auth/VkLoginButton";
 import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
@@ -43,7 +43,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
-  const [resending, setResending] = useState(false);
   const [challenge, setChallenge] = useState<{
     pendingToken: string;
     method: "totp" | "email" | "vk" | "yandex";
@@ -105,19 +104,6 @@ export default function Login() {
     }
   };
 
-  const handleResend = async () => {
-    if (!unverifiedEmail) return;
-    setResending(true);
-    try {
-      await userAuthApi.resendVerify(unverifiedEmail);
-      toast.success("Письмо отправлено повторно");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Не удалось отправить письмо");
-    } finally {
-      setResending(false);
-    }
-  };
-
   // Запускает вход через соцсеть в режиме «только вход»: если аккаунта нет —
   // бэкенд не создаёт его, а callback уводит на регистрацию.
   const startSocialLogin = (provider: "vk" | "yandex") => {
@@ -152,7 +138,16 @@ export default function Login() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16 flex justify-center">
         <Card className="w-full max-w-md border-0 shadow-sm">
           <CardContent className="p-6 sm:p-8">
-            {challenge ? (
+            {unverifiedEmail ? (
+              <EmailVerifyPanel
+                email={unverifiedEmail}
+                onVerified={(token, verifiedUser) => {
+                  loginWithToken(token, verifiedUser);
+                  setUnverifiedEmail(null);
+                  navigate(redirectPath, { replace: true });
+                }}
+              />
+            ) : challenge ? (
               <Login2FAChallenge
                 pendingToken={challenge.pendingToken}
                 initialMethod={challenge.method}
@@ -204,38 +199,6 @@ export default function Login() {
                     )}
                   </Button>
                 </form>
-
-                {unverifiedEmail && (
-                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/40 p-4">
-                    <div className="flex items-start gap-3">
-                      <Icon name="Mail" size={20} className="text-amber-600 shrink-0 mt-0.5" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground">Подтвердите электронную почту</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Мы отправили письмо со ссылкой на{" "}
-                          <span className="font-medium text-foreground">{unverifiedEmail}</span>.
-                          Перейдите по ней, чтобы войти.
-                        </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-3"
-                          onClick={handleResend}
-                          disabled={resending}
-                        >
-                          {resending ? (
-                            <>
-                              <Icon name="Loader2" size={14} className="animate-spin mr-2" />
-                              Отправляем...
-                            </>
-                          ) : (
-                            "Отправить письмо повторно"
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 <div className="mt-4 space-y-3">
                   <div className="relative">

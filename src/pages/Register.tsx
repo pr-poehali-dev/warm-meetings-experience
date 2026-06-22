@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
-import { userAuthApi } from "@/lib/user-api";
+import EmailVerifyPanel from "@/components/auth/EmailVerifyPanel";
 import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
@@ -15,7 +15,7 @@ import AppendixLinkModal from "@/components/AppendixLinkModal";
 import BathCaptcha, { useBathCaptcha } from "@/components/BathCaptcha";
 
 export default function Register() {
-  const { user, loading: authLoading, register } = useAuth();
+  const { user, loading: authLoading, register, loginWithToken } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const role = searchParams.get("role") || "guest";
@@ -25,9 +25,7 @@ export default function Register() {
   const defaultRedirect = isSpecialist ? "/workspace" : "/account";
   const redirectTo = searchParams.get("redirect") || defaultRedirect;
   const [registered, setRegistered] = useState(false);
-  const [registeredName, setRegisteredName] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
-  const [resending, setResending] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -69,7 +67,6 @@ export default function Register() {
     setSubmitting(true);
     try {
       await register({ email, name, phone, password, consent_pd: consentPd, consent_photo: consentPhoto, signup_roles: signupRoles });
-      setRegisteredName(name);
       setRegisteredEmail(email);
       setRegistered(true);
     } catch (err) {
@@ -87,55 +84,17 @@ export default function Register() {
     );
   }
 
-  const handleResend = async () => {
-    if (!registeredEmail) return;
-    setResending(true);
-    try {
-      await userAuthApi.resendVerify(registeredEmail);
-      toast.success("Письмо отправлено повторно");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Не удалось отправить письмо");
-    } finally {
-      setResending(false);
-    }
-  };
-
   if (registered) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
-        <div className="w-full max-w-md space-y-5 text-center">
-          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto">
-            <Icon name="Mail" size={32} className="text-amber-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Подтвердите почту{registeredName ? `, ${registeredName}` : ""}</h1>
-            <p className="text-muted-foreground mt-2 text-sm">
-              Мы отправили письмо со ссылкой на{" "}
-              <span className="font-medium text-foreground">{registeredEmail}</span>.
-              Перейдите по ссылке из письма, чтобы войти в аккаунт.
-            </p>
-            <p className="text-muted-foreground mt-2 text-xs">
-              Не пришло письмо? Проверьте папку «Спам» или отправьте повторно.
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleResend}
-            disabled={resending}
-          >
-            {resending ? (
-              <>
-                <Icon name="Loader2" size={16} className="animate-spin mr-2" />
-                Отправляем...
-              </>
-            ) : (
-              "Отправить письмо повторно"
-            )}
-          </Button>
-          <Button variant="ghost" className="w-full" onClick={() => navigate("/login")}>
-            Перейти ко входу
-          </Button>
+      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-md">
+          <EmailVerifyPanel
+            email={registeredEmail}
+            onVerified={(token, verifiedUser) => {
+              loginWithToken(token, verifiedUser);
+              navigate(redirectTo, { replace: true });
+            }}
+          />
         </div>
       </div>
     );

@@ -149,6 +149,24 @@
       "expectedStatus": 200,
       "expectedBody": {"message": "string"},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Verify email code without params returns 400",
+      "method": "POST",
+      "path": "/?action=verify_email_code",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Verify email code with bad code returns 400",
+      "method": "POST",
+      "path": "/?action=verify_email_code",
+      "body": {"email": "nobody@test.ru", "code": "000000"},
+      "expectedStatus": 400,
+      "expectedBody": {"error": "string"},
+      "bodyMatcher": "partial"
     }
   ]
 }
