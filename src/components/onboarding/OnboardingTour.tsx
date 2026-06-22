@@ -46,25 +46,46 @@ export default function OnboardingTour({ steps, open, onClose, onFinish }: Onboa
     if (open) setIndex(0);
   }, [open]);
 
-  const measure = useCallback(() => {
+  const readRect = useCallback(() => {
     setVw(window.innerWidth);
     setVh(window.innerHeight);
     if (!step?.target) { setRect(null); return; }
     const el = document.querySelector(step.target) as HTMLElement | null;
     if (!el) { setRect(null); return; }
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
     const r = el.getBoundingClientRect();
     setRect({ top: r.top, left: r.left, width: r.width, height: r.height, bottom: r.bottom, right: r.right });
   }, [step]);
 
+  // Прокрутка к элементу (с учётом вложенных скролл-контейнеров),
+  // затем измерение реальных координат после завершения прокрутки.
+  const scrollAndMeasure = useCallback(() => {
+    if (!step?.target) { readRect(); return; }
+    const el = document.querySelector(step.target) as HTMLElement | null;
+    if (!el) { setRect(null); return; }
+
+    const r = el.getBoundingClientRect();
+    const margin = PADDING + GAP;
+    const fullyVisible =
+      r.top >= margin &&
+      r.bottom <= window.innerHeight - margin &&
+      r.left >= 0 &&
+      r.right <= window.innerWidth;
+
+    if (!fullyVisible) {
+      // "auto" = мгновенно: координаты сразу корректны, без рассинхрона с подсветкой
+      el.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
+    }
+    requestAnimationFrame(readRect);
+  }, [step, readRect]);
+
   useLayoutEffect(() => {
     if (!open) return;
-    measure();
-    const t = setTimeout(measure, 320);
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, true);
-    return () => { clearTimeout(t); window.removeEventListener("resize", measure); window.removeEventListener("scroll", measure, true); };
-  }, [open, measure]);
+    scrollAndMeasure();
+    const t = setTimeout(scrollAndMeasure, 60);
+    window.addEventListener("resize", readRect);
+    window.addEventListener("scroll", readRect, true);
+    return () => { clearTimeout(t); window.removeEventListener("resize", readRect); window.removeEventListener("scroll", readRect, true); };
+  }, [open, scrollAndMeasure, readRect]);
 
   if (!open || !step) return null;
 
