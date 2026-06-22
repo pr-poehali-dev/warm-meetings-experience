@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, ComponentType } from "react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -21,39 +21,61 @@ import RegisterChoice from "./pages/RegisterChoice";
 import NotFoundPage from "./pages/NotFoundPage";
 import LandingPage from "./pages/LandingPage";
 
+// Обёртка над lazy: если чанк не загрузился (частая причина — деплой новой
+// версии, в браузере осталась ссылка на старый чанк), пробуем ещё раз, а затем
+// один раз перезагружаем страницу, чтобы подтянуть свежую сборку.
+function lazyWithRetry<T extends ComponentType<unknown>>(
+  factory: () => Promise<{ default: T }>,
+) {
+  return lazy(async () => {
+    try {
+      return await factory();
+    } catch (err) {
+      const KEY = "chunk_reload_at";
+      const last = Number(sessionStorage.getItem(KEY) || 0);
+      // Защита от бесконечной перезагрузки: не чаще раза в 10 секунд
+      if (Date.now() - last > 10_000) {
+        sessionStorage.setItem(KEY, String(Date.now()));
+        window.location.reload();
+      }
+      throw err;
+    }
+  });
+}
+
 // Lazy — остальные страницы (загружаются по требованию).
-const Events = lazy(() => import("./pages/Events"));
-const EventDetail = lazy(() => import("./pages/EventDetail"));
-const Admin = lazy(() => import("./pages/Admin"));
-const Documents = lazy(() => import("./pages/Documents"));
-const Account = lazy(() => import("./pages/Account"));
-const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const Principles = lazy(() => import("./pages/Principles"));
-const Organizer = lazy(() => import("./pages/Organizer"));
-const Blog = lazy(() => import("./pages/Blog"));
-const BlogCategory = lazy(() => import("./pages/BlogCategory"));
-const BlogArticle = lazy(() => import("./pages/BlogArticle"));
-const SteamMasterGuide = lazy(() => import("./pages/SteamMasterGuide"));
-const MasterScheduleGuide = lazy(() => import("./pages/MasterScheduleGuide"));
-const Baths = lazy(() => import("./pages/Baths"));
-const BathDetail = lazy(() => import("./pages/BathDetail"));
-const Masters = lazy(() => import("./pages/Masters"));
-const MasterDetail = lazy(() => import("./pages/MasterDetail"));
-const About = lazy(() => import("./pages/About"));
-const Workspace = lazy(() => import("./pages/Workspace"));
-const InviteRegister = lazy(() => import("./pages/InviteRegister"));
-const InviteVerify = lazy(() => import("./pages/InviteVerify"));
-const PastEvents = lazy(() => import("./pages/PastEvents"));
-const VkCallback = lazy(() => import("./pages/VkCallback"));
-const YandexCallback = lazy(() => import("./pages/YandexCallback"));
-const EventShortLink = lazy(() => import("./pages/EventShortLink"));
-const GuestChat = lazy(() => import("./pages/GuestChat"));
-const MasterChat = lazy(() => import("./pages/MasterChat"));
-const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
-const Functional = lazy(() => import("./pages/Functional"));
-const FunctionalDescription = lazy(() => import("./pages/FunctionalDescription"));
-const Support = lazy(() => import("./pages/Support"));
+const Events = lazyWithRetry(() => import("./pages/Events"));
+const EventDetail = lazyWithRetry(() => import("./pages/EventDetail"));
+const Admin = lazyWithRetry(() => import("./pages/Admin"));
+const Documents = lazyWithRetry(() => import("./pages/Documents"));
+const Account = lazyWithRetry(() => import("./pages/Account"));
+const ForgotPassword = lazyWithRetry(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
+const Principles = lazyWithRetry(() => import("./pages/Principles"));
+const Organizer = lazyWithRetry(() => import("./pages/Organizer"));
+const Blog = lazyWithRetry(() => import("./pages/Blog"));
+const BlogCategory = lazyWithRetry(() => import("./pages/BlogCategory"));
+const BlogArticle = lazyWithRetry(() => import("./pages/BlogArticle"));
+const SteamMasterGuide = lazyWithRetry(() => import("./pages/SteamMasterGuide"));
+const MasterScheduleGuide = lazyWithRetry(() => import("./pages/MasterScheduleGuide"));
+const Baths = lazyWithRetry(() => import("./pages/Baths"));
+const BathDetail = lazyWithRetry(() => import("./pages/BathDetail"));
+const Masters = lazyWithRetry(() => import("./pages/Masters"));
+const MasterDetail = lazyWithRetry(() => import("./pages/MasterDetail"));
+const About = lazyWithRetry(() => import("./pages/About"));
+const Workspace = lazyWithRetry(() => import("./pages/Workspace"));
+const InviteRegister = lazyWithRetry(() => import("./pages/InviteRegister"));
+const InviteVerify = lazyWithRetry(() => import("./pages/InviteVerify"));
+const PastEvents = lazyWithRetry(() => import("./pages/PastEvents"));
+const VkCallback = lazyWithRetry(() => import("./pages/VkCallback"));
+const YandexCallback = lazyWithRetry(() => import("./pages/YandexCallback"));
+const EventShortLink = lazyWithRetry(() => import("./pages/EventShortLink"));
+const GuestChat = lazyWithRetry(() => import("./pages/GuestChat"));
+const MasterChat = lazyWithRetry(() => import("./pages/MasterChat"));
+const VerifyEmail = lazyWithRetry(() => import("./pages/VerifyEmail"));
+const Functional = lazyWithRetry(() => import("./pages/Functional"));
+const FunctionalDescription = lazyWithRetry(() => import("./pages/FunctionalDescription"));
+const Support = lazyWithRetry(() => import("./pages/Support"));
 
 const queryClient = new QueryClient({
   defaultOptions: {

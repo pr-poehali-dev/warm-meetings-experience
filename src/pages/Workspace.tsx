@@ -226,6 +226,7 @@ export default function Workspace() {
         baths: "Мои бани",
         add: "Добавить баню",
         edit: "Редактирование бани",
+        notifications: "Тексты уведомлений",
       };
       return `Управляющий · ${map[partnerView]}`;
     }
