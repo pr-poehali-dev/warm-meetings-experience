@@ -20,7 +20,7 @@ export default function Register() {
   const [searchParams] = useSearchParams();
   const role = searchParams.get("role") || "guest";
   const isSpecialist = role === "specialist";
-  const defaultRedirect = isSpecialist ? "/workspace" : "/account";
+  const defaultRedirect = isSpecialist ? "/account?tab=roles" : "/account";
   const redirectTo = searchParams.get("redirect") || defaultRedirect;
   const [registered, setRegistered] = useState(false);
   const [registeredName, setRegisteredName] = useState("");
@@ -93,7 +93,7 @@ export default function Register() {
             <h1 className="text-2xl font-bold">Добро пожаловать{registeredName ? `, ${registeredName}` : ""}!</h1>
             <p className="text-muted-foreground mt-1 text-sm">
               {isSpecialist
-                ? "Аккаунт создан. Теперь вы можете настроить профиль и начать принимать гостей."
+                ? "Аккаунт создан. Следующий шаг — подать заявку на роль мастера или организатора. Администратор рассмотрит её и откроет доступ к рабочему кабинету."
                 : "Аккаунт создан. Теперь вы можете записываться к мастерам и участвовать в событиях."}
             </p>
           </div>
@@ -104,7 +104,7 @@ export default function Register() {
             onDismiss={() => navigate(redirectTo)}
           />
           <Button className="w-full" onClick={() => navigate(redirectTo)}>
-            Перейти в личный кабинет
+            {isSpecialist ? "Подать заявку на роль" : "Перейти в личный кабинет"}
           </Button>
         </div>
       </div>
