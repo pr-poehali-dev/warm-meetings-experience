@@ -72,8 +72,8 @@ export default function OnboardingTour({ steps, open, onClose, onFinish }: Onboa
   const prev = () => setIndex((i) => Math.max(0, i - 1));
 
   // Позиция карточки
-  const CARD_W = 320;
-  const CARD_H = 200;
+  const CARD_W = 340;
+  const CARD_H = 160;
   const isMobile = window.innerWidth < 640;
   const cardStyle: React.CSSProperties = (() => {
     // На мобильных — всегда снизу, по центру
@@ -91,26 +91,42 @@ export default function OnboardingTour({ steps, open, onClose, onFinish }: Onboa
     }
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const GAP = 10;
-    const SAFE = 12;
+    const GAP = 14;
+    const SAFE = 16;
 
-    const elemCenterX = rect.left + rect.width / 2;
-    const elemCenterY = rect.top + rect.height / 2;
+    // Свободное место с каждой стороны от элемента
+    const spaceBelow = vh - rect.bottom;
+    const spaceAbove = rect.top;
+    const spaceRight = vw - rect.right;
+    const spaceLeft = rect.left;
 
+    let top: number;
     let left: number;
-    if (elemCenterX < vw / 2) {
-      left = rect.right + GAP;
-      if (left + CARD_W > vw - SAFE) left = vw - CARD_W - SAFE;
-    } else {
-      left = rect.left - CARD_W - GAP;
-      if (left < SAFE) left = SAFE;
-    }
-    left = Math.min(Math.max(left, SAFE), vw - CARD_W - SAFE);
 
-    let top = elemCenterY - CARD_H / 2;
+    // Выбираем сторону: снизу → сверху → справа → слева
+    if (spaceBelow >= CARD_H + GAP + SAFE) {
+      top = rect.bottom + GAP;
+      left = rect.left + rect.width / 2 - CARD_W / 2;
+    } else if (spaceAbove >= CARD_H + GAP + SAFE) {
+      top = rect.top - GAP - CARD_H;
+      left = rect.left + rect.width / 2 - CARD_W / 2;
+    } else if (spaceRight >= CARD_W + GAP + SAFE) {
+      left = rect.right + GAP;
+      top = rect.top + rect.height / 2 - CARD_H / 2;
+    } else if (spaceLeft >= CARD_W + GAP + SAFE) {
+      left = rect.left - GAP - CARD_W;
+      top = rect.top + rect.height / 2 - CARD_H / 2;
+    } else {
+      // Места нет нигде — кладём в сторону с максимальным запасом по вертикали
+      top = spaceBelow >= spaceAbove ? rect.bottom + GAP : rect.top - GAP - CARD_H;
+      left = rect.left + rect.width / 2 - CARD_W / 2;
+    }
+
+    // Зажимаем в безопасные границы экрана
+    left = Math.min(Math.max(left, SAFE), vw - CARD_W - SAFE);
     top = Math.min(Math.max(top, SAFE), vh - CARD_H - SAFE);
 
-    return { top, left };
+    return { top, left, width: CARD_W };
   })();
 
   const highlightStyle: React.CSSProperties | undefined = rect
