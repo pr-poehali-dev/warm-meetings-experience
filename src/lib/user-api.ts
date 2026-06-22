@@ -262,6 +262,9 @@ export const userAuthApi2FA = {
   loginVerifyEmail: (pending_token: string, code: string): Promise<{ user: User; token: string; expires_at: string }> =>
     authRequest(`${USER_AUTH_API}/?action=login_2fa_verify_email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pending_token, code }) }),
 
+  loginVerifyLink: (token: string): Promise<{ user: User; token: string; expires_at: string }> =>
+    authRequest(`${USER_AUTH_API}/?action=login_2fa_verify_link`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }),
+
   loginResendEmail: (pending_token: string): Promise<{ message: string; email_masked: string; code_ttl_minutes: number }> =>
     authRequest(`${USER_AUTH_API}/?action=login_2fa_resend_email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pending_token }) }),
 

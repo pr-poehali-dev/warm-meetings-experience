@@ -116,6 +116,8 @@ def handler(event, context):
         return handle_verify_2fa(body, ip, user_agent)
     elif action == 'login_2fa_verify_email':
         return handle_login_2fa_verify_email(body, ip, user_agent)
+    elif action == 'login_2fa_verify_link':
+        return handle_login_2fa_verify_link(body, ip, user_agent)
     elif action == 'login_2fa_resend_email':
         return handle_login_2fa_resend_email(body, ip, user_agent)
     elif action == 'login_2fa_start_oauth':
@@ -859,30 +861,48 @@ def finalize_login_session(cur, schema, user_row, method_used, ip, user_agent, p
     return user_data, token, expires
 
 
-def send_login_2fa_email(to_email, name, code, ip, ua):
+def send_login_2fa_email(to_email, name, code, ip, ua, login_url):
+    safe_name = (name or '').strip() or 'друг'
     html = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #fafafa;">
-        <div style="background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-            <div style="text-align: center; margin-bottom: 24px;">
-                <div style="width: 56px; height: 56px; background: #e0f2fe; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 28px;">🔐</div>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #f6f3ef;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <img src="{VERIFY_LOGO_URL}" alt="Sparcom" style="height: 38px; display: inline-block;" />
+        </div>
+        <div style="background: #ffffff; border-radius: 16px; padding: 36px 32px; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="width: 60px; height: 60px; background: #fbeadd; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 30px;">&#128274;</div>
             </div>
-            <h1 style="color: #1a1a1a; font-size: 22px; text-align: center; margin: 0 0 8px;">Код для входа в аккаунт</h1>
-            <p style="color: #666; text-align: center; margin: 0 0 24px; font-size: 15px;">
-                Здравствуйте, {name}! Вы пытаетесь войти в свой аккаунт на sparcom.ru
+            <h1 style="color: #1a1a1a; font-size: 23px; text-align: center; margin: 0 0 10px; font-weight: 700;">Код для входа в аккаунт</h1>
+            <p style="color: #6b6b6b; text-align: center; margin: 0 0 28px; font-size: 15px; line-height: 1.6;">
+                {safe_name}, вы пытаетесь войти в аккаунт на sparcom.ru.<br>
+                Введите код или нажмите кнопку ниже, чтобы войти.
             </p>
-            <div style="background: #f8f9fa; border-radius: 8px; padding: 24px; margin-bottom: 20px; text-align: center;">
-                <p style="color: #666; font-size: 13px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: 1px;">Код подтверждения</p>
-                <p style="color: #1a1a1a; font-size: 32px; font-weight: 700; letter-spacing: 8px; margin: 0; font-family: 'Courier New', monospace;">{code}</p>
+            <div style="background: #faf6f2; border: 1px solid #f0e3d8; border-radius: 12px; padding: 22px; margin-bottom: 26px; text-align: center;">
+                <p style="color: #9a8678; font-size: 12px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 2px;">Код подтверждения</p>
+                <p style="color: {BRAND_COLOR}; font-size: 34px; font-weight: 700; letter-spacing: 10px; margin: 0; font-family: 'Courier New', monospace;">{code}</p>
             </div>
-            <p style="color: #888; font-size: 13px; text-align: center; margin: 0 0 20px;">
-                Код действует {LOGIN_2FA_CODE_TTL_MIN} минут. IP: {ip or 'неизвестен'}. Если вы не пытались войти — немедленно смените пароль.
+            <div style="text-align: center; margin-bottom: 22px;">
+                <a href="{login_url}" style="display: inline-block; background: {BRAND_COLOR}; color: #ffffff; padding: 13px 36px; border-radius: 24px; text-decoration: none; font-size: 15px; font-weight: 600;">Войти в один клик</a>
+            </div>
+            <p style="color: #999; font-size: 13px; text-align: center; margin: 0 0 4px;">
+                Код и ссылка действительны {LOGIN_2FA_CODE_TTL_MIN} минут. IP: {ip or 'неизвестен'}.
+            </p>
+            <p style="color: #b0b0b0; font-size: 12px; text-align: center; margin: 0;">
+                Если вы не пытались войти — немедленно смените пароль.
+            </p>
+            <hr style="border: none; border-top: 1px solid #f0ece7; margin: 24px 0 16px;">
+            <p style="color: #b8b0a8; font-size: 12px; text-align: center; margin: 0;">
+                Это автоматическое письмо. Отвечать на него не нужно.
             </p>
         </div>
+        <p style="color: #b8b0a8; font-size: 12px; text-align: center; margin: 18px 0 0;">
+            Sparcom — сообщество любителей бани
+        </p>
     </div>
     """
     return send_email(
         to_email,
-        "Код для входа — Sparcom",
+        f"Код для входа {code} — Sparcom",
         html,
         to_name=name,
         tags=["login-2fa"],
@@ -893,18 +913,21 @@ def create_and_send_login_email_code(cur, schema, user_row, pending_token, ip, u
     """Создаёт код и отправляет его на email. Используется внутри login и resend."""
     code = generate_login_code()
     code_hash = hash_code_login(code)
+    link_token = generate_token()
     expires = (datetime.utcnow() + timedelta(minutes=LOGIN_2FA_CODE_TTL_MIN)).strftime('%Y-%m-%d %H:%M:%S')
     pt = pending_token.replace("'", "''")
+    lt = link_token.replace("'", "''")
     masked = mask_email_login(user_row['email'])
     m = masked.replace("'", "''")
     ip_val = f"'{ip}'" if ip else 'NULL'
     ua = (user_agent or '')[:500].replace("'", "''")
     cur.execute(f"""
         INSERT INTO {schema}.login_2fa_email_codes
-            (user_id, pending_token, code_hash, email_masked, ip_address, user_agent, expires_at)
-        VALUES ({user_row['id']}, '{pt}', '{code_hash}', '{m}', {ip_val}, '{ua}', '{expires}')
+            (user_id, pending_token, code_hash, link_token, email_masked, ip_address, user_agent, expires_at)
+        VALUES ({user_row['id']}, '{pt}', '{code_hash}', '{lt}', '{m}', {ip_val}, '{ua}', '{expires}')
     """)
-    send_login_2fa_email(user_row['email'], user_row.get('name') or '', code, ip, user_agent)
+    login_url = f"https://sparcom.ru/login-confirm?token={link_token}"
+    send_login_2fa_email(user_row['email'], user_row.get('name') or '', code, ip, user_agent, login_url)
     return masked
 
 
@@ -960,6 +983,48 @@ def handle_login_2fa_verify_email(body, ip=None, user_agent=''):
     cur.execute(f"UPDATE {schema}.users SET email_verified = true, updated_at = CURRENT_TIMESTAMP WHERE id = {user_row['id']} AND email_verified = false")
     log_login_2fa(cur, schema, user_row['id'], 'email', 'verify_success', True, ip, user_agent)
     user_data, token, expires = finalize_login_session(cur, schema, user_row, 'email_code', ip, user_agent, pending_token)
+    conn.commit()
+    conn.close()
+    return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})
+
+
+def handle_login_2fa_verify_link(body, ip=None, user_agent=''):
+    """Вход по ссылке из письма 2FA: токен-ссылка вместо ручного ввода кода."""
+    link_token = (body.get('token') or '').strip()
+    if not link_token:
+        return respond(400, {'error': 'Токен обязателен'})
+
+    schema = get_schema()
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    lt = link_token.replace("'", "''")
+    cur.execute(f"""
+        SELECT id, user_id, pending_token, expires_at, verified_at
+        FROM {schema}.login_2fa_email_codes
+        WHERE link_token = '{lt}'
+        ORDER BY id DESC LIMIT 1
+    """)
+    code_row = cur.fetchone()
+    if not code_row:
+        conn.close()
+        return respond(400, {'error': 'Ссылка недействительна'})
+    if code_row['verified_at']:
+        conn.close()
+        return respond(400, {'error': 'Ссылка уже использована'})
+    if code_row['expires_at'] and code_row['expires_at'] < datetime.utcnow():
+        conn.close()
+        return respond(400, {'error': 'Ссылка истекла. Войдите заново.'})
+
+    user_row = load_pending_session(cur, schema, code_row['pending_token'])
+    if not user_row:
+        conn.close()
+        return respond(400, {'error': 'Сессия истекла, войдите заново'})
+
+    cur.execute(f"UPDATE {schema}.login_2fa_email_codes SET verified_at = CURRENT_TIMESTAMP WHERE id = {code_row['id']}")
+    cur.execute(f"UPDATE {schema}.users SET email_verified = true, updated_at = CURRENT_TIMESTAMP WHERE id = {user_row['id']} AND email_verified = false")
+    log_login_2fa(cur, schema, user_row['id'], 'email', 'verify_success', True, ip, user_agent)
+    user_data, token, expires = finalize_login_session(cur, schema, user_row, 'email_link', ip, user_agent, code_row['pending_token'])
     conn.commit()
     conn.close()
     return respond(200, {'user': user_data, 'token': token, 'expires_at': expires})

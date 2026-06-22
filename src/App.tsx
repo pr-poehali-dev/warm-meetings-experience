@@ -73,6 +73,7 @@ const EventShortLink = lazyWithRetry(() => import("./pages/EventShortLink"));
 const GuestChat = lazyWithRetry(() => import("./pages/GuestChat"));
 const MasterChat = lazyWithRetry(() => import("./pages/MasterChat"));
 const VerifyEmail = lazyWithRetry(() => import("./pages/VerifyEmail"));
+const LoginConfirm = lazyWithRetry(() => import("./pages/LoginConfirm"));
 const Functional = lazyWithRetry(() => import("./pages/Functional"));
 const FunctionalDescription = lazyWithRetry(() => import("./pages/FunctionalDescription"));
 const Support = lazyWithRetry(() => import("./pages/Support"));
@@ -117,6 +118,7 @@ const AppContent = () => {
           <Route path="/auth/vk/callback" element={<VkCallback />} />
           <Route path="/auth/yandex/callback" element={<YandexCallback />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/login-confirm" element={<LoginConfirm />} />
           <Route path="/register" element={<RegisterChoice />} />
           <Route path="/register/form" element={<Register />} />
           <Route path="/account" element={<RoleGuard role="auth"><Account /></RoleGuard>} />
