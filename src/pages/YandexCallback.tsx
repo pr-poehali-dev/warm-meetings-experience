@@ -141,10 +141,20 @@ export default function YandexCallback() {
 
         const user_id = yaData.user?.id;
 
+        // Роли, выбранные при регистрации через Яндекс (если регистрация с формы)
+        let signupRoles: string[] = [];
+        if (sessionStorage.getItem("signup_login_provider") === "yandex") {
+          try {
+            signupRoles = JSON.parse(sessionStorage.getItem("signup_roles") || "[]");
+          } catch {
+            signupRoles = [];
+          }
+        }
+
         const sessionRes = await fetch(`${USER_AUTH_URL}/?action=yandex_session`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ yandex_id, user_id }),
+          body: JSON.stringify({ yandex_id, user_id, signup_roles: signupRoles }),
         });
         const sessionData = await sessionRes.json();
 
@@ -165,6 +175,7 @@ export default function YandexCallback() {
         if (signupReturnUrl && sessionStorage.getItem("signup_login_provider") === "yandex") {
           sessionStorage.removeItem("signup_return_url");
           sessionStorage.removeItem("signup_login_provider");
+          sessionStorage.removeItem("signup_roles");
           window.location.replace(signupReturnUrl);
           return;
         }

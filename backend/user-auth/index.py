@@ -533,6 +533,9 @@ def handle_vk_session(body, ip=None, user_agent=''):
     user_id = body.get('user_id')
     vk_name = str(body.get('name') or '').strip()
     vk_avatar = str(body.get('avatar_url') or '').strip()
+    signup_roles = body.get('signup_roles') or []
+    if isinstance(signup_roles, str):
+        signup_roles = [signup_roles]
     if not vk_id and not user_id:
         return respond(400, {'error': 'vk_id или user_id обязателен'})
 
@@ -575,6 +578,8 @@ def handle_vk_session(body, ip=None, user_agent=''):
     """)
     check_device_and_notify(cur, schema, user['id'], user['email'], user.get('name', ''), ip, user_agent)
     write_audit_log(cur, schema, user['id'], 'login', 'users', user['id'], ip, {'method': 'vk'})
+    if signup_roles:
+        assign_signup_roles(cur, schema, user['id'], signup_roles)
     roles = fetch_user_roles(cur, schema, user['id'])
     conn.commit()
     conn.close()
@@ -590,6 +595,9 @@ def handle_yandex_session(body, ip=None, user_agent=''):
     """Создаёт сессию основной системы для пользователя, вошедшего через Яндекс."""
     yandex_id = str(body.get('yandex_id') or '').strip()
     user_id = body.get('user_id')
+    signup_roles = body.get('signup_roles') or []
+    if isinstance(signup_roles, str):
+        signup_roles = [signup_roles]
     if not yandex_id and not user_id:
         return respond(400, {'error': 'yandex_id или user_id обязателен'})
 
@@ -623,6 +631,8 @@ def handle_yandex_session(body, ip=None, user_agent=''):
     """)
     check_device_and_notify(cur, schema, user['id'], user['email'], user.get('name', ''), ip, user_agent)
     write_audit_log(cur, schema, user['id'], 'login', 'users', user['id'], ip, {'method': 'yandex'})
+    if signup_roles:
+        assign_signup_roles(cur, schema, user['id'], signup_roles)
     roles = fetch_user_roles(cur, schema, user['id'])
     conn.commit()
     conn.close()
@@ -751,6 +761,27 @@ def fetch_user_roles(cur, schema, user_id):
         ORDER BY r.sort_order
     """)
     return [dict(r) for r in cur.fetchall()]
+
+
+def assign_signup_roles(cur, schema, user_id, signup_roles):
+    """Выдаёт пользователю базовую роль member и выбранные при регистрации роли.
+    Используется при регистрации через ВК/Яндекс (роли активны сразу)."""
+    ALLOWED_SIGNUP_ROLES = {'parmaster', 'organizer', 'partner'}
+    cur.execute(f"""
+        INSERT INTO {schema}.user_roles (user_id, role_id, status, verified_at)
+        SELECT {user_id}, r.id, 'active', CURRENT_TIMESTAMP
+        FROM {schema}.roles r WHERE r.slug = 'member'
+        ON CONFLICT (user_id, role_id) DO NOTHING
+    """)
+    roles = [r for r in (signup_roles or []) if r in ALLOWED_SIGNUP_ROLES]
+    if roles:
+        slugs_sql = ', '.join("'" + s.replace("'", "''") + "'" for s in roles)
+        cur.execute(f"""
+            INSERT INTO {schema}.user_roles (user_id, role_id, status, verified_at)
+            SELECT {user_id}, r.id, 'active', CURRENT_TIMESTAMP
+            FROM {schema}.roles r WHERE r.slug IN ({slugs_sql})
+            ON CONFLICT (user_id, role_id) DO NOTHING
+        """)
 
 
 def has_privileged_role(cur, schema, user_id):

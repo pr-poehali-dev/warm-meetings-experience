@@ -13,6 +13,13 @@ import { toast } from "sonner";
 import ConsentModal from "@/components/ConsentModal";
 import AppendixLinkModal from "@/components/AppendixLinkModal";
 import BathCaptcha, { useBathCaptcha } from "@/components/BathCaptcha";
+import { VkLoginButton } from "@/components/extensions/vk-auth/VkLoginButton";
+import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
+import { YandexLoginButton } from "@/components/extensions/yandex-auth/YandexLoginButton";
+import { useYandexAuth } from "@/components/extensions/yandex-auth/useYandexAuth";
+
+const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
+const YANDEX_AUTH_URL = "https://functions.poehali.dev/1e5f15d8-b432-4341-9a18-4c408d3d80aa";
 
 export default function Register() {
   const { user, loading: authLoading, register, loginWithToken } = useAuth();
@@ -38,7 +45,42 @@ export default function Register() {
   const [submitting, setSubmitting] = useState(false);
   const captcha = useBathCaptcha();
 
-  const allRequired = consentTerms && consentPd && consentRules && isPhoneComplete(phone);
+  const vkAuth = useVkAuth({
+    apiUrls: {
+      authUrl: `${VK_AUTH_URL}?action=auth-url`,
+      callback: `${VK_AUTH_URL}?action=callback`,
+      refresh: `${VK_AUTH_URL}?action=refresh`,
+      logout: `${VK_AUTH_URL}?action=logout`,
+    },
+  });
+  const yandexAuth = useYandexAuth({
+    apiUrls: {
+      authUrl: `${YANDEX_AUTH_URL}?action=auth-url`,
+      callback: `${YANDEX_AUTH_URL}?action=callback`,
+      refresh: `${YANDEX_AUTH_URL}?action=refresh`,
+      logout: `${YANDEX_AUTH_URL}?action=logout`,
+    },
+  });
+
+  // Согласия обязательны и для регистрации через соцсети
+  const consentsAccepted = consentTerms && consentPd && consentRules;
+  const allRequired = consentsAccepted && isPhoneComplete(phone);
+
+  // Запуск регистрации через соцсеть: сохраняем выбранную роль и согласия,
+  // чтобы callback выдал роль и вернул на нужный кабинет.
+  const startSocialSignup = (provider: "vk" | "yandex") => {
+    if (!consentsAccepted) {
+      toast.error("Сначала примите обязательные условия");
+      return;
+    }
+    // Регистрация создаёт аккаунт — режим «только вход» не нужен
+    sessionStorage.removeItem("oauth_login_only");
+    sessionStorage.setItem("signup_return_url", redirectTo);
+    sessionStorage.setItem("signup_login_provider", provider);
+    sessionStorage.setItem("signup_roles", JSON.stringify(signupRoles));
+    if (provider === "vk") vkAuth.login();
+    else yandexAuth.login();
+  };
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -299,6 +341,36 @@ export default function Register() {
                 )}
               </Button>
             </form>
+
+            <div className="mt-4 space-y-3">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">или</span>
+                </div>
+              </div>
+              {!consentsAccepted && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Чтобы зарегистрироваться через ВК или Яндекс, примите обязательные условия выше
+                </p>
+              )}
+              <VkLoginButton
+                onClick={() => startSocialSignup("vk")}
+                isLoading={vkAuth.isLoading}
+                disabled={!consentsAccepted}
+                buttonText="Регистрация через ВК"
+                className="w-full"
+              />
+              <YandexLoginButton
+                onClick={() => startSocialSignup("yandex")}
+                isLoading={yandexAuth.isLoading}
+                disabled={!consentsAccepted}
+                buttonText="Регистрация через Яндекс"
+                className="w-full"
+              />
+            </div>
 
             <div className="mt-4 text-center">
               <p className="text-sm text-muted-foreground">

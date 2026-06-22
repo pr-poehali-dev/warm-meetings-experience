@@ -108,6 +108,10 @@ export default function Login() {
   // бэкенд не создаёт его, а callback уводит на регистрацию.
   const startSocialLogin = (provider: "vk" | "yandex") => {
     sessionStorage.setItem("oauth_login_only", "1");
+    // Чистим возможные остатки незавершённой регистрации через соцсеть
+    sessionStorage.removeItem("signup_return_url");
+    sessionStorage.removeItem("signup_login_provider");
+    sessionStorage.removeItem("signup_roles");
     if (provider === "vk") vkAuth.login();
     else yandexAuth.login();
   };

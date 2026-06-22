@@ -229,6 +229,16 @@ export default function VkCallback() {
 
         const user_id = vkData.user?.id;
 
+        // Роли, выбранные при регистрации через ВК (если регистрация с формы)
+        let signupRoles: string[] = [];
+        if (sessionStorage.getItem("signup_login_provider") === "vk") {
+          try {
+            signupRoles = JSON.parse(sessionStorage.getItem("signup_roles") || "[]");
+          } catch {
+            signupRoles = [];
+          }
+        }
+
         // 2. Создаём сессию основной системы по vk_id + user_id
         // Передаём имя и аватар из VK, чтобы бэкенд записал их в БД если пустые
         const sessionRes = await fetch(`${USER_AUTH_URL}/?action=vk_session`, {
@@ -239,6 +249,7 @@ export default function VkCallback() {
             user_id,
             name: vkData.user?.name || "",
             avatar_url: vkData.user?.avatar_url || "",
+            signup_roles: signupRoles,
           }),
         });
         const sessionData = await sessionRes.json();
@@ -279,6 +290,7 @@ export default function VkCallback() {
         if (signupReturnUrl && sessionStorage.getItem("signup_login_provider") === "vk") {
           sessionStorage.removeItem("signup_return_url");
           sessionStorage.removeItem("signup_login_provider");
+          sessionStorage.removeItem("signup_roles");
           window.location.replace(signupReturnUrl);
           return;
         }
@@ -294,6 +306,7 @@ export default function VkCallback() {
     setMergeHint(null);
     sessionStorage.removeItem("signup_return_url");
     sessionStorage.removeItem("signup_login_provider");
+    sessionStorage.removeItem("signup_roles");
     if (pendingNav) window.location.replace(pendingNav);
     else navigate("/account", { replace: true });
   };
@@ -302,6 +315,7 @@ export default function VkCallback() {
     setMergeHint(null);
     sessionStorage.removeItem("signup_return_url");
     sessionStorage.removeItem("signup_login_provider");
+    sessionStorage.removeItem("signup_roles");
     if (pendingNav) window.location.replace(pendingNav);
     else navigate("/account", { replace: true });
   };
