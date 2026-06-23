@@ -96,9 +96,9 @@ export default function Header({ transparent = false }: HeaderProps) {
           <div className="flex items-center justify-between gap-2 sm:gap-3 h-16 min-w-0">
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity duration-300 shrink min-w-0 overflow-hidden">
               <img
-                src={isDarkTheme ? LOGO_ON_DARK : LOGO_ON_LIGHT}
+                src={onHero ? LOGO_ON_DARK : (isDarkTheme ? LOGO_ON_DARK : LOGO_ON_LIGHT)}
                 alt="Спарком"
-                className="h-6 sm:h-7 w-auto max-w-full object-contain object-left"
+                className={`h-6 sm:h-7 w-auto max-w-full object-contain object-left transition-all duration-300 ${onHero ? "drop-shadow-[0_1px_4px_rgba(0,0,0,0.7)]" : ""}`}
               />
             </Link>
 
