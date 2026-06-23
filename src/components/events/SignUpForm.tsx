@@ -212,15 +212,15 @@ export default function SignUpForm({
       [errs.telegramChannel, "ch-tg"],
       [errs.vkChannel, "ch-vk"],
       [errs.consentPd || errs.consentShare || errs.consentCancel, "su-consents"],
+      [!user && !captcha.isValid, "su-captcha"],
     ];
     for (const [hasError, id] of priority) {
       if (hasError) {
         const el = document.getElementById(id);
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "center" });
-          if ("focus" in el && typeof (el as HTMLElement).focus === "function") {
-            (el as HTMLElement).focus({ preventScroll: true });
-          }
+          const input = el.querySelector("input");
+          if (input) input.focus({ preventScroll: true });
         }
         break;
       }

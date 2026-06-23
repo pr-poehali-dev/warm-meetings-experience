@@ -88,6 +88,18 @@ export default function SignUpFormBody({
   const errBorder = (field: keyof typeof errors) =>
     showError(field) ? "border-red-400 focus-visible:ring-red-300" : "";
 
+  const checks = [
+    !errors.name,
+    !errors.phone,
+    !errors.email,
+    !errors.telegramChannel && !errors.vkChannel,
+    !errors.consentPd && !errors.consentShare && !errors.consentCancel,
+    ...(!user ? [captcha.isValid] : []),
+  ];
+  const doneFields = checks.filter(Boolean).length;
+  const totalFields = checks.length;
+  const progressPct = Math.round((doneFields / totalFields) * 100);
+
   return (
     <>
       <form onSubmit={onSubmit} className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
@@ -341,6 +353,13 @@ export default function SignUpFormBody({
           </div>
         </div>
 
+        {/* Капча — для неавторизованных, внутри скролла */}
+        {!user && (
+          <div id="su-captcha" className="pt-1 border-t border-border">
+            <BathCaptcha {...captcha} />
+          </div>
+        )}
+
         {/* Согласия */}
         <div id="su-consents" className="space-y-2.5 pt-1 border-t border-border">
           <label className="flex items-start gap-3 cursor-pointer">
@@ -376,12 +395,25 @@ export default function SignUpFormBody({
         </div>
       </form>
 
-      <div className="px-6 pb-6 pt-3 flex-shrink-0 border-t space-y-3">
-        {!user && <BathCaptcha {...captcha} />}
+      <div className="px-6 pb-5 pt-3 flex-shrink-0 border-t space-y-2.5">
+        {progressPct < 100 && (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Заполнено</span>
+              <span className="font-medium">{progressPct}%</span>
+            </div>
+            <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+        )}
         <Button
           type="submit"
           form="signup-form"
-          disabled={loading || !canSubmit}
+          disabled={loading}
           className="w-full rounded-xl gap-2"
           size="lg"
           onClick={onSubmit}
