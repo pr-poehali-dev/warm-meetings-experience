@@ -342,7 +342,7 @@ export default function SignUpFormBody({
         </div>
 
         {/* Согласия */}
-        <div className="space-y-2.5 pt-1 border-t border-border">
+        <div id="su-consents" className="space-y-2.5 pt-1 border-t border-border">
           <label className="flex items-start gap-3 cursor-pointer">
             <Checkbox
               checked={consentPd}

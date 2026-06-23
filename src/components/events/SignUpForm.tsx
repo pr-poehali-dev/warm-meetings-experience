@@ -204,11 +204,34 @@ export default function SignUpForm({
     if (!v) reset();
   };
 
+  const scrollToFirstError = (errs: typeof errors) => {
+    const priority: Array<[boolean, string]> = [
+      [errs.name, "su-name"],
+      [errs.phone, "su-phone"],
+      [errs.email, "su-email"],
+      [errs.telegramChannel, "ch-tg"],
+      [errs.vkChannel, "ch-vk"],
+      [errs.consentPd || errs.consentShare || errs.consentCancel, "su-consents"],
+    ];
+    for (const [hasError, id] of priority) {
+      if (hasError) {
+        const el = document.getElementById(id);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          if ("focus" in el && typeof (el as HTMLElement).focus === "function") {
+            (el as HTMLElement).focus({ preventScroll: true });
+          }
+        }
+        break;
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched(true);
     if (!canSubmit) {
-      toast.error("Заполните обязательные поля");
+      scrollToFirstError(errors);
       return;
     }
     setLoading(true);
