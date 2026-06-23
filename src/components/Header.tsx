@@ -98,7 +98,13 @@ export default function Header({ transparent = false }: HeaderProps) {
               <img
                 src={onHero ? LOGO_ON_DARK : (isDarkTheme ? LOGO_ON_DARK : LOGO_ON_LIGHT)}
                 alt="Спарком"
-                className="h-6 sm:h-7 w-auto max-w-full object-contain object-left transition-all duration-300"
+                className={`h-6 sm:h-7 w-auto max-w-full object-contain object-left transition-all duration-300 ${
+                  onHero
+                    ? isDarkTheme
+                      ? "bg-black/40 rounded-md px-2 py-1"
+                      : "bg-white/40 rounded-md px-2 py-1"
+                    : ""
+                }`}
               />
             </Link>
 
