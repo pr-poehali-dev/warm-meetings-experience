@@ -131,7 +131,7 @@ export const userProfileApi = {
   sendVerifyEmail: (): Promise<{ message: string }> =>
     profileRequest(`${USER_PROFILE_API}/?resource=send-verify`, { method: "POST" }),
 
-  verifyEmail: (token: string): Promise<{ message: string }> =>
+  verifyEmail: (token: string): Promise<{ message: string; user?: User; token?: string; expires_at?: string }> =>
     authRequest(`${USER_PROFILE_API}/?resource=verify-email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }),
 
   getFavorites: (): Promise<{ favorites: FavoriteItem[] }> =>

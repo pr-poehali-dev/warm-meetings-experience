@@ -851,12 +851,32 @@ def handle_verify_email(cur, conn, schema, body, ip=None):
         conn.close()
         return respond(400, {'error': 'Ссылка недействительна или устарела'})
 
-    cur.execute(f"UPDATE {schema}.users SET email_verified = true, updated_at = CURRENT_TIMESTAMP WHERE id = {row['user_id']}")
+    user_id = row['user_id']
+    cur.execute(f"UPDATE {schema}.users SET email_verified = true, updated_at = CURRENT_TIMESTAMP WHERE id = {user_id}")
     cur.execute(f"UPDATE {schema}.email_verify_tokens SET used = true WHERE id = {row['id']}")
-    write_audit_log(cur, schema, row['user_id'], 'email_verified', 'users', row['user_id'], ip)
+    write_audit_log(cur, schema, user_id, 'email_verified', 'users', user_id, ip)
+
+    # Сразу выдаём сессию — чтобы после подтверждения по ссылке
+    # пользователь попадал в кабинет без повторного ввода кода.
+    from datetime import datetime, timedelta
+    cur.execute(f"""
+        SELECT id, email, name, phone, vk_id, created_at
+        FROM {schema}.users WHERE id = {user_id}
+    """)
+    u = cur.fetchone()
+
+    session_token = secrets.token_urlsafe(48)
+    expires = (datetime.utcnow() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
+    cur.execute(f"""
+        INSERT INTO {schema}.user_sessions (user_id, token, expires_at)
+        VALUES ({user_id}, '{session_token}', '{expires}')
+    """)
     conn.commit()
     conn.close()
-    return respond(200, {'message': 'Email подтверждён'})
+
+    user_data = {k: u[k] for k in ['id', 'email', 'name', 'phone', 'vk_id', 'created_at']} if u else {'id': user_id}
+    user_data['email_verified'] = True
+    return respond(200, {'message': 'Email подтверждён', 'user': user_data, 'token': session_token, 'expires_at': expires})
 
 
 def send_verify_email(to_email, name, token):

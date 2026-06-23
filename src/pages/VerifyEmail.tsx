@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import Icon from "@/components/ui/icon";
 import { userProfileApi } from "@/lib/user-api";
@@ -8,7 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") || "";
-  const { updateUser, user } = useAuth();
+  const navigate = useNavigate();
+  const { updateUser, loginWithToken, user } = useAuth();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
 
@@ -19,9 +20,16 @@ export default function VerifyEmail() {
       return;
     }
     userProfileApi.verifyEmail(token)
-      .then(() => {
+      .then((res) => {
         setStatus("success");
-        if (user) updateUser({ ...user, email_verified: true });
+        if (user) {
+          updateUser({ ...user, email_verified: true });
+        } else if (res.token && res.user) {
+          // Подтверждение по ссылке для нового пользователя — сразу логиним,
+          // чтобы не вводить код повторно, и ведём в кабинет.
+          loginWithToken(res.token, res.user);
+          navigate("/account", { replace: true });
+        }
       })
       .catch((e) => {
         setStatus("error");
