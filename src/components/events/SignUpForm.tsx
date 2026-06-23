@@ -124,9 +124,9 @@ export default function SignUpForm({
   const [telegram, setTelegram] = useState("");
   const [preferredChannel, setPreferredChannel] = useState<"telegram" | "vk" | "email" | "phone">("phone");
   const [vkContact, setVkContact] = useState("");
-  const [consentPd, setConsentPd] = useState(false);
-  const [consentShare, setConsentShare] = useState(false);
-  const [consentCancel, setConsentCancel] = useState(false);
+  const [consentPd, setConsentPd] = useState(true);
+  const [consentShare, setConsentShare] = useState(true);
+  const [consentCancel, setConsentCancel] = useState(true);
   const [comment, setComment] = useState("");
   const [guests, setGuests] = useState<{ name: string; phone: string }[]>([]);
   const [loading, setLoading] = useState(false);
