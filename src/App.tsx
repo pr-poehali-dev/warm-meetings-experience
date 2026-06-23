@@ -11,6 +11,7 @@ import RoleGuard from "./components/RoleGuard";
 import CookieConsent from "./components/CookieConsent";
 import MetrikaTracker from "./components/MetrikaTracker";
 import SupportWidget from "./components/support/SupportWidget";
+import EmailVerifyBanner from "./components/auth/EmailVerifyBanner";
 import { useKeyboardAwareInputs } from "./hooks/useKeyboardAwareInputs";
 
 // Eager — критичные для первого экрана и максимально частые маршруты:
@@ -105,6 +106,7 @@ const AppContent = () => {
     <>
       <ScrollToTop />
       <MetrikaTracker />
+      <EmailVerifyBanner />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<Index />} />

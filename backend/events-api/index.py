@@ -465,7 +465,7 @@ def handle_signups(event, method, params, schema, headers):
             conn.close()
             return {'statusCode': 409, 'headers': headers, 'body': json.dumps({'error': 'already_registered'})}
 
-        user_id = find_or_create_user(cur, schema, email, name, phone, telegram)
+        user_id, is_new_user = find_or_create_user(cur, schema, email, name, phone, telegram)
 
         if is_crowdfund:
             # Запись с клубным взносом (заглушка — помечаем как «оплачен» без реального шлюза)
@@ -501,12 +501,18 @@ def handle_signups(event, method, params, schema, headers):
             cur.execute(f"INSERT INTO {schema}.signup_rate_limit (ip_address, event_id) VALUES ('{ip_safe}', {int(event_id)})")
             cur.execute(f"DELETE FROM {schema}.signup_rate_limit WHERE created_at < NOW() - INTERVAL '1 day'")
 
+        # Для нового пользователя создаём токен верификации (до коммита, чтобы попал в транзакцию)
+        if is_new_user:
+            send_welcome_invite(cur, schema, user_id, email, name, ev)
+
         conn.commit()
         conn.close()
 
         preferred_contact_value = (body.get('preferred_contact_value') or '').strip()
 
-        send_signup_confirmation(email, name, ev)
+        if not is_new_user:
+            # Существующий пользователь получает обычное подтверждение записи
+            send_signup_confirmation(email, name, ev)
         send_signup_telegram(name, phone, email, telegram, ev, preferred_channel, preferred_contact_value)
         notify_organizer_telegram(ev, name, phone, email, telegram, preferred_channel, preferred_contact_value, comment=comment, guests=guests)
 
@@ -783,11 +789,12 @@ def send_event_question_email(to_email, ev, guest_name, guest_contact, contact_t
 
 
 def find_or_create_user(cur, schema, email, name, phone, telegram):
+    """Возвращает (user_id, is_new). is_new=True если аккаунт создан впервые."""
     email_lower = email.lower().replace("'", "''")
     cur.execute(f"SELECT id FROM {schema}.users WHERE email = '{email_lower}'")
     user = cur.fetchone()
     if user:
-        return user['id']
+        return user['id'], False
 
     temp_password = secrets.token_urlsafe(12)
     password_hash = hashlib.sha256(temp_password.encode()).hexdigest()
@@ -796,7 +803,73 @@ def find_or_create_user(cur, schema, email, name, phone, telegram):
         VALUES ('{email_lower}', '{name}', '{phone}', '{telegram}', '{password_hash}')
         RETURNING id
     """)
-    return cur.fetchone()['id']
+    return cur.fetchone()['id'], True
+
+
+def send_welcome_invite(cur, schema, user_id, email, name, event_data):
+    """Создаёт токен верификации и отправляет письмо-приглашение новому гостю."""
+    token = secrets.token_urlsafe(32)
+    code = f"{secrets.randbelow(900000) + 100000:06d}"
+    t = token.replace("'", "''")
+    cur.execute(f"""
+        INSERT INTO {schema}.email_verify_tokens (user_id, token, code, expires_at)
+        VALUES ({user_id}, '{t}', '{code}', NOW() + INTERVAL '7 days')
+    """)
+
+    api_key = os.environ.get('UNISENDER_API_KEY', '')
+    sender_email = os.environ.get('UNISENDER_SENDER_EMAIL', '')
+    sender_name = os.environ.get('UNISENDER_SENDER_NAME', 'Sparcom')
+    if not api_key or not sender_email:
+        return
+
+    event_title = event_data.get('title', '')
+    verify_url = f"https://sparcom.ru/verify-email?token={token}"
+    safe_name = (name or '').strip() or 'друг'
+
+    html = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f6f3ef;">
+        <div style="background: #ffffff; border-radius: 16px; padding: 36px 32px; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="width: 60px; height: 60px; background: #fbeadd; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 30px;">🔥</div>
+            </div>
+            <h1 style="color: #1a1a1a; font-size: 22px; text-align: center; margin: 0 0 8px; font-weight: 700;">Вы записаны!</h1>
+            <p style="color: #6b6b6b; text-align: center; margin: 0 0 24px; font-size: 15px; line-height: 1.6;">
+                {safe_name}, ваша заявка на <strong>{event_title}</strong> принята.<br>
+                Для вас автоматически создан личный кабинет — войдите, чтобы видеть историю событий.
+            </p>
+            <div style="background: #faf6f2; border: 1px solid #f0e3d8; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
+                <p style="color: #9a8678; font-size: 12px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 2px;">Код для входа</p>
+                <p style="color: #c2622a; font-size: 34px; font-weight: 700; letter-spacing: 10px; margin: 0; font-family: 'Courier New', monospace;">{code}</p>
+            </div>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <a href="{verify_url}" style="display: inline-block; background: #c2622a; color: #ffffff; padding: 13px 36px; border-radius: 24px; text-decoration: none; font-size: 15px; font-weight: 600;">Войти в кабинет</a>
+            </div>
+            <p style="color: #999; font-size: 13px; text-align: center; margin: 0 0 4px;">
+                Код и ссылка действительны 7 дней.
+            </p>
+            <p style="color: #b0b0b0; font-size: 12px; text-align: center; margin: 8px 0 0;">
+                Это автоматическое письмо — отвечать на него не нужно.
+            </p>
+        </div>
+    </div>
+    """
+
+    try:
+        requests.post(
+            "https://go2.unisender.ru/ru/transactional/api/v1/email/send.json",
+            headers={"Content-Type": "application/json", "X-API-KEY": api_key},
+            json={"message": {
+                "recipients": [{"email": email, "name": safe_name}],
+                "from_email": sender_email,
+                "from_name": sender_name,
+                "subject": f"Вы записаны на {event_title} — войдите в кабинет",
+                "body": {"html": html},
+                "tags": ["welcome-invite"],
+            }},
+            timeout=10,
+        )
+    except Exception:
+        pass
 
 
 def send_signup_confirmation(to_email, name, event_data):
