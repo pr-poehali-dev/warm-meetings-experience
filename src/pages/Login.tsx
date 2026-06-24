@@ -57,7 +57,7 @@ export default function Login() {
     if (r && token) return `${r}?token=${encodeURIComponent(token)}`;
     if (r) return r;
     const roles = userData?.roles?.map((ro) => ro.slug) ?? [];
-    if (roles.some((s) => ["parmaster", "organizer"].includes(s))) return "/workspace";
+    if (roles.some((s) => ["parmaster", "organizer", "partner"].includes(s))) return "/workspace";
     return "/account";
   };
 
