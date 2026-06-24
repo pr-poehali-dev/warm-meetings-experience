@@ -96,15 +96,9 @@ export default function Header({ transparent = false }: HeaderProps) {
           <div className="flex items-center justify-between gap-2 sm:gap-3 h-16 min-w-0">
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity duration-300 shrink min-w-0 overflow-hidden">
               <img
-                src={onHero ? LOGO_ON_DARK : (isDarkTheme ? LOGO_ON_DARK : LOGO_ON_LIGHT)}
+                src={onHero || isDarkTheme ? LOGO_ON_DARK : LOGO_ON_LIGHT}
                 alt="Спарком"
-                className={`h-6 sm:h-7 w-auto max-w-full object-contain object-left transition-all duration-300 ${
-                  onHero
-                    ? isDarkTheme
-                      ? "bg-black/40 rounded-md px-2 py-1"
-                      : "bg-white/40 rounded-md px-2 py-1"
-                    : ""
-                }`}
+                className="h-6 sm:h-7 w-auto max-w-full object-contain object-left transition-all duration-300"
               />
             </Link>
 
@@ -115,8 +109,8 @@ export default function Header({ transparent = false }: HeaderProps) {
                   to={link.to}
                   className="px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300"
                   style={isActive(link.to)
-                    ? { background: "var(--header-nav-hover-bg)", color: "var(--header-nav-active)" }
-                    : { color: "var(--header-nav-color)" }
+                    ? { background: onHero ? "rgba(255,255,255,0.15)" : "var(--header-nav-hover-bg)", color: onHero ? "#fff" : "var(--header-nav-active)" }
+                    : { color: onHero ? "rgba(255,255,255,0.9)" : "var(--header-nav-color)" }
                   }
                 >
                   {link.label}
