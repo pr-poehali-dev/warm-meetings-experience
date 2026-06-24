@@ -51,13 +51,17 @@ export default function Login() {
     hasYandex: boolean;
   } | null>(null);
 
-  const redirectPath = (() => {
+  const getRedirectPath = (userData?: { roles?: { slug: string }[] } | null) => {
     const r = searchParams.get("redirect");
     const token = searchParams.get("token");
     if (r && token) return `${r}?token=${encodeURIComponent(token)}`;
     if (r) return r;
+    const roles = userData?.roles?.map((ro) => ro.slug) ?? [];
+    if (roles.some((s) => ["parmaster", "organizer"].includes(s))) return "/workspace";
     return "/account";
-  })();
+  };
+
+  const redirectPath = getRedirectPath(user);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -70,8 +74,8 @@ export default function Login() {
     setSubmitting(true);
     setUnverifiedEmail(null);
     try {
-      await login(email, password);
-      navigate(redirectPath);
+      const loggedUser = await login(email, password);
+      navigate(getRedirectPath(loggedUser));
     } catch (err) {
       if (err instanceof HttpError && err.body?.code === "email_not_verified") {
         const em = (err.body.email as string) || email;
@@ -148,7 +152,7 @@ export default function Login() {
                 onVerified={(token, verifiedUser) => {
                   loginWithToken(token, verifiedUser);
                   setUnverifiedEmail(null);
-                  navigate(redirectPath, { replace: true });
+                  navigate(getRedirectPath(verifiedUser), { replace: true });
                 }}
               />
             ) : challenge ? (
@@ -161,7 +165,7 @@ export default function Login() {
                 onSuccess={(token, userData) => {
                   loginWithToken(token, userData);
                   setChallenge(null);
-                  navigate(redirectPath);
+                  navigate(getRedirectPath(userData));
                 }}
                 onCancel={() => setChallenge(null)}
               />

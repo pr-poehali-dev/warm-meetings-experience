@@ -89,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch { /* используем данные из login */ }
     localStorage.setItem("user_data", JSON.stringify(userWithRoles));
     setUser(userWithRoles);
+    return userWithRoles;
   };
 
   const loginWithToken = (token: string, userData: User) => {
