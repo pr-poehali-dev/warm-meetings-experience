@@ -80,7 +80,17 @@ export default function OrgDashboard({
     return { label: "Черновик", icon: "FileEdit", cls: "bg-gray-100 text-gray-500 border-gray-200" };
   };
 
-  const filtered = events.filter((e) => {
+  const filtered = [...events].sort((a, b) => {
+    const dateA = new Date(`${a.event_date}T${a.start_time || "00:00"}`).getTime();
+    const dateB = new Date(`${b.event_date}T${b.start_time || "00:00"}`).getTime();
+    const nowMs = Date.now();
+    const futureA = dateA >= nowMs;
+    const futureB = dateB >= nowMs;
+    if (futureA && !futureB) return -1;
+    if (!futureA && futureB) return 1;
+    if (futureA && futureB) return dateA - dateB;
+    return dateB - dateA;
+  }).filter((e) => {
     const matchesSearch = !search || e.title.toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
     const isPrivate = e.status === "private";
