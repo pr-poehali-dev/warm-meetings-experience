@@ -129,7 +129,12 @@ export default function ClientCard({ clientKey, onClose, onChanged }: ClientCard
                       {client?.telegram && (
                         <div className="flex items-center gap-2">
                           <Icon name="Send" size={13} className="text-muted-foreground" />
-                          <span>{client.telegram}</span>
+                          <a
+                            href={`https://t.me/${client.telegram.replace(/^@/, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline text-primary"
+                          >{client.telegram}</a>
                         </div>
                       )}
                     </div>
