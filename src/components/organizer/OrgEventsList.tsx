@@ -52,7 +52,17 @@ export default function OrgEventsList({
 
   const now = new Date().toISOString().split("T")[0];
 
-  const filtered = events.filter((e) => {
+  const filtered = [...events].sort((a, b) => {
+    const dateA = new Date(`${a.event_date}T${a.start_time || "00:00"}`).getTime();
+    const dateB = new Date(`${b.event_date}T${b.start_time || "00:00"}`).getTime();
+    const now = Date.now();
+    const futureA = dateA >= now;
+    const futureB = dateB >= now;
+    if (futureA && !futureB) return -1;
+    if (!futureA && futureB) return 1;
+    if (futureA && futureB) return dateA - dateB;
+    return dateB - dateA;
+  }).filter((e) => {
     const matchesSearch = !search || e.title.toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
     if (filter === "active") return e.event_date >= now && e.is_visible;
