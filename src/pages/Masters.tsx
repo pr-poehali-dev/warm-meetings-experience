@@ -85,152 +85,125 @@ function SectionBadge({ icon, children }: { icon: string; children: React.ReactN
 
 function MasterCard({ master, specializations }: { master: Master; specializations: Specialization[] }) {
   const [hovered, setHovered] = useState(false);
-  const placeholder = `https://placehold.co/400x500/2d1f14/8b7355?text=${encodeURIComponent(master.name[0])}`;
+  const placeholder = `https://placehold.co/200x200/2d1f14/8b7355?text=${encodeURIComponent(master.name[0])}`;
   const avatar = master.avatar || placeholder;
   const masterSpecs = specializations.filter((s) => (master.specialization_ids || []).includes(s.id));
 
   return (
     <Link
       to={`/masters/${master.slug}`}
-      className="group block rounded-2xl overflow-hidden transition-all duration-300"
+      className="group block rounded-2xl p-4 transition-all duration-300"
       style={{
         ...glassCard,
-        transform: hovered ? "translateY(-4px)" : "translateY(0)",
-        boxShadow: hovered ? "0 20px 40px rgba(0,0,0,0.25)" : "none",
+        transform: hovered ? "translateY(-3px)" : "translateY(0)",
+        boxShadow: hovered ? "0 12px 32px rgba(0,0,0,0.18)" : "0 2px 8px rgba(0,0,0,0.06)",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="relative h-56 overflow-hidden">
-        <img
-          src={avatar}
-          alt={master.name}
-          className="w-full h-full object-cover object-top transition-transform duration-500"
-          style={{ transform: hovered ? "scale(1.06)" : "scale(1)" }}
-        />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 55%)" }} />
-
-        {master.is_verified && (
-          <div
-            className="absolute top-3 right-3 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1"
-            style={{ background: "rgba(200,131,74,0.9)", color: "#fff", backdropFilter: "blur(4px)" }}
-          >
-            <Icon name="BadgeCheck" size={12} />
-            Проверен
+      <div className="flex gap-4">
+        {/* Аватар */}
+        <div className="relative shrink-0">
+          <div className="w-16 h-16 rounded-full overflow-hidden ring-2" style={{ ringColor: "var(--card-border)" }}>
+            <img
+              src={avatar}
+              alt={master.name}
+              className="w-full h-full object-cover object-top transition-transform duration-500"
+              style={{ transform: hovered ? "scale(1.08)" : "scale(1)" }}
+            />
           </div>
-        )}
-
-        {master.price_from > 0 && (
-          <div
-            className="absolute bottom-3 right-3 text-sm font-bold px-3 py-1 rounded-full"
-            style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(8px)", color: "#FF6B1A" }}
-          >
-            от {master.price_from.toLocaleString("ru-RU")} ₽
-          </div>
-        )}
-
-        <div className="absolute top-3 left-3 flex flex-wrap gap-1">
-          {masterSpecs.slice(0, 1).map((s) => (
-            <span
-              key={s.id}
-              className="text-xs font-medium px-2 py-0.5 rounded-full"
-              style={{ background: "rgba(143,168,154,0.75)", backdropFilter: "blur(4px)", color: "#fff" }}
+          {master.is_verified && (
+            <div
+              className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full flex items-center justify-center"
+              style={{ background: "var(--c-terra)", border: "2px solid var(--card-bg)" }}
+              title="Проверен"
             >
-              {s.name}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-bold text-base leading-tight" style={{ color: "var(--c-cream)" }}>{master.name}</h3>
-          {master.rating > 0 && (
-            <div className="flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-full" style={{ background: "rgba(245,158,11,0.15)" }}>
-              <Icon name="Star" size={11} style={{ color: "#F59E0B", fill: "#F59E0B" } as React.CSSProperties} />
-              <span className="text-xs font-bold" style={{ color: "#F59E0B" }}>{master.rating.toFixed(1)}</span>
+              <Icon name="Check" size={10} style={{ color: "#fff" } as React.CSSProperties} />
             </div>
           )}
         </div>
 
-        {master.tagline && (
-          <p className="text-sm mb-3 line-clamp-2 italic" style={{ color: "var(--c-text)" }}>«{master.tagline}»</p>
-        )}
-
-        {/* Все специализации */}
-        {masterSpecs.length > 1 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {masterSpecs.slice(1, 4).map((s) => (
-              <span key={s.id} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(143,168,154,0.15)", color: "var(--c-sage)" }}>
-                {s.name}
+        {/* Основной контент */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-0.5">
+            <h3 className="font-bold text-base leading-tight truncate" style={{ color: "var(--c-cream)" }}>{master.name}</h3>
+            {master.price_from > 0 && (
+              <span className="text-sm font-bold shrink-0" style={{ color: "var(--c-terra)" }}>
+                от {master.price_from.toLocaleString("ru-RU")} ₽
               </span>
-            ))}
-            {masterSpecs.length > 4 && (
-              <span className="text-xs px-1" style={{ color: "var(--c-muted)" }}>+{masterSpecs.length - 4}</span>
             )}
           </div>
-        )}
 
-        {/* Краткое био */}
-        {master.bio && (
-          <p className="text-xs mb-3 line-clamp-2 leading-relaxed" style={{ color: "var(--c-text)" }}>{master.bio}</p>
-        )}
-
-        {/* Метрики */}
-        <div className="flex items-center gap-3 text-xs mb-3 flex-wrap" style={{ color: "var(--c-muted)" }}>
-          {master.experience_years > 0 && (
-            <span className="flex items-center gap-1">
-              <Icon name="Award" size={11} style={{ color: "var(--c-terra)" } as React.CSSProperties} />
-              <span style={{ color: "var(--c-cream)" }}>{master.experience_years}</span>
-              {getYearWord(master.experience_years)} опыта
-            </span>
+          {/* Специализации */}
+          {masterSpecs.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {masterSpecs.slice(0, 3).map((s) => (
+                <span key={s.id} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(143,168,154,0.15)", color: "var(--c-sage)" }}>
+                  {s.name}
+                </span>
+              ))}
+              {masterSpecs.length > 3 && (
+                <span className="text-xs px-1" style={{ color: "var(--c-muted)" }}>+{masterSpecs.length - 3}</span>
+              )}
+            </div>
           )}
-          <span className="flex items-center gap-1">
-            <Icon name="MapPin" size={11} />
-            {master.city}
-          </span>
-          {master.portfolio && master.portfolio.length > 0 && (
+
+          {master.tagline && (
+            <p className="text-xs mb-2 line-clamp-1 italic" style={{ color: "var(--c-text)" }}>«{master.tagline}»</p>
+          )}
+
+          {/* Метрики */}
+          <div className="flex items-center gap-3 text-xs flex-wrap" style={{ color: "var(--c-muted)" }}>
+            {master.rating > 0 && (
+              <span className="flex items-center gap-1">
+                <Icon name="Star" size={11} style={{ color: "#F59E0B", fill: "#F59E0B" } as React.CSSProperties} />
+                <span className="font-semibold" style={{ color: "#F59E0B" }}>{master.rating.toFixed(1)}</span>
+              </span>
+            )}
+            {master.experience_years > 0 && (
+              <span className="flex items-center gap-1">
+                <Icon name="Award" size={11} style={{ color: "var(--c-terra)" } as React.CSSProperties} />
+                <span style={{ color: "var(--c-cream)" }}>{master.experience_years}</span>
+                {getYearWord(master.experience_years)}
+              </span>
+            )}
             <span className="flex items-center gap-1">
-              <Icon name="Image" size={11} />
-              {master.portfolio.length} фото
+              <Icon name="MapPin" size={11} />
+              <span className="truncate max-w-[120px]">{master.city}</span>
             </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Нижняя строка */}
+      <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: "1px solid var(--card-border)" }}>
+        <div className="flex items-center gap-2 text-xs" style={{ color: "var(--c-muted)" }}>
+          <Icon name="MessageSquare" size={11} />
+          <span>{master.reviews_count || 0} отзывов</span>
+          {master.baths && master.baths.length > 0 && (
+            <>
+              <span>·</span>
+              <Icon name="Building2" size={11} style={{ color: "var(--c-sage)" } as React.CSSProperties} />
+              <span className="truncate max-w-[100px]">{master.baths[0].name}{master.baths.length > 1 ? ` +${master.baths.length - 1}` : ""}</span>
+            </>
           )}
         </div>
-
-        {/* Площадки где работает */}
-        {master.baths && master.baths.length > 0 && (
-          <div className="flex items-start gap-1.5 text-xs mb-3 pb-3" style={{ color: "var(--c-muted)", borderBottom: "1px solid var(--card-border)" }}>
-            <Icon name="Building2" size={11} className="mt-0.5 shrink-0" style={{ color: "var(--c-sage)" } as React.CSSProperties} />
-            <span className="line-clamp-1">
-              {master.baths.slice(0, 2).map((b) => b.name).join(", ")}
-              {master.baths.length > 2 && ` +${master.baths.length - 2}`}
+        <div className="flex items-center gap-1.5">
+          {master.telegram && (
+            <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(34,158,217,0.15)", color: "#229ED9" }}>
+              <Icon name="Send" size={11} />
             </span>
-          </div>
-        )}
-
-        {/* Нижний ряд: отзывы + контакты */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs" style={{ color: "var(--c-muted)" }}>
-            <Icon name="MessageSquare" size={11} />
-            <span>{master.reviews_count || 0} отзывов</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {master.telegram && (
-              <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(34,158,217,0.15)", color: "#229ED9" }}>
-                <Icon name="Send" size={11} />
-              </span>
-            )}
-            {master.instagram && (
-              <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(225,48,108,0.15)", color: "#E1306C" }}>
-                <Icon name="Instagram" size={11} />
-              </span>
-            )}
-            {master.phone && (
-              <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(143,168,154,0.15)", color: "var(--c-sage)" }}>
-                <Icon name="Phone" size={11} />
-              </span>
-            )}
-          </div>
+          )}
+          {master.instagram && (
+            <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(225,48,108,0.15)", color: "#E1306C" }}>
+              <Icon name="Instagram" size={11} />
+            </span>
+          )}
+          {master.phone && (
+            <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(143,168,154,0.15)", color: "var(--c-sage)" }}>
+              <Icon name="Phone" size={11} />
+            </span>
+          )}
         </div>
       </div>
     </Link>
