@@ -127,13 +127,8 @@ function MasterCard({ master, specializations }: { master: Master; specializatio
 
         {/* Основной контент */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-0.5">
+          <div className="flex items-start mb-0.5">
             <h3 className="font-bold text-base leading-tight truncate" style={{ color: "var(--c-cream)" }}>{master.name}</h3>
-            {master.price_from > 0 && (
-              <span className="text-sm font-bold shrink-0" style={{ color: "var(--c-terra)" }}>
-                от {master.price_from.toLocaleString("ru-RU")} ₽
-              </span>
-            )}
           </div>
 
           {/* Специализации */}
@@ -191,6 +186,11 @@ function MasterCard({ master, specializations }: { master: Master; specializatio
           )}
         </div>
         <div className="flex items-center gap-1.5">
+          {master.price_from > 0 && (
+            <span className="text-sm font-bold" style={{ color: "var(--c-terra)" }}>
+              от {master.price_from.toLocaleString("ru-RU")} ₽
+            </span>
+          )}
           {master.telegram && (
             <span className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(34,158,217,0.15)", color: "#229ED9" }}>
               <Icon name="Send" size={11} />
