@@ -646,7 +646,7 @@ export default function MasterDetail() {
                     className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden ring-2 ring-primary/20 shadow-md"
                   >
                     <img
-                      src={photoUrls[activePhoto]}
+                      src={master.avatar || photoUrls[0]}
                       alt={master.name}
                       className="w-full h-full object-cover object-top"
                     />
