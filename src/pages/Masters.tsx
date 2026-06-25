@@ -457,7 +457,7 @@ export default function Masters() {
               <div className="text-sm" style={{ color: "var(--c-muted)" }}>
                 {filtered.length === masters.length ? `${masters.length} мастеров` : `${filtered.length} из ${masters.length}`}
               </div>
-              <div className="flex gap-1 rounded-xl p-1" style={{ background: "var(--filter-idle-bg)" }}>
+              <div className="hidden md:flex gap-1 rounded-xl p-1" style={{ background: "var(--filter-idle-bg)" }}>
                 <button
                   onClick={() => setView("grid")}
                   className="p-2 rounded-lg transition-all duration-200"
