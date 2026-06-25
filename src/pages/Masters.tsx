@@ -86,7 +86,9 @@ function SectionBadge({ icon, children }: { icon: string; children: React.ReactN
 function MasterCard({ master, specializations }: { master: Master; specializations: Specialization[] }) {
   const [hovered, setHovered] = useState(false);
   const placeholder = `https://placehold.co/200x200/2d1f14/8b7355?text=${encodeURIComponent(master.name[0])}`;
-  const avatar = master.avatar || placeholder;
+  const firstPhoto = master.photos?.[0];
+  const firstPhotoUrl = firstPhoto ? (typeof firstPhoto === "string" ? firstPhoto : firstPhoto.url) : null;
+  const avatar = firstPhotoUrl || master.avatar || placeholder;
   const masterSpecs = specializations.filter((s) => (master.specialization_ids || []).includes(s.id));
 
   return (
