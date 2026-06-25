@@ -146,7 +146,7 @@ function MasterCard({ master, specializations }: { master: Master; specializatio
           )}
 
           {master.tagline && (
-            <p className="text-xs mb-2 line-clamp-1 italic" style={{ color: "var(--c-text)" }}>«{master.tagline}»</p>
+            <p className="text-xs mb-2 italic" style={{ color: "var(--c-text)" }}>«{master.tagline}»</p>
           )}
 
           {/* Метрики */}
