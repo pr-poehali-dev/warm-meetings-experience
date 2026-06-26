@@ -264,13 +264,21 @@ def handle_profile(event, method, params, schema, headers):
         conn.close()
         if not row:
             return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Профиль не найден. Обратитесь к администратору.'})}
-        if not toggle_only and row['is_verified']:
-            tg_notify_admin(
-                f"✏️ Мастер обновил профиль\n"
-                f"Имя: {row['name']}\n"
-                f"Slug: {row['slug']}\n"
-                f"Ссылка: https://poehali.dev/masters/{row['slug']}"
-            )
+        if not toggle_only:
+            if not row['is_verified']:
+                tg_notify_admin(
+                    f"📋 Новая заявка на верификацию мастера\n"
+                    f"Имя: {row['name']}\n"
+                    f"Slug: {row['slug']}\n"
+                    f"Ссылка: https://poehali.dev/masters/{row['slug']}"
+                )
+            else:
+                tg_notify_admin(
+                    f"✏️ Мастер обновил профиль\n"
+                    f"Имя: {row['name']}\n"
+                    f"Slug: {row['slug']}\n"
+                    f"Ссылка: https://poehali.dev/masters/{row['slug']}"
+                )
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True, 'master': dict(row)}, default=str, ensure_ascii=False)}
 
     if method == 'GET' and params.get('admin') == '1':

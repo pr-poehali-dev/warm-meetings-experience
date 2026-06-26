@@ -299,6 +299,11 @@ def handle_request_verify(cur, conn, schema, user, body):
     conn.close()
     if not row:
         return respond(400, {'error': 'Баня уже верифицирована или не найдена'})
+    tg_notify_admin(
+        f"📋 Новая заявка на верификацию бани\n"
+        f"Название: {row['name']}\n"
+        f"ID: {row['id']}"
+    )
     return respond(200, {'message': 'Заявка на верификацию отправлена. Мы свяжемся с вами в течение 1-2 дней.'})
 
 
