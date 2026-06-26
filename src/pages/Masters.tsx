@@ -105,7 +105,7 @@ function MasterCard({ master, specializations }: { master: Master; specializatio
     >
       <div className="flex gap-4">
         {/* Аватар */}
-        <div className="relative shrink-0">
+        <div className="relative shrink-0 w-16 h-16">
           <div className="w-16 h-16 rounded-full overflow-hidden ring-2" style={{ ringColor: "var(--card-border)" }}>
             <img
               src={avatar}
