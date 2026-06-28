@@ -11,7 +11,11 @@ import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 const YANDEX_AUTH_URL = "https://functions.poehali.dev/1e5f15d8-b432-4341-9a18-4c408d3d80aa";
 
-type Mode = "login" | "reg-type" | "reg-specialist" | "reg-form" | "reg-verify";
+// reg-type      → выбор типа (гость / специалист)
+// reg-specialist → выбор специализации
+// reg-form      → форма
+// reg-verify    → подтверждение email
+type RegStep = "reg-type" | "reg-specialist" | "reg-form" | "reg-verify";
 
 interface Props {
   onHero?: boolean;
@@ -48,16 +52,20 @@ export default function AuthDropdown({ onHero = false }: Props) {
   const { login, register } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<Mode>("login");
 
-  // login state
+  // какой блок раскрыт: "register" | "login"
+  const [expanded, setExpanded] = useState<"register" | "login">("login");
+  // шаг регистрации
+  const [regStep, setRegStep] = useState<RegStep>("reg-type");
+
+  // login
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // register state
+  // register
   const [signupRoles, setSignupRoles] = useState<string[]>([]);
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
@@ -103,33 +111,26 @@ export default function AuthDropdown({ onHero = false }: Props) {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  const resetRegForm = () => {
+  const resetReg = () => {
+    setRegStep("reg-type");
+    setSignupRoles([]);
     setRegName(""); setRegEmail(""); setRegPhone("");
     setRegPassword(""); setRegConfirm("");
     setConsentTerms(false); setConsentPd(false);
-    setSignupRoles([]);
   };
 
-  const closeAndReset = () => {
-    setOpen(false);
-    setMode("login");
-    resetRegForm();
-  };
+  const closeAll = () => { setOpen(false); resetReg(); };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       await login(email, password, remember);
-      closeAndReset();
+      closeAll();
       navigate("/account");
     } catch (err) {
-      if (err instanceof HttpError && err.body?.code === "email_not_verified") {
-        closeAndReset(); navigate("/login"); return;
-      }
-      if (err instanceof Error && err.message === "2FA_REQUIRED") {
-        closeAndReset(); navigate("/login"); return;
-      }
+      if (err instanceof HttpError && err.body?.code === "email_not_verified") { closeAll(); navigate("/login"); return; }
+      if (err instanceof Error && err.message === "2FA_REQUIRED") { closeAll(); navigate("/login"); return; }
       toast.error(err instanceof Error ? err.message : "Ошибка входа");
     } finally {
       setSubmitting(false);
@@ -144,18 +145,14 @@ export default function AuthDropdown({ onHero = false }: Props) {
     setRegSubmitting(true);
     try {
       const result = await register({
-        name: regName,
-        email: regEmail,
-        phone: regPhone,
-        password: regPassword,
-        consent_pd: consentPd,
-        signup_roles: signupRoles,
+        name: regName, email: regEmail, phone: regPhone,
+        password: regPassword, consent_pd: consentPd, signup_roles: signupRoles,
       });
       if (result.email_verification_required) {
         setVerifyEmail(result.email || regEmail);
-        setMode("reg-verify");
+        setRegStep("reg-verify");
       } else {
-        closeAndReset();
+        closeAll();
         navigate(signupRoles.length ? "/workspace" : "/account");
       }
     } catch (err) {
@@ -170,7 +167,7 @@ export default function AuthDropdown({ onHero = false }: Props) {
     sessionStorage.removeItem("signup_return_url");
     sessionStorage.removeItem("signup_login_provider");
     sessionStorage.removeItem("signup_roles");
-    closeAndReset();
+    closeAll();
     if (provider === "vk") vkAuth.login(); else yandexAuth.login();
   };
 
@@ -183,12 +180,11 @@ export default function AuthDropdown({ onHero = false }: Props) {
     color: "var(--header-nav-color)",
   };
 
-  const inputClass = "w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1";
-  const fieldStyle = { color: "hsl(var(--foreground))" };
-  const dividerStyle = { borderColor: "hsl(var(--border))" };
-  const primaryStyle = { background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" };
-
-  const panelWidth = mode === "reg-type" || mode === "reg-specialist" ? "w-88" : "w-80";
+  const inp = "w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1.5";
+  const fg = { color: "hsl(var(--foreground))" };
+  const border = { borderColor: "hsl(var(--border))" };
+  const primary = { background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" };
+  const muted = { color: "hsl(var(--muted-foreground))" };
 
   return (
     <div className="relative">
@@ -199,64 +195,217 @@ export default function AuthDropdown({ onHero = false }: Props) {
 
       {open && (
         <>
-          <div className="fixed inset-0 z-[299]" onClick={closeAndReset} />
+          <div className="fixed inset-0 z-[299]" onClick={closeAll} />
           <div
             ref={panelRef}
-            className={`absolute right-0 top-[calc(100%+10px)] z-[300] ${panelWidth} rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200`}
+            className="absolute right-0 top-[calc(100%+10px)] z-[300] w-80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
             style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
           >
+            <div className="divide-y" style={border}>
 
-            {/* ── ЛОГИН ── */}
-            {mode === "login" && (
-              <div className="flex flex-col divide-y" style={dividerStyle}>
-
-                {/* Зарегистрироваться → открывает шаг выбора типа */}
+              {/* ══ БЛОК РЕГИСТРАЦИИ ══ */}
+              <div>
+                {/* Заголовок-аккордеон */}
                 <button
-                  className="flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/50"
-                  onClick={() => setMode("reg-type")}
+                  className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/40"
+                  onClick={() => {
+                    if (expanded === "register") { setExpanded("login"); resetReg(); }
+                    else setExpanded("register");
+                  }}
                 >
-                  <RadioDot active={false} />
+                  <RadioDot active={expanded === "register"} />
                   <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>
                     Зарегистрироваться
                   </span>
                 </button>
 
-                {/* Войти */}
-                <div>
-                  <div className="flex items-center gap-3 px-5 py-4">
-                    <RadioDot active={true} />
-                    <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>
-                      Войти в личный кабинет
-                    </span>
+                {/* Содержимое регистрации */}
+                {expanded === "register" && (
+
+                  <div className="px-5 pb-5">
+
+                    {/* ── ШАГ: ВЫБОР ТИПА ── */}
+                    {regStep === "reg-type" && (
+                      <>
+                        <p className="text-xs mb-4" style={muted}>Создайте учётную запись</p>
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => { setSignupRoles([]); setRegStep("reg-form"); }}
+                            className="group w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary"
+                            style={border}
+                          >
+                            <span className="text-xl shrink-0">🛁</span>
+                            <div>
+                              <p className="text-sm font-medium" style={fg}>Хочу в баню</p>
+                              <p className="text-xs" style={muted}>Записываюсь к мастерам, хожу на мероприятия</p>
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => setRegStep("reg-specialist")}
+                            className="group w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary"
+                            style={border}
+                          >
+                            <span className="text-xl shrink-0">🔥</span>
+                            <div>
+                              <p className="text-sm font-medium" style={fg}>Принимаю гостей</p>
+                              <p className="text-xs" style={muted}>Парю, провожу мероприятия или предоставляю баню</p>
+                            </div>
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* ── ШАГ: СПЕЦИАЛИЗАЦИЯ ── */}
+                    {regStep === "reg-specialist" && (
+                      <>
+                        <button onClick={() => setRegStep("reg-type")} className="flex items-center gap-1 text-xs mb-3 transition-colors hover:opacity-70" style={muted}>
+                          <Icon name="ArrowLeft" size={13} /> Назад
+                        </button>
+                        <p className="text-xs mb-4" style={muted}>Как будете принимать гостей?</p>
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => { setSignupRoles(["parmaster", "organizer"]); setRegStep("reg-form"); }}
+                            className="w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary"
+                            style={border}
+                          >
+                            <span className="text-xl shrink-0">🔥</span>
+                            <div>
+                              <p className="text-sm font-medium" style={fg}>Мастер и организатор</p>
+                              <p className="text-xs" style={muted}>Провожу парения, веду расписание и создаю мероприятия</p>
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => { setSignupRoles(["partner"]); setRegStep("reg-form"); }}
+                            className="w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary"
+                            style={border}
+                          >
+                            <span className="text-xl shrink-0">🏢</span>
+                            <div>
+                              <p className="text-sm font-medium" style={fg}>Управляющий</p>
+                              <p className="text-xs" style={muted}>Предоставляю баню как площадку для событий</p>
+                            </div>
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* ── ШАГ: ФОРМА ── */}
+                    {regStep === "reg-form" && (
+                      <>
+                        <button onClick={() => setRegStep(signupRoles.length ? "reg-specialist" : "reg-type")} className="flex items-center gap-1 text-xs mb-3 transition-colors hover:opacity-70" style={muted}>
+                          <Icon name="ArrowLeft" size={13} /> Назад
+                        </button>
+                        <form onSubmit={handleRegister} className="space-y-0">
+                          <div className="border-b" style={border}>
+                            <input type="email" placeholder="Email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required className={inp} style={fg} />
+                          </div>
+                          <div className="border-b" style={border}>
+                            <input type="text" placeholder="Имя и фамилия" value={regName} onChange={(e) => setRegName(e.target.value)} required className={inp} style={fg} />
+                          </div>
+                          <div className="border-b" style={border}>
+                            <input type="tel" placeholder="+7(___) ___-__-__" value={regPhone} onChange={(e) => setRegPhone(formatPhone(e.target.value))} required className={inp} style={fg} />
+                          </div>
+                          <div className="border-b flex items-center gap-2" style={border}>
+                            <input type={regShowPass ? "text" : "password"} placeholder="Пароль" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} required className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1.5" style={fg} />
+                            <button type="button" onClick={() => setRegShowPass((v) => !v)} className="text-muted-foreground hover:text-foreground transition-colors">
+                              <Icon name={regShowPass ? "EyeOff" : "Eye"} size={14} />
+                            </button>
+                          </div>
+                          <div className="border-b flex items-center gap-2" style={border}>
+                            <input type={regShowConfirm ? "text" : "password"} placeholder="Повторите пароль" value={regConfirm} onChange={(e) => setRegConfirm(e.target.value)} required className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1.5" style={fg} />
+                            <button type="button" onClick={() => setRegShowConfirm((v) => !v)} className="text-muted-foreground hover:text-foreground transition-colors">
+                              <Icon name={regShowConfirm ? "EyeOff" : "Eye"} size={14} />
+                            </button>
+                          </div>
+
+                          <div className="pt-3 space-y-2">
+                            <label className="flex items-start gap-2 cursor-pointer" onClick={() => setConsentTerms((v) => !v)}>
+                              <div className="w-4 h-4 mt-0.5 border rounded-sm flex items-center justify-center shrink-0 transition-colors" style={{ borderColor: "hsl(var(--border))", background: consentTerms ? "hsl(var(--primary))" : "transparent" }}>
+                                {consentTerms && <Icon name="Check" size={9} style={{ color: "white" } as React.CSSProperties} />}
+                              </div>
+                              <span className="text-xs leading-relaxed" style={muted}>
+                                Принимаю{" "}
+                                <a href="/terms" target="_blank" onClick={(e) => e.stopPropagation()} className="underline" style={{ color: "hsl(var(--primary))" }}>условия использования</a>
+                              </span>
+                            </label>
+                            <label className="flex items-start gap-2 cursor-pointer" onClick={() => setConsentPd((v) => !v)}>
+                              <div className="w-4 h-4 mt-0.5 border rounded-sm flex items-center justify-center shrink-0 transition-colors" style={{ borderColor: "hsl(var(--border))", background: consentPd ? "hsl(var(--primary))" : "transparent" }}>
+                                {consentPd && <Icon name="Check" size={9} style={{ color: "white" } as React.CSSProperties} />}
+                              </div>
+                              <span className="text-xs leading-relaxed" style={muted}>
+                                Согласен на обработку{" "}
+                                <a href="/privacy" target="_blank" onClick={(e) => e.stopPropagation()} className="underline" style={{ color: "hsl(var(--primary))" }}>персональных данных</a>
+                              </span>
+                            </label>
+                          </div>
+
+                          <button type="submit" disabled={regSubmitting || !consentTerms || !consentPd} className="mt-4 w-full py-2.5 rounded text-sm font-bold tracking-widest uppercase transition-opacity disabled:opacity-50" style={primary}>
+                            {regSubmitting ? <Icon name="Loader2" size={14} className="animate-spin mx-auto" /> : "Зарегистрироваться"}
+                          </button>
+                        </form>
+                      </>
+                    )}
+
+                    {/* ── ШАГ: ПОДТВЕРЖДЕНИЕ EMAIL ── */}
+                    {regStep === "reg-verify" && (
+                      <div className="text-center py-2">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "hsl(var(--muted))" }}>
+                          <Icon name="Mail" size={24} style={{ color: "hsl(var(--primary))" } as React.CSSProperties} />
+                        </div>
+                        <p className="text-sm font-semibold mb-1" style={fg}>Подтвердите почту</p>
+                        <p className="text-xs mb-4" style={muted}>
+                          Письмо отправлено на <span className="font-medium" style={fg}>{verifyEmail}</span>
+                        </p>
+                        <button onClick={closeAll} className="w-full py-2.5 rounded text-sm font-bold tracking-widest uppercase" style={primary}>
+                          Понятно
+                        </button>
+                      </div>
+                    )}
+
                   </div>
+                )}
+              </div>
 
+              {/* ══ БЛОК ВХОДА ══ */}
+              <div>
+                <button
+                  className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/40"
+                  onClick={() => setExpanded(expanded === "login" ? "register" : "login")}
+                >
+                  <RadioDot active={expanded === "login"} />
+                  <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>
+                    Войти в личный кабинет
+                  </span>
+                </button>
+
+                {expanded === "login" && (
                   <form onSubmit={handleLogin} className="px-5 pb-5 space-y-3">
-                    <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Введите данные для входа</p>
+                    <p className="text-xs" style={muted}>Введите данные для входа</p>
 
-                    <div className="border-b pb-3" style={dividerStyle}>
-                      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass} style={fieldStyle} />
+                    <div className="border-b pb-3" style={border}>
+                      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inp} style={fg} />
                     </div>
 
-                    <div className="border-b pb-3 flex items-center gap-2" style={dividerStyle}>
-                      <input type={showPass ? "text" : "password"} placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)} required className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1" style={fieldStyle} />
+                    <div className="border-b pb-3 flex items-center gap-2" style={border}>
+                      <input type={showPass ? "text" : "password"} placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)} required className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1" style={fg} />
                       <button type="button" onClick={() => setShowPass((v) => !v)} className="text-muted-foreground hover:text-foreground transition-colors">
                         <Icon name={showPass ? "EyeOff" : "Eye"} size={15} />
                       </button>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <button type="submit" disabled={submitting} className="px-6 py-2 rounded text-sm font-bold tracking-wider uppercase transition-opacity disabled:opacity-60" style={primaryStyle}>
+                      <button type="submit" disabled={submitting} className="px-6 py-2 rounded text-sm font-bold tracking-wider uppercase transition-opacity disabled:opacity-60" style={primary}>
                         {submitting ? <Icon name="Loader2" size={14} className="animate-spin" /> : "Войти"}
                       </button>
                       <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setRemember((v) => !v)}>
                         <div className="w-4 h-4 border rounded-sm flex items-center justify-center transition-colors" style={{ borderColor: "hsl(var(--border))", background: remember ? "hsl(var(--primary))" : "transparent" }}>
                           {remember && <Icon name="Check" size={10} style={{ color: "white" } as React.CSSProperties} />}
                         </div>
-                        <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Запомнить меня</span>
+                        <span className="text-xs" style={muted}>Запомнить меня</span>
                       </label>
                     </div>
 
-                    <button type="button" className="text-xs hover:underline" style={{ color: "hsl(var(--primary))" }} onClick={() => { closeAndReset(); navigate("/login?tab=forgot"); }}>
+                    <button type="button" className="text-xs hover:underline" style={{ color: "hsl(var(--primary))" }} onClick={() => { closeAll(); navigate("/login?tab=forgot"); }}>
                       Забыли пароль?
                     </button>
 
@@ -269,181 +418,10 @@ export default function AuthDropdown({ onHero = false }: Props) {
                       </button>
                     </div>
                   </form>
-                </div>
+                )}
               </div>
-            )}
 
-            {/* ── ШАГ 1: ВЫБОР ТИПА ── */}
-            {mode === "reg-type" && (
-              <div className="p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <button onClick={() => setMode("login")} className="text-muted-foreground hover:text-foreground transition-colors">
-                    <Icon name="ArrowLeft" size={16} />
-                  </button>
-                  <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>Регистрация</p>
-                </div>
-                <p className="text-sm font-semibold mb-4" style={{ color: "hsl(var(--foreground))" }}>
-                  Вы хотите ходить в баню или принимать гостей?
-                </p>
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={() => { setSignupRoles([]); setMode("reg-form"); }}
-                    className="group flex items-center gap-3 p-4 rounded-xl border-2 transition-all hover:border-primary text-left"
-                    style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted))" }}
-                  >
-                    <span className="text-2xl group-hover:scale-110 transition-transform">🛁</span>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Хочу в баню</p>
-                      <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Записываюсь к мастерам, хожу на мероприятия</p>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setMode("reg-specialist")}
-                    className="group flex items-center gap-3 p-4 rounded-xl border-2 transition-all hover:border-primary text-left"
-                    style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted))" }}
-                  >
-                    <span className="text-2xl group-hover:scale-110 transition-transform">🔥</span>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Принимаю гостей</p>
-                      <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Парю, провожу мероприятия или предоставляю баню</p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── ШАГ 2: СПЕЦИАЛИЗАЦИЯ ── */}
-            {mode === "reg-specialist" && (
-              <div className="p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <button onClick={() => setMode("reg-type")} className="text-muted-foreground hover:text-foreground transition-colors">
-                    <Icon name="ArrowLeft" size={16} />
-                  </button>
-                  <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>Как принимаете гостей?</p>
-                </div>
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={() => { setSignupRoles(["parmaster", "organizer"]); setMode("reg-form"); }}
-                    className="group flex items-center gap-3 p-4 rounded-xl border-2 transition-all hover:border-primary text-left"
-                    style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted))" }}
-                  >
-                    <span className="text-2xl group-hover:scale-110 transition-transform">🔥</span>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Мастер и организатор</p>
-                      <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Провожу парения, веду расписание и создаю мероприятия</p>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => { setSignupRoles(["partner"]); setMode("reg-form"); }}
-                    className="group flex items-center gap-3 p-4 rounded-xl border-2 transition-all hover:border-primary text-left"
-                    style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted))" }}
-                  >
-                    <span className="text-2xl group-hover:scale-110 transition-transform">🏢</span>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Управляющий</p>
-                      <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Предоставляю баню как площадку для событий</p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── ШАГ 3: ФОРМА ── */}
-            {mode === "reg-form" && (
-              <div className="p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <button onClick={() => setMode(signupRoles.length ? "reg-specialist" : "reg-type")} className="text-muted-foreground hover:text-foreground transition-colors">
-                    <Icon name="ArrowLeft" size={16} />
-                  </button>
-                  <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>Создать аккаунт</p>
-                </div>
-
-                <form onSubmit={handleRegister} className="space-y-3">
-                  <div className="border-b pb-2" style={dividerStyle}>
-                    <input type="text" placeholder="Имя и фамилия" value={regName} onChange={(e) => setRegName(e.target.value)} required className={inputClass} style={fieldStyle} />
-                  </div>
-                  <div className="border-b pb-2" style={dividerStyle}>
-                    <input type="email" placeholder="Email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required className={inputClass} style={fieldStyle} />
-                  </div>
-                  <div className="border-b pb-2" style={dividerStyle}>
-                    <input
-                      type="tel" placeholder="+7(___) ___-__-__"
-                      value={regPhone}
-                      onChange={(e) => setRegPhone(formatPhone(e.target.value))}
-                      required className={inputClass} style={fieldStyle}
-                    />
-                  </div>
-                  <div className="border-b pb-2 flex items-center gap-2" style={dividerStyle}>
-                    <input type={regShowPass ? "text" : "password"} placeholder="Пароль" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} required className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1" style={fieldStyle} />
-                    <button type="button" onClick={() => setRegShowPass((v) => !v)} className="text-muted-foreground hover:text-foreground transition-colors">
-                      <Icon name={regShowPass ? "EyeOff" : "Eye"} size={14} />
-                    </button>
-                  </div>
-                  <div className="border-b pb-2 flex items-center gap-2" style={dividerStyle}>
-                    <input type={regShowConfirm ? "text" : "password"} placeholder="Повторите пароль" value={regConfirm} onChange={(e) => setRegConfirm(e.target.value)} required className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1" style={fieldStyle} />
-                    <button type="button" onClick={() => setRegShowConfirm((v) => !v)} className="text-muted-foreground hover:text-foreground transition-colors">
-                      <Icon name={regShowConfirm ? "EyeOff" : "Eye"} size={14} />
-                    </button>
-                  </div>
-
-                  <label className="flex items-start gap-2 cursor-pointer" onClick={() => setConsentTerms((v) => !v)}>
-                    <div className="w-4 h-4 mt-0.5 border rounded-sm flex items-center justify-center shrink-0 transition-colors" style={{ borderColor: "hsl(var(--border))", background: consentTerms ? "hsl(var(--primary))" : "transparent" }}>
-                      {consentTerms && <Icon name="Check" size={9} style={{ color: "white" } as React.CSSProperties} />}
-                    </div>
-                    <span className="text-xs leading-relaxed" style={{ color: "hsl(var(--muted-foreground))" }}>
-                      Принимаю{" "}
-                      <a href="/terms" target="_blank" onClick={(e) => e.stopPropagation()} className="underline hover:no-underline" style={{ color: "hsl(var(--primary))" }}>
-                        условия использования
-                      </a>
-                    </span>
-                  </label>
-
-                  <label className="flex items-start gap-2 cursor-pointer" onClick={() => setConsentPd((v) => !v)}>
-                    <div className="w-4 h-4 mt-0.5 border rounded-sm flex items-center justify-center shrink-0 transition-colors" style={{ borderColor: "hsl(var(--border))", background: consentPd ? "hsl(var(--primary))" : "transparent" }}>
-                      {consentPd && <Icon name="Check" size={9} style={{ color: "white" } as React.CSSProperties} />}
-                    </div>
-                    <span className="text-xs leading-relaxed" style={{ color: "hsl(var(--muted-foreground))" }}>
-                      Согласен на обработку{" "}
-                      <a href="/privacy" target="_blank" onClick={(e) => e.stopPropagation()} className="underline hover:no-underline" style={{ color: "hsl(var(--primary))" }}>
-                        персональных данных
-                      </a>
-                    </span>
-                  </label>
-
-                  <button
-                    type="submit"
-                    disabled={regSubmitting || !consentTerms || !consentPd}
-                    className="w-full py-2.5 rounded text-sm font-bold tracking-wider uppercase transition-opacity disabled:opacity-50"
-                    style={primaryStyle}
-                  >
-                    {regSubmitting ? <Icon name="Loader2" size={14} className="animate-spin mx-auto" /> : "Зарегистрироваться"}
-                  </button>
-                </form>
-              </div>
-            )}
-
-            {/* ── ШАГ 4: ПРОВЕРКА EMAIL ── */}
-            {mode === "reg-verify" && (
-              <div className="p-5 text-center">
-                <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "hsl(var(--muted))" }}>
-                  <Icon name="Mail" size={28} style={{ color: "hsl(var(--primary))" } as React.CSSProperties} />
-                </div>
-                <p className="text-sm font-semibold mb-2" style={{ color: "hsl(var(--foreground))" }}>
-                  Подтвердите почту
-                </p>
-                <p className="text-xs mb-4" style={{ color: "hsl(var(--muted-foreground))" }}>
-                  Письмо отправлено на <span className="font-medium" style={{ color: "hsl(var(--foreground))" }}>{verifyEmail}</span>. Перейдите по ссылке в письме для активации.
-                </p>
-                <button
-                  onClick={closeAndReset}
-                  className="w-full py-2.5 rounded text-sm font-bold tracking-wider uppercase"
-                  style={primaryStyle}
-                >
-                  Понятно
-                </button>
-              </div>
-            )}
-
+            </div>
           </div>
         </>
       )}
