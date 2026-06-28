@@ -208,12 +208,27 @@ export default function AuthDropdown({ onHero = false }: Props) {
     }
   };
 
-  const handle2FAVerifyEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!twoFA || twoFACode.length !== 6) { toast.error("Введите 6-значный код"); return; }
+  const submitEmailCode = async (code: string) => {
+    if (!twoFA || code.length !== 6) return;
     setTwoFAVerifying(true);
     try {
-      const data = await userAuthApi2FA.loginVerifyEmail(twoFA.pendingToken, twoFACode);
+      const data = await userAuthApi2FA.loginVerifyEmail(twoFA.pendingToken, code);
+      on2FASuccess(data.token, data.user);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Неверный код");
+    } finally { setTwoFAVerifying(false); }
+  };
+
+  const handle2FAVerifyEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitEmailCode(twoFACode);
+  };
+
+  const submitTotpCode = async (code: string) => {
+    if (!twoFA || code.length < 6) return;
+    setTwoFAVerifying(true);
+    try {
+      const data = await userAuthApi2FA.verify2FA(twoFA.pendingToken, code);
       on2FASuccess(data.token, data.user);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Неверный код");
@@ -222,14 +237,7 @@ export default function AuthDropdown({ onHero = false }: Props) {
 
   const handle2FAVerifyTotp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!twoFA || twoFACode.length < 6) { toast.error("Введите код из приложения"); return; }
-    setTwoFAVerifying(true);
-    try {
-      const data = await userAuthApi2FA.verify2FA(twoFA.pendingToken, twoFACode);
-      on2FASuccess(data.token, data.user);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Неверный код");
-    } finally { setTwoFAVerifying(false); }
+    await submitTotpCode(twoFACode);
   };
 
   const handle2FAResend = async () => {
@@ -381,7 +389,7 @@ export default function AuthDropdown({ onHero = false }: Props) {
                     <p className="text-xs mb-4" style={muted}>Отправили код на {twoFAEmailMasked && <span className="font-medium" style={fg}>{twoFAEmailMasked}</span>}</p>
                     <form onSubmit={handle2FAVerifyEmail} className="space-y-3">
                       <div className="border-b pb-2" style={borderStyle}>
-                        <input type="text" inputMode="numeric" placeholder="000000" value={twoFACode} onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 6); setTwoFACode(v); if (v.length === 6) setTimeout(() => handle2FAVerifyEmail(new Event("submit") as unknown as React.FormEvent), 0); }} autoFocus className="w-full bg-transparent text-center text-lg tracking-[0.4em] font-mono outline-none py-1.5" style={fg} />
+                        <input type="text" inputMode="numeric" placeholder="000000" value={twoFACode} onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 6); setTwoFACode(v); if (v.length === 6) submitEmailCode(v); }} autoFocus className="w-full bg-transparent text-center text-lg tracking-[0.4em] font-mono outline-none py-1.5" style={fg} />
                       </div>
                       {twoFAVerifying && (
                         <div className="flex justify-center py-1">
@@ -406,7 +414,7 @@ export default function AuthDropdown({ onHero = false }: Props) {
                     <p className="text-xs mb-4" style={muted}>Введите код из приложения-аутентификатора</p>
                     <form onSubmit={handle2FAVerifyTotp} className="space-y-3">
                       <div className="border-b pb-2" style={borderStyle}>
-                        <input type="text" placeholder="000000" value={twoFACode} onChange={(e) => { const v = e.target.value.replace(/[^0-9a-f]/gi, "").slice(0, 8); setTwoFACode(v); if (v.length >= 6) setTimeout(() => handle2FAVerifyTotp(new Event("submit") as unknown as React.FormEvent), 0); }} autoFocus className="w-full bg-transparent text-center text-lg tracking-[0.4em] font-mono outline-none py-1.5" style={fg} />
+                        <input type="text" placeholder="000000" value={twoFACode} onChange={(e) => { const v = e.target.value.replace(/[^0-9a-f]/gi, "").slice(0, 8); setTwoFACode(v); if (v.length >= 6) submitTotpCode(v); }} autoFocus className="w-full bg-transparent text-center text-lg tracking-[0.4em] font-mono outline-none py-1.5" style={fg} />
                       </div>
                       {twoFAVerifying && (
                         <div className="flex justify-center py-1">
