@@ -575,8 +575,8 @@ export default function AuthDropdown({ onHero = false }: Props) {
                               {!consentsAccepted && (
                                 <p className="text-xs text-center" style={muted}>Примите обязательные условия выше для регистрации через соцсети</p>
                               )}
-                              <VkLoginButton onClick={() => startSocialSignup("vk")} isLoading={vkAuth.isLoading} disabled={!consentsAccepted} buttonText="Регистрация через ВК" className="w-full" />
-                              <YandexLoginButton onClick={() => startSocialSignup("yandex")} isLoading={yandexAuth.isLoading} disabled={!consentsAccepted} buttonText="Регистрация через Яндекс" className="w-full" />
+                              <VkLoginButton onClick={() => startSocialSignup("vk")} isLoading={vkAuth.isLoading} disabled={!consentsAccepted} buttonText="Войти через ВК" className="w-full" />
+                              <YandexLoginButton onClick={() => startSocialSignup("yandex")} isLoading={yandexAuth.isLoading} disabled={!consentsAccepted} buttonText="Войти через Яндекс" className="w-full" />
                             </div>
                           </form>
                         </>
