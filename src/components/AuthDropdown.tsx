@@ -316,8 +316,14 @@ export default function AuthDropdown({ onHero = false }: Props) {
           <div className="fixed inset-0 z-[299]" onClick={closeAll} />
           <div
             ref={panelRef}
-            className="absolute right-0 top-[calc(100%+10px)] z-[300] w-80 max-w-[calc(100vw-1rem)] rounded-2xl shadow-2xl overflow-y-auto max-h-[80vh] animate-in fade-in slide-in-from-top-2 duration-200"
-            style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+            className="fixed z-[300] w-80 rounded-2xl shadow-2xl overflow-y-auto max-h-[80vh] animate-in fade-in slide-in-from-top-2 duration-200"
+            style={{
+              background: "hsl(var(--card))",
+              border: "1px solid hsl(var(--border))",
+              width: "min(320px, calc(100vw - 1rem))",
+              top: btnRef.current ? btnRef.current.getBoundingClientRect().bottom + 10 : 0,
+              right: btnRef.current ? Math.max(8, window.innerWidth - btnRef.current.getBoundingClientRect().right) : 8,
+            }}
           >
             {/* ══ 2FA — поверх всего, когда активно ══ */}
             {twoFA ? (
