@@ -6,11 +6,12 @@ import { HttpError } from "@/lib/http";
 import { toast } from "sonner";
 import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
 import { useYandexAuth } from "@/components/extensions/yandex-auth/useYandexAuth";
+import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 const YANDEX_AUTH_URL = "https://functions.poehali.dev/1e5f15d8-b432-4341-9a18-4c408d3d80aa";
 
-type Tab = "login";
+type Mode = "login" | "reg-type" | "reg-specialist" | "reg-form" | "reg-verify";
 
 interface Props {
   onHero?: boolean;
@@ -32,16 +33,44 @@ function YandexIcon() {
   );
 }
 
+function RadioDot({ active }: { active: boolean }) {
+  return (
+    <div
+      className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors"
+      style={{ borderColor: active ? "hsl(var(--primary))" : "hsl(var(--border))" }}
+    >
+      {active && <div className="w-2 h-2 rounded-full" style={{ background: "hsl(var(--primary))" }} />}
+    </div>
+  );
+}
+
 export default function AuthDropdown({ onHero = false }: Props) {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>("login");
+  const [mode, setMode] = useState<Mode>("login");
+
+  // login state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // register state
+  const [signupRoles, setSignupRoles] = useState<string[]>([]);
+  const [regName, setRegName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPhone, setRegPhone] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regConfirm, setRegConfirm] = useState("");
+  const [regShowPass, setRegShowPass] = useState(false);
+  const [regShowConfirm, setRegShowConfirm] = useState(false);
+  const [consentTerms, setConsentTerms] = useState(false);
+  const [consentPd, setConsentPd] = useState(false);
+  const [regSubmitting, setRegSubmitting] = useState(false);
+  const [verifyEmail, setVerifyEmail] = useState("");
+
   const panelRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
@@ -53,7 +82,6 @@ export default function AuthDropdown({ onHero = false }: Props) {
       logout: `${VK_AUTH_URL}?action=logout`,
     },
   });
-
   const yandexAuth = useYandexAuth({
     apiUrls: {
       authUrl: `${YANDEX_AUTH_URL}?action=auth-url`,
@@ -69,35 +97,71 @@ export default function AuthDropdown({ onHero = false }: Props) {
       if (
         panelRef.current && !panelRef.current.contains(e.target as Node) &&
         btnRef.current && !btnRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
+      ) setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
+
+  const resetRegForm = () => {
+    setRegName(""); setRegEmail(""); setRegPhone("");
+    setRegPassword(""); setRegConfirm("");
+    setConsentTerms(false); setConsentPd(false);
+    setSignupRoles([]);
+  };
+
+  const closeAndReset = () => {
+    setOpen(false);
+    setMode("login");
+    resetRegForm();
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
       await login(email, password, remember);
-      setOpen(false);
+      closeAndReset();
       navigate("/account");
     } catch (err) {
       if (err instanceof HttpError && err.body?.code === "email_not_verified") {
-        setOpen(false);
-        navigate("/login");
-        return;
+        closeAndReset(); navigate("/login"); return;
       }
       if (err instanceof Error && err.message === "2FA_REQUIRED") {
-        setOpen(false);
-        navigate("/login");
-        return;
+        closeAndReset(); navigate("/login"); return;
       }
       toast.error(err instanceof Error ? err.message : "Ошибка входа");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (regPassword !== regConfirm) { toast.error("Пароли не совпадают"); return; }
+    if (!isPhoneComplete(regPhone)) { toast.error("Введите полный номер телефона"); return; }
+    if (!consentTerms || !consentPd) { toast.error("Необходимо принять условия"); return; }
+    setRegSubmitting(true);
+    try {
+      const result = await register({
+        name: regName,
+        email: regEmail,
+        phone: regPhone,
+        password: regPassword,
+        consent_pd: consentPd,
+        signup_roles: signupRoles,
+      });
+      if (result.email_verification_required) {
+        setVerifyEmail(result.email || regEmail);
+        setMode("reg-verify");
+      } else {
+        closeAndReset();
+        navigate(signupRoles.length ? "/workspace" : "/account");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Ошибка регистрации");
+    } finally {
+      setRegSubmitting(false);
     }
   };
 
@@ -106,185 +170,280 @@ export default function AuthDropdown({ onHero = false }: Props) {
     sessionStorage.removeItem("signup_return_url");
     sessionStorage.removeItem("signup_login_provider");
     sessionStorage.removeItem("signup_roles");
-    setOpen(false);
-    if (provider === "vk") vkAuth.login();
-    else yandexAuth.login();
+    closeAndReset();
+    if (provider === "vk") vkAuth.login(); else yandexAuth.login();
   };
 
   const btnClass = `flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-300 ${
     onHero ? "text-white border border-white/30 hover:bg-white/15" : ""
   }`;
-  const btnStyle = onHero
-    ? {}
-    : {
-        background: "var(--header-login-bg)",
-        border: "1px solid var(--header-login-border)",
-        color: "var(--header-nav-color)",
-      };
+  const btnStyle = onHero ? {} : {
+    background: "var(--header-login-bg)",
+    border: "1px solid var(--header-login-border)",
+    color: "var(--header-nav-color)",
+  };
+
+  const inputClass = "w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1";
+  const fieldStyle = { color: "hsl(var(--foreground))" };
+  const dividerStyle = { borderColor: "hsl(var(--border))" };
+  const primaryStyle = { background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" };
+
+  const panelWidth = mode === "reg-type" || mode === "reg-specialist" ? "w-88" : "w-80";
 
   return (
     <div className="relative">
-      <button
-        ref={btnRef}
-        className={btnClass}
-        style={btnStyle}
-        onClick={() => setOpen((v) => !v)}
-      >
+      <button ref={btnRef} className={btnClass} style={btnStyle} onClick={() => setOpen((v) => !v)}>
         <Icon name="LogIn" size={16} />
         <span className="hidden sm:inline">Войти</span>
       </button>
 
       {open && (
         <>
-          <div className="fixed inset-0 z-[299]" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-[299]" onClick={closeAndReset} />
           <div
             ref={panelRef}
-            className="absolute right-0 top-[calc(100%+10px)] z-[300] w-80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
-            style={{
-              background: "hsl(var(--card))",
-              border: "1px solid hsl(var(--border))",
-            }}
+            className={`absolute right-0 top-[calc(100%+10px)] z-[300] ${panelWidth} rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200`}
+            style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
           >
-            <div className="flex flex-col divide-y" style={{ borderColor: "hsl(var(--border))" }}>
 
-              {/* Регистрация */}
-              <button
-                className="flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/50"
-                onClick={() => { setOpen(false); navigate("/register"); }}
-              >
-                <div
-                  className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
-                  style={{ borderColor: "hsl(var(--border))" }}
-                />
-                <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>
-                  Зарегистрироваться
-                </span>
-              </button>
+            {/* ── ЛОГИН ── */}
+            {mode === "login" && (
+              <div className="flex flex-col divide-y" style={dividerStyle}>
 
-              {/* Вход по email */}
-              <div>
+                {/* Зарегистрироваться → открывает шаг выбора типа */}
                 <button
-                  className="flex items-center gap-3 px-5 py-4 w-full text-left transition-colors hover:bg-muted/50"
-                  onClick={() => setTab("login")}
+                  className="flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/50"
+                  onClick={() => setMode("reg-type")}
                 >
-                  <div
-                    className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
-                    style={{ borderColor: tab === "login" ? "hsl(var(--primary))" : "hsl(var(--border))" }}
-                  >
-                    {tab === "login" && (
-                      <div className="w-2 h-2 rounded-full" style={{ background: "hsl(var(--primary))" }} />
-                    )}
-                  </div>
+                  <RadioDot active={false} />
                   <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>
-                    Войти в личный кабинет
+                    Зарегистрироваться
                   </span>
                 </button>
 
-                {tab === "login" && (
-                  <form onSubmit={handleLogin} className="px-5 pb-5 space-y-3">
-                    <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
-                      Введите данные для входа
-                    </p>
+                {/* Войти */}
+                <div>
+                  <div className="flex items-center gap-3 px-5 py-4">
+                    <RadioDot active={true} />
+                    <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>
+                      Войти в личный кабинет
+                    </span>
+                  </div>
 
-                    <div className="border-b pb-3" style={{ borderColor: "hsl(var(--border))" }}>
-                      <input
-                        type="email"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1"
-                        style={{ color: "hsl(var(--foreground))" }}
-                      />
+                  <form onSubmit={handleLogin} className="px-5 pb-5 space-y-3">
+                    <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Введите данные для входа</p>
+
+                    <div className="border-b pb-3" style={dividerStyle}>
+                      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClass} style={fieldStyle} />
                     </div>
 
-                    <div className="border-b pb-3 flex items-center gap-2" style={{ borderColor: "hsl(var(--border))" }}>
-                      <input
-                        type={showPass ? "text" : "password"}
-                        placeholder="Пароль"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1"
-                        style={{ color: "hsl(var(--foreground))" }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPass((v) => !v)}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                      >
+                    <div className="border-b pb-3 flex items-center gap-2" style={dividerStyle}>
+                      <input type={showPass ? "text" : "password"} placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)} required className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1" style={fieldStyle} />
+                      <button type="button" onClick={() => setShowPass((v) => !v)} className="text-muted-foreground hover:text-foreground transition-colors">
                         <Icon name={showPass ? "EyeOff" : "Eye"} size={15} />
                       </button>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <button
-                        type="submit"
-                        disabled={submitting}
-                        className="px-6 py-2 rounded text-sm font-bold tracking-wider uppercase transition-opacity disabled:opacity-60"
-                        style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
-                      >
-                        {submitting
-                          ? <Icon name="Loader2" size={14} className="animate-spin" />
-                          : "Войти"
-                        }
+                      <button type="submit" disabled={submitting} className="px-6 py-2 rounded text-sm font-bold tracking-wider uppercase transition-opacity disabled:opacity-60" style={primaryStyle}>
+                        {submitting ? <Icon name="Loader2" size={14} className="animate-spin" /> : "Войти"}
                       </button>
-
-                      <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <div
-                          className="w-4 h-4 border rounded-sm flex items-center justify-center transition-colors"
-                          style={{
-                            borderColor: "hsl(var(--border))",
-                            background: remember ? "hsl(var(--primary))" : "transparent",
-                          }}
-                          onClick={() => setRemember((v) => !v)}
-                        >
+                      <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setRemember((v) => !v)}>
+                        <div className="w-4 h-4 border rounded-sm flex items-center justify-center transition-colors" style={{ borderColor: "hsl(var(--border))", background: remember ? "hsl(var(--primary))" : "transparent" }}>
                           {remember && <Icon name="Check" size={10} style={{ color: "white" } as React.CSSProperties} />}
                         </div>
-                        <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
-                          Запомнить меня
-                        </span>
+                        <span className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Запомнить меня</span>
                       </label>
                     </div>
 
-                    <button
-                      type="button"
-                      className="text-xs transition-colors hover:underline"
-                      style={{ color: "hsl(var(--primary))" }}
-                      onClick={() => { setOpen(false); navigate("/login?tab=forgot"); }}
-                    >
+                    <button type="button" className="text-xs hover:underline" style={{ color: "hsl(var(--primary))" }} onClick={() => { closeAndReset(); navigate("/login?tab=forgot"); }}>
                       Забыли пароль?
                     </button>
 
                     <div className="flex gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => startSocialLogin("vk")}
-                        disabled={vkAuth.isLoading}
-                        className="flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-sm font-medium text-white transition-opacity disabled:opacity-60 hover:opacity-90"
-                        style={{ background: "#0077FF" }}
-                      >
-                        {vkAuth.isLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <VkIcon />}
-                        ВК
+                      <button type="button" onClick={() => startSocialLogin("vk")} disabled={vkAuth.isLoading} className="flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-sm font-medium text-white transition-opacity disabled:opacity-60 hover:opacity-90" style={{ background: "#0077FF" }}>
+                        {vkAuth.isLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <VkIcon />} ВК
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => startSocialLogin("yandex")}
-                        disabled={yandexAuth.isLoading}
-                        className="flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-sm font-medium text-white transition-opacity disabled:opacity-60 hover:opacity-90"
-                        style={{ background: "#FC3F1D" }}
-                      >
-                        {yandexAuth.isLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <YandexIcon />}
-                        Яндекс
+                      <button type="button" onClick={() => startSocialLogin("yandex")} disabled={yandexAuth.isLoading} className="flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-sm font-medium text-white transition-opacity disabled:opacity-60 hover:opacity-90" style={{ background: "#FC3F1D" }}>
+                        {yandexAuth.isLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <YandexIcon />} Яндекс
                       </button>
                     </div>
                   </form>
-                )}
+                </div>
               </div>
+            )}
 
+            {/* ── ШАГ 1: ВЫБОР ТИПА ── */}
+            {mode === "reg-type" && (
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <button onClick={() => setMode("login")} className="text-muted-foreground hover:text-foreground transition-colors">
+                    <Icon name="ArrowLeft" size={16} />
+                  </button>
+                  <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>Регистрация</p>
+                </div>
+                <p className="text-sm font-semibold mb-4" style={{ color: "hsl(var(--foreground))" }}>
+                  Вы хотите ходить в баню или принимать гостей?
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => { setSignupRoles([]); setMode("reg-form"); }}
+                    className="group flex items-center gap-3 p-4 rounded-xl border-2 transition-all hover:border-primary text-left"
+                    style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted))" }}
+                  >
+                    <span className="text-2xl group-hover:scale-110 transition-transform">🛁</span>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Хочу в баню</p>
+                      <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Записываюсь к мастерам, хожу на мероприятия</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setMode("reg-specialist")}
+                    className="group flex items-center gap-3 p-4 rounded-xl border-2 transition-all hover:border-primary text-left"
+                    style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted))" }}
+                  >
+                    <span className="text-2xl group-hover:scale-110 transition-transform">🔥</span>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Принимаю гостей</p>
+                      <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Парю, провожу мероприятия или предоставляю баню</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
 
+            {/* ── ШАГ 2: СПЕЦИАЛИЗАЦИЯ ── */}
+            {mode === "reg-specialist" && (
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <button onClick={() => setMode("reg-type")} className="text-muted-foreground hover:text-foreground transition-colors">
+                    <Icon name="ArrowLeft" size={16} />
+                  </button>
+                  <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>Как принимаете гостей?</p>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => { setSignupRoles(["parmaster", "organizer"]); setMode("reg-form"); }}
+                    className="group flex items-center gap-3 p-4 rounded-xl border-2 transition-all hover:border-primary text-left"
+                    style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted))" }}
+                  >
+                    <span className="text-2xl group-hover:scale-110 transition-transform">🔥</span>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Мастер и организатор</p>
+                      <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Провожу парения, веду расписание и создаю мероприятия</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setSignupRoles(["partner"]); setMode("reg-form"); }}
+                    className="group flex items-center gap-3 p-4 rounded-xl border-2 transition-all hover:border-primary text-left"
+                    style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--muted))" }}
+                  >
+                    <span className="text-2xl group-hover:scale-110 transition-transform">🏢</span>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: "hsl(var(--foreground))" }}>Управляющий</p>
+                      <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>Предоставляю баню как площадку для событий</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
 
-            </div>
+            {/* ── ШАГ 3: ФОРМА ── */}
+            {mode === "reg-form" && (
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <button onClick={() => setMode(signupRoles.length ? "reg-specialist" : "reg-type")} className="text-muted-foreground hover:text-foreground transition-colors">
+                    <Icon name="ArrowLeft" size={16} />
+                  </button>
+                  <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>Создать аккаунт</p>
+                </div>
+
+                <form onSubmit={handleRegister} className="space-y-3">
+                  <div className="border-b pb-2" style={dividerStyle}>
+                    <input type="text" placeholder="Имя и фамилия" value={regName} onChange={(e) => setRegName(e.target.value)} required className={inputClass} style={fieldStyle} />
+                  </div>
+                  <div className="border-b pb-2" style={dividerStyle}>
+                    <input type="email" placeholder="Email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required className={inputClass} style={fieldStyle} />
+                  </div>
+                  <div className="border-b pb-2" style={dividerStyle}>
+                    <input
+                      type="tel" placeholder="+7(___) ___-__-__"
+                      value={regPhone}
+                      onChange={(e) => setRegPhone(formatPhone(e.target.value))}
+                      required className={inputClass} style={fieldStyle}
+                    />
+                  </div>
+                  <div className="border-b pb-2 flex items-center gap-2" style={dividerStyle}>
+                    <input type={regShowPass ? "text" : "password"} placeholder="Пароль" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} required className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1" style={fieldStyle} />
+                    <button type="button" onClick={() => setRegShowPass((v) => !v)} className="text-muted-foreground hover:text-foreground transition-colors">
+                      <Icon name={regShowPass ? "EyeOff" : "Eye"} size={14} />
+                    </button>
+                  </div>
+                  <div className="border-b pb-2 flex items-center gap-2" style={dividerStyle}>
+                    <input type={regShowConfirm ? "text" : "password"} placeholder="Повторите пароль" value={regConfirm} onChange={(e) => setRegConfirm(e.target.value)} required className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1" style={fieldStyle} />
+                    <button type="button" onClick={() => setRegShowConfirm((v) => !v)} className="text-muted-foreground hover:text-foreground transition-colors">
+                      <Icon name={regShowConfirm ? "EyeOff" : "Eye"} size={14} />
+                    </button>
+                  </div>
+
+                  <label className="flex items-start gap-2 cursor-pointer" onClick={() => setConsentTerms((v) => !v)}>
+                    <div className="w-4 h-4 mt-0.5 border rounded-sm flex items-center justify-center shrink-0 transition-colors" style={{ borderColor: "hsl(var(--border))", background: consentTerms ? "hsl(var(--primary))" : "transparent" }}>
+                      {consentTerms && <Icon name="Check" size={9} style={{ color: "white" } as React.CSSProperties} />}
+                    </div>
+                    <span className="text-xs leading-relaxed" style={{ color: "hsl(var(--muted-foreground))" }}>
+                      Принимаю{" "}
+                      <a href="/terms" target="_blank" onClick={(e) => e.stopPropagation()} className="underline hover:no-underline" style={{ color: "hsl(var(--primary))" }}>
+                        условия использования
+                      </a>
+                    </span>
+                  </label>
+
+                  <label className="flex items-start gap-2 cursor-pointer" onClick={() => setConsentPd((v) => !v)}>
+                    <div className="w-4 h-4 mt-0.5 border rounded-sm flex items-center justify-center shrink-0 transition-colors" style={{ borderColor: "hsl(var(--border))", background: consentPd ? "hsl(var(--primary))" : "transparent" }}>
+                      {consentPd && <Icon name="Check" size={9} style={{ color: "white" } as React.CSSProperties} />}
+                    </div>
+                    <span className="text-xs leading-relaxed" style={{ color: "hsl(var(--muted-foreground))" }}>
+                      Согласен на обработку{" "}
+                      <a href="/privacy" target="_blank" onClick={(e) => e.stopPropagation()} className="underline hover:no-underline" style={{ color: "hsl(var(--primary))" }}>
+                        персональных данных
+                      </a>
+                    </span>
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={regSubmitting || !consentTerms || !consentPd}
+                    className="w-full py-2.5 rounded text-sm font-bold tracking-wider uppercase transition-opacity disabled:opacity-50"
+                    style={primaryStyle}
+                  >
+                    {regSubmitting ? <Icon name="Loader2" size={14} className="animate-spin mx-auto" /> : "Зарегистрироваться"}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* ── ШАГ 4: ПРОВЕРКА EMAIL ── */}
+            {mode === "reg-verify" && (
+              <div className="p-5 text-center">
+                <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "hsl(var(--muted))" }}>
+                  <Icon name="Mail" size={28} style={{ color: "hsl(var(--primary))" } as React.CSSProperties} />
+                </div>
+                <p className="text-sm font-semibold mb-2" style={{ color: "hsl(var(--foreground))" }}>
+                  Подтвердите почту
+                </p>
+                <p className="text-xs mb-4" style={{ color: "hsl(var(--muted-foreground))" }}>
+                  Письмо отправлено на <span className="font-medium" style={{ color: "hsl(var(--foreground))" }}>{verifyEmail}</span>. Перейдите по ссылке в письме для активации.
+                </p>
+                <button
+                  onClick={closeAndReset}
+                  className="w-full py-2.5 rounded text-sm font-bold tracking-wider uppercase"
+                  style={primaryStyle}
+                >
+                  Понятно
+                </button>
+              </div>
+            )}
+
           </div>
         </>
       )}
