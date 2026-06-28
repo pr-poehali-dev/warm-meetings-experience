@@ -81,7 +81,7 @@ export default function AuthDropdown({ onHero = false }: Props) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await login(email, password);
+      await login(email, password, remember);
       setOpen(false);
       navigate("/account");
     } catch (err) {

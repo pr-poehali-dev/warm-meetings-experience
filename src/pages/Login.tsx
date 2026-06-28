@@ -74,7 +74,7 @@ export default function Login() {
     setSubmitting(true);
     setUnverifiedEmail(null);
     try {
-      const loggedUser = await login(email, password);
+      const loggedUser = await login(email, password, true);
       navigate(getRedirectPath(loggedUser));
     } catch (err) {
       if (err instanceof HttpError && err.body?.code === "email_not_verified") {

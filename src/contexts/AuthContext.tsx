@@ -5,7 +5,7 @@ import { HttpError } from "@/lib/http";
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, remember?: boolean) => Promise<void>;
   loginWithToken: (token: string, user: User) => void;
   register: (data: { email: string; name: string; phone: string; password: string; consent_pd: boolean; consent_photo?: string | null; signup_roles?: string[] }) => Promise<{ email_verification_required?: boolean; email?: string; message?: string }>;
   logout: () => Promise<void>;
@@ -32,28 +32,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("auth:unauthorized", onUnauthorized);
   }, []);
 
+  // Helpers: читаем/пишем токен в то хранилище, где он живёт
+  const getTokenStorage = (): Storage =>
+    sessionStorage.getItem("user_token") ? sessionStorage : localStorage;
+
+  const saveToken = (token: string, remember: boolean) => {
+    const storage = remember ? localStorage : sessionStorage;
+    storage.setItem("user_token", token);
+    // Чистим противоположное хранилище на всякий случай
+    (remember ? sessionStorage : localStorage).removeItem("user_token");
+  };
+
+  const getToken = (): string | null =>
+    localStorage.getItem("user_token") || sessionStorage.getItem("user_token");
+
+  const clearToken = () => {
+    localStorage.removeItem("user_token");
+    localStorage.removeItem("user_data");
+    sessionStorage.removeItem("user_token");
+    sessionStorage.removeItem("user_data");
+  };
+
   const checkAuth = async () => {
-    const token = localStorage.getItem("user_token");
+    const token = getToken();
     if (!token) {
       setLoading(false);
       return;
     }
+    const storage = getTokenStorage();
     try {
       const data = await userAuthApi.check(token);
-      // Сразу подгружаем полный профиль с ролями
       try {
         const profileData = await userProfileApi.getProfile();
         setUser(profileData.user);
-        localStorage.setItem("user_data", JSON.stringify(profileData.user));
+        storage.setItem("user_data", JSON.stringify(profileData.user));
       } catch {
         setUser(data.user);
       }
     } catch (err) {
       if (err instanceof HttpError && err.status === 401) {
-        localStorage.removeItem("user_token");
-        localStorage.removeItem("user_data");
+        clearToken();
       } else {
-        const cached = localStorage.getItem("user_data");
+        const cached = storage.getItem("user_data");
         if (cached) {
           try { setUser(JSON.parse(cached)); } catch { /* ignore */ }
         }
@@ -63,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, remember = true) => {
     const data = await userAuthApi.login({ email, password });
     if (data.requires_2fa) {
       const err = new Error("2FA_REQUIRED") as Error & {
@@ -80,14 +100,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       err.has_yandex = !!data.has_yandex;
       throw err;
     }
-    localStorage.setItem("user_token", data.token);
-    // Роли приходят в ответе login; дополнительно обновляем профиль для актуальности
+    saveToken(data.token, remember);
+    const storage = remember ? localStorage : sessionStorage;
     let userWithRoles = data.user;
     try {
       const profileData = await userProfileApi.getProfile();
       userWithRoles = profileData.user;
     } catch { /* используем данные из login */ }
-    localStorage.setItem("user_data", JSON.stringify(userWithRoles));
+    storage.setItem("user_data", JSON.stringify(userWithRoles));
     setUser(userWithRoles);
     return userWithRoles;
   };
@@ -115,12 +135,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    const token = localStorage.getItem("user_token");
+    const token = getToken();
     if (token) {
       try { await userAuthApi.logout(token); } catch { /* ignore */ }
     }
-    localStorage.removeItem("user_token");
-    localStorage.removeItem("user_data");
+    clearToken();
     setUser(null);
   };
 
