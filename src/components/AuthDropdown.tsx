@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import { HttpError } from "@/lib/http";
@@ -7,7 +7,13 @@ import { userAuthApi2FA, User } from "@/lib/user-api";
 import { toast } from "sonner";
 import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
 import { useYandexAuth } from "@/components/extensions/yandex-auth/useYandexAuth";
+import { VkLoginButton } from "@/components/extensions/vk-auth/VkLoginButton";
+import { YandexLoginButton } from "@/components/extensions/yandex-auth/YandexLoginButton";
 import { formatPhone, isPhoneComplete } from "@/hooks/usePhoneMask";
+import BathCaptcha, { useBathCaptcha } from "@/components/BathCaptcha";
+import ConsentModal from "@/components/ConsentModal";
+import AppendixLinkModal from "@/components/AppendixLinkModal";
+import EmailVerifyPanel from "@/components/auth/EmailVerifyPanel";
 
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 const YANDEX_AUTH_URL = "https://functions.poehali.dev/1e5f15d8-b432-4341-9a18-4c408d3d80aa";
@@ -35,14 +41,6 @@ function VkIcon() {
   );
 }
 
-function YandexIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0">
-      <path fill="currentColor" d="M12.04.04C5.43.04.08,5.39.08,12s5.35,11.96,11.96,11.96,11.96-5.35,11.96-11.96S18.64.04,12.04.04ZM16.04,19.09h-2.47V6.82h-1.11c-2.03,0-3.09,1.03-3.09,2.54,0,1.71.74,2.51,2.25,3.54l1.25.84-3.59,5.37h-2.68l3.22-4.8c-1.85-1.33-2.89-2.62-2.89-4.8,0-2.74,1.91-4.6,5.53-4.6h3.59v14.19Z" />
-    </svg>
-  );
-}
-
 function RadioDot({ active }: { active: boolean }) {
   return (
     <div
@@ -54,11 +52,22 @@ function RadioDot({ active }: { active: boolean }) {
   );
 }
 
+function Checkbox({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <div
+      onClick={onChange}
+      className="w-4 h-4 mt-0.5 border rounded-sm flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+      style={{ borderColor: "hsl(var(--border))", background: checked ? "hsl(var(--primary))" : "transparent" }}
+    >
+      {checked && <Icon name="Check" size={9} style={{ color: "white" } as React.CSSProperties} />}
+    </div>
+  );
+}
+
 export default function AuthDropdown({ onHero = false }: Props) {
   const { login, register, loginWithToken } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-
   const [expanded, setExpanded] = useState<"register" | "login">("login");
   const [regStep, setRegStep] = useState<RegStep>("reg-type");
 
@@ -89,8 +98,11 @@ export default function AuthDropdown({ onHero = false }: Props) {
   const [regShowConfirm, setRegShowConfirm] = useState(false);
   const [consentTerms, setConsentTerms] = useState(false);
   const [consentPd, setConsentPd] = useState(false);
+  const [consentRules, setConsentRules] = useState(false);
+  const [consentPhoto, setConsentPhoto] = useState<"yes" | "no" | null>(null);
   const [regSubmitting, setRegSubmitting] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState("");
+  const captcha = useBathCaptcha();
 
   const panelRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -111,6 +123,9 @@ export default function AuthDropdown({ onHero = false }: Props) {
       logout: `${YANDEX_AUTH_URL}?action=logout`,
     },
   });
+
+  const consentsAccepted = consentTerms && consentPd && consentRules;
+  const allRequired = consentsAccepted && isPhoneComplete(regPhone);
 
   useEffect(() => {
     if (!open) return;
@@ -134,7 +149,9 @@ export default function AuthDropdown({ onHero = false }: Props) {
     setRegStep("reg-type"); setSignupRoles([]);
     setRegName(""); setRegEmail(""); setRegPhone("");
     setRegPassword(""); setRegConfirm("");
-    setConsentTerms(false); setConsentPd(false);
+    setConsentTerms(false); setConsentPd(false); setConsentRules(false);
+    setConsentPhoto(null); setVerifyEmail("");
+    captcha.reset?.();
   };
 
   const reset2FA = () => {
@@ -182,8 +199,7 @@ export default function AuthDropdown({ onHero = false }: Props) {
         };
         setTwoFA(state);
         setTwoFAEmailMasked(state.emailMasked || "");
-        const screen: TwoFAScreen = method === "totp" ? "totp" : method === "email" ? "email" : "choose";
-        setTwoFAScreen(screen);
+        setTwoFAScreen(method === "totp" ? "totp" : method === "email" ? "email" : "choose");
         return;
       }
       toast.error(err instanceof Error ? err.message : "Ошибка входа");
@@ -194,32 +210,26 @@ export default function AuthDropdown({ onHero = false }: Props) {
 
   const handle2FAVerifyEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!twoFA) return;
-    if (twoFACode.length !== 6) { toast.error("Введите 6-значный код из письма"); return; }
+    if (!twoFA || twoFACode.length !== 6) { toast.error("Введите 6-значный код"); return; }
     setTwoFAVerifying(true);
     try {
       const data = await userAuthApi2FA.loginVerifyEmail(twoFA.pendingToken, twoFACode);
       on2FASuccess(data.token, data.user);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Неверный код");
-    } finally {
-      setTwoFAVerifying(false);
-    }
+    } finally { setTwoFAVerifying(false); }
   };
 
   const handle2FAVerifyTotp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!twoFA) return;
-    if (twoFACode.length < 6) { toast.error("Введите код из приложения"); return; }
+    if (!twoFA || twoFACode.length < 6) { toast.error("Введите код из приложения"); return; }
     setTwoFAVerifying(true);
     try {
       const data = await userAuthApi2FA.verify2FA(twoFA.pendingToken, twoFACode);
       on2FASuccess(data.token, data.user);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Неверный код");
-    } finally {
-      setTwoFAVerifying(false);
-    }
+    } finally { setTwoFAVerifying(false); }
   };
 
   const handle2FAResend = async () => {
@@ -232,9 +242,7 @@ export default function AuthDropdown({ onHero = false }: Props) {
       toast.success("Код отправлен повторно");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Не удалось отправить");
-    } finally {
-      setTwoFAResending(false);
-    }
+    } finally { setTwoFAResending(false); }
   };
 
   const handle2FAOAuth = async (provider: "vk" | "yandex") => {
@@ -258,26 +266,33 @@ export default function AuthDropdown({ onHero = false }: Props) {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (regPassword !== regConfirm) { toast.error("Пароли не совпадают"); return; }
-    if (!isPhoneComplete(regPhone)) { toast.error("Введите полный номер телефона"); return; }
-    if (!consentTerms || !consentPd) { toast.error("Необходимо принять условия"); return; }
+    if (!allRequired) { toast.error("Необходимо принять все обязательные условия"); return; }
+    if (!captcha.isValid) { toast.error("Ответьте на вопрос-проверку"); return; }
     setRegSubmitting(true);
     try {
-      const result = await register({
+      await register({
         name: regName, email: regEmail, phone: regPhone,
-        password: regPassword, consent_pd: consentPd, signup_roles: signupRoles,
+        password: regPassword, consent_pd: consentPd,
+        consent_photo: consentPhoto, signup_roles: signupRoles,
       });
-      if (result.email_verification_required) {
-        setVerifyEmail(result.email || regEmail);
-        setRegStep("reg-verify");
-      } else {
-        closeAll();
-        navigate(signupRoles.length ? "/workspace" : "/account");
-      }
+      setVerifyEmail(regEmail);
+      setRegStep("reg-verify");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Ошибка регистрации");
     } finally {
       setRegSubmitting(false);
     }
+  };
+
+  const startSocialSignup = (provider: "vk" | "yandex") => {
+    if (!consentsAccepted) { toast.error("Сначала примите обязательные условия"); return; }
+    sessionStorage.removeItem("oauth_login_only");
+    const redirectTo = signupRoles.some(r => ["parmaster","organizer","partner"].includes(r)) ? "/workspace" : "/account";
+    sessionStorage.setItem("signup_return_url", redirectTo);
+    sessionStorage.setItem("signup_login_provider", provider);
+    sessionStorage.setItem("signup_roles", JSON.stringify(signupRoles));
+    closeAll();
+    if (provider === "vk") vkAuth.login(); else yandexAuth.login();
   };
 
   const startSocialLogin = (provider: "vk" | "yandex") => {
@@ -300,7 +315,7 @@ export default function AuthDropdown({ onHero = false }: Props) {
 
   const inp = "w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1.5";
   const fg = { color: "hsl(var(--foreground))" };
-  const border = { borderColor: "hsl(var(--border))" };
+  const borderStyle = { borderColor: "hsl(var(--border))" };
   const primary = { background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" };
   const muted = { color: "hsl(var(--muted-foreground))" };
 
@@ -323,175 +338,90 @@ export default function AuthDropdown({ onHero = false }: Props) {
               width: "min(360px, calc(100vw - 2rem))",
             }}
           >
-            {/* ══ 2FA — поверх всего, когда активно ══ */}
+            {/* ══ 2FA ══ */}
             {twoFA ? (
               <div className="p-5">
-
-                {/* choose */}
                 {twoFAScreen === "choose" && (
                   <>
                     <div className="flex items-center gap-2 mb-4">
-                      <button onClick={reset2FA} className="text-muted-foreground hover:text-foreground transition-colors">
-                        <Icon name="ArrowLeft" size={16} />
-                      </button>
-                      <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>
-                        Подтверждение входа
-                      </p>
+                      <button onClick={reset2FA} className="text-muted-foreground hover:text-foreground transition-colors"><Icon name="ArrowLeft" size={16} /></button>
+                      <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>Подтверждение входа</p>
                     </div>
                     <p className="text-xs mb-4" style={muted}>Выберите способ подтверждения</p>
                     <div className="space-y-2">
-                      <button
-                        onClick={() => { setTwoFAScreen("totp"); setTwoFACode(""); }}
-                        className="w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary"
-                        style={border}
-                      >
+                      <button onClick={() => { setTwoFAScreen("totp"); setTwoFACode(""); }} className="w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary" style={borderStyle}>
                         <Icon name="Shield" size={18} style={{ color: "hsl(var(--primary))" } as React.CSSProperties} />
                         <span className="text-sm" style={fg}>Код из приложения</span>
                       </button>
-                      <button
-                        onClick={() => { setTwoFAScreen("email"); setTwoFACode(""); }}
-                        className="w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary"
-                        style={border}
-                      >
+                      <button onClick={() => { setTwoFAScreen("email"); setTwoFACode(""); }} className="w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary" style={borderStyle}>
                         <Icon name="Mail" size={18} style={{ color: "hsl(var(--primary))" } as React.CSSProperties} />
                         <div>
                           <p className="text-sm" style={fg}>Код из письма</p>
                           {twoFAEmailMasked && <p className="text-xs" style={muted}>{twoFAEmailMasked}</p>}
                         </div>
                       </button>
-                      {twoFA.hasVk && (
-                        <button
-                          onClick={() => handle2FAOAuth("vk")}
-                          className="w-full flex items-center gap-3 p-3 rounded-lg text-white text-sm font-medium transition-opacity hover:opacity-90"
-                          style={{ background: "#0077FF" }}
-                        >
-                          <VkIcon /> Войти через ВКонтакте
-                        </button>
-                      )}
-                      {twoFA.hasYandex && (
-                        <button
-                          onClick={() => handle2FAOAuth("yandex")}
-                          className="w-full flex items-center gap-3 p-3 rounded-lg text-white text-sm font-medium transition-opacity hover:opacity-90"
-                          style={{ background: "#FC3F1D" }}
-                        >
-                          <YandexIcon /> Войти через Яндекс
-                        </button>
-                      )}
+                      {twoFA.hasVk && <button onClick={() => handle2FAOAuth("vk")} className="w-full flex items-center gap-3 p-3 rounded-lg text-white text-sm font-medium hover:opacity-90" style={{ background: "#0077FF" }}><VkIcon /> ВКонтакте</button>}
                     </div>
-                    <button onClick={reset2FA} className="mt-3 w-full text-xs text-center hover:underline" style={muted}>
-                      Вернуться к вводу пароля
-                    </button>
+                    <button onClick={reset2FA} className="mt-3 w-full text-xs text-center hover:underline" style={muted}>Вернуться к вводу пароля</button>
                   </>
                 )}
-
-                {/* email */}
                 {twoFAScreen === "email" && (
                   <>
                     <div className="flex items-center gap-2 mb-4">
-                      <button onClick={() => { setTwoFAScreen("choose"); setTwoFACode(""); }} className="text-muted-foreground hover:text-foreground transition-colors">
-                        <Icon name="ArrowLeft" size={16} />
-                      </button>
-                      <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>
-                        Код из письма
-                      </p>
+                      <button onClick={() => { setTwoFAScreen("choose"); setTwoFACode(""); }} className="text-muted-foreground hover:text-foreground"><Icon name="ArrowLeft" size={16} /></button>
+                      <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>Код из письма</p>
                     </div>
-                    <p className="text-xs mb-4" style={muted}>
-                      Отправили 6-значный код на{" "}
-                      {twoFAEmailMasked
-                        ? <span className="font-medium" style={fg}>{twoFAEmailMasked}</span>
-                        : "ваш email"}
-                    </p>
+                    <p className="text-xs mb-4" style={muted}>Отправили код на {twoFAEmailMasked && <span className="font-medium" style={fg}>{twoFAEmailMasked}</span>}</p>
                     <form onSubmit={handle2FAVerifyEmail} className="space-y-3">
-                      <div className="border-b pb-2" style={border}>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          placeholder="000000"
-                          value={twoFACode}
-                          onChange={(e) => setTwoFACode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
-                          autoFocus
-                          className="w-full bg-transparent text-center text-lg tracking-[0.4em] font-mono outline-none py-1.5"
-                          style={fg}
-                        />
+                      <div className="border-b pb-2" style={borderStyle}>
+                        <input type="text" inputMode="numeric" placeholder="000000" value={twoFACode} onChange={(e) => setTwoFACode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))} autoFocus className="w-full bg-transparent text-center text-lg tracking-[0.4em] font-mono outline-none py-1.5" style={fg} />
                       </div>
-                      <button
-                        type="submit"
-                        disabled={twoFAVerifying || twoFACode.length !== 6}
-                        className="w-full py-2.5 rounded text-sm font-bold tracking-widest uppercase transition-opacity disabled:opacity-50"
-                        style={primary}
-                      >
+                      <button type="submit" disabled={twoFAVerifying || twoFACode.length !== 6} className="w-full py-2.5 rounded text-sm font-bold tracking-widest uppercase disabled:opacity-50" style={primary}>
                         {twoFAVerifying ? <Icon name="Loader2" size={14} className="animate-spin mx-auto" /> : "Войти"}
                       </button>
                       <div className="flex items-center justify-between">
-                        <button type="button" onClick={() => { setTwoFAScreen("choose"); setTwoFACode(""); }} className="text-xs hover:underline" style={muted}>
-                          Другой способ
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handle2FAResend}
-                          disabled={twoFAResending || twoFACooldown > 0}
-                          className="text-xs hover:underline disabled:opacity-50"
-                          style={{ color: "hsl(var(--primary))" }}
-                        >
+                        <button type="button" onClick={() => { setTwoFAScreen("choose"); setTwoFACode(""); }} className="text-xs hover:underline" style={muted}>Другой способ</button>
+                        <button type="button" onClick={handle2FAResend} disabled={twoFAResending || twoFACooldown > 0} className="text-xs hover:underline disabled:opacity-50" style={{ color: "hsl(var(--primary))" }}>
                           {twoFACooldown > 0 ? `Повтор через ${twoFACooldown} с` : twoFAResending ? "Отправка..." : "Отправить ещё раз"}
                         </button>
                       </div>
                     </form>
                   </>
                 )}
-
-                {/* totp */}
                 {twoFAScreen === "totp" && (
                   <>
                     <div className="flex items-center gap-2 mb-4">
-                      <button onClick={() => { setTwoFAScreen("choose"); setTwoFACode(""); }} className="text-muted-foreground hover:text-foreground transition-colors">
-                        <Icon name="ArrowLeft" size={16} />
-                      </button>
-                      <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>
-                        Код из приложения
-                      </p>
+                      <button onClick={() => { setTwoFAScreen("choose"); setTwoFACode(""); }} className="text-muted-foreground hover:text-foreground"><Icon name="ArrowLeft" size={16} /></button>
+                      <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>Код из приложения</p>
                     </div>
-                    <p className="text-xs mb-4" style={muted}>Введите код из приложения-аутентификатора или резервный код</p>
+                    <p className="text-xs mb-4" style={muted}>Введите код из приложения-аутентификатора</p>
                     <form onSubmit={handle2FAVerifyTotp} className="space-y-3">
-                      <div className="border-b pb-2" style={border}>
-                        <input
-                          type="text"
-                          placeholder="000000"
-                          value={twoFACode}
-                          onChange={(e) => setTwoFACode(e.target.value.replace(/[^0-9a-f]/gi, "").slice(0, 8))}
-                          autoFocus
-                          className="w-full bg-transparent text-center text-lg tracking-[0.4em] font-mono outline-none py-1.5"
-                          style={fg}
-                        />
+                      <div className="border-b pb-2" style={borderStyle}>
+                        <input type="text" placeholder="000000" value={twoFACode} onChange={(e) => setTwoFACode(e.target.value.replace(/[^0-9a-f]/gi, "").slice(0, 8))} autoFocus className="w-full bg-transparent text-center text-lg tracking-[0.4em] font-mono outline-none py-1.5" style={fg} />
                       </div>
-                      <button
-                        type="submit"
-                        disabled={twoFAVerifying || twoFACode.length < 6}
-                        className="w-full py-2.5 rounded text-sm font-bold tracking-widest uppercase transition-opacity disabled:opacity-50"
-                        style={primary}
-                      >
+                      <button type="submit" disabled={twoFAVerifying || twoFACode.length < 6} className="w-full py-2.5 rounded text-sm font-bold tracking-widest uppercase disabled:opacity-50" style={primary}>
                         {twoFAVerifying ? <Icon name="Loader2" size={14} className="animate-spin mx-auto" /> : "Подтвердить"}
                       </button>
-                      <button type="button" onClick={reset2FA} className="w-full text-xs text-center hover:underline" style={muted}>
-                        Вернуться к вводу пароля
-                      </button>
+                      <button type="button" onClick={reset2FA} className="w-full text-xs text-center hover:underline" style={muted}>Вернуться к вводу пароля</button>
                     </form>
                   </>
                 )}
-
               </div>
             ) : (
 
               /* ══ ОСНОВНАЯ ПАНЕЛЬ ══ */
-              <div className="divide-y" style={border}>
+              <div className="divide-y" style={borderStyle}>
 
                 {/* ── РЕГИСТРАЦИЯ ── */}
                 <div>
                   <button
                     className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/40"
-                    onClick={() => { closeAll(); navigate("/register"); }}
+                    onClick={() => {
+                      if (expanded === "register") { setExpanded("login"); resetReg(); }
+                      else setExpanded("register");
+                    }}
                   >
-                    <RadioDot active={false} />
+                    <RadioDot active={expanded === "register"} />
                     <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>
                       Зарегистрироваться
                     </span>
@@ -500,19 +430,20 @@ export default function AuthDropdown({ onHero = false }: Props) {
                   {expanded === "register" && (
                     <div className="px-5 pb-5">
 
+                      {/* Шаг 1 — выбор типа */}
                       {regStep === "reg-type" && (
                         <>
                           <p className="text-base font-bold mb-1 leading-snug" style={fg}>Вы хотите ходить в баню или принимать гостей?</p>
                           <p className="text-xs mb-4" style={muted}>Выберите, чтобы мы настроили всё под вас</p>
                           <div className="space-y-2">
-                            <button onClick={() => { setSignupRoles([]); setRegStep("reg-form"); }} className="group w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary" style={border}>
+                            <button onClick={() => { setSignupRoles([]); setRegStep("reg-form"); }} className="w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary" style={borderStyle}>
                               <span className="text-xl shrink-0">🛁</span>
                               <div>
                                 <p className="text-sm font-medium" style={fg}>Хочу в баню</p>
                                 <p className="text-xs" style={muted}>Записываюсь к мастерам, хожу на мероприятия</p>
                               </div>
                             </button>
-                            <button onClick={() => setRegStep("reg-specialist")} className="group w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary" style={border}>
+                            <button onClick={() => setRegStep("reg-specialist")} className="w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary" style={borderStyle}>
                               <span className="text-xl shrink-0">🔥</span>
                               <div>
                                 <p className="text-sm font-medium" style={fg}>Принимаю гостей</p>
@@ -523,21 +454,22 @@ export default function AuthDropdown({ onHero = false }: Props) {
                         </>
                       )}
 
+                      {/* Шаг 2 — специализация */}
                       {regStep === "reg-specialist" && (
                         <>
-                          <button onClick={() => setRegStep("reg-type")} className="flex items-center gap-1 text-xs mb-3 hover:opacity-70 transition-opacity" style={muted}>
+                          <button onClick={() => setRegStep("reg-type")} className="flex items-center gap-1 text-xs mb-3 hover:opacity-70" style={muted}>
                             <Icon name="ArrowLeft" size={13} /> Назад
                           </button>
-                          <p className="text-xs mb-4" style={muted}>Как будете принимать гостей?</p>
-                          <div className="space-y-2">
-                            <button onClick={() => { setSignupRoles(["parmaster", "organizer"]); setRegStep("reg-form"); }} className="w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary" style={border}>
+                          <p className="text-sm font-semibold mb-1" style={fg}>Как будете принимать гостей?</p>
+                          <div className="space-y-2 mt-3">
+                            <button onClick={() => { setSignupRoles(["parmaster", "organizer"]); setRegStep("reg-form"); }} className="w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary" style={borderStyle}>
                               <span className="text-xl shrink-0">🔥</span>
                               <div>
                                 <p className="text-sm font-medium" style={fg}>Мастер и организатор</p>
                                 <p className="text-xs" style={muted}>Провожу парения, веду расписание и создаю мероприятия</p>
                               </div>
                             </button>
-                            <button onClick={() => { setSignupRoles(["partner"]); setRegStep("reg-form"); }} className="w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary" style={border}>
+                            <button onClick={() => { setSignupRoles(["partner"]); setRegStep("reg-form"); }} className="w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary" style={borderStyle}>
                               <span className="text-xl shrink-0">🏢</span>
                               <div>
                                 <p className="text-sm font-medium" style={fg}>Управляющий</p>
@@ -548,53 +480,111 @@ export default function AuthDropdown({ onHero = false }: Props) {
                         </>
                       )}
 
+                      {/* Шаг 3 — форма */}
                       {regStep === "reg-form" && (
                         <>
-                          <button onClick={() => setRegStep(signupRoles.length ? "reg-specialist" : "reg-type")} className="flex items-center gap-1 text-xs mb-3 hover:opacity-70 transition-opacity" style={muted}>
+                          <button onClick={() => setRegStep(signupRoles.length ? "reg-specialist" : "reg-type")} className="flex items-center gap-1 text-xs mb-3 hover:opacity-70" style={muted}>
                             <Icon name="ArrowLeft" size={13} /> Назад
                           </button>
                           <form onSubmit={handleRegister} className="space-y-0">
-                            <div className="border-b" style={border}><input type="email" placeholder="Email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required className={inp} style={fg} /></div>
-                            <div className="border-b" style={border}><input type="text" placeholder="Имя и фамилия" value={regName} onChange={(e) => setRegName(e.target.value)} required className={inp} style={fg} /></div>
-                            <div className="border-b" style={border}><input type="tel" placeholder="+7(___) ___-__-__" value={regPhone} onChange={(e) => setRegPhone(formatPhone(e.target.value))} required className={inp} style={fg} /></div>
-                            <div className="border-b flex items-center gap-2" style={border}>
+                            <div className="border-b" style={borderStyle}>
+                              <input type="text" placeholder="Имя" value={regName} onChange={(e) => setRegName(e.target.value)} required className={inp} style={fg} />
+                            </div>
+                            <div className="border-b" style={borderStyle}>
+                              <input type="email" placeholder="Email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required className={inp} style={fg} />
+                            </div>
+                            <div className="border-b" style={borderStyle}>
+                              <input type="tel" placeholder="+7(___) ___-__-__" value={regPhone} onChange={(e) => setRegPhone(formatPhone(e.target.value))} required className={inp} style={fg} />
+                            </div>
+                            <div className="border-b flex items-center gap-2" style={borderStyle}>
                               <input type={regShowPass ? "text" : "password"} placeholder="Пароль" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} required className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1.5" style={fg} />
-                              <button type="button" onClick={() => setRegShowPass((v) => !v)} className="text-muted-foreground hover:text-foreground transition-colors"><Icon name={regShowPass ? "EyeOff" : "Eye"} size={14} /></button>
+                              <button type="button" onClick={() => setRegShowPass(v => !v)} className="text-muted-foreground hover:text-foreground"><Icon name={regShowPass ? "EyeOff" : "Eye"} size={14} /></button>
                             </div>
-                            <div className="border-b flex items-center gap-2" style={border}>
+                            <div className="border-b flex items-center gap-2" style={borderStyle}>
                               <input type={regShowConfirm ? "text" : "password"} placeholder="Повторите пароль" value={regConfirm} onChange={(e) => setRegConfirm(e.target.value)} required className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1.5" style={fg} />
-                              <button type="button" onClick={() => setRegShowConfirm((v) => !v)} className="text-muted-foreground hover:text-foreground transition-colors"><Icon name={regShowConfirm ? "EyeOff" : "Eye"} size={14} /></button>
+                              <button type="button" onClick={() => setRegShowConfirm(v => !v)} className="text-muted-foreground hover:text-foreground"><Icon name={regShowConfirm ? "EyeOff" : "Eye"} size={14} /></button>
                             </div>
-                            <div className="pt-3 space-y-2">
-                              <label className="flex items-start gap-2 cursor-pointer" onClick={() => setConsentTerms((v) => !v)}>
-                                <div className="w-4 h-4 mt-0.5 border rounded-sm flex items-center justify-center shrink-0 transition-colors" style={{ borderColor: "hsl(var(--border))", background: consentTerms ? "hsl(var(--primary))" : "transparent" }}>
-                                  {consentTerms && <Icon name="Check" size={9} style={{ color: "white" } as React.CSSProperties} />}
-                                </div>
-                                <span className="text-xs leading-relaxed" style={muted}>Принимаю <a href="/terms" target="_blank" onClick={(e) => e.stopPropagation()} className="underline" style={{ color: "hsl(var(--primary))" }}>условия использования</a></span>
+
+                            {/* Обязательные условия */}
+                            <div className="pt-3 space-y-2.5 border-b pb-3" style={borderStyle}>
+                              <p className="text-xs font-medium uppercase tracking-wide" style={muted}>Обязательные условия</p>
+                              <label className="flex items-start gap-2 cursor-pointer">
+                                <Checkbox checked={consentTerms} onChange={() => setConsentTerms(v => !v)} />
+                                <span className="text-xs leading-relaxed" style={muted}>
+                                  Принимаю условия{" "}
+                                  <Link to="/terms" target="_blank" onClick={e => e.stopPropagation()} className="underline" style={{ color: "hsl(var(--primary))" }}>Пользовательского соглашения</Link>
+                                </span>
                               </label>
-                              <label className="flex items-start gap-2 cursor-pointer" onClick={() => setConsentPd((v) => !v)}>
-                                <div className="w-4 h-4 mt-0.5 border rounded-sm flex items-center justify-center shrink-0 transition-colors" style={{ borderColor: "hsl(var(--border))", background: consentPd ? "hsl(var(--primary))" : "transparent" }}>
-                                  {consentPd && <Icon name="Check" size={9} style={{ color: "white" } as React.CSSProperties} />}
-                                </div>
-                                <span className="text-xs leading-relaxed" style={muted}>Согласен на обработку <a href="/privacy" target="_blank" onClick={(e) => e.stopPropagation()} className="underline" style={{ color: "hsl(var(--primary))" }}>персональных данных</a></span>
+                              <label className="flex items-start gap-2 cursor-pointer">
+                                <Checkbox checked={consentPd} onChange={() => setConsentPd(v => !v)} />
+                                <span className="text-xs leading-relaxed" style={muted}>
+                                  Даю согласие на <ConsentModal trigger="обработку персональных данных" />{" "}
+                                  (<AppendixLinkModal appendixId={1} label="Приложение №1" />)
+                                </span>
+                              </label>
+                              <label className="flex items-start gap-2 cursor-pointer">
+                                <Checkbox checked={consentRules} onChange={() => setConsentRules(v => !v)} />
+                                <span className="text-xs leading-relaxed" style={muted}>
+                                  Ознакомлен(а) с{" "}
+                                  <Link to="/terms#rules" target="_blank" onClick={e => e.stopPropagation()} className="underline" style={{ color: "hsl(var(--primary))" }}>Правилами сообщества</Link>
+                                  {" "}и обязуюсь соблюдать
+                                </span>
                               </label>
                             </div>
-                            <button type="submit" disabled={regSubmitting || !consentTerms || !consentPd} className="mt-4 w-full py-2.5 rounded text-sm font-bold tracking-widest uppercase transition-opacity disabled:opacity-50" style={primary}>
+
+                            {/* Согласие на фото */}
+                            <div className="pt-3 pb-3 border-b space-y-2" style={borderStyle}>
+                              <p className="text-xs leading-relaxed" style={muted}>
+                                Использование моих фото с мероприятий в рекламных целях{" "}
+                                (<AppendixLinkModal appendixId={4} label="Приложение №4" />)
+                              </p>
+                              <div className="flex gap-2">
+                                <button type="button" onClick={() => setConsentPhoto("yes")} className={`flex-1 py-2 px-3 rounded-lg border text-xs font-medium transition-colors ${consentPhoto === "yes" ? "border-green-500 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400" : "border-border text-muted-foreground hover:border-foreground/30"}`}>
+                                  Согласен(на)
+                                </button>
+                                <button type="button" onClick={() => setConsentPhoto("no")} className={`flex-1 py-2 px-3 rounded-lg border text-xs font-medium transition-colors ${consentPhoto === "no" ? "border-red-400 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400" : "border-border text-muted-foreground hover:border-foreground/30"}`}>
+                                  Запрещаю
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Капча */}
+                            <div className="pt-3">
+                              <BathCaptcha {...captcha} />
+                            </div>
+
+                            <button type="submit" disabled={regSubmitting || !allRequired || !captcha.isValid} className="mt-3 w-full py-2.5 rounded text-sm font-bold tracking-widest uppercase transition-opacity disabled:opacity-50" style={primary}>
                               {regSubmitting ? <Icon name="Loader2" size={14} className="animate-spin mx-auto" /> : "Зарегистрироваться"}
                             </button>
+
+                            {/* Соцсети */}
+                            <div className="mt-3 space-y-2">
+                              <div className="relative">
+                                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" style={borderStyle} /></div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                  <span className="px-2" style={{ background: "hsl(var(--card))", ...muted }}>или</span>
+                                </div>
+                              </div>
+                              {!consentsAccepted && (
+                                <p className="text-xs text-center" style={muted}>Примите обязательные условия выше для регистрации через соцсети</p>
+                              )}
+                              <VkLoginButton onClick={() => startSocialSignup("vk")} isLoading={vkAuth.isLoading} disabled={!consentsAccepted} buttonText="Регистрация через ВК" className="w-full" />
+                              <YandexLoginButton onClick={() => startSocialSignup("yandex")} isLoading={yandexAuth.isLoading} disabled={!consentsAccepted} buttonText="Регистрация через Яндекс" className="w-full" />
+                            </div>
                           </form>
                         </>
                       )}
 
+                      {/* Шаг 4 — подтверждение email */}
                       {regStep === "reg-verify" && (
-                        <div className="text-center py-2">
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: "hsl(var(--muted))" }}>
-                            <Icon name="Mail" size={24} style={{ color: "hsl(var(--primary))" } as React.CSSProperties} />
-                          </div>
-                          <p className="text-sm font-semibold mb-1" style={fg}>Подтвердите почту</p>
-                          <p className="text-xs mb-4" style={muted}>Письмо отправлено на <span className="font-medium" style={fg}>{verifyEmail}</span></p>
-                          <button onClick={closeAll} className="w-full py-2.5 rounded text-sm font-bold tracking-widest uppercase" style={primary}>Понятно</button>
-                        </div>
+                        <EmailVerifyPanel
+                          email={verifyEmail}
+                          onVerified={(token, verifiedUser) => {
+                            loginWithToken(token, verifiedUser);
+                            closeAll();
+                            navigate(getRedirectPath(verifiedUser));
+                          }}
+                        />
                       )}
 
                     </div>
@@ -616,20 +606,20 @@ export default function AuthDropdown({ onHero = false }: Props) {
                   {expanded === "login" && (
                     <form onSubmit={handleLogin} className="px-5 pb-5 space-y-3">
                       <p className="text-xs" style={muted}>Введите данные для входа</p>
-                      <div className="border-b pb-3" style={border}>
+                      <div className="border-b pb-3" style={borderStyle}>
                         <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required className={inp} style={fg} />
                       </div>
-                      <div className="border-b pb-3 flex items-center gap-2" style={border}>
+                      <div className="border-b pb-3 flex items-center gap-2" style={borderStyle}>
                         <input type={showPass ? "text" : "password"} placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)} required className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1" style={fg} />
-                        <button type="button" onClick={() => setShowPass((v) => !v)} className="text-muted-foreground hover:text-foreground transition-colors">
+                        <button type="button" onClick={() => setShowPass(v => !v)} className="text-muted-foreground hover:text-foreground">
                           <Icon name={showPass ? "EyeOff" : "Eye"} size={15} />
                         </button>
                       </div>
                       <div className="flex items-center justify-between">
-                        <button type="submit" disabled={submitting} className="px-6 py-2 rounded text-sm font-bold tracking-wider uppercase transition-opacity disabled:opacity-60" style={primary}>
+                        <button type="submit" disabled={submitting} className="px-6 py-2 rounded text-sm font-bold tracking-wider uppercase disabled:opacity-60" style={primary}>
                           {submitting ? <Icon name="Loader2" size={14} className="animate-spin" /> : "Войти"}
                         </button>
-                        <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setRemember((v) => !v)}>
+                        <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setRemember(v => !v)}>
                           <div className="w-4 h-4 border rounded-sm flex items-center justify-center transition-colors" style={{ borderColor: "hsl(var(--border))", background: remember ? "hsl(var(--primary))" : "transparent" }}>
                             {remember && <Icon name="Check" size={10} style={{ color: "white" } as React.CSSProperties} />}
                           </div>
@@ -640,11 +630,11 @@ export default function AuthDropdown({ onHero = false }: Props) {
                         Забыли пароль?
                       </button>
                       <div className="flex gap-2 pt-1">
-                        <button type="button" onClick={() => startSocialLogin("vk")} disabled={vkAuth.isLoading} className="flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-sm font-medium text-white transition-opacity disabled:opacity-60 hover:opacity-90" style={{ background: "#0077FF" }}>
+                        <button type="button" onClick={() => startSocialLogin("vk")} disabled={vkAuth.isLoading} className="flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-60 hover:opacity-90" style={{ background: "#0077FF" }}>
                           {vkAuth.isLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <VkIcon />} ВК
                         </button>
-                        <button type="button" onClick={() => startSocialLogin("yandex")} disabled={yandexAuth.isLoading} className="flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-sm font-medium text-white transition-opacity disabled:opacity-60 hover:opacity-90" style={{ background: "#FC3F1D" }}>
-                          {yandexAuth.isLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <YandexIcon />} Яндекс
+                        <button type="button" onClick={() => startSocialLogin("yandex")} disabled={yandexAuth.isLoading} className="flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-60 hover:opacity-90" style={{ background: "#FC3F1D" }}>
+                          {yandexAuth.isLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : "Я"} Яндекс
                         </button>
                       </div>
                     </form>
