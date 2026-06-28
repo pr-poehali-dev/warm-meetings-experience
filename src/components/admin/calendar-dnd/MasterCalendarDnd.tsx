@@ -4,12 +4,10 @@ import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin, { DateSelectArg, DateClickArg } from "@fullcalendar/interaction";
-import { EventClickArg, EventDropArg, EventInput } from "@fullcalendar/core";
+import { EventClickArg, EventDropArg } from "@fullcalendar/core";
 import ruLocale from "@fullcalendar/core/locales/ru";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Icon from "@/components/ui/icon";
 import {
   masterCalendarApi,
@@ -23,11 +21,13 @@ import {
   BookingApiError,
 } from "@/lib/master-calendar-api";
 
-
 import EventForm, { CreateMode, CreatePayload } from "./EventForm";
 import QuickActionsPopover, { QuickEvent } from "./QuickActionsPopover";
 import AgendaView from "./AgendaView";
 import DayActionDialog, { DayBookingPayload, DayBlockPayload } from "./DayActionDialog";
+import { FcbEvent, fmtTime, fmtDate } from "./calendarHelpers";
+import { ConfirmBar, CancelBookingDialog, ClearCalendarDialog, TrashDialog } from "./CalendarDialogs";
+import CalendarToolbar from "./CalendarToolbar";
 import "./styles.css";
 
 export interface MasterCalendarDndRef {
@@ -40,62 +40,6 @@ interface Props {
   onTrash?: () => void;
   onClear?: () => void;
 }
-
-type FcbEvent = EventInput & {
-  extendedProps: {
-    kind: "booking" | "block" | "break" | "available" | "canceled";
-    raw?: MasterBooking | MasterSlot | DayBlock;
-    buffer?: number; // минут буфера после
-    note?: string;
-  };
-};
-
-// Форматируем в ЭКРАННОМ времени мастера (явный timeZone), а не браузера.
-const fmtTime = (d: Date, tz: string) =>
-  d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: tz });
-
-const fmtDate = (d: Date, tz: string) =>
-  d.toLocaleDateString("ru-RU", { day: "2-digit", month: "long", timeZone: tz });
-
-// Человекочитаемая подпись часового пояса мастера: "Калининград (UTC+2)".
-const TZ_LABELS: Record<string, string> = {
-  "Europe/Kaliningrad": "Калининград",
-  "Europe/Moscow": "Москва",
-  "Europe/Samara": "Самара",
-  "Asia/Yekaterinburg": "Екатеринбург",
-  "Asia/Omsk": "Омск",
-  "Asia/Novosibirsk": "Новосибирск",
-  "Asia/Krasnoyarsk": "Красноярск",
-  "Asia/Irkutsk": "Иркутск",
-  "Asia/Yakutsk": "Якутск",
-  "Asia/Vladivostok": "Владивосток",
-  "Asia/Magadan": "Магадан",
-  "Asia/Kamchatka": "Камчатка",
-};
-
-const tzLabel = (tz: string) => {
-  const city = TZ_LABELS[tz] || tz;
-  let off = "";
-  try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      timeZoneName: "shortOffset",
-    }).formatToParts(new Date());
-    off = parts.find((p) => p.type === "timeZoneName")?.value || "";
-  } catch {
-    off = "";
-  }
-  return off ? `${city} (${off.replace("GMT", "UTC")})` : city;
-};
-
-// КАНОН ВРЕМЕНИ (фронт ↔ бэк) — «ЭКРАННОЕ ВРЕМЯ»:
-// FullCalendar в timeZone-режиме знает зону мастера. Любые ISO-строки времени
-// мы получаем ОТ САМОГО КАЛЕНДАРЯ:
-//   • при выделении — sel.startStr / sel.endStr (уже с offset, напр. ...+03:00);
-//   • при переносе/resize — ev.startStr / ev.endStr;
-//   • для пересчитанных дат (мин.15мин, длительность услуги) — api.formatIso(date).
-// Это ровно то же самое «экранное время», по которому рисуются события. Никаких
-// getHours()/Intl — поэтому нет зависимости от зоны браузера и сдвигов на 3 часа.
 
 const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function MasterCalendarDnd({ masterId, onTrash: _onTrash, onClear: _onClear }, ref) {
   const calRef = useRef<FullCalendar | null>(null);
@@ -113,6 +57,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     const api = calRef.current?.getApi();
     return (api ? api.formatIso(d) : d.toISOString()).slice(0, 10);
   }, []);
+
   const [showConfirm, ConfirmDialog] = useConfirm();
   const [loading, setLoading] = useState(false);
   const [bookings, setBookings] = useState<MasterBooking[]>([]);
@@ -125,7 +70,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     open: boolean;
     start: Date | null;
     end: Date | null;
-    // «Экранное время» — ISO-строки с offset зоны календаря (для отправки на бэк).
     startStr: string | null;
     endStr: string | null;
     allDay: boolean;
@@ -151,7 +95,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     localStorage.setItem(STORAGE_VIEW_KEY, view);
   };
   const [agendaDate, setAgendaDate] = useState<Date>(new Date());
-  // Диалог ручного управления днём (бронь / блокировка) по кнопке «+»
   const [dayAction, setDayAction] = useState<{ dayStr: string; dayLabel: string; offset: string } | null>(null);
   const [daySaving, setDaySaving] = useState(false);
   // Флаг: следующий allDay-select пришёл от нашей кнопки «+» → игнорируем EventForm
@@ -230,7 +173,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
       if (scope === "week") {
         const api = calRef.current?.getApi();
         if (api) {
-          // Экранное время мастера, а не UTC.
           date_from = calDateKey(api.view.activeStart);
           date_to = calDateKey(api.view.activeEnd);
         }
@@ -280,7 +222,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
 
   // Перезагружаем данные при смене видимого диапазона FullCalendar
   const handleDatesSet = useCallback((arg: { start: Date; end: Date; view: { type: string; title: string } }) => {
-    // Диапазон в экранном времени мастера. arg.end эксклюзивный — берём минус сутки.
     const endInclusive = new Date(arg.end.getTime() - 24 * 60 * 60_000);
     loadData(calDateKey(arg.start), calDateKey(endInclusive));
     setViewTitle(arg.view.title.replace(/\s*[\u0433\u0413]\.\s*/g, " ").trim());
@@ -293,11 +234,15 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     loadData();
   }, [loadData]);
 
+  const updateTitle = () => {
+    const api = calRef.current?.getApi();
+    if (api) setViewTitle(api.view.title);
+  };
+
   // Преобразуем в FC events
   const fcEvents = useMemo<FcbEvent[]>(() => {
     const list: FcbEvent[] = [];
 
-    // Бронирования
     for (const b of bookings) {
       const isCanceled = b.status === "canceled" || b.status === "no_show";
       const cls =
@@ -319,7 +264,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
       });
     }
 
-    // Слоты (blocked/event = блок, available = свободно, busy/booked показываем как бронь только если нет booking)
     const bookedSlotIds = new Set(bookings.map(b => b.slot_id).filter(Boolean));
     for (const s of slots) {
       if (s.status === "blocked") {
@@ -343,7 +287,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           extendedProps: { kind: "break", raw: s },
         });
       } else if (s.status === "available" && !bookedSlotIds.has(s.id)) {
-        // Показываем слабым пунктиром, но без drag
         list.push({
           id: `s-${s.id}`,
           title: `Свободно`,
@@ -357,19 +300,14 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
       }
     }
 
-    // Блокировки целых дней — каждая запись в БД = ровно 1 день
-    // (backend сохраняет отпуск как N записей по 1 дню каждая, поэтому игнорируем block_end_date)
     const seenBlockDates = new Set<string>();
     for (const blk of blocks) {
       if (!blk.reason || blk.reason === "removed") continue;
       if (seenBlockDates.has(blk.block_date)) continue;
       seenBlockDates.add(blk.block_date);
 
-      // Дату блокировки подаём строкой YYYY-MM-DD (allDay) — без new Date,
-      // чтобы день не «уезжал» из-за разницы зон браузера и мастера.
       const blockDay = String(blk.block_date).slice(0, 10);
 
-      // Компактная плашка в "Весь день" (только 1 день, не растягиваем)
       list.push({
         id: `blk-${blk.id}`,
         title: `🔒 ${blk.reason || "Выходной"}`,
@@ -379,7 +317,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
         editable: false,
         extendedProps: { kind: "block", raw: blk },
       });
-      // Заливка фона колонки дня (видна в timeGrid)
       list.push({
         id: `blk-bg-${blk.id}`,
         start: blockDay,
@@ -393,12 +330,21 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     return list;
   }, [bookings, slots, blocks, settings]);
 
+  // Проверка конфликтов
+  const hasConflict = useCallback((start: Date, end: Date, excludeId: string | null) => {
+    return fcEvents.some((ev) => {
+      if (ev.extendedProps.kind === "available") return false;
+      if (excludeId && ev.id === excludeId) return false;
+      const evStart = ev.start instanceof Date ? ev.start : new Date(ev.start as string);
+      const evEnd = ev.end instanceof Date ? ev.end : new Date(ev.end as string);
+      return start < evEnd && end > evStart;
+    });
+  }, [fcEvents]);
+
   // Drag create
   const handleSelect = (sel: DateSelectArg) => {
     const api = sel.view.calendar;
 
-    // Кнопка «+» в allDay-ячейке открывает DayActionDialog и выставляет флаг.
-    // FullCalendar всё равно шлёт select — игнорируем его и сбрасываем флаг.
     if (sel.allDay && suppressAllDaySelect.current) {
       suppressAllDaySelect.current = false;
       api.unselect();
@@ -407,17 +353,13 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
 
     let start = sel.start;
     let end = sel.end;
-    // «Экранное время» от календаря — ISO-строки с offset зоны мастера.
     const startStr = sel.startStr;
     let endStr = sel.endStr;
 
     if (sel.allDay) {
-      // All-day выделение — захват целого дня (или нескольких дней).
-      // Точное время выставится в handleCreate, строки тут не нужны.
       start = sel.start;
       end = sel.end;
     } else {
-      // Минимум 15 минут → расширяем до 1 часа
       if (end.getTime() - start.getTime() < 15 * 60_000) {
         end = new Date(start.getTime() + 60 * 60_000);
         endStr = calIso(end);
@@ -428,11 +370,8 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     api.unselect();
   };
 
-  // Тап на ячейку (dateClick) — удобно на мобильном: без протягивания открывает
-  // форму с диапазоном 1 час от тапнутого момента. На десктопе не мешает — там
-  // работает привычное выделение (handleSelect).
   const handleDateClick = useCallback((arg: DateClickArg) => {
-    if (arg.allDay) return; // блокировку дня создаём через allDay-полосу
+    if (arg.allDay) return;
     const start = arg.date;
     const end = new Date(start.getTime() + 60 * 60_000);
     const startStr = calIso(start);
@@ -447,15 +386,9 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     let end = createMode.end;
     const isAllDay = createMode.allDay;
 
-    // Пользователь поправил время в форме (для брони не-all-day) — пересобираем
-    // «экранные» строки из дня выделения и нового времени. Берём offset зоны
-    // мастера из исходной startStr, чтобы не было сдвига на зону браузера.
     if (!isAllDay && mode === "booking" && payload.time_start && payload.time_end && payload.time_end > payload.time_start) {
-      const base = createMode.startStr || calIso(start); // YYYY-MM-DDTHH:mm:ss±hh:mm
+      const base = createMode.startStr || calIso(start);
       const dayStr = base.slice(0, 10);
-      // offset зоны мастера — гарантируем его наличие (если строка пришла без
-      // хвоста, берём offset из calIso текущего start). Так new Date(...) ниже
-      // не сорвётся на браузерную зону.
       const offsetOf = (s: string) => {
         const m = s.match(/(Z|[+-]\d{2}:\d{2})$/);
         return m ? m[0] : "";
@@ -472,12 +405,8 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     }
 
     try {
-      // All-day блок — создаём master_day_blocks (выходной/отпуск)
       if (isAllDay && mode === "block") {
-        // День берём из «экранной» строки (для all-day это "YYYY-MM-DD") — без
-        // getHours, чтобы день не уехал на сутки в иных зонах браузера.
         const firstDay = (createMode.startStr || "").slice(0, 10);
-        // end эксклюзивен → последний реально захваченный день = endStr - 1 день
         const endExclusive = (createMode.endStr || createMode.startStr || "").slice(0, 10);
         const lastDayDate = new Date(`${endExclusive}T00:00:00`);
         lastDayDate.setDate(lastDayDate.getDate() - 1);
@@ -521,12 +450,10 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
         return;
       }
 
-      // All-day: дата дня — из «экранной» строки (YYYY-MM-DD), время — стандартное.
-      // Строки без offset бэк трактует как зону мастера (для дня offset неважен).
       let allDayStartIso: string | null = null;
       let allDayEndIso: string | null = null;
       if (isAllDay) {
-        const dayStr = (createMode.startStr || "").slice(0, 10); // YYYY-MM-DD
+        const dayStr = (createMode.startStr || "").slice(0, 10);
         if (mode === "work") {
           allDayStartIso = `${dayStr}T09:00:00`;
           allDayEndIso = `${dayStr}T18:00:00`;
@@ -536,7 +463,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
         }
       }
 
-      // Если выбрана процедура — автоподстановка длительности (для не-all-day)
       if (mode === "booking" && payload.service_id && !isAllDay) {
         const svc = services.find((s) => s.id === payload.service_id);
         if (svc?.duration_minutes) {
@@ -544,21 +470,16 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
         }
       }
 
-      // Канон «экранного времени»:
-      //  • не-all-day → строки от календаря (с offset). Конец услуги — calIso(end).
-      //  • all-day → заранее собранные строки дня.
       const startIso = allDayStartIso ?? (createMode.startStr as string);
       let endIso = allDayEndIso
         ?? (mode === "booking" && payload.service_id ? calIso(end) : (createMode.endStr as string));
-      // All-day бронь с услугой: пересчёт конца по длительности от 12:00.
-      // Считаем чисто в «экранных» минутах суток — без new Date, чтобы не
-      // зависеть от зоны браузера. День увеличиваем, если вышли за 24:00.
+
       if (mode === "booking" && payload.service_id && isAllDay && allDayStartIso) {
         const svc = services.find((s) => s.id === payload.service_id);
         if (svc?.duration_minutes) {
           const pad = (n: number) => String(n).padStart(2, "0");
-          const dayStr = allDayStartIso.slice(0, 10); // YYYY-MM-DD
-          const startMinutes = 12 * 60; // allDay-бронь стартует в 12:00
+          const dayStr = allDayStartIso.slice(0, 10);
+          const startMinutes = 12 * 60;
           const total = startMinutes + svc.duration_minutes;
           const addDays = Math.floor(total / (24 * 60));
           const hh = Math.floor((total % (24 * 60)) / 60);
@@ -573,7 +494,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
         }
       }
 
-      // Проверка конфликта (для рабочего времени не нужна — оно может охватывать брони)
       if (mode !== "work" && !isAllDay && hasConflict(start, end, null)) {
         toast.error("Это время уже занято");
         return;
@@ -586,28 +506,9 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           datetime_end: endIso,
           max_clients: 1,
           status: "available",
-          notes: "",
+          notes: payload.comment || "",
         });
         toast.success("Рабочее время добавлено");
-      } else if (mode === "booking") {
-        if (!payload.client_name?.trim()) {
-          toast.error("Укажите имя клиента");
-          return;
-        }
-        const svc = services.find((s) => s.id === payload.service_id);
-        await masterBookingsApi.createBooking({
-          master_id: masterId,
-          client_name: payload.client_name,
-          client_phone: payload.client_phone || "",
-          service_id: payload.service_id || undefined,
-          datetime_start: startIso,
-          datetime_end: endIso,
-          price: svc?.price || 0,
-          status: "confirmed",
-          source: "manual",
-          comment: payload.comment || "",
-        });
-        toast.success("Бронь создана");
       } else if (mode === "block") {
         await masterCalendarApi.createSlot({
           master_id: masterId,
@@ -617,47 +518,35 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           status: "blocked",
           notes: payload.comment || "Заблокировано",
         });
-        toast.success("Время заблокировано");
-      } else if (mode === "break") {
-        await masterCalendarApi.createSlot({
+        toast.success("Перерыв добавлен");
+      } else {
+        await masterBookingsApi.createBooking({
           master_id: masterId,
+          client_name: payload.client_name || "Клиент",
+          client_phone: payload.client_phone || "",
+          service_id: payload.service_id || undefined,
           datetime_start: startIso,
           datetime_end: endIso,
-          max_clients: 1,
-          status: "event",
-          notes: payload.comment || "Перерыв",
+          price: services.find((s) => s.id === payload.service_id)?.price || 0,
+          status: "confirmed",
+          source: "manual",
+          comment: payload.comment || "",
         });
-        toast.success("Перерыв добавлен");
+        toast.success("Запись создана");
       }
+
       setCreateMode({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false });
       loadData();
     } catch (e) {
-      console.error("[Calendar] save failed", e);
       if (e instanceof BookingApiError && e.status === 409) {
-        // Бэк прислал понятное сообщение — показываем его как есть
         toast.error(e.message);
       } else {
-        toast.error("Не удалось сохранить: " + (e instanceof Error ? e.message : String(e)));
+        toast.error("Не удалось создать: " + (e instanceof Error ? e.message : String(e)));
       }
     }
   };
 
-  // Конфликт-проверка с учётом буфера между сеансами (из настроек мастера).
-  // Бэкенд тоже проверяет это, но локально мы предупреждаем сразу — без сетевого round-trip.
-  const hasConflict = (start: Date, end: Date, ignoreId: string | null) => {
-    const bufferMs = ((settings?.break_between_slots) || 0) * 60_000;
-    const startMs = start.getTime() - bufferMs;
-    const endMs = end.getTime() + bufferMs;
-    return fcEvents.some(ev => {
-      if (ev.extendedProps.kind === "available" || ev.extendedProps.kind === "canceled") return false;
-      if (ignoreId && ev.id === ignoreId) return false;
-      const s = ev.start instanceof Date ? ev.start.getTime() : new Date(ev.start as string).getTime();
-      const e = ev.end instanceof Date ? ev.end.getTime() : new Date(ev.end as string).getTime();
-      return s < endMs && e > startMs;
-    });
-  };
-
-  // Drag move
+  // Drag & drop
   const handleEventDrop = (info: EventDropArg) => {
     if (!info.event.start || !info.event.end) {
       info.revert();
@@ -666,7 +555,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     if (hasConflict(info.event.start, info.event.end, info.event.id)) {
       info.el.classList.add("fcb-conflict");
       setTimeout(() => info.el.classList.remove("fcb-conflict"), 1500);
-      toast.error("Это время уже занято");
+      toast.error("Конфликт с другой записью");
       info.revert();
       return;
     }
@@ -676,20 +565,13 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
   const confirmMove = async () => {
     if (!pendingMove) return;
     const ev = pendingMove.event;
-    const id = ev.id;
     if (!ev.start || !ev.end) return;
     try {
-      if (id.startsWith("b-")) {
-        const bid = Number(id.slice(2));
-        const b = bookings.find(x => x.id === bid);
-        if (b) {
-          // «Экранное время» от календаря — ISO-строки с offset зоны мастера.
-          await rescheduleBooking(bid, ev.startStr, ev.endStr);
-        }
-      } else if (id.startsWith("s-")) {
-        const sid = Number(id.slice(2));
+      if (ev.id.startsWith("b-")) {
+        await rescheduleBooking(Number(ev.id.slice(2)), ev.startStr, ev.endStr);
+      } else if (ev.id.startsWith("s-")) {
         await masterCalendarApi.updateSlot({
-          id: sid,
+          id: Number(ev.id.slice(2)),
           datetime_start: ev.startStr,
           datetime_end: ev.endStr,
         });
@@ -762,9 +644,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     setPendingResize(null);
   };
 
-  // Прямой перенос брони через action='reschedule'.
-  // start/end — «экранные» ISO-строки с offset зоны мастера (от календаря).
-  // Бэк сам валидирует выходные / буфер / пересечения и синхронно двигает привязанный слот.
   const rescheduleBooking = async (bookingId: number, start: string, end: string) => {
     await masterBookingsApi.rescheduleBooking({
       id: bookingId,
@@ -818,7 +697,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     setDaySaving(true);
     try {
       if (p.whole_day) {
-        // Блокировка целого дня — master_day_blocks (выходной)
         const res = await masterCalendarApi.createBlock({
           master_id: masterId,
           block_date: dayStr,
@@ -846,7 +724,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           toast.success("День заблокирован");
         }
       } else {
-        // Блокировка интервала — слот со статусом blocked
         await masterCalendarApi.createSlot({
           master_id: masterId,
           datetime_start: `${dayStr}T${p.time_start}:00${offset}`,
@@ -955,21 +832,10 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     }
   };
 
-  // Заголовок периода
-  useEffect(() => {
-    const api = calRef.current?.getApi();
-    if (api) setViewTitle(api.view.title);
-  }, [fcEvents]);
-
-  const updateTitle = () => {
-    const api = calRef.current?.getApi();
-    if (api) setViewTitle(api.view.title);
-  };
-
-  // Прогресс загруженности дня
+  // Нагрузка дня (прогресс-бар в шапке)
   const dayLoad = useMemo(() => {
     const map = new Map<string, { busy: number; total: number }>();
-    const workMinPerDay = 12 * 60; // 9:00–21:00
+    const workMinPerDay = 12 * 60;
     fcEvents.forEach(ev => {
       const kind = ev.extendedProps.kind;
       if (kind !== "booking" && kind !== "block" && kind !== "break") return;
@@ -983,7 +849,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     return map;
   }, [fcEvents, calDateKey]);
 
-  // Множество заблокированных дат (YYYY-MM-DD) — 1 запись = 1 день
   const blockedDates = useMemo(() => {
     const set = new Set<string>();
     for (const blk of blocks) {
@@ -995,7 +860,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
 
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
 
-  // Открыть диалог действий на день (бронь / блокировка) для указанной даты.
   const openDayAction = useCallback((date: Date, suppressSelect = false) => {
     const tz = settings?.timezone || "Europe/Moscow";
     if (suppressSelect) suppressAllDaySelect.current = true;
@@ -1008,15 +872,12 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     setDayAction({ dayStr, dayLabel, offset });
   }, [settings?.timezone, calDateKey, calIso]);
 
-  // Render day header с прогресс-баром + меткой "выходной" + кнопкой «+»
   const dayHeaderContent = (arg: { date: Date; text: string }) => {
     const key = calDateKey(arg.date);
     const load = dayLoad.get(key);
     const pct = load ? Math.min(100, Math.round((load.busy / load.total) * 100)) : 0;
     const isBlocked = blockedDates.has(key);
     const tz = settings?.timezone || "Europe/Moscow";
-    // На мобильном в режиме недели — только число (08), иначе буквы налезают.
-    // В режиме дня/месяца — полный формат.
     const shortDate = arg.date.toLocaleDateString("ru-RU", { day: "numeric", timeZone: tz });
     const shortDay = arg.date.toLocaleDateString("ru-RU", { weekday: "narrow", timeZone: tz });
     const label = (isMobile && currentView === "timeGridWeek")
@@ -1037,7 +898,6 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
             <div className="fcb-day-load-label">{pct}%</div>
           </>
         )}
-        {/* Отдельная строка-кнопка «+ запись» под датой — только в режимах день/неделя */}
         {currentView !== "dayGridMonth" && (
           <button
             onClick={(e) => { e.stopPropagation(); openDayAction(arg.date); }}
@@ -1052,93 +912,21 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     );
   };
 
+  const tz = settings?.timezone || "Europe/Moscow";
+
   return (
     <div className="fc-dnd space-y-2">
-      {/* Шапка с навигацией — одна строка на десктопе, две на мобильном */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-1.5">
-        {/* Переключатель Список/Календарь */}
-        <div className="flex sm:inline-flex border border-border rounded-lg overflow-hidden shrink-0">
-          <button
-            onClick={() => setAgendaMode(true)}
-            title="Список — все записи и слоты в виде ленты"
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${agendaMode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
-          >
-            <Icon name="ListChecks" size={13} />
-            <span>Список</span>
-          </button>
-          <button
-            onClick={() => setAgendaMode(false)}
-            title="Календарь — сетка по дням недели с перетаскиванием"
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold border-l border-border transition-colors ${!agendaMode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
-          >
-            <Icon name="CalendarDays" size={13} />
-            <span>Календарь</span>
-          </button>
-        </div>
-
-        {/* Навигация — скрыта в режиме списка */}
-        {!agendaMode && (
-          <div className="flex items-center gap-1 flex-1 min-w-0">
-            {/* Сегодня */}
-            <Button size="sm" variant="outline" className="px-2.5 shrink-0 text-xs font-semibold border-primary/40 text-primary hover:bg-primary/10" onClick={() => { calRef.current?.getApi().today(); updateTitle(); }}>
-              Сегодня
-            </Button>
-
-            <Button size="sm" variant="outline" className="px-1.5 shrink-0" onClick={() => { calRef.current?.getApi().prev(); updateTitle(); }}>
-              <Icon name="ChevronLeft" size={15} />
-            </Button>
-
-            {/* Дата + вид */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline" className="flex-1 min-w-0 justify-between gap-1.5 font-medium px-2.5">
-                  <span className="truncate text-left text-xs">
-                    {currentView === "timeGridDay"
-                      ? viewStart.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short", timeZone: settings?.timezone || "Europe/Moscow" })
-                      : currentView === "timeGridWeek"
-                      ? viewStart.toLocaleDateString("ru-RU", { day: "numeric", month: "short", timeZone: settings?.timezone || "Europe/Moscow" })
-                      : viewStart.toLocaleDateString("ru-RU", { month: "long", year: "numeric", timeZone: settings?.timezone || "Europe/Moscow" })
-                    }
-                  </span>
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                    <Icon name={currentView === "timeGridDay" ? "CalendarClock" : currentView === "timeGridWeek" ? "CalendarDays" : "CalendarRange"} size={12} />
-                    <span className="hidden sm:inline">
-                      {currentView === "timeGridDay" ? "День" : currentView === "timeGridWeek" ? "Неделя" : "Месяц"}
-                    </span>
-                    <Icon name="ChevronsUpDown" size={10} className="opacity-50" />
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-[160px]">
-                <DropdownMenuItem onClick={() => changeCalView("timeGridDay")} className={currentView === "timeGridDay" ? "bg-accent font-semibold" : ""}>
-                  <Icon name="CalendarClock" size={14} className="mr-2 text-muted-foreground" />День
-                  {currentView === "timeGridDay" && <Icon name="Check" size={13} className="ml-auto text-primary" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => changeCalView("timeGridWeek")} className={currentView === "timeGridWeek" ? "bg-accent font-semibold" : ""}>
-                  <Icon name="CalendarDays" size={14} className="mr-2 text-muted-foreground" />Неделя
-                  {currentView === "timeGridWeek" && <Icon name="Check" size={13} className="ml-auto text-primary" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => changeCalView("dayGridMonth")} className={currentView === "dayGridMonth" ? "bg-accent font-semibold" : ""}>
-                  <Icon name="CalendarRange" size={14} className="mr-2 text-muted-foreground" />Месяц
-                  {currentView === "dayGridMonth" && <Icon name="Check" size={13} className="ml-auto text-primary" />}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <Button size="sm" variant="outline" className="px-1.5 shrink-0" onClick={() => { calRef.current?.getApi().next(); updateTitle(); }}>
-              <Icon name="ChevronRight" size={15} />
-            </Button>
-
-            {/* Часовой пояс — только десктоп, справа в той же строке */}
-            <span className="hidden sm:flex items-center gap-1 ml-auto text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
-              <Icon name="Globe" size={11} />
-              {tzLabel(settings?.timezone || "Europe/Moscow")}
-            </span>
-          </div>
-        )}
-
-        {loading && <Icon name="Loader2" size={16} className="animate-spin text-muted-foreground shrink-0" />}
-      </div>
+      <CalendarToolbar
+        agendaMode={agendaMode}
+        setAgendaMode={setAgendaMode}
+        currentView={currentView}
+        viewStart={viewStart}
+        timezone={tz}
+        loading={loading}
+        calRef={calRef}
+        updateTitle={updateTitle}
+        changeCalView={changeCalView}
+      />
 
       {/* Подсказки — одна строка, только десктоп */}
       {!agendaMode && (
@@ -1155,7 +943,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
         <AgendaView
           date={agendaDate}
           bookings={bookings}
-          timezone={settings?.timezone || "Europe/Moscow"}
+          timezone={tz}
           onPrev={() => setAgendaDate((d) => new Date(d.getTime() - 86400000))}
           onNext={() => setAgendaDate((d) => new Date(d.getTime() + 86400000))}
           onToday={() => setAgendaDate(new Date())}
@@ -1164,70 +952,64 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
       )}
 
       <div className={agendaMode ? "hidden" : ""}>
-      <FullCalendar
-        ref={calRef}
-        plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-        initialView={currentView}
-        timeZone={settings?.timezone || "Europe/Moscow"}
-        locale={ruLocale}
-        firstDay={1}
-        allDaySlot={true}
-        allDayText="Весь день"
-        nowIndicator
-        editable
-        selectable
-        selectMirror
-        selectOverlap
-        unselectAuto={false}
-        longPressDelay={350}
-        eventLongPressDelay={350}
-        selectLongPressDelay={350}
-        snapDuration="00:15:00"
-        slotDuration="00:30:00"
-        slotMinTime="07:00:00"
-        slotMaxTime="23:00:00"
-        height="auto"
-        expandRows
-        events={fcEvents}
-        dayCellClassNames={(arg) => {
-          const key = calDateKey(arg.date);
-          return blockedDates.has(key) ? ["fcb-day-cell-blocked"] : [];
-        }}
-        selectAllow={(sel) => {
-          // В all-day разрешаем любой диапазон дней.
-          if (sel.allDay) return true;
-          // Проверяем «один день» по ЭКРАННОМУ времени мастера (startStr/endStr с
-          // offset зоны мастера), а не по Date в зоне браузера — иначе на границе
-          // суток в другой таймзоне выделение ошибочно сбрасывалось.
-          const startDay = sel.startStr.slice(0, 10);
-          // Конец ровно в полночь (00:00) принадлежит предыдущему дню.
-          const endTime = sel.endStr.slice(11, 16);
-          let endDay = sel.endStr.slice(0, 10);
-          if (endTime === "00:00") {
-            const d = new Date(sel.end.getTime() - 60_000);
-            endDay = (sel.view.calendar.formatIso(d) || "").slice(0, 10) || endDay;
-          }
-          return startDay === endDay;
-        }}
-        select={handleSelect}
-        dateClick={handleDateClick}
-        eventClick={handleEventClick}
-        eventDrop={handleEventDrop}
-        eventResize={handleEventResize}
-        dayHeaderContent={dayHeaderContent}
-        datesSet={handleDatesSet}
-        eventDidMount={(info) => {
-          // Добавляем буфер-полосу под бронями
-          const buffer = (info.event.extendedProps as FcbEvent["extendedProps"]).buffer || 0;
-          if (buffer > 0 && info.event.start && info.event.end) {
-            const h = (buffer / 30) * 14; // 14px на 30 минут половинного слота — визуально достаточно
-            const div = document.createElement("div");
-            div.className = "fcb-buffer";
-            div.style.height = `${Math.min(h, 12)}px`;
-            info.el.appendChild(div);
-          }
-        }}
-      />
+        <FullCalendar
+          ref={calRef}
+          plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+          initialView={currentView}
+          timeZone={tz}
+          locale={ruLocale}
+          firstDay={1}
+          allDaySlot={true}
+          allDayText="Весь день"
+          nowIndicator
+          editable
+          selectable
+          selectMirror
+          selectOverlap
+          unselectAuto={false}
+          longPressDelay={350}
+          eventLongPressDelay={350}
+          selectLongPressDelay={350}
+          snapDuration="00:15:00"
+          slotDuration="00:30:00"
+          slotMinTime="07:00:00"
+          slotMaxTime="23:00:00"
+          height="auto"
+          expandRows
+          events={fcEvents}
+          dayCellClassNames={(arg) => {
+            const key = calDateKey(arg.date);
+            return blockedDates.has(key) ? ["fcb-day-cell-blocked"] : [];
+          }}
+          selectAllow={(sel) => {
+            if (sel.allDay) return true;
+            const startDay = sel.startStr.slice(0, 10);
+            const endTime = sel.endStr.slice(11, 16);
+            let endDay = sel.endStr.slice(0, 10);
+            if (endTime === "00:00") {
+              const d = new Date(sel.end.getTime() - 60_000);
+              endDay = (sel.view.calendar.formatIso(d) || "").slice(0, 10) || endDay;
+            }
+            return startDay === endDay;
+          }}
+          select={handleSelect}
+          dateClick={handleDateClick}
+          eventClick={handleEventClick}
+          eventDrop={handleEventDrop}
+          eventResize={handleEventResize}
+          dayHeaderContent={dayHeaderContent}
+          datesSet={handleDatesSet}
+          eventDidMount={(info) => {
+            const buffer = (info.event.extendedProps as FcbEvent["extendedProps"]).buffer || 0;
+            if (buffer > 0 && info.event.start && info.event.end) {
+              const h = (buffer / 30) * 14;
+              const div = document.createElement("div");
+              div.className = "fcb-buffer";
+              div.style.height = `${Math.min(h, 12)}px`;
+              info.el.appendChild(div);
+            }
+          }}
+        />
       </div>
 
       {/* Floating Create Form */}
@@ -1275,8 +1057,8 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
       {pendingMove && pendingMove.event.start && pendingMove.event.end && (
         <ConfirmBar
           title="Перенести запись?"
-          oldText={`${fmtDate(pendingMove.oldEvent.start as Date, settings?.timezone || "Europe/Moscow")} · ${fmtTime(pendingMove.oldEvent.start as Date, settings?.timezone || "Europe/Moscow")}`}
-          newText={`${fmtDate(pendingMove.event.start, settings?.timezone || "Europe/Moscow")} · ${fmtTime(pendingMove.event.start, settings?.timezone || "Europe/Moscow")}`}
+          oldText={`${fmtDate(pendingMove.oldEvent.start as Date, tz)} · ${fmtTime(pendingMove.oldEvent.start as Date, tz)}`}
+          newText={`${fmtDate(pendingMove.event.start, tz)} · ${fmtTime(pendingMove.event.start, tz)}`}
           onConfirm={confirmMove}
           onCancel={cancelMove}
         />
@@ -1287,32 +1069,18 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
         <ConfirmBar
           title="Продлить сеанс?"
           oldText=""
-          newText={`${fmtTime(pendingResize.event.start, settings?.timezone || "Europe/Moscow")} – ${fmtTime(pendingResize.event.end, settings?.timezone || "Europe/Moscow")}`}
+          newText={`${fmtTime(pendingResize.event.start, tz)} – ${fmtTime(pendingResize.event.end, tz)}`}
           onConfirm={confirmResize}
           onCancel={cancelResize}
         />
       )}
 
       {/* Диалог подтверждения отмены записи */}
-      {cancelConfirm !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-card border rounded-2xl shadow-xl p-6 w-full max-w-sm flex flex-col gap-4">
-            <div className="flex items-start gap-3">
-              <div className="rounded-full bg-red-100 p-2 shrink-0">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-600"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              </div>
-              <div>
-                <div className="font-semibold text-sm">Отменить запись?</div>
-                <div className="text-xs text-muted-foreground mt-1">Запись будет отменена и перенесена в корзину. Вы сможете восстановить её через «Корзину».</div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="destructive" className="flex-1" onClick={confirmCancelBooking}>Да, отменить</Button>
-              <Button variant="outline" className="flex-1" onClick={() => setCancelConfirm(null)}>Назад</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CancelBookingDialog
+        open={cancelConfirm !== null}
+        onConfirm={confirmCancelBooking}
+        onClose={() => setCancelConfirm(null)}
+      />
 
       {/* Диалог очистки календаря */}
       <ClearCalendarDialog
@@ -1333,10 +1101,11 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
         onRestoreAll={handleRestoreAll}
         onRestoreOne={handleRestoreOne}
         onBackupNow={handleBackupNow}
-        formatDt={(iso) => {
+        formatDt={(iso: string) => {
           try {
             return new Intl.DateTimeFormat("ru-RU", {
-              day: "2-digit", month: "2-digit", year: "numeric",
+              timeZone: tz,
+              day: "2-digit", month: "short", year: "numeric",
               hour: "2-digit", minute: "2-digit",
             }).format(new Date(iso));
           } catch {
@@ -1350,227 +1119,3 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
 });
 
 export default MasterCalendarDnd;
-
-const CLEAR_OPTIONS: { scope: "week" | "future" | "all"; icon: string; title: string; hint: string; danger?: boolean }[] = [
-  { scope: "week", icon: "Calendar", title: "Только текущий период", hint: "То, что видно сейчас" },
-  { scope: "future", icon: "CalendarClock", title: "Сегодня и далее", hint: "История сохранится" },
-  { scope: "all", icon: "Trash2", title: "Полностью весь календарь", hint: "Включая историю", danger: true },
-];
-
-function ClearCalendarDialog({
-  open, clearing, onClose, onClear,
-}: {
-  open: boolean;
-  clearing: boolean;
-  onClose: () => void;
-  onClear: (scope: "all" | "week" | "future") => void;
-}) {
-  const [pending, setPending] = useState<"all" | "week" | "future" | null>(null);
-  useEffect(() => {
-    if (!open) setPending(null);
-  }, [open]);
-  if (!open) return null;
-
-  const close = () => { if (!clearing) onClose(); };
-  const chosen = CLEAR_OPTIONS.find((o) => o.scope === pending);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={close}>
-      <div className="bg-card border rounded-2xl shadow-xl p-5 max-w-md w-full space-y-4" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-2">
-          <Icon name="AlertTriangle" size={20} className="text-amber-500" />
-          <div className="font-semibold text-lg">Очистить календарь</div>
-        </div>
-
-        {!pending ? (
-          <>
-            <div className="text-sm text-muted-foreground">
-              Слоты и блокировки будут удалены. Записи клиентов попадут в корзину и сохранятся в резервную копию — их можно восстановить.
-            </div>
-            <div className="grid grid-cols-1 gap-2">
-              {CLEAR_OPTIONS.map((o) => (
-                <button
-                  key={o.scope}
-                  disabled={clearing}
-                  onClick={() => setPending(o.scope)}
-                  className={
-                    "flex items-center gap-3 p-3 rounded-lg border transition-colors text-left disabled:opacity-50 " +
-                    (o.danger
-                      ? "border-red-300 hover:bg-red-50 text-red-700"
-                      : "hover:bg-muted/50")
-                  }
-                >
-                  <Icon name={o.icon} size={16} />
-                  <div className="flex-1">
-                    <div className="font-semibold text-sm">{o.title}</div>
-                    <div className="text-xs text-muted-foreground">{o.hint}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className="flex justify-end gap-2 pt-1">
-              <Button variant="ghost" onClick={close} disabled={clearing}>Отмена</Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="text-sm">
-              Вы выбрали: <span className="font-semibold">{chosen?.title}</span>.
-              <div className="text-muted-foreground mt-1">
-                Записи клиентов будут перемещены в корзину (не удалены безвозвратно). Подтвердить очистку?
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 pt-1">
-              <Button variant="ghost" onClick={() => setPending(null)} disabled={clearing}>Назад</Button>
-              <Button
-                variant="destructive"
-                onClick={() => pending && onClear(pending)}
-                disabled={clearing}
-                className="gap-1.5"
-              >
-                {clearing && <Icon name="Loader2" size={15} className="animate-spin" />}
-                Очистить
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function TrashDialog({
-  open, loading, bookings, backups, restoring,
-  onClose, onRestoreAll, onRestoreOne, onBackupNow, formatDt,
-}: {
-  open: boolean;
-  loading: boolean;
-  bookings: MasterBooking[];
-  backups: MasterBackup[];
-  restoring: boolean;
-  onClose: () => void;
-  onRestoreAll: () => void;
-  onRestoreOne: (bookingId: number) => void;
-  onBackupNow: () => void;
-  formatDt: (iso: string) => string;
-}) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div className="bg-card border rounded-2xl shadow-xl p-5 max-w-lg w-full space-y-4 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-2">
-          <Icon name="Archive" size={20} className="text-primary" />
-          <div className="font-semibold text-lg">Корзина и резервные копии</div>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
-            <Icon name="Loader2" size={16} className="animate-spin" /> Загрузка…
-          </div>
-        ) : (
-          <>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="font-semibold text-sm">Удалённые записи ({bookings.length})</div>
-                {bookings.length > 0 && (
-                  <Button size="sm" onClick={onRestoreAll} disabled={restoring} className="gap-1.5">
-                    {restoring && <Icon name="Loader2" size={14} className="animate-spin" />}
-                    Восстановить все
-                  </Button>
-                )}
-              </div>
-              {bookings.length === 0 ? (
-                <div className="text-xs text-muted-foreground">Корзина пуста.</div>
-              ) : (
-                <div className="space-y-1.5">
-                  {bookings.map((b) => (
-                    <div key={b.id} className="flex items-center gap-2 p-2 rounded-lg border text-sm">
-                      <Icon name="User" size={14} className="text-muted-foreground shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{b.client_name}</div>
-                        <div className="text-xs text-muted-foreground">{formatDt(b.datetime_start)} · {b.client_phone}</div>
-                      </div>
-                      {b.id && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1 shrink-0 h-8"
-                          disabled={restoring}
-                          onClick={() => onRestoreOne(b.id!)}
-                        >
-                          <Icon name="RotateCcw" size={13} />
-                          <span className="hidden sm:inline">Восстановить</span>
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2 pt-2 border-t">
-              <div className="flex items-center justify-between">
-                <div className="font-semibold text-sm">Резервные копии ({backups.length})</div>
-                <Button size="sm" variant="outline" onClick={onBackupNow} className="gap-1.5">
-                  <Icon name="Save" size={14} /> Создать копию
-                </Button>
-              </div>
-              {backups.length === 0 ? (
-                <div className="text-xs text-muted-foreground">Копий пока нет.</div>
-              ) : (
-                <div className="space-y-1.5">
-                  {backups.map((bk) => (
-                    <div key={bk.id} className="flex items-center gap-2 p-2 rounded-lg border text-sm">
-                      <Icon name="FileArchive" size={14} className="text-muted-foreground" />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium">{bk.bookings_count} записей · {bk.reason === "clear" ? "перед очисткой" : "вручную"}</div>
-                        <div className="text-xs text-muted-foreground">{formatDt(bk.created_at)}</div>
-                      </div>
-                      {bk.file_url && (
-                        <a href={bk.file_url} target="_blank" rel="noreferrer" className="text-primary hover:underline text-xs flex items-center gap-1">
-                          <Icon name="Download" size={13} /> Скачать
-                        </a>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end pt-1">
-              <Button variant="ghost" onClick={onClose}>Закрыть</Button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ConfirmBar({
-  title,
-  oldText,
-  newText,
-  onConfirm,
-  onCancel,
-}: {
-  title: string;
-  oldText: string;
-  newText: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border rounded-xl shadow-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3 w-[calc(100%-2rem)] max-w-sm sm:max-w-none sm:min-w-[300px]">
-      <div className="flex-1">
-        <div className="font-semibold text-sm">{title}</div>
-        {oldText && <div className="text-xs text-muted-foreground">Было: {oldText}</div>}
-        <div className="text-xs text-foreground">Стало: {newText}</div>
-      </div>
-      <div className="flex gap-2">
-        <Button size="sm" className="flex-1 sm:flex-none" onClick={onConfirm}>Подтвердить</Button>
-        <Button size="sm" variant="ghost" className="flex-1 sm:flex-none" onClick={onCancel}>Отмена</Button>
-      </div>
-    </div>
-  );
-}
