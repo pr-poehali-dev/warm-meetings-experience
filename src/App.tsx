@@ -78,6 +78,7 @@ const LoginConfirm = lazyWithRetry(() => import("./pages/LoginConfirm"));
 const Functional = lazyWithRetry(() => import("./pages/Functional"));
 const FunctionalDescription = lazyWithRetry(() => import("./pages/FunctionalDescription"));
 const Support = lazyWithRetry(() => import("./pages/Support"));
+const LoaderPreview = lazyWithRetry(() => import("./pages/LoaderPreview"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -149,6 +150,7 @@ const AppContent = () => {
           <Route path="/support" element={<Support />} />
           <Route path="/functional" element={<Functional />} />
           <Route path="/features" element={<FunctionalDescription />} />
+          <Route path="/loader-preview" element={<LoaderPreview />} />
           <Route path="/privacy" element={<Navigate to="/documents?tab=privacy" replace />} />
           <Route path="/terms" element={<Navigate to="/documents?tab=terms" replace />} />
           {/* Персональные мини-сайты пользователей. ВАЖНО: должно быть последним перед NotFound */}
