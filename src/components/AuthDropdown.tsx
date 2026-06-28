@@ -381,11 +381,13 @@ export default function AuthDropdown({ onHero = false }: Props) {
                     <p className="text-xs mb-4" style={muted}>Отправили код на {twoFAEmailMasked && <span className="font-medium" style={fg}>{twoFAEmailMasked}</span>}</p>
                     <form onSubmit={handle2FAVerifyEmail} className="space-y-3">
                       <div className="border-b pb-2" style={borderStyle}>
-                        <input type="text" inputMode="numeric" placeholder="000000" value={twoFACode} onChange={(e) => setTwoFACode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))} autoFocus className="w-full bg-transparent text-center text-lg tracking-[0.4em] font-mono outline-none py-1.5" style={fg} />
+                        <input type="text" inputMode="numeric" placeholder="000000" value={twoFACode} onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 6); setTwoFACode(v); if (v.length === 6) setTimeout(() => handle2FAVerifyEmail(new Event("submit") as unknown as React.FormEvent), 0); }} autoFocus className="w-full bg-transparent text-center text-lg tracking-[0.4em] font-mono outline-none py-1.5" style={fg} />
                       </div>
-                      <button type="submit" disabled={twoFAVerifying || twoFACode.length !== 6} className="w-full py-2.5 rounded text-sm font-bold tracking-widest uppercase disabled:opacity-50" style={primary}>
-                        {twoFAVerifying ? <Icon name="Loader2" size={14} className="animate-spin mx-auto" /> : "Войти"}
-                      </button>
+                      {twoFAVerifying && (
+                        <div className="flex justify-center py-1">
+                          <Icon name="Loader2" size={18} className="animate-spin" style={{ color: "hsl(var(--primary))" } as React.CSSProperties} />
+                        </div>
+                      )}
                       <div className="flex items-center justify-between">
                         <button type="button" onClick={() => { setTwoFAScreen("choose"); setTwoFACode(""); }} className="text-xs hover:underline" style={muted}>Другой способ</button>
                         <button type="button" onClick={handle2FAResend} disabled={twoFAResending || twoFACooldown > 0} className="text-xs hover:underline disabled:opacity-50" style={{ color: "hsl(var(--primary))" }}>
@@ -404,11 +406,13 @@ export default function AuthDropdown({ onHero = false }: Props) {
                     <p className="text-xs mb-4" style={muted}>Введите код из приложения-аутентификатора</p>
                     <form onSubmit={handle2FAVerifyTotp} className="space-y-3">
                       <div className="border-b pb-2" style={borderStyle}>
-                        <input type="text" placeholder="000000" value={twoFACode} onChange={(e) => setTwoFACode(e.target.value.replace(/[^0-9a-f]/gi, "").slice(0, 8))} autoFocus className="w-full bg-transparent text-center text-lg tracking-[0.4em] font-mono outline-none py-1.5" style={fg} />
+                        <input type="text" placeholder="000000" value={twoFACode} onChange={(e) => { const v = e.target.value.replace(/[^0-9a-f]/gi, "").slice(0, 8); setTwoFACode(v); if (v.length >= 6) setTimeout(() => handle2FAVerifyTotp(new Event("submit") as unknown as React.FormEvent), 0); }} autoFocus className="w-full bg-transparent text-center text-lg tracking-[0.4em] font-mono outline-none py-1.5" style={fg} />
                       </div>
-                      <button type="submit" disabled={twoFAVerifying || twoFACode.length < 6} className="w-full py-2.5 rounded text-sm font-bold tracking-widest uppercase disabled:opacity-50" style={primary}>
-                        {twoFAVerifying ? <Icon name="Loader2" size={14} className="animate-spin mx-auto" /> : "Подтвердить"}
-                      </button>
+                      {twoFAVerifying && (
+                        <div className="flex justify-center py-1">
+                          <Icon name="Loader2" size={18} className="animate-spin" style={{ color: "hsl(var(--primary))" } as React.CSSProperties} />
+                        </div>
+                      )}
                       <button type="button" onClick={reset2FA} className="w-full text-xs text-center hover:underline" style={muted}>Вернуться к вводу пароля</button>
                     </form>
                   </>
