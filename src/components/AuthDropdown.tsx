@@ -121,13 +121,19 @@ export default function AuthDropdown({ onHero = false }: Props) {
 
   const closeAll = () => { setOpen(false); resetReg(); };
 
+  const getRedirectPath = (userData?: { roles?: { slug: string }[] } | null) => {
+    const roles = userData?.roles?.map((r) => r.slug) ?? [];
+    if (roles.some((s) => ["parmaster", "organizer", "partner"].includes(s))) return "/workspace";
+    return "/account";
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await login(email, password, remember);
+      const loggedUser = await login(email, password, remember);
       closeAll();
-      navigate("/account");
+      navigate(getRedirectPath(loggedUser));
     } catch (err) {
       if (err instanceof HttpError && err.body?.code === "email_not_verified") { closeAll(); navigate("/login"); return; }
       if (err instanceof Error && err.message === "2FA_REQUIRED") { closeAll(); navigate("/login"); return; }
