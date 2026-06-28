@@ -10,7 +10,7 @@ import { useYandexAuth } from "@/components/extensions/yandex-auth/useYandexAuth
 const VK_AUTH_URL = "https://functions.poehali.dev/e0433198-3f6a-4251-aacd-b238beddae39";
 const YANDEX_AUTH_URL = "https://functions.poehali.dev/1e5f15d8-b432-4341-9a18-4c408d3d80aa";
 
-type Tab = "login" | "register";
+type Tab = "login";
 
 interface Props {
   onHero?: boolean;
@@ -255,59 +255,34 @@ export default function AuthDropdown({ onHero = false }: Props) {
                     >
                       Забыли пароль?
                     </button>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => startSocialLogin("vk")}
+                        disabled={vkAuth.isLoading}
+                        className="flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-sm font-medium text-white transition-opacity disabled:opacity-60 hover:opacity-90"
+                        style={{ background: "#0077FF" }}
+                      >
+                        {vkAuth.isLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <VkIcon />}
+                        ВК
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => startSocialLogin("yandex")}
+                        disabled={yandexAuth.isLoading}
+                        className="flex items-center justify-center gap-2 flex-1 py-2 rounded-lg text-sm font-medium text-white transition-opacity disabled:opacity-60 hover:opacity-90"
+                        style={{ background: "#FC3F1D" }}
+                      >
+                        {yandexAuth.isLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <YandexIcon />}
+                        Яндекс
+                      </button>
+                    </div>
                   </form>
                 )}
               </div>
 
-              {/* Вход через соцсети */}
-              <div>
-                <button
-                  className="flex items-center gap-3 px-5 py-4 w-full text-left transition-colors hover:bg-muted/50"
-                  onClick={() => setTab("register")}
-                >
-                  <div
-                    className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0"
-                    style={{ borderColor: tab === "register" ? "hsl(var(--primary))" : "hsl(var(--border))" }}
-                  >
-                    {tab === "register" && (
-                      <div className="w-2 h-2 rounded-full" style={{ background: "hsl(var(--primary))" }} />
-                    )}
-                  </div>
-                  <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>
-                    Войти через соцсеть
-                  </span>
-                </button>
 
-                {tab === "register" && (
-                  <div className="px-5 pb-5 flex flex-col gap-2">
-                    <button
-                      onClick={() => startSocialLogin("vk")}
-                      disabled={vkAuth.isLoading}
-                      className="flex items-center gap-3 w-full px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-opacity disabled:opacity-60 hover:opacity-90"
-                      style={{ background: "#0077FF" }}
-                    >
-                      {vkAuth.isLoading
-                        ? <Icon name="Loader2" size={16} className="animate-spin" />
-                        : <VkIcon />
-                      }
-                      ВКонтакте
-                    </button>
-
-                    <button
-                      onClick={() => startSocialLogin("yandex")}
-                      disabled={yandexAuth.isLoading}
-                      className="flex items-center gap-3 w-full px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-opacity disabled:opacity-60 hover:opacity-90"
-                      style={{ background: "#FC3F1D" }}
-                    >
-                      {yandexAuth.isLoading
-                        ? <Icon name="Loader2" size={16} className="animate-spin" />
-                        : <YandexIcon />
-                      }
-                      Яндекс
-                    </button>
-                  </div>
-                )}
-              </div>
 
             </div>
           </div>
