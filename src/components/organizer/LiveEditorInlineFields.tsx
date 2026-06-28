@@ -45,7 +45,7 @@ export function InlineText({
       ref,
       value,
       maxLength,
-      className: `w-full bg-white/90 border-2 border-primary/60 rounded-md px-2 py-1 outline-none focus:border-primary shadow-sm ${inputClassName}`,
+      className: `w-full bg-white border-2 border-primary/60 rounded-md px-2 py-1 outline-none focus:border-primary shadow-sm text-gray-900 placeholder:text-gray-400 ${inputClassName}`,
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
         onChange(e.target.value),
       onBlur: () => setEditing(false),
