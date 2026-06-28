@@ -5,6 +5,7 @@ import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import ThemeToggle from "@/components/ThemeToggle";
+import AuthDropdown from "@/components/AuthDropdown";
 
 const SBER_DONATE_URL = "https://messenger.online.sberbank.ru/sl/9eE3EK9SoMLSsYC2x";
 
@@ -141,18 +142,7 @@ export default function Header({ transparent = false }: HeaderProps) {
               {user ? (
                 <ProfileDropdown variant="default" />
               ) : (
-                <Link
-                  to="/login"
-                  className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-300"
-                  style={{
-                    background: "var(--header-login-bg)",
-                    border: "1px solid var(--header-login-border)",
-                    color: "var(--header-nav-color)",
-                  }}
-                >
-                  <Icon name="LogIn" size={16} />
-                  <span className="hidden sm:inline">Войти</span>
-                </Link>
+                <AuthDropdown onHero={onHero} />
               )}
 
               <button
