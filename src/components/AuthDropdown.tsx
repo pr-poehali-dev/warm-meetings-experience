@@ -489,12 +489,9 @@ export default function AuthDropdown({ onHero = false }: Props) {
                 <div>
                   <button
                     className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/40"
-                    onClick={() => {
-                      if (expanded === "register") { setExpanded("login"); resetReg(); }
-                      else setExpanded("register");
-                    }}
+                    onClick={() => { closeAll(); navigate("/register"); }}
                   >
-                    <RadioDot active={expanded === "register"} />
+                    <RadioDot active={false} />
                     <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>
                       Зарегистрироваться
                     </span>
