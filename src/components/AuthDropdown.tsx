@@ -328,10 +328,17 @@ export default function AuthDropdown({ onHero = false }: Props) {
 
       {open && (
         <>
-          <div className="fixed inset-0 z-[299] bg-black/40 backdrop-blur-sm" onClick={closeAll} />
+          {/* Затемнение — только на мобильных */}
+          <div className="fixed inset-0 z-[299] bg-black/40 backdrop-blur-sm sm:hidden" onClick={closeAll} />
           <div
             ref={panelRef}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[300] rounded-2xl shadow-2xl overflow-y-auto max-h-[85vh] animate-in fade-in zoom-in-95 duration-200"
+            className={[
+              "z-[300] rounded-2xl shadow-2xl overflow-y-auto animate-in fade-in zoom-in-95 duration-200",
+              // Мобильные: модальное по центру экрана
+              "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-h-[85vh]",
+              // Десктоп: выпадающее под кнопкой справа
+              "sm:absolute sm:left-auto sm:right-0 sm:top-full sm:translate-x-0 sm:-translate-y-0 sm:mt-2 sm:max-h-[80vh]",
+            ].join(" ")}
             style={{
               background: "hsl(var(--card))",
               border: "1px solid hsl(var(--border))",
