@@ -505,7 +505,8 @@ export default function AuthDropdown({ onHero = false }: Props) {
 
                       {regStep === "reg-type" && (
                         <>
-                          <p className="text-xs mb-4" style={muted}>Создайте учётную запись</p>
+                          <p className="text-base font-bold mb-1 leading-snug" style={fg}>Вы хотите ходить в баню или принимать гостей?</p>
+                          <p className="text-xs mb-4" style={muted}>Выберите, чтобы мы настроили всё под вас</p>
                           <div className="space-y-2">
                             <button onClick={() => { setSignupRoles([]); setRegStep("reg-form"); }} className="group w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left hover:border-primary" style={border}>
                               <span className="text-xl shrink-0">🛁</span>
