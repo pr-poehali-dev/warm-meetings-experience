@@ -101,10 +101,10 @@ export default function OrgDashboard({
   });
 
   const STATS = [
-    { label: "Проведено", value: stats.total_events, icon: "CalendarCheck", color: "text-blue-600", filter: "past" as StatusFilter },
-    { label: "Предстоящих", value: stats.upcoming_events, icon: "Calendar", color: "text-green-600", filter: "active" as StatusFilter },
-    { label: "Участников", value: stats.total_participants, icon: "Users", color: "text-purple-600", filter: "all" as StatusFilter },
-    { label: "Черновики", value: stats.drafts, icon: "FileText", color: "text-gray-600", filter: "drafts" as StatusFilter },
+    { label: "Предстоящих событий", value: stats.upcoming_events, icon: "CalendarDays", color: "text-emerald-600", bg: "bg-emerald-500/15", filter: "active" as StatusFilter, hint: "Мои события" },
+    { label: "Участников всего", value: stats.total_participants, icon: "Users", color: "text-violet-600", bg: "bg-violet-500/15", filter: "all" as StatusFilter, hint: "Открыть события" },
+    { label: "Черновики", value: stats.drafts, icon: "FileEdit", color: "text-amber-600", bg: "bg-amber-500/15", filter: "drafts" as StatusFilter, hint: "Создать событие" },
+    { label: "Вопросов без ответа", value: stats.unread_questions ?? 0, icon: "MessageCircleQuestion", color: "text-blue-600", bg: "bg-blue-500/15", filter: "all" as StatusFilter, hint: "Открыть вопросы" },
   ];
 
   return (
@@ -122,19 +122,20 @@ export default function OrgDashboard({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {STATS.map((s) => (
-          <Card
-            key={s.label}
-            className={`cursor-pointer transition-all hover:shadow-md ${filter === s.filter ? "border-primary/50 shadow-sm" : "hover:border-primary/30"}`}
-            onClick={() => setFilter(s.filter)}
-          >
-            <CardContent className="pt-5 pb-4">
-              <div className={`${s.color} mb-2`}>
-                <Icon name={s.icon} size={22} />
-              </div>
-              <div className="text-2xl font-bold">{s.value}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
-            </CardContent>
-          </Card>
+          <button type="button" key={s.label} onClick={() => setFilter(s.filter)} className="text-left w-full group">
+            <Card className={`border-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer h-full ${filter === s.filter ? "ring-2 ring-primary/40" : ""}`}>
+              <CardContent className="p-4">
+                <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center mb-2`}>
+                  <Icon name={s.icon} size={15} className={s.color} />
+                </div>
+                <div className="text-xl font-bold text-foreground">{s.value}</div>
+                <div className="text-xs text-muted-foreground">{s.label}</div>
+                <div className="text-[11px] text-primary mt-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                  {s.hint} <Icon name="ArrowRight" size={10} />
+                </div>
+              </CardContent>
+            </Card>
+          </button>
         ))}
       </div>
 
