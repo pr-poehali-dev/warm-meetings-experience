@@ -5,28 +5,13 @@ interface BathLoaderProps {
 
 export default function BathLoader({ label = "Поддаём парку…", fullscreen = true }: BathLoaderProps) {
   const wrapper = fullscreen
-    ? "min-h-screen bg-background flex items-center justify-center relative overflow-hidden"
-    : "w-full py-16 flex items-center justify-center relative overflow-hidden";
-
-  // Фоновые слои пара: крупные полупрозрачные облака, медленно плывут вверх
-  const fogLayers = [
-    { size: 380, left: "8%", dur: 16, delay: 0, opacity: 0.1 },
-    { size: 300, left: "55%", dur: 22, delay: 4, opacity: 0.08 },
-    { size: 440, left: "30%", dur: 19, delay: 9, opacity: 0.07 },
-    { size: 260, left: "72%", dur: 14, delay: 2, opacity: 0.09 },
-    { size: 340, left: "-5%", dur: 25, delay: 12, opacity: 0.06 },
-  ];
+    ? "min-h-screen bg-background flex items-center justify-center"
+    : "w-full py-16 flex items-center justify-center";
 
   // Цикл 3с: ковш наклоняется → выплёскивает воду → пар поднимается → возврат
   return (
     <div className={wrapper}>
       <style>{`
-        @keyframes loader-fog {
-          0%   { transform: translateY(18vh) scale(0.85); opacity: 0; }
-          18%  { opacity: var(--fog-op); }
-          80%  { opacity: var(--fog-op); }
-          100% { transform: translateY(-115vh) scale(1.6); opacity: 0; }
-        }
         @keyframes ladle-pour {
           0%, 100% { transform: rotate(0deg); }
           25%      { transform: rotate(48deg); }
@@ -60,26 +45,7 @@ export default function BathLoader({ label = "Поддаём парку…", ful
         }
       `}</style>
 
-      {/* Фоновые слои пара, плывущие вверх */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {fogLayers.map((f, i) => (
-          <div
-            key={i}
-            className="absolute bottom-0 rounded-full"
-            style={{
-              width: f.size,
-              height: f.size,
-              left: f.left,
-              background: "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)",
-              filter: "blur(28px)",
-              ["--fog-op" as string]: f.opacity,
-              animation: `loader-fog ${f.dur}s linear ${f.delay}s infinite`,
-            }}
-          />
-        ))}
-      </div>
-
-      <div className="relative flex flex-col items-center gap-6 select-none">
+      <div className="flex flex-col items-center gap-6 select-none">
         <div className="relative" style={{ width: 150, height: 130 }}>
           <svg width="150" height="130" viewBox="0 0 150 130" fill="none" xmlns="http://www.w3.org/2000/svg">
             {/* ── Пар над каменкой ── */}
