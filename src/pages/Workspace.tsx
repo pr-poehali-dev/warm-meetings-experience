@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import CabinetHeader from "@/components/CabinetHeader";
+import BathLoader from "@/components/BathLoader";
 
 import { organizerApi, OrgEvent, DashboardData } from "@/lib/organizer-api";
 import { partnerApi, PartnerBath } from "@/lib/partner-api";
@@ -208,7 +209,7 @@ export default function Workspace() {
   const tour = useOnboardingTour("workspace", tourReady);
   const tourSteps = isOrganizer ? WORKSPACE_TOUR_STEPS : WORKSPACE_TOUR_STEPS.filter((s) => s.target !== '[data-tour="ws-create"]');
 
-  if (authLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" /></div>;
+  if (authLoading) return <BathLoader />;
 
   // Текущее название раздела в шапке
   const currentLabel = () => {
