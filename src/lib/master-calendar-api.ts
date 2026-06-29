@@ -27,6 +27,7 @@ export interface MasterService {
   master_slug?: string;
   master_name?: string;
   master_avatar?: string;
+  master_user_id?: number;
 }
 
 export type AddressType = "home" | "studio" | "partner" | "other";

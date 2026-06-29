@@ -721,7 +721,8 @@ def handle_service_detail(event, method, params, schema, headers):
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"""
-        SELECT ms.*, m.slug as master_slug, m.name as master_name, m.avatar as master_avatar
+        SELECT ms.*, m.slug as master_slug, m.name as master_name, m.avatar as master_avatar,
+               m.user_id as master_user_id
         FROM {schema}.master_services ms
         JOIN {schema}.masters m ON m.id = ms.master_id
         WHERE ms.id = {int(sid)} AND ms.is_active = true AND m.is_active = true
