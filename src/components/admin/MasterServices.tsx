@@ -502,96 +502,82 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex flex-col gap-2">
             {services.map((service) => (
               <div
                 key={service.id}
-                className={`bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition-shadow ${
+                className={`bg-white rounded-lg border border-gray-200 px-4 py-3 hover:shadow-sm transition-shadow ${
                   !service.is_active ? "opacity-60" : ""
                 }`}
               >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1 min-w-0 mr-3">
-                    <h3 className="text-lg font-semibold text-gray-900 truncate">
-                      {service.name}
-                    </h3>
+                <div className="flex items-center gap-3">
+                  {/* Название + описание */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-semibold text-gray-900 truncate">
+                        {service.name}
+                      </h3>
+                      <span
+                        className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${
+                          service.is_active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {service.is_active ? "Активна" : "Неактивна"}
+                      </span>
+                    </div>
                     {service.description && (
-                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">
                         {service.description}
                       </p>
                     )}
                   </div>
-                  <span
-                    className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${
-                      service.is_active
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-500"
-                    }`}
-                  >
-                    {service.is_active ? "Активна" : "Неактивна"}
-                  </span>
-                </div>
 
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Icon
-                      name="Clock"
-                      size={14}
-                      className="text-gray-400 shrink-0"
-                    />
-                    <span className="text-gray-600">
+                  {/* Мета-инфо */}
+                  <div className="flex items-center gap-4 text-xs text-gray-500 shrink-0">
+                    <span className="flex items-center gap-1">
+                      <Icon name="Clock" size={12} className="text-gray-400" />
                       {service.duration_minutes} мин
                     </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Icon
-                      name="Banknote"
-                      size={14}
-                      className="text-gray-400 shrink-0"
-                    />
-                    <span className="text-gray-900 font-semibold">
+                    <span className="flex items-center gap-1 font-semibold text-gray-900">
+                      <Icon name="Banknote" size={12} className="text-gray-400" />
                       {formatPrice(service.price)}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Icon
-                      name="Users"
-                      size={14}
-                      className="text-gray-400 shrink-0"
-                    />
-                    <span className="text-gray-600">
+                    <span className="flex items-center gap-1">
+                      <Icon name="Users" size={12} className="text-gray-400" />
                       до {service.max_clients} чел.
                     </span>
+                    {service.service_format &&
+                      (() => {
+                        const fmt = FORMAT_OPTIONS.find(
+                          (f) => f.value === service.service_format,
+                        );
+                        return fmt ? (
+                          <span className="flex items-center gap-1">
+                            <Icon
+                              name={fmt.icon as "Home"}
+                              size={12}
+                              className="text-gray-400"
+                            />
+                            {fmt.title}
+                          </span>
+                        ) : null;
+                      })()}
                   </div>
-                  {service.service_format &&
-                    (() => {
-                      const fmt = FORMAT_OPTIONS.find(
-                        (f) => f.value === service.service_format,
-                      );
-                      return fmt ? (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Icon
-                            name={fmt.icon as "Home"}
-                            size={14}
-                            className="text-gray-400 shrink-0"
-                          />
-                          <span className="text-gray-600">{fmt.title}</span>
-                        </div>
-                      ) : null;
-                    })()}
-                </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  {/* Кнопки */}
+                  <div className="flex items-center gap-0.5 shrink-0">
                   <TooltipProvider delayDuration={400}>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button
                             onClick={() => openEdit(service)}
-                            className="p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+                            className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
                             disabled={saving}
                           >
-                            <Icon name="Pencil" size={16} />
+                            <Icon name="Pencil" size={15} />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="text-xs">
@@ -602,7 +588,7 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                         <TooltipTrigger asChild>
                           <button
                             onClick={() => toggleActive(service)}
-                            className={`p-2 rounded-md transition-colors ${
+                            className={`p-1.5 rounded-md transition-colors ${
                               service.is_active
                                 ? "text-yellow-600 hover:bg-yellow-50"
                                 : "text-green-600 hover:bg-green-50"
@@ -611,7 +597,7 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                           >
                             <Icon
                               name={service.is_active ? "EyeOff" : "Eye"}
-                              size={16}
+                              size={15}
                             />
                           </button>
                         </TooltipTrigger>
@@ -628,10 +614,10 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                         <TooltipTrigger asChild>
                           <button
                             onClick={() => copyServiceLink(service)}
-                            className="p-2 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
+                            className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 transition-colors"
                             disabled={saving}
                           >
-                            <Icon name="Link" size={16} />
+                            <Icon name="Link" size={15} />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent
@@ -648,10 +634,10 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                             onClick={() =>
                               service.id && confirmDelete(service.id)
                             }
-                            className="p-2 rounded-md text-red-500 hover:bg-red-50 transition-colors"
+                            className="p-1.5 rounded-md text-red-500 hover:bg-red-50 transition-colors"
                             disabled={saving}
                           >
-                            <Icon name="Trash2" size={16} />
+                            <Icon name="Trash2" size={15} />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" className="text-xs">
@@ -660,17 +646,18 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                       </Tooltip>
                     </div>
                   </TooltipProvider>
-                  {service.id && service.is_active && (
-                    <TgPublishButton
-                      contentType="master_service"
-                      contentId={service.id}
-                      userId={masterId}
-                      label=""
-                      allowRepeat
-                      size="sm"
-                      variant="ghost"
-                    />
-                  )}
+                    {service.id && service.is_active && (
+                      <TgPublishButton
+                        contentType="master_service"
+                        contentId={service.id}
+                        userId={masterId}
+                        label=""
+                        allowRepeat
+                        size="sm"
+                        variant="ghost"
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
