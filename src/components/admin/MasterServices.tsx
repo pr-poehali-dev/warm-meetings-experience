@@ -881,7 +881,7 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                 </div>
                 <div>
                   <Label>
-                    Цена (\u20BD) <span className="text-red-500">*</span>
+                    Цена (₽) <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="number"
