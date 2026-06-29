@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
+import BathLoader from "@/components/BathLoader";
 import { EventItem } from "@/data/events";
 import { TELEGRAM_URL } from "@/lib/constants";
 import EventCalendar from "@/components/events/EventCalendar";
@@ -134,10 +135,7 @@ export default function IndexHeroSection({
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-24" style={{ color: "var(--loading-text)" }}>
-            <Icon name="Loader2" size={32} className="animate-spin mr-3" />
-            Загрузка встреч...
-          </div>
+          <BathLoader fullscreen={false} label="Загрузка встреч…" />
         ) : filtered.length === 0 ? (
           <div className="text-center py-20" style={{ color: "var(--empty-text)" }}>
             <Icon name="CalendarX" size={48} className="mx-auto mb-4 opacity-30" />

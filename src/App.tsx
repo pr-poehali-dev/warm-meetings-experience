@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import BathLoader from "./components/BathLoader";
 import ScrollToTop from "./components/ScrollToTop";
 import RoleGuard from "./components/RoleGuard";
 import CookieConsent from "./components/CookieConsent";
@@ -95,11 +96,7 @@ const queryClient = new QueryClient({
   },
 });
 
-const RouteFallback = () => (
-  <div className="min-h-screen flex items-center justify-center">
-    <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-  </div>
-);
+const RouteFallback = () => <BathLoader />;
 
 const AppContent = () => {
   useKeyboardAwareInputs();

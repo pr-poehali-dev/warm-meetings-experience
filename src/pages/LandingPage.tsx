@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { landingApi, PublicLandingResponse, LandingBlockId } from "@/lib/landing-api";
+import BathLoader from "@/components/BathLoader";
 
 const DEFAULT_BLOCKS: LandingBlockId[] = [
   "avatar_name", "about_text", "services", "portfolio", "reviews", "contacts", "map", "cta", "social",
@@ -38,11 +39,7 @@ export default function LandingPage() {
 
   if (notFound) return <NotFound />;
   if (loading || !data) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <BathLoader label="Загружаем страницу…" />;
   }
 
   const { landing, owner, master, services, reviews, baths } = data;
