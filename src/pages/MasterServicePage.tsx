@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useTheme } from "next-themes";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Icon from "@/components/ui/icon";
@@ -10,41 +9,7 @@ import { parseServiceDescription, buildServiceDescription } from "@/lib/service-
 import { toast } from "sonner";
 import MasterBookingFlow, { BookingOption } from "@/components/masters/MasterBookingFlow";
 import { BookingModal, BookingSuccess } from "@/components/masters/BookingModal";
-
-const THEME_STYLES = `
-  [data-service-theme="dark"] {
-    --bg-page: linear-gradient(160deg, #1a1410 0%, #1c2018 35%, #14201c 65%, #101818 100%);
-    --c-cream: #EDE0CC;
-    --c-terra: #C8834A;
-    --c-sage:  #8FA89A;
-    --c-text:  rgba(217,237,232,0.6);
-    --c-muted: rgba(217,237,232,0.45);
-    --glass-bg: rgba(237,224,204,0.06);
-    --glass-border: rgba(237,224,204,0.13);
-    --card-bg: rgba(237,224,204,0.05);
-    --card-border: rgba(237,224,204,0.1);
-    --input-bg: rgba(255,255,255,0.06);
-    --input-border: rgba(255,255,255,0.12);
-    --badge-bg: rgba(200,131,74,0.15);
-    --badge-border: rgba(200,131,74,0.3);
-  }
-  [data-service-theme="light"] {
-    --bg-page: linear-gradient(160deg, #fdf7f0 0%, #f4f8f5 35%, #eef6f4 65%, #eaf4f2 100%);
-    --c-cream: #2d2318;
-    --c-terra: #b56b2e;
-    --c-sage:  #4a7a6a;
-    --c-text:  rgba(35,40,38,0.68);
-    --c-muted: rgba(35,40,38,0.5);
-    --glass-bg: rgba(255,255,255,0.7);
-    --glass-border: rgba(200,131,74,0.15);
-    --card-bg: rgba(255,255,255,0.8);
-    --card-border: rgba(200,131,74,0.15);
-    --input-bg: rgba(255,255,255,0.9);
-    --input-border: rgba(45,35,24,0.15);
-    --badge-bg: rgba(181,107,46,0.12);
-    --badge-border: rgba(181,107,46,0.25);
-  }
-`;
+import PageShell from "@/components/ui/page-shell";
 
 const FORMAT_META: Record<string, { emoji: string; label: string }> = {
   on_site:      { emoji: "🏠", label: "На месте у мастера" },
@@ -208,10 +173,6 @@ function EditableList({ items, placeholder, editMode, onChange }: EditableListPr
 export default function MasterServicePage() {
   const { slug, id } = useParams<{ slug: string; id: string }>();
   const { user, hasRole } = useAuth();
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const isDark = mounted ? resolvedTheme === "dark" : true;
 
   const [service, setService] = useState<MasterService | null>(null);
   const [loading, setLoading] = useState(true);
@@ -345,27 +306,27 @@ export default function MasterServicePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <PageShell>
         <Header />
-        <div className="flex-1 flex items-center justify-center text-gray-400">
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">
           <Icon name="Loader" size={32} className="animate-spin" />
         </div>
         <Footer />
-      </div>
+      </PageShell>
     );
   }
 
   if (!service) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <PageShell>
         <Header />
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-500">
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-muted-foreground">
           <Icon name="SearchX" size={48} className="opacity-30" />
           <p className="text-lg">Услуга не найдена</p>
           <Link to={`/masters/${slug}`} className="text-primary underline text-sm">Вернуться к мастеру</Link>
         </div>
         <Footer />
-      </div>
+      </PageShell>
     );
   }
 
@@ -375,15 +336,10 @@ export default function MasterServicePage() {
   const embedUrl = service.video_url ? getVideoEmbedUrl(service.video_url) : null;
 
   return (
-    <div
-      data-service-theme={isDark ? "dark" : "light"}
-      className="min-h-screen flex flex-col transition-colors duration-500"
-      style={{ background: "var(--bg-page)" }}
-    >
-      <style dangerouslySetInnerHTML={{ __html: THEME_STYLES }} />
+    <PageShell className="flex flex-col">
       <Header />
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-8" style={{ color: "var(--c-text)" }}>
+      <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-8">
 
         {/* Хлебные крошки */}
         <nav className="flex items-center gap-2 text-sm text-gray-400 mb-6">
@@ -519,7 +475,7 @@ export default function MasterServicePage() {
         </div>
 
         {/* Заголовок и мета */}
-        <div className="rounded-2xl p-6 mb-4 shadow-sm border" style={{ background: "var(--card-bg)", borderColor: "var(--card-border)" }}>
+        <div className="bg-card border border-border rounded-2xl p-6 mb-4 shadow-sm">
           {/* Формат оказания */}
           {isOwner ? (
             <div className="flex gap-2 mb-3 flex-wrap">
@@ -545,7 +501,7 @@ export default function MasterServicePage() {
 
           <div className="flex items-start justify-between gap-4 mb-4">
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold" style={{ color: "var(--c-cream)" }}>
+              <h1 className="text-2xl font-bold text-foreground">
                 <EditableField
                   value={service.name}
                   placeholder="Название услуги"
@@ -582,8 +538,8 @@ export default function MasterServicePage() {
                 </div>
               ) : (
                 <>
-                  <div className="text-2xl font-bold" style={{ color: "var(--c-cream)" }}>{fmtPrice(service.price)}</div>
-                  <div className="text-sm" style={{ color: "var(--c-muted)" }}>{fmtDuration(service.duration_minutes)}</div>
+                  <div className="text-2xl font-bold text-foreground">{fmtPrice(service.price)}</div>
+                  <div className="text-sm text-muted-foreground">{fmtDuration(service.duration_minutes)}</div>
                 </>
               )}
             </div>
@@ -648,8 +604,8 @@ export default function MasterServicePage() {
 
         {/* Подробное описание */}
         {(service.rich_description || isOwner) && (
-          <div className="rounded-2xl p-6 mb-4 shadow-sm border" style={{ background: "var(--card-bg)", borderColor: "var(--card-border)" }}>
-            <h2 className="text-lg font-semibold mb-3" style={{ color: "var(--c-cream)" }}>Об услуге</h2>
+          <div className="bg-card border border-border rounded-2xl p-6 mb-4 shadow-sm">
+            <h2 className="text-lg font-semibold text-foreground mb-3">Об услуге</h2>
             <div className="text-gray-700 leading-relaxed text-sm">
               <EditableField
                 value={service.rich_description || ""}
@@ -665,11 +621,11 @@ export default function MasterServicePage() {
 
         {/* Что входит / Взять / Противопоказания */}
         {(included.length > 0 || bring.length > 0 || contraindications.length > 0 || isOwner) && (
-          <div className="rounded-2xl p-6 mb-4 shadow-sm border space-y-5" style={{ background: "var(--card-bg)", borderColor: "var(--card-border)" }}>
+          <div className="bg-card border border-border rounded-2xl p-6 mb-4 shadow-sm space-y-5">
             {/* Что входит */}
             {(included.length > 0 || isOwner) && (
               <div>
-                <h3 className="font-semibold mb-2 flex items-center gap-2" style={{ color: "var(--c-cream)" }}>
+                <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                   <Icon name="CheckCircle2" size={16} className="text-green-500" /> Что входит
                 </h3>
                 {isOwner ? (
@@ -694,7 +650,7 @@ export default function MasterServicePage() {
             {/* Взять с собой */}
             {(bring.length > 0 || isOwner) && (
               <div>
-                <h3 className="font-semibold mb-2 flex items-center gap-2" style={{ color: "var(--c-cream)" }}>
+                <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                   <Icon name="ShoppingBag" size={16} className="text-blue-500" /> Взять с собой
                 </h3>
                 {isOwner ? (
@@ -719,7 +675,7 @@ export default function MasterServicePage() {
             {/* Противопоказания */}
             {(contraindications.length > 0 || isOwner) && (
               <div>
-                <h3 className="font-semibold mb-2 flex items-center gap-2" style={{ color: "var(--c-cream)" }}>
+                <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
                   <Icon name="AlertTriangle" size={16} className="text-amber-500" /> Противопоказания
                 </h3>
                 {isOwner ? (
@@ -745,8 +701,8 @@ export default function MasterServicePage() {
 
         {/* Видео */}
         {(service.video_url || isOwner) && (
-          <div className="rounded-2xl p-6 mb-4 shadow-sm border" style={{ background: "var(--card-bg)", borderColor: "var(--card-border)" }}>
-            <h2 className="text-lg font-semibold mb-3" style={{ color: "var(--c-cream)" }}>Видео</h2>
+          <div className="bg-card border border-border rounded-2xl p-6 mb-4 shadow-sm">
+            <h2 className="text-lg font-semibold text-foreground mb-3">Видео</h2>
             {service.video_url && embedUrl ? (
               <div className="rounded-xl overflow-hidden aspect-video mb-3">
                 <iframe src={embedUrl} className="w-full h-full" allowFullScreen
@@ -772,8 +728,8 @@ export default function MasterServicePage() {
 
         {/* Виджет выбора даты и записи — прямо на странице */}
         {!isOwner && service.is_active && (
-          <div className="rounded-2xl p-4 sm:p-6 mb-4 shadow-sm border scroll-mt-20" style={{ background: "var(--card-bg)", borderColor: "var(--card-border)" }}>
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: "var(--c-cream)" }}>
+          <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 mb-4 shadow-sm scroll-mt-20">
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
               <Icon name="CalendarCheck" size={18} className="text-primary" />
               Выберите дату и время
             </h2>
@@ -813,6 +769,6 @@ export default function MasterServicePage() {
       )}
 
       <Footer />
-    </div>
+    </PageShell>
   );
 }
