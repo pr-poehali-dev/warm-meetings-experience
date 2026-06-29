@@ -7,6 +7,9 @@ import { useEffect, useState, useCallback } from "react";
  *
  * Поля типизируются как Record<string, string | number | boolean | undefined>.
  */
+// Поля, которые не нужно сохранять между сессиями (поисковые строки)
+const TRANSIENT_KEYS = ["q", "search", "query"];
+
 export function useStickyFilters<T extends Record<string, string | number | boolean | undefined>>(
   storageKey: string,
   defaults: T,
@@ -22,13 +25,14 @@ export function useStickyFilters<T extends Record<string, string | number | bool
     if (typeof window === "undefined") return defaults;
     const result: Record<string, unknown> = { ...defaults };
 
-    // 1. localStorage
+    // 1. localStorage (только не-транзиентные поля)
     try {
       const raw = window.localStorage.getItem(fullKey);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === "object") {
           for (const k of Object.keys(defaults)) {
+            if (TRANSIENT_KEYS.includes(k)) continue;
             if (parsed[k] !== undefined) result[k] = parsed[k];
           }
         }
@@ -62,7 +66,10 @@ export function useStickyFilters<T extends Record<string, string | number | bool
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      window.localStorage.setItem(fullKey, JSON.stringify(filters));
+      const toSave = Object.fromEntries(
+        Object.entries(filters).filter(([k]) => !TRANSIENT_KEYS.includes(k))
+      );
+      window.localStorage.setItem(fullKey, JSON.stringify(toSave));
     } catch {
       /* ignore quota */
     }
