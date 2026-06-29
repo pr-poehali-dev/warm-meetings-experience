@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
 import { HttpError } from "@/lib/http";
-import { userAuthApi2FA, User } from "@/lib/user-api";
+import { userAuthApi2FA, userAuthApi, User } from "@/lib/user-api";
 import { toast } from "sonner";
 import { useVkAuth } from "@/components/extensions/vk-auth/useVkAuth";
 import { useYandexAuth } from "@/components/extensions/yandex-auth/useYandexAuth";
@@ -68,7 +68,7 @@ export default function AuthDropdown({ onHero = false }: Props) {
   const { login, register, loginWithToken } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState<"register" | "login">("login");
+  const [expanded, setExpanded] = useState<"register" | "login" | "forgot">("login");
   const [regStep, setRegStep] = useState<RegStep>("reg-type");
 
   // login
@@ -159,7 +159,32 @@ export default function AuthDropdown({ onHero = false }: Props) {
     setTwoFACode(""); setTwoFAEmailMasked(""); setTwoFACooldown(0);
   };
 
-  const closeAll = () => { setOpen(false); resetReg(); reset2FA(); };
+  // forgot password
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
+  const forgotCaptcha = useBathCaptcha();
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotCaptcha.isValid) { toast.error("Ответьте на вопрос-проверку"); return; }
+    setForgotSubmitting(true);
+    try {
+      await userAuthApi.forgot(forgotEmail);
+      setForgotSent(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Ошибка отправки");
+    } finally {
+      setForgotSubmitting(false);
+    }
+  };
+
+  const resetForgot = () => {
+    setForgotEmail(""); setForgotSent(false); setForgotSubmitting(false);
+    forgotCaptcha.reset?.();
+  };
+
+  const closeAll = () => { setOpen(false); resetReg(); reset2FA(); resetForgot(); };
 
   const getRedirectPath = (userData?: { roles?: { slug: string }[] } | null) => {
     const roles = userData?.roles?.map((r) => r.slug) ?? [];
@@ -614,9 +639,9 @@ export default function AuthDropdown({ onHero = false }: Props) {
                 <div>
                   <button
                     className="w-full flex items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/40"
-                    onClick={() => setExpanded(expanded === "login" ? "register" : "login")}
+                    onClick={() => setExpanded(expanded === "login" || expanded === "forgot" ? "register" : "login")}
                   >
-                    <RadioDot active={expanded === "login"} />
+                    <RadioDot active={expanded === "login" || expanded === "forgot"} />
                     <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: "hsl(var(--primary))" }}>
                       Войти в личный кабинет
                     </span>
@@ -645,7 +670,7 @@ export default function AuthDropdown({ onHero = false }: Props) {
                           <span className="text-xs" style={muted}>Запомнить меня</span>
                         </label>
                       </div>
-                      <button type="button" className="text-xs hover:underline" style={{ color: "hsl(var(--primary))" }} onClick={() => { closeAll(); navigate("/login?tab=forgot"); }}>
+                      <button type="button" className="text-xs hover:underline" style={{ color: "hsl(var(--primary))" }} onClick={() => { resetForgot(); setExpanded("forgot"); }}>
                         Забыли пароль?
                       </button>
                       <div className="flex gap-2 pt-1">
@@ -657,6 +682,65 @@ export default function AuthDropdown({ onHero = false }: Props) {
                         </button>
                       </div>
                     </form>
+                  )}
+
+                  {/* Экран «Забыли пароль» */}
+                  {expanded === "forgot" && (
+                    <div className="px-5 pb-5 space-y-3">
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-xs mb-1"
+                        style={{ color: "hsl(var(--muted-foreground))" }}
+                        onClick={() => { resetForgot(); setExpanded("login"); }}
+                      >
+                        <Icon name="ArrowLeft" size={13} /> Назад ко входу
+                      </button>
+                      {forgotSent ? (
+                        <div className="text-center space-y-3 py-2">
+                          <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center mx-auto">
+                            <Icon name="MailCheck" size={20} className="text-green-600" />
+                          </div>
+                          <p className="text-xs leading-relaxed" style={{ color: "hsl(var(--muted-foreground))" }}>
+                            Если аккаунт с таким email существует — ссылка для сброса пароля уже в пути
+                          </p>
+                          <button
+                            type="button"
+                            className="text-xs hover:underline"
+                            style={{ color: "hsl(var(--primary))" }}
+                            onClick={() => { resetForgot(); setExpanded("login"); }}
+                          >
+                            Вернуться ко входу
+                          </button>
+                        </div>
+                      ) : (
+                        <form onSubmit={handleForgot} className="space-y-3">
+                          <p className="text-xs" style={{ color: "hsl(var(--muted-foreground))" }}>
+                            Введите email — пришлём ссылку для сброса пароля
+                          </p>
+                          <div className="border-b pb-3" style={{ borderColor: "hsl(var(--border))" }}>
+                            <input
+                              type="email"
+                              placeholder="Email"
+                              value={forgotEmail}
+                              onChange={(e) => setForgotEmail(e.target.value)}
+                              required
+                              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1"
+                            />
+                          </div>
+                          <BathCaptcha {...forgotCaptcha} />
+                          <button
+                            type="submit"
+                            disabled={forgotSubmitting || !forgotCaptcha.isValid}
+                            className="px-6 py-2 rounded text-sm font-bold tracking-wider uppercase disabled:opacity-60"
+                            style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+                          >
+                            {forgotSubmitting
+                              ? <Icon name="Loader2" size={14} className="animate-spin" />
+                              : "Отправить ссылку"}
+                          </button>
+                        </form>
+                      )}
+                    </div>
                   )}
                 </div>
 
