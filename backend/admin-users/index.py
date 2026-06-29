@@ -227,7 +227,7 @@ def handler(event, context):
             SELECT
                 u.id, u.name, u.email, u.phone, u.telegram,
                 u.is_active, u.blocked_reason, u.created_at, u.consent_photo,
-                u.admin_note,
+                u.admin_note, u.last_login_at,
                 COALESCE(json_agg(
                     json_build_object('id', r.id, 'name', r.name, 'slug', r.slug, 'icon', r.icon, 'status', ur.status)
                 ) FILTER (WHERE ur.id IS NOT NULL), '[]') as roles

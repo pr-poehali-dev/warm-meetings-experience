@@ -44,6 +44,7 @@ interface User {
   is_active: boolean;
   blocked_reason: "banned" | "duplicate" | null;
   created_at: string;
+  last_login_at: string | null;
   consent_photo?: "yes" | "no" | null;
   admin_note?: string | null;
   roles: UserRole[];
@@ -397,7 +398,8 @@ export default function AdminUsers() {
                     <th className="pb-3 pr-4 font-medium">Телефон</th>
                     <th className="pb-3 pr-4 font-medium">Роли</th>
                     <th className="pb-3 pr-4 font-medium">Фото</th>
-                    <th className="pb-3 pr-4 font-medium">Дата</th>
+                    <th className="pb-3 pr-4 font-medium">Регистрация</th>
+                    <th className="pb-3 pr-4 font-medium">Последний визит</th>
                     <th className="pb-3 font-medium">Статус</th>
                   </tr>
                 </thead>
@@ -439,6 +441,7 @@ export default function AdminUsers() {
                         <ConsentPhotoBadge consent={user.consent_photo} />
                       </td>
                       <td className="py-3 pr-4 text-gray-500">{formatDate(user.created_at)}</td>
+                      <td className="py-3 pr-4 text-gray-500">{user.last_login_at ? formatDate(user.last_login_at) : "—"}</td>
                       <td className="py-3">
                         {user.is_active ? (
                           <Badge variant="default" className="text-xs">Активен</Badge>
