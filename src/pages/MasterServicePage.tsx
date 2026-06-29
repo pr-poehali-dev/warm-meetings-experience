@@ -251,35 +251,39 @@ export default function MasterServicePage() {
 
         {/* Панель владельца — режим редактора включён */}
         {isOwner && (
-          <div className="mb-5 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
-            <Icon name="Pencil" size={16} className="text-amber-500 shrink-0" />
-            <span className="text-sm text-amber-800 flex-1">
+          <div className="mb-5 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-2xl px-3 py-2.5">
+            <Icon name="Pencil" size={15} className="text-amber-500 shrink-0" />
+            <span className="text-xs text-amber-800 flex-1 hidden sm:block">
               Режим редактора — нажмите на любой текст чтобы изменить
+            </span>
+            <span className="text-xs text-amber-800 flex-1 sm:hidden">
+              Режим редактора
             </span>
             {dirty ? (
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
+                className="flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg transition shrink-0"
               >
                 {saving
-                  ? <Icon name="Loader" size={14} className="animate-spin" />
-                  : <Icon name="Save" size={14} />}
-                Сохранить
+                  ? <Icon name="Loader" size={13} className="animate-spin" />
+                  : <Icon name="Save" size={13} />}
+                <span className="hidden sm:inline">Сохранить</span>
               </button>
             ) : (
-              <span className="text-xs text-amber-600 flex items-center gap-1">
-                <Icon name="CheckCircle2" size={13} /> Сохранено
+              <span className="text-xs text-amber-600 flex items-center gap-1 shrink-0">
+                <Icon name="CheckCircle2" size={13} />
+                <span className="hidden sm:inline">Сохранено</span>
               </span>
             )}
             <button
               onClick={() => setEditMode(false)}
               disabled={dirty}
               title={dirty ? "Сначала сохраните изменения" : "Посмотреть как видят гости"}
-              className="flex items-center gap-1.5 text-amber-700 hover:text-amber-900 text-sm font-medium border border-amber-300 rounded-lg px-3 py-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 text-amber-700 hover:text-amber-900 text-xs font-medium border border-amber-300 rounded-lg px-2.5 py-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
             >
-              <Icon name="Eye" size={14} />
-              Просмотр
+              <Icon name="Eye" size={13} />
+              <span className="hidden sm:inline">Просмотр</span>
             </button>
           </div>
         )}
