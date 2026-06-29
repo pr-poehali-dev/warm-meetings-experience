@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Icon from "@/components/ui/icon";
@@ -7,6 +7,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { masterCalendarApi, MasterService } from "@/lib/master-calendar-api";
 import { parseServiceDescription } from "@/lib/service-description";
 import { toast } from "sonner";
+import MasterBookingFlow, { BookingOption } from "@/components/masters/MasterBookingFlow";
+import { BookingModal, BookingSuccess } from "@/components/masters/BookingModal";
 
 const FORMAT_META: Record<string, { emoji: string; label: string }> = {
   on_site:      { emoji: "🏠", label: "На месте у мастера" },
@@ -97,7 +99,6 @@ function EditableField({ value, placeholder, multiline, className = "", onSave, 
 
 export default function MasterServicePage() {
   const { slug, id } = useParams<{ slug: string; id: string }>();
-  const navigate = useNavigate();
   const { user, hasRole } = useAuth();
 
   const [service, setService] = useState<MasterService | null>(null);
@@ -106,6 +107,26 @@ export default function MasterServicePage() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
+
+  // Бронирование прямо на странице услуги
+  const bookingRef = useRef<HTMLDivElement>(null);
+  const [bookingState, setBookingState] = useState<{ option: BookingOption; service: MasterService } | null>(null);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingChatToken, setBookingChatToken] = useState<string | undefined>(undefined);
+  const [bookingClientEmail, setBookingClientEmail] = useState<string | undefined>(undefined);
+  const [bookingRefreshKey, setBookingRefreshKey] = useState(0);
+
+  const scrollToBooking = () => {
+    bookingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleBookSuccess = (chatToken?: string, clientEmail?: string) => {
+    setBookingState(null);
+    setBookingChatToken(chatToken);
+    setBookingClientEmail(clientEmail);
+    setBookingSuccess(true);
+    setBookingRefreshKey((k) => k + 1);
+  };
 
   // Является ли текущий пользователь владельцем этой услуги:
   // id текущего пользователя совпадает с user_id мастера-владельца услуги
@@ -453,17 +474,58 @@ export default function MasterServicePage() {
           </div>
         )}
 
-        {/* Кнопка записаться */}
-        <div className="sticky bottom-4">
-          <button
-            onClick={() => navigate(`/masters/${slug}?service=${service.id}`)}
-            className="w-full bg-primary text-white rounded-2xl py-4 text-lg font-semibold shadow-lg hover:bg-primary/90 transition flex items-center justify-center gap-2"
-          >
-            <Icon name="CalendarCheck" size={22} />
-            Записаться — {fmtPrice(service.price)}
-          </button>
-        </div>
+        {/* Виджет выбора даты и записи — прямо на странице */}
+        {!isOwner && service.is_active && (
+          <div ref={bookingRef} className="bg-white rounded-2xl p-4 sm:p-6 mb-4 shadow-sm scroll-mt-20">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Icon name="CalendarCheck" size={18} className="text-primary" />
+              Выберите дату и время
+            </h2>
+            <MasterBookingFlow
+              masterId={service.master_id}
+              masterSlug={slug}
+              services={[service]}
+              preselectedServiceId={service.id}
+              refreshKey={bookingRefreshKey}
+              onBookSlot={(option, svc) => setBookingState({ option, service: svc })}
+            />
+          </div>
+        )}
+
+        {/* Плавающая кнопка записаться — скроллит к виджету */}
+        {!isOwner && service.is_active && (
+          <div className="sticky bottom-4">
+            <button
+              onClick={scrollToBooking}
+              className="w-full bg-primary text-white rounded-2xl py-4 text-lg font-semibold shadow-lg hover:bg-primary/90 transition flex items-center justify-center gap-2"
+            >
+              <Icon name="CalendarCheck" size={22} />
+              Записаться — {fmtPrice(service.price)}
+            </button>
+          </div>
+        )}
       </main>
+
+      {/* Модалка бронирования */}
+      {bookingState && (
+        <BookingModal
+          option={bookingState.option}
+          service={bookingState.service}
+          masterName={service.master_name || ""}
+          onClose={() => setBookingState(null)}
+          onSuccess={handleBookSuccess}
+        />
+      )}
+
+      {/* Успех */}
+      {bookingSuccess && (
+        <BookingSuccess
+          onClose={() => setBookingSuccess(false)}
+          chatToken={bookingChatToken}
+          clientEmail={bookingClientEmail}
+          vkId={user?.vk_id}
+        />
+      )}
 
       <Footer />
     </div>
