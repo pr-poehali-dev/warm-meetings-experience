@@ -589,11 +589,11 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
                         boxShadow: isSelected ? "0 4px 14px rgba(200,131,74,0.35)" : "none",
                       }}
                     >
-                      <span className="text-[10px] uppercase opacity-70 text-[#000000]">
+                      <span className="text-[10px] uppercase opacity-70 text-gray-300">
                         {format(d, "EEE", { locale: ru })}
                       </span>
                       <span className="text-lg font-bold leading-tight text-orange-500">{format(d, "d")}</span>
-                      <span className="text-[10px] opacity-60 text-[#000000]">{format(d, "MMM", { locale: ru })}</span>
+                      <span className="text-[10px] opacity-60 text-gray-400">{format(d, "MMM", { locale: ru })}</span>
                       {has && (
                         <span
                           className="mt-1 inline-flex items-center justify-center text-[9px] font-bold leading-none rounded-full px-1.5 py-0.5"
