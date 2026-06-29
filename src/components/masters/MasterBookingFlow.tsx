@@ -71,9 +71,11 @@ interface MasterBookingFlowProps {
   preselectedServiceId?: number | null;
   /** Меняется родителем после успешной брони — триггерит перезагрузку слотов. */
   refreshKey?: number;
+  /** Скрыть выбор услуги и заголовок (когда услуга уже выбрана извне). */
+  hideServiceSelector?: boolean;
 }
 
-export default function MasterBookingFlow({ masterId, masterSlug, services, onBookSlot, preselectedServiceId, refreshKey = 0 }: MasterBookingFlowProps) {
+export default function MasterBookingFlow({ masterId, masterSlug, services, onBookSlot, preselectedServiceId, refreshKey = 0, hideServiceSelector = false }: MasterBookingFlowProps) {
   const activeServices = useMemo(() => services.filter((s) => s.is_active), [services]);
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(preselectedServiceId ?? null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -237,15 +239,20 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
   if (!activeServices.length) return null;
 
   return (
-    <div className="rounded-2xl p-5 sm:p-6 bg-card border border-border shadow-sm">
-      <h2 className="text-2xl font-bold mb-1 text-foreground">
-        Запись на сеанс
-      </h2>
-      <p className="text-sm mb-5 text-muted-foreground">
-        Выберите услугу, дату и удобное время — мастер подтвердит запись.
-      </p>
+    <div className={hideServiceSelector ? "" : "rounded-2xl p-5 sm:p-6 bg-card border border-border shadow-sm"}>
+      {!hideServiceSelector && (
+        <>
+          <h2 className="text-2xl font-bold mb-1 text-foreground">
+            Запись на сеанс
+          </h2>
+          <p className="text-sm mb-5 text-muted-foreground">
+            Выберите услугу, дату и удобное время — мастер подтвердит запись.
+          </p>
+        </>
+      )}
 
       {/* ШАГ 1: Услуги */}
+      {!hideServiceSelector && (
       <div className="mb-6">
         <div className="text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground">
           Услуга
@@ -352,6 +359,7 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
           })}
         </div>
       </div>
+      )}
 
       {/* Модалка с описанием процедуры */}
       {aboutServiceId !== null && (() => {

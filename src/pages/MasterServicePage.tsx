@@ -516,6 +516,7 @@ export default function MasterServicePage() {
               services={[service]}
               preselectedServiceId={service.id}
               refreshKey={bookingRefreshKey}
+              hideServiceSelector
               onBookSlot={(option, svc) => setBookingState({ option, service: svc })}
             />
           </div>
