@@ -107,8 +107,9 @@ export default function MasterServicePage() {
   const [dirty, setDirty] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
 
-  // Является ли текущий пользователь владельцем этой услуги
-  const isOwner = hasRole("parmaster") && !!user;
+  // Является ли текущий пользователь владельцем этой услуги:
+  // роль parmaster + slug в URL совпадает со slug мастера-владельца услуги
+  const isOwner = hasRole("parmaster") && !!user && !!service && service.master_slug === slug;
 
   useEffect(() => {
     if (!id) return;
