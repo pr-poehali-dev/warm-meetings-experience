@@ -51,24 +51,36 @@ const FORMAT_OPTIONS: {
   title: string;
   desc: string;
   icon: string;
+  emoji: string;
+  cardBg: string;
+  cardBorder: string;
 }[] = [
   {
     value: "on_site",
     title: "На месте у мастера",
     desc: "Гость приезжает к мастеру. Укажите адрес в настройках.",
     icon: "Home",
+    emoji: "🏠",
+    cardBg: "bg-green-50",
+    cardBorder: "border-green-200",
   },
   {
     value: "at_home",
     title: "Выезд к гостю (пригласить в гости)",
     desc: "Мастер приезжает к гостю. Гость указывает место на карте при записи.",
     icon: "Car",
+    emoji: "🚗",
+    cardBg: "bg-blue-50",
+    cardBorder: "border-blue-200",
   },
   {
     value: "by_agreement",
     title: "По согласованию",
     desc: "Мастер и гость договариваются о месте сами.",
     icon: "MessagesSquare",
+    emoji: "🤝",
+    cardBg: "bg-yellow-50",
+    cardBorder: "border-yellow-200",
   },
 ];
 
@@ -503,14 +515,20 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {services.map((service) => (
+            {services.map((service) => {
+              const fmt = FORMAT_OPTIONS.find((f) => f.value === service.service_format);
+              return (
               <div
                 key={service.id}
-                className={`bg-white rounded-lg border border-gray-200 px-4 py-3 hover:shadow-sm transition-shadow ${
-                  !service.is_active ? "opacity-60" : ""
-                }`}
+                className={`rounded-lg border px-4 py-3 hover:shadow-sm transition-shadow ${
+                  fmt ? `${fmt.cardBg} ${fmt.cardBorder}` : "bg-white border-gray-200"
+                } ${!service.is_active ? "opacity-60" : ""}`}
               >
                 <div className="flex items-center gap-3">
+                  {/* Эмодзи формата */}
+                  {fmt && (
+                    <span className="text-xl shrink-0">{fmt.emoji}</span>
+                  )}
                   {/* Название + описание */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -548,22 +566,11 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                       <Icon name="Users" size={12} className="text-gray-400" />
                       до {service.max_clients} чел.
                     </span>
-                    {service.service_format &&
-                      (() => {
-                        const fmt = FORMAT_OPTIONS.find(
-                          (f) => f.value === service.service_format,
-                        );
-                        return fmt ? (
-                          <span className="flex items-center gap-1">
-                            <Icon
-                              name={fmt.icon as "Home"}
-                              size={12}
-                              className="text-gray-400"
-                            />
-                            {fmt.title}
-                          </span>
-                        ) : null;
-                      })()}
+                    {fmt && (
+                      <span className="flex items-center gap-1">
+                        {fmt.title}
+                      </span>
+                    )}
                   </div>
 
                   {/* Кнопки */}
@@ -660,7 +667,8 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
