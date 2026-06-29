@@ -110,16 +110,11 @@ export default function MasterServicePage() {
   const [editMode, setEditMode] = useState(true);
 
   // Бронирование прямо на странице услуги
-  const bookingRef = useRef<HTMLDivElement>(null);
   const [bookingState, setBookingState] = useState<{ option: BookingOption; service: MasterService } | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingChatToken, setBookingChatToken] = useState<string | undefined>(undefined);
   const [bookingClientEmail, setBookingClientEmail] = useState<string | undefined>(undefined);
   const [bookingRefreshKey, setBookingRefreshKey] = useState(0);
-
-  const scrollToBooking = () => {
-    bookingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
 
   const handleBookSuccess = (chatToken?: string, clientEmail?: string) => {
     setBookingState(null);
@@ -505,7 +500,7 @@ export default function MasterServicePage() {
 
         {/* Виджет выбора даты и записи — прямо на странице */}
         {!isOwner && service.is_active && (
-          <div ref={bookingRef} className="bg-white rounded-2xl p-4 sm:p-6 mb-4 shadow-sm scroll-mt-20">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 mb-4 shadow-sm scroll-mt-20">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <Icon name="CalendarCheck" size={18} className="text-primary" />
               Выберите дату и время
@@ -522,18 +517,6 @@ export default function MasterServicePage() {
           </div>
         )}
 
-        {/* Плавающая кнопка записаться — скроллит к виджету */}
-        {!isOwner && service.is_active && (
-          <div className="sticky bottom-4">
-            <button
-              onClick={scrollToBooking}
-              className="w-full bg-primary text-white rounded-2xl py-4 text-lg font-semibold shadow-lg hover:bg-primary/90 transition flex items-center justify-center gap-2"
-            >
-              <Icon name="CalendarCheck" size={22} />
-              Записаться — {fmtPrice(service.price)}
-            </button>
-          </div>
-        )}
       </main>
 
       {/* Модалка бронирования */}
