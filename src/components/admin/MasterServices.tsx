@@ -717,19 +717,11 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                         }
                         className={`w-full text-left flex items-start gap-3 rounded-lg border p-3 transition-colors ${
                           active
-                            ? "border-nature-forest bg-nature-forest/5"
+                            ? `${opt.cardBorder} ${opt.cardBg}`
                             : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
-                        <Icon
-                          name={opt.icon}
-                          size={18}
-                          className={
-                            active
-                              ? "text-nature-forest mt-0.5"
-                              : "text-gray-400 mt-0.5"
-                          }
-                        />
+                        <span className="text-lg mt-0.5">{opt.emoji}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900">
                             {opt.title}
