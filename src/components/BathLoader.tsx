@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 interface BathLoaderProps {
   label?: string;
   fullscreen?: boolean;
@@ -7,6 +9,46 @@ export default function BathLoader({ label = "Поддаём парку…", ful
   const wrapper = fullscreen
     ? "min-h-screen bg-background flex items-center justify-center"
     : "w-full py-16 flex items-center justify-center";
+
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    // Быстро до ~70%, потом замедляется, ждёт реального завершения
+    const steps = [
+      { target: 30, duration: 400 },
+      { target: 60, duration: 600 },
+      { target: 75, duration: 800 },
+      { target: 88, duration: 1200 },
+      { target: 95, duration: 2000 },
+    ];
+    let current = 0;
+    let raf: number;
+
+    const animate = (from: number, to: number, duration: number, onDone: () => void) => {
+      const start = performance.now();
+      const tick = (now: number) => {
+        const t = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+        setProgress(from + (to - from) * eased);
+        if (t < 1) raf = requestAnimationFrame(tick);
+        else onDone();
+      };
+      raf = requestAnimationFrame(tick);
+    };
+
+    const runStep = () => {
+      if (current >= steps.length) return;
+      const { target, duration } = steps[current];
+      const from = current === 0 ? 0 : steps[current - 1].target;
+      animate(from, target, duration, () => {
+        current++;
+        runStep();
+      });
+    };
+
+    runStep();
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   return (
     <div className={wrapper}>
@@ -20,6 +62,10 @@ export default function BathLoader({ label = "Поддаём парку…", ful
           25%  { opacity: 0.7; }
           70%  { opacity: 0.4; }
           100% { opacity: 0; transform: translateY(-44px) scaleX(1.9); }
+        }
+        @keyframes progress-shimmer {
+          0%   { background-position: -200% center; }
+          100% { background-position: 200% center; }
         }
       `}</style>
 
@@ -45,10 +91,9 @@ export default function BathLoader({ label = "Поддаём парку…", ful
               ))}
             </g>
 
-            {/* ── Каменка с камнями ── */}
+            {/* ── Камни ── */}
             <g>
               <rect x="44" y="92" width="62" height="30" rx="5" fill="none" stroke="none" />
-              {/* Камни */}
               <circle cx="58" cy="94" r="6" style={{ animation: "stones-glow 2.6s ease-in-out infinite" }} />
               <circle cx="72" cy="92" r="7" style={{ animation: "stones-glow 2.6s ease-in-out 0.2s infinite" }} />
               <circle cx="87" cy="94" r="6" style={{ animation: "stones-glow 2.6s ease-in-out 0.35s infinite" }} />
@@ -57,6 +102,23 @@ export default function BathLoader({ label = "Поддаём парку…", ful
               <circle cx="80" cy="89" r="4" style={{ animation: "stones-glow 2.6s ease-in-out 0.28s infinite" }} />
             </g>
           </svg>
+        </div>
+
+        {/* Полоса прогресса */}
+        <div
+          style={{ width: 150, height: 4, borderRadius: 9999, background: "rgba(180,80,50,0.15)" }}
+        >
+          <div
+            style={{
+              height: "100%",
+              borderRadius: 9999,
+              width: `${progress}%`,
+              transition: "width 0.3s ease",
+              background: "linear-gradient(90deg, #b45030 0%, #d4673a 50%, #b45030 100%)",
+              backgroundSize: "200% 100%",
+              animation: "progress-shimmer 1.8s linear infinite",
+            }}
+          />
         </div>
 
         {label && (
