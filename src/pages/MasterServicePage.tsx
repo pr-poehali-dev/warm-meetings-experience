@@ -107,6 +107,7 @@ export default function MasterServicePage() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [editMode, setEditMode] = useState(true);
 
   // Бронирование прямо на странице услуги
   const bookingRef = useRef<HTMLDivElement>(null);
@@ -128,14 +129,17 @@ export default function MasterServicePage() {
     setBookingRefreshKey((k) => k + 1);
   };
 
-  // Является ли текущий пользователь владельцем этой услуги:
+  // Имеет ли текущий пользователь право редактировать эту услугу:
   // id текущего пользователя совпадает с user_id мастера-владельца услуги
-  const isOwner =
+  const canEdit =
     hasRole("parmaster") &&
     !!user &&
     !!service &&
     service.master_user_id != null &&
     service.master_user_id === user.id;
+
+  // Режим редактора активен только если есть права И включён переключатель
+  const isOwner = canEdit && editMode;
 
   useEffect(() => {
     if (!id) return;
@@ -250,14 +254,14 @@ export default function MasterServicePage() {
           <span className="text-gray-700 truncate">{service.name}</span>
         </nav>
 
-        {/* Панель владельца */}
+        {/* Панель владельца — режим редактора включён */}
         {isOwner && (
           <div className="mb-5 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
             <Icon name="Pencil" size={16} className="text-amber-500 shrink-0" />
             <span className="text-sm text-amber-800 flex-1">
               Режим редактора — нажмите на любой текст чтобы изменить
             </span>
-            {dirty && (
+            {dirty ? (
               <button
                 onClick={handleSave}
                 disabled={saving}
@@ -268,12 +272,37 @@ export default function MasterServicePage() {
                   : <Icon name="Save" size={14} />}
                 Сохранить
               </button>
-            )}
-            {!dirty && (
+            ) : (
               <span className="text-xs text-amber-600 flex items-center gap-1">
                 <Icon name="CheckCircle2" size={13} /> Сохранено
               </span>
             )}
+            <button
+              onClick={() => setEditMode(false)}
+              disabled={dirty}
+              title={dirty ? "Сначала сохраните изменения" : "Посмотреть как видят гости"}
+              className="flex items-center gap-1.5 text-amber-700 hover:text-amber-900 text-sm font-medium border border-amber-300 rounded-lg px-3 py-1.5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Icon name="Eye" size={14} />
+              Просмотр
+            </button>
+          </div>
+        )}
+
+        {/* Панель владельца — режим редактора выключен (предпросмотр глазами гостя) */}
+        {canEdit && !editMode && (
+          <div className="mb-5 flex items-center gap-3 bg-gray-100 border border-gray-200 rounded-2xl px-4 py-3">
+            <Icon name="Eye" size={16} className="text-gray-500 shrink-0" />
+            <span className="text-sm text-gray-600 flex-1">
+              Так вашу услугу видят гости
+            </span>
+            <button
+              onClick={() => setEditMode(true)}
+              className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition"
+            >
+              <Icon name="Pencil" size={14} />
+              Редактировать
+            </button>
           </div>
         )}
 
