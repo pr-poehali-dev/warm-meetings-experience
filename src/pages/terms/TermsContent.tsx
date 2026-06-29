@@ -341,20 +341,23 @@ export default function TermsContent({ onOpenAppendix }: Props) {
       {/* ЧАСТЬ VIII — Яндекс.Карты */}
       <section id="part8a">
         <h2 className="text-2xl font-bold text-foreground mb-6 pb-2 border-b border-border">
-          Использование картографического сервиса «Яндекс.Карты»
+          Часть VIII. Использование картографического сервиса «Яндекс.Карты»
         </h2>
         <div className="space-y-8">
-          <div className="space-y-3 text-sm">
-            <p><strong>1.</strong> На Сайте используется картографический сервис «Яндекс.Карты» (далее — Сервис), предоставляемый компанией ООО «ЯНДЕКС». Использование Сервиса регулируется настоящими условиями, а также следующими документами компании «ЯНДЕКС»:</p>
-            <ul className="list-disc list-outside ml-5 space-y-1">
-              <li>Пользовательское соглашение сервисов Яндекса: <a href="https://yandex.ru/legal/rules" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80">https://yandex.ru/legal/rules</a></li>
-              <li>Политика конфиденциальности: <a href="https://yandex.ru/legal/confidential" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80">https://yandex.ru/legal/confidential</a></li>
-              <li>Условия использования сервиса «Яндекс.Карты»: <a href="https://yandex.ru/legal/maps_termsofuse" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80">https://yandex.ru/legal/maps_termsofuse</a></li>
-              <li>Условия использования отдельных сервисов «Яндекс Карт»: <a href="https://yandex.ru/legal/maps_api" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80">https://yandex.ru/legal/maps_api</a></li>
-            </ul>
-            <p><strong>2.</strong> Сервис используется для отображения интерактивной карты, позволяющей Пользователям (Гостям) выбирать и отмечать место проведения услуги с помощью графического маркера. В рамках этой функциональности Сервис может обрабатывать данные о геолокации (координатах) выбранного места.</p>
-            <p><strong>3.</strong> Используя функциональность карты на Сайте, Пользователь подтверждает, что ознакомлен и согласен с условиями использования Сервиса, указанными в п. 1 настоящего раздела, а также даёт согласие на обработку своих данных (включая IP-адрес, данные об используемом браузере и сведения о геолокации) компанией «ЯНДЕКС» в целях и порядке, определённых Политикой конфиденциальности Яндекса.</p>
-            <p><strong>4.</strong> Администрация Сайта не осуществляет сбор, обработку или хранение координат, выбранных Пользователем с помощью Сервиса. Указанные данные передаются напрямую в «ЯНДЕКС» и используются исключительно для отображения карты и маркера. Пользователь самостоятельно несёт ответственность за достоверность выбранного им места проведения услуги.</p>
+          <div>
+            <h3 className="text-lg font-semibold text-foreground mb-4">17. Яндекс.Карты</h3>
+            <div className="space-y-3 text-sm">
+              <p><strong>17.1.</strong> На Сайте используется картографический сервис «Яндекс.Карты» (далее — Сервис), предоставляемый компанией ООО «ЯНДЕКС». Использование Сервиса регулируется настоящими условиями, а также следующими документами компании «ЯНДЕКС»:</p>
+              <ul className="list-disc list-outside ml-5 space-y-1">
+                <li>Пользовательское соглашение сервисов Яндекса: <a href="https://yandex.ru/legal/rules" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80">https://yandex.ru/legal/rules</a></li>
+                <li>Политика конфиденциальности: <a href="https://yandex.ru/legal/confidential" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80">https://yandex.ru/legal/confidential</a></li>
+                <li>Условия использования сервиса «Яндекс.Карты»: <a href="https://yandex.ru/legal/maps_termsofuse" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80">https://yandex.ru/legal/maps_termsofuse</a></li>
+                <li>Условия использования отдельных сервисов «Яндекс Карт»: <a href="https://yandex.ru/legal/maps_api" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2 hover:text-primary/80">https://yandex.ru/legal/maps_api</a></li>
+              </ul>
+              <p><strong>17.2.</strong> Сервис используется для отображения интерактивной карты, позволяющей Пользователям (Гостям) выбирать и отмечать место проведения услуги с помощью графического маркера. В рамках этой функциональности Сервис может обрабатывать данные о геолокации (координатах) выбранного места.</p>
+              <p><strong>17.3.</strong> Используя функциональность карты на Сайте, Пользователь подтверждает, что ознакомлен и согласен с условиями использования Сервиса, указанными в п. 17.1 настоящего раздела, а также даёт согласие на обработку своих данных (включая IP-адрес, данные об используемом браузере и сведения о геолокации) компанией «ЯНДЕКС» в целях и порядке, определённых Политикой конфиденциальности Яндекса.</p>
+              <p><strong>17.4.</strong> Администрация Сайта не осуществляет сбор, обработку или хранение координат, выбранных Пользователем с помощью Сервиса. Указанные данные передаются напрямую в «ЯНДЕКС» и используются исключительно для отображения карты и маркера. Пользователь самостоятельно несёт ответственность за достоверность выбранного им места проведения услуги.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -362,24 +365,24 @@ export default function TermsContent({ onOpenAppendix }: Props) {
       {/* ЧАСТЬ IX */}
       <section id="part8">
         <h2 className="text-2xl font-bold text-foreground mb-6 pb-2 border-b border-border">
-          Часть VIII. Заключительные положения
+          Часть IX. Заключительные положения
         </h2>
 
         <div className="space-y-8">
           <div>
-            <h3 className="text-lg font-semibold text-foreground mb-4">17. Применимое право и подсудность</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">18. Применимое право и подсудность</h3>
             <div className="space-y-3 text-sm">
-              <p><strong>17.1.</strong> Настоящие Правила регулируются законодательством Российской Федерации.</p>
-              <p><strong>17.2.</strong> Все споры между Оператором и Пользователем подлежат рассмотрению в суде по месту нахождения Оператора (г. Москва) с обязательным соблюдением претензионного порядка (срок рассмотрения претензии — 30 рабочих дней).</p>
+              <p><strong>18.1.</strong> Настоящие Правила регулируются законодательством Российской Федерации.</p>
+              <p><strong>18.2.</strong> Все споры между Оператором и Пользователем подлежат рассмотрению в суде по месту нахождения Оператора (г. Москва) с обязательным соблюдением претензионного порядка (срок рассмотрения претензии — 30 рабочих дней).</p>
             </div>
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold text-foreground mb-4">18. Дополнительные условия</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">19. Дополнительные условия</h3>
             <div className="space-y-3 text-sm">
-              <p><strong>18.1.</strong> Оператор вправе направлять Пользователю информационные и рекламные сообщения (в том числе SMS, e-mail, push-уведомления, сообщения в Telegram и другие мессенджеры) на контактные данные, указанные при регистрации. Пользователь в любой момент может отписаться от рассылок через настройки личного кабинета.</p>
-              <p><strong>18.2.</strong> Признание недействительным одного или нескольких положений Правил не влечёт недействительности остальных положений.</p>
-              <p><strong>18.3.</strong> Настоящие Правила составлены на русском языке. В случае перевода на иные языки, русская версия имеет приоритет.</p>
+              <p><strong>19.1.</strong> Оператор вправе направлять Пользователю информационные и рекламные сообщения (в том числе SMS, e-mail, push-уведомления, сообщения в Telegram и другие мессенджеры) на контактные данные, указанные при регистрации. Пользователь в любой момент может отписаться от рассылок через настройки личного кабинета.</p>
+              <p><strong>19.2.</strong> Признание недействительным одного или нескольких положений Правил не влечёт недействительности остальных положений.</p>
+              <p><strong>19.3.</strong> Настоящие Правила составлены на русском языке. В случае перевода на иные языки, русская версия имеет приоритет.</p>
             </div>
           </div>
 
