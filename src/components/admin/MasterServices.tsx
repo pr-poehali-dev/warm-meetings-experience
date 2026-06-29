@@ -258,6 +258,22 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [masterId]);
 
+    const copyToClipboard = (text: string): boolean => {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return ok;
+      } catch {
+        return false;
+      }
+    };
+
     const copyServiceLink = async (service: MasterService) => {
       if (!masterSlug) {
         toast({
@@ -268,10 +284,16 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
         return;
       }
       const url = `${window.location.origin}/masters/${masterSlug}?service=${service.id}`;
+      let copied = false;
       try {
         await navigator.clipboard.writeText(url);
-        toast({ title: "Ссылка скопирована", description: url });
+        copied = true;
       } catch {
+        copied = copyToClipboard(url);
+      }
+      if (copied) {
+        toast({ title: "Ссылка скопирована", description: url });
+      } else {
         toast({
           title: "Не удалось скопировать",
           description: url,
