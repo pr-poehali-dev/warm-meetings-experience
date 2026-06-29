@@ -594,11 +594,11 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                 } ${!service.is_active ? "opacity-60" : ""}`}
               >
                 {/* Строка 1: иконка + название + бейдж */}
-                <div className="flex items-center gap-2 mb-1.5">
+                <div className="flex items-start gap-2 mb-1">
                   {fmt && (
-                    <Icon name={fmt.icon as "Home"} size={16} className="text-gray-500 shrink-0" />
+                    <Icon name={fmt.icon as "Home"} size={15} className="text-gray-500 shrink-0 mt-0.5" />
                   )}
-                  <h3 className="text-sm font-semibold text-gray-900 truncate flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold text-gray-900 leading-snug flex-1">
                     {service.name}
                   </h3>
                   <span
@@ -612,25 +612,22 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                   </span>
                 </div>
 
-                {/* Строка 2: мета-инфо + кнопки */}
-                <div className="flex items-center gap-2">
+                {/* Строка 2: мета + кнопки */}
+                <div className="flex items-center gap-1">
                   {/* Мета-инфо */}
-                  <div className="flex items-center gap-3 text-xs text-gray-500 flex-1 min-w-0 overflow-hidden">
-                    <span className="flex items-center gap-0.5 shrink-0">
+                  <div className="flex items-center gap-2 text-xs text-gray-500 flex-1 flex-wrap">
+                    <span className="flex items-center gap-0.5">
                       <Icon name="Clock" size={11} className="text-gray-400" />
                       {service.duration_minutes}м
                     </span>
-                    <span className="flex items-center gap-0.5 font-semibold text-gray-900 shrink-0">
+                    <span className="flex items-center gap-0.5 font-semibold text-gray-900">
                       <Icon name="Banknote" size={11} className="text-gray-400" />
                       {formatPrice(service.price)}
                     </span>
-                    <span className="flex items-center gap-0.5 shrink-0 hidden sm:flex">
+                    <span className="flex items-center gap-0.5">
                       <Icon name="Users" size={11} className="text-gray-400" />
-                      до {service.max_clients} чел.
+                      {service.max_clients} чел.
                     </span>
-                    {fmt && (
-                      <span className="text-gray-400 truncate hidden sm:block">{fmt.title}</span>
-                    )}
                   </div>
 
                   {/* Кнопки */}
