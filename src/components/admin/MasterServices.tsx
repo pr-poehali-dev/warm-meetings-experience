@@ -589,61 +589,52 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
               return (
               <div
                 key={service.id}
-                className={`rounded-lg border px-4 py-3 hover:shadow-sm transition-shadow ${
+                className={`rounded-lg border px-3 py-2.5 hover:shadow-sm transition-shadow ${
                   fmt ? `${fmt.cardBg} ${fmt.cardBorder}` : "bg-white border-gray-200"
                 } ${!service.is_active ? "opacity-60" : ""}`}
               >
-                <div className="flex items-center gap-3">
-                  {/* Иконка формата */}
+                {/* Строка 1: иконка + название + бейдж */}
+                <div className="flex items-center gap-2 mb-1.5">
                   {fmt && (
-                    <Icon name={fmt.icon as "Home"} size={18} className="text-gray-500 shrink-0" />
+                    <Icon name={fmt.icon as "Home"} size={16} className="text-gray-500 shrink-0" />
                   )}
-                  {/* Название + описание */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm font-semibold text-gray-900 truncate">
-                        {service.name}
-                      </h3>
-                      <span
-                        className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${
-                          service.is_active
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {service.is_active ? "Активна" : "Неактивна"}
-                      </span>
-                    </div>
-                    {service.description && (
-                      <p className="text-xs text-gray-400 mt-0.5 truncate">
-                        {service.description}
-                      </p>
-                    )}
-                  </div>
+                  <h3 className="text-sm font-semibold text-gray-900 truncate flex-1 min-w-0">
+                    {service.name}
+                  </h3>
+                  <span
+                    className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap shrink-0 ${
+                      service.is_active
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {service.is_active ? "Активна" : "Неактивна"}
+                  </span>
+                </div>
 
+                {/* Строка 2: мета-инфо + кнопки */}
+                <div className="flex items-center gap-2">
                   {/* Мета-инфо */}
-                  <div className="flex items-center gap-4 text-xs text-gray-500 shrink-0">
-                    <span className="flex items-center gap-1">
-                      <Icon name="Clock" size={12} className="text-gray-400" />
-                      {service.duration_minutes} мин
+                  <div className="flex items-center gap-3 text-xs text-gray-500 flex-1 min-w-0 overflow-hidden">
+                    <span className="flex items-center gap-0.5 shrink-0">
+                      <Icon name="Clock" size={11} className="text-gray-400" />
+                      {service.duration_minutes}м
                     </span>
-                    <span className="flex items-center gap-1 font-semibold text-gray-900">
-                      <Icon name="Banknote" size={12} className="text-gray-400" />
+                    <span className="flex items-center gap-0.5 font-semibold text-gray-900 shrink-0">
+                      <Icon name="Banknote" size={11} className="text-gray-400" />
                       {formatPrice(service.price)}
                     </span>
-                    <span className="flex items-center gap-1">
-                      <Icon name="Users" size={12} className="text-gray-400" />
+                    <span className="flex items-center gap-0.5 shrink-0 hidden sm:flex">
+                      <Icon name="Users" size={11} className="text-gray-400" />
                       до {service.max_clients} чел.
                     </span>
                     {fmt && (
-                      <span className="flex items-center gap-1">
-                        {fmt.title}
-                      </span>
+                      <span className="text-gray-400 truncate hidden sm:block">{fmt.title}</span>
                     )}
                   </div>
 
                   {/* Кнопки */}
-                  <div className="flex items-center gap-0.5 shrink-0">
+                  <div className="flex items-center gap-0 shrink-0">
                   <TooltipProvider delayDuration={400}>
                     <div className="flex items-center gap-0.5">
                       <Tooltip>
