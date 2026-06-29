@@ -638,7 +638,7 @@ export default function MasterServicePage() {
                 ) : (
                   <ul className="space-y-1">
                     {included.map((item, i) => (
-                      <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                      <li key={i} className="text-sm flex items-start gap-2 text-gray-400">
                         <Icon name="Check" size={14} className="text-green-500 mt-0.5 shrink-0" /> {item}
                       </li>
                     ))}
@@ -663,7 +663,7 @@ export default function MasterServicePage() {
                 ) : (
                   <ul className="space-y-1">
                     {bring.map((item, i) => (
-                      <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                      <li key={i} className="text-sm flex items-start gap-2 text-gray-400">
                         <Icon name="Dot" size={14} className="text-blue-400 mt-0.5 shrink-0" /> {item}
                       </li>
                     ))}
@@ -688,7 +688,7 @@ export default function MasterServicePage() {
                 ) : (
                   <ul className="space-y-1">
                     {contraindications.map((item, i) => (
-                      <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                      <li key={i} className="text-sm flex items-start gap-2 text-gray-400">
                         <Icon name="Minus" size={14} className="text-amber-400 mt-0.5 shrink-0" /> {item}
                       </li>
                     ))}
