@@ -648,6 +648,16 @@ def handle_services(event, method, params, schema, headers):
     if method == 'PUT':
         body = json.loads(event.get('body', '{}'))
         sid = body['id']
+        # Проверяем что услуга принадлежит мастеру из тела запроса
+        cur.execute(f"SELECT master_id FROM {schema}.master_services WHERE id = {int(sid)}")
+        svc_row = cur.fetchone()
+        if not svc_row:
+            conn.close()
+            return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Услуга не найдена'})}
+        ok, err = ensure_master_access(cur, schema, event, svc_row['master_id'], headers)
+        if not ok:
+            conn.close()
+            return err
         updates = []
         if 'name' in body:
             updates.append(f"name = '{body['name'].replace(chr(39), chr(39)+chr(39))}'")
@@ -732,6 +742,17 @@ def handle_service_photo(event, method, params, schema, headers):
 
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    # Проверяем владение услугой
+    cur.execute(f"SELECT master_id FROM {schema}.master_services WHERE id = {int(sid)}")
+    svc_row = cur.fetchone()
+    if not svc_row:
+        conn.close()
+        return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Услуга не найдена'})}
+    ok, err = ensure_master_access(cur, schema, event, svc_row['master_id'], headers)
+    if not ok:
+        conn.close()
+        return err
 
     if method == 'POST':
         body = json.loads(event.get('body', '{}'))
