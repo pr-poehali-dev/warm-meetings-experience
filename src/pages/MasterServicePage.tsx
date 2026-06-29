@@ -4,8 +4,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "@/contexts/AuthContext";
-import { masterCalendarApi, MasterService } from "@/lib/master-calendar-api";
-import { parseServiceDescription } from "@/lib/service-description";
+import { masterCalendarApi, MasterService, ServiceFormat } from "@/lib/master-calendar-api";
+import { parseServiceDescription, buildServiceDescription } from "@/lib/service-description";
 import { toast } from "sonner";
 import MasterBookingFlow, { BookingOption } from "@/components/masters/MasterBookingFlow";
 import { BookingModal, BookingSuccess } from "@/components/masters/BookingModal";
@@ -43,7 +43,7 @@ function getVideoEmbedUrl(url: string): string | null {
   return null;
 }
 
-// Редактируемое поле — клик => textarea/input, blur/Enter => сохранение
+// Редактируемое текстовое поле — клик => textarea/input, blur/Enter => сохранение
 interface EditableFieldProps {
   value: string;
   placeholder: string;
@@ -51,9 +51,11 @@ interface EditableFieldProps {
   className?: string;
   onSave: (v: string) => void;
   editMode: boolean;
+  inputType?: string;
+  suffix?: string;
 }
 
-function EditableField({ value, placeholder, multiline, className = "", onSave, editMode }: EditableFieldProps) {
+function EditableField({ value, placeholder, multiline, className = "", onSave, editMode, inputType = "text", suffix }: EditableFieldProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const ref = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
@@ -62,7 +64,11 @@ function EditableField({ value, placeholder, multiline, className = "", onSave, 
   useEffect(() => { if (editing) ref.current?.focus(); }, [editing]);
 
   if (!editMode) {
-    return <span className={className}>{value || <span className="text-gray-300 italic">{placeholder}</span>}</span>;
+    return (
+      <span className={className}>
+        {value ? <>{value}{suffix && <span className="text-gray-400"> {suffix}</span>}</> : <span className="text-gray-300 italic">{placeholder}</span>}
+      </span>
+    );
   }
 
   if (editing) {
@@ -80,7 +86,7 @@ function EditableField({ value, placeholder, multiline, className = "", onSave, 
     };
     return multiline
       ? <textarea {...commonProps} rows={5} />
-      : <input {...commonProps} />;
+      : <input {...commonProps} type={inputType} />;
   }
 
   return (
@@ -89,11 +95,77 @@ function EditableField({ value, placeholder, multiline, className = "", onSave, 
       onClick={() => setEditing(true)}
       title="Нажмите чтобы редактировать"
     >
-      {value || <span className="text-gray-300 italic">{placeholder}</span>}
+      {value
+        ? <>{value}{suffix && <span className="text-gray-400"> {suffix}</span>}</>
+        : <span className="text-gray-300 italic">{placeholder}</span>}
       <span className="ml-1.5 inline-flex opacity-0 group-hover:opacity-100 transition">
         <Icon name="Pencil" size={12} className="text-amber-500" />
       </span>
     </span>
+  );
+}
+
+// Редактируемый список (что входит / взять / противопоказания)
+interface EditableListProps {
+  items: string[];
+  placeholder: string;
+  editMode: boolean;
+  onChange: (items: string[]) => void;
+}
+
+function EditableList({ items, placeholder, editMode, onChange }: EditableListProps) {
+  const [newItem, setNewItem] = useState("");
+
+  const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+  const add = () => {
+    const t = newItem.trim();
+    if (!t) return;
+    onChange([...items, t]);
+    setNewItem("");
+  };
+
+  if (!editMode) {
+    return (
+      <ul className="space-y-1">
+        {items.map((item, i) => (
+          <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+            <Icon name="Check" size={14} className="text-green-500 mt-0.5 shrink-0" /> {item}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {items.map((item, i) => (
+        <div key={i} className="flex items-center gap-2 group">
+          <span className="text-sm text-gray-700 flex-1">{item}</span>
+          <button
+            onClick={() => remove(i)}
+            className="opacity-0 group-hover:opacity-100 transition p-1 rounded hover:bg-red-50 text-red-400"
+          >
+            <Icon name="X" size={13} />
+          </button>
+        </div>
+      ))}
+      <div className="flex gap-2 mt-1">
+        <input
+          value={newItem}
+          onChange={(e) => setNewItem(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+          placeholder={placeholder}
+          className="flex-1 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-amber-300"
+        />
+        <button
+          onClick={add}
+          disabled={!newItem.trim()}
+          className="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-white text-xs rounded-lg transition disabled:opacity-40"
+        >
+          <Icon name="Plus" size={14} />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -108,6 +180,11 @@ export default function MasterServicePage() {
   const [dirty, setDirty] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [editMode, setEditMode] = useState(true);
+
+  // Локальное состояние для списков (хранятся в description в виде markdown)
+  const [included, setIncluded] = useState<string[]>([]);
+  const [bring, setBring] = useState<string[]>([]);
+  const [contraindications, setContraindications] = useState<string[]>([]);
 
   // Бронирование прямо на странице услуги
   const [bookingState, setBookingState] = useState<{ option: BookingOption; service: MasterService } | null>(null);
@@ -124,8 +201,6 @@ export default function MasterServicePage() {
     setBookingRefreshKey((k) => k + 1);
   };
 
-  // Имеет ли текущий пользователь право редактировать эту услугу:
-  // id текущего пользователя совпадает с user_id мастера-владельца услуги
   const canEdit =
     hasRole("parmaster") &&
     !!user &&
@@ -133,19 +208,31 @@ export default function MasterServicePage() {
     service.master_user_id != null &&
     service.master_user_id === user.id;
 
-  // Режим редактора активен только если есть права И включён переключатель
   const isOwner = canEdit && editMode;
 
   useEffect(() => {
     if (!id) return;
     masterCalendarApi.getServiceDetail(Number(id))
-      .then((s) => setService(s))
+      .then((s) => {
+        setService(s);
+        const parsed = parseServiceDescription(s.description);
+        setIncluded(parsed.included);
+        setBring(parsed.bring);
+        setContraindications(parsed.contraindications);
+      })
       .catch(() => setService(null))
       .finally(() => setLoading(false));
   }, [id]);
 
-  const updateField = (field: keyof MasterService, value: string) => {
+  const updateField = (field: keyof MasterService, value: string | number | boolean) => {
     setService((prev) => prev ? { ...prev, [field]: value } : prev);
+    setDirty(true);
+  };
+
+  const updateList = (type: "included" | "bring" | "contraindications", items: string[]) => {
+    if (type === "included") setIncluded(items);
+    if (type === "bring") setBring(items);
+    if (type === "contraindications") setContraindications(items);
     setDirty(true);
   };
 
@@ -153,12 +240,25 @@ export default function MasterServicePage() {
     if (!service?.id) return;
     setSaving(true);
     try {
+      const parsed = parseServiceDescription(service.description);
+      const fullDescription = buildServiceDescription({
+        intro: parsed.intro,
+        included,
+        bring,
+        contraindications,
+      });
       await masterCalendarApi.updateService({
         id: service.id,
         master_id: service.master_id,
         name: service.name,
+        description: fullDescription || undefined,
         rich_description: service.rich_description || undefined,
         video_url: service.video_url || undefined,
+        duration_minutes: service.duration_minutes,
+        price: service.price,
+        max_clients: service.max_clients,
+        is_active: service.is_active,
+        service_format: service.service_format,
       });
       setDirty(false);
       toast.success("Сохранено");
@@ -375,13 +475,31 @@ export default function MasterServicePage() {
 
         {/* Заголовок и мета */}
         <div className="bg-white rounded-2xl p-6 mb-4 shadow-sm">
+          {/* Формат оказания */}
+          {isOwner ? (
+            <div className="flex gap-2 mb-3 flex-wrap">
+              {(["on_site", "at_home", "by_agreement"] as ServiceFormat[]).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => updateField("service_format", f)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                    service.service_format === f
+                      ? "bg-amber-100 border-amber-400 text-amber-800"
+                      : "bg-gray-50 border-gray-200 text-gray-500 hover:border-amber-300"
+                  }`}
+                >
+                  {FORMAT_META[f].emoji} {FORMAT_META[f].label}
+                </button>
+              ))}
+            </div>
+          ) : fmt ? (
+            <span className="text-sm text-gray-400 flex items-center gap-1 mb-2">
+              {fmt.emoji} {fmt.label}
+            </span>
+          ) : null}
+
           <div className="flex items-start justify-between gap-4 mb-4">
             <div className="flex-1 min-w-0">
-              {fmt && (
-                <span className="text-sm text-gray-400 flex items-center gap-1 mb-1">
-                  <span>{fmt.emoji}</span> {fmt.label}
-                </span>
-              )}
               <h1 className="text-2xl font-bold text-gray-900">
                 <EditableField
                   value={service.name}
@@ -392,21 +510,93 @@ export default function MasterServicePage() {
               </h1>
             </div>
             <div className="text-right shrink-0">
-              <div className="text-2xl font-bold text-gray-900">{fmtPrice(service.price)}</div>
-              <div className="text-sm text-gray-400">{fmtDuration(service.duration_minutes)}</div>
+              {isOwner ? (
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-1">
+                    <EditableField
+                      value={String(service.price)}
+                      placeholder="0"
+                      inputType="number"
+                      onSave={(v) => updateField("price", Number(v) || 0)}
+                      editMode={isOwner}
+                      className="text-2xl font-bold text-gray-900 text-right w-28"
+                      suffix="₽"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1 text-sm text-gray-400">
+                    <EditableField
+                      value={String(service.duration_minutes)}
+                      placeholder="60"
+                      inputType="number"
+                      onSave={(v) => updateField("duration_minutes", Number(v) || 60)}
+                      editMode={isOwner}
+                      className="w-14 text-right"
+                      suffix="мин"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-gray-900">{fmtPrice(service.price)}</div>
+                  <div className="text-sm text-gray-400">{fmtDuration(service.duration_minutes)}</div>
+                </>
+              )}
             </div>
           </div>
+
+          {/* Краткое описание (intro) */}
+          {(parsed.intro || isOwner) && (
+            <p className="text-sm text-gray-600 mb-4">
+              <EditableField
+                value={parsed.intro}
+                placeholder="Краткое описание услуги — суть в 1–2 предложениях..."
+                multiline
+                onSave={(v) => {
+                  const newDesc = buildServiceDescription({ intro: v, included, bring, contraindications });
+                  setService((prev) => prev ? { ...prev, description: newDesc } : prev);
+                  setDirty(true);
+                }}
+                editMode={isOwner}
+                className="block"
+              />
+            </p>
+          )}
+
           <div className="flex flex-wrap gap-3 text-sm text-gray-600">
             <span className="flex items-center gap-1.5 bg-gray-100 rounded-full px-3 py-1">
               <Icon name="Clock" size={14} className="text-gray-400" /> {fmtDuration(service.duration_minutes)}
             </span>
-            <span className="flex items-center gap-1.5 bg-gray-100 rounded-full px-3 py-1">
-              <Icon name="Users" size={14} className="text-gray-400" /> до {service.max_clients} чел.
-            </span>
-            {fmt && (
-              <span className="flex items-center gap-1.5 bg-gray-100 rounded-full px-3 py-1">
-                {fmt.emoji} {fmt.label}
+            {isOwner ? (
+              <span className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
+                <Icon name="Users" size={14} className="text-gray-400" />
+                <EditableField
+                  value={String(service.max_clients)}
+                  placeholder="1"
+                  inputType="number"
+                  onSave={(v) => updateField("max_clients", Number(v) || 1)}
+                  editMode={isOwner}
+                  className="w-8 text-center"
+                  suffix="чел."
+                />
               </span>
+            ) : (
+              <span className="flex items-center gap-1.5 bg-gray-100 rounded-full px-3 py-1">
+                <Icon name="Users" size={14} className="text-gray-400" /> до {service.max_clients} чел.
+              </span>
+            )}
+            {/* Активность услуги — только для владельца */}
+            {isOwner && (
+              <button
+                onClick={() => updateField("is_active", !service.is_active)}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 border text-xs font-medium transition ${
+                  service.is_active
+                    ? "bg-green-50 border-green-300 text-green-700"
+                    : "bg-gray-50 border-gray-300 text-gray-500"
+                }`}
+              >
+                <Icon name={service.is_active ? "Eye" : "EyeOff"} size={13} />
+                {service.is_active ? "Видна гостям" : "Скрыта"}
+              </button>
             )}
           </div>
         </div>
@@ -429,48 +619,80 @@ export default function MasterServicePage() {
         )}
 
         {/* Что входит / Взять / Противопоказания */}
-        {(parsed.included.length > 0 || parsed.bring.length > 0 || parsed.contraindications.length > 0) && (
-          <div className="bg-white rounded-2xl p-6 mb-4 shadow-sm space-y-4">
-            {parsed.included.length > 0 && (
+        {(included.length > 0 || bring.length > 0 || contraindications.length > 0 || isOwner) && (
+          <div className="bg-white rounded-2xl p-6 mb-4 shadow-sm space-y-5">
+            {/* Что входит */}
+            {(included.length > 0 || isOwner) && (
               <div>
                 <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
                   <Icon name="CheckCircle2" size={16} className="text-green-500" /> Что входит
                 </h3>
-                <ul className="space-y-1">
-                  {parsed.included.map((item, i) => (
-                    <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                      <Icon name="Check" size={14} className="text-green-500 mt-0.5 shrink-0" /> {item}
-                    </li>
-                  ))}
-                </ul>
+                {isOwner ? (
+                  <EditableList
+                    items={included}
+                    placeholder="Добавить пункт..."
+                    editMode={isOwner}
+                    onChange={(items) => updateList("included", items)}
+                  />
+                ) : (
+                  <ul className="space-y-1">
+                    {included.map((item, i) => (
+                      <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                        <Icon name="Check" size={14} className="text-green-500 mt-0.5 shrink-0" /> {item}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
-            {parsed.bring.length > 0 && (
+
+            {/* Взять с собой */}
+            {(bring.length > 0 || isOwner) && (
               <div>
                 <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
                   <Icon name="ShoppingBag" size={16} className="text-blue-500" /> Взять с собой
                 </h3>
-                <ul className="space-y-1">
-                  {parsed.bring.map((item, i) => (
-                    <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                      <Icon name="Dot" size={14} className="text-blue-400 mt-0.5 shrink-0" /> {item}
-                    </li>
-                  ))}
-                </ul>
+                {isOwner ? (
+                  <EditableList
+                    items={bring}
+                    placeholder="Добавить пункт..."
+                    editMode={isOwner}
+                    onChange={(items) => updateList("bring", items)}
+                  />
+                ) : (
+                  <ul className="space-y-1">
+                    {bring.map((item, i) => (
+                      <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                        <Icon name="Dot" size={14} className="text-blue-400 mt-0.5 shrink-0" /> {item}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
-            {parsed.contraindications.length > 0 && (
+
+            {/* Противопоказания */}
+            {(contraindications.length > 0 || isOwner) && (
               <div>
                 <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
                   <Icon name="AlertTriangle" size={16} className="text-amber-500" /> Противопоказания
                 </h3>
-                <ul className="space-y-1">
-                  {parsed.contraindications.map((item, i) => (
-                    <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                      <Icon name="Minus" size={14} className="text-amber-400 mt-0.5 shrink-0" /> {item}
-                    </li>
-                  ))}
-                </ul>
+                {isOwner ? (
+                  <EditableList
+                    items={contraindications}
+                    placeholder="Добавить противопоказание..."
+                    editMode={isOwner}
+                    onChange={(items) => updateList("contraindications", items)}
+                  />
+                ) : (
+                  <ul className="space-y-1">
+                    {contraindications.map((item, i) => (
+                      <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                        <Icon name="Minus" size={14} className="text-amber-400 mt-0.5 shrink-0" /> {item}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </div>
