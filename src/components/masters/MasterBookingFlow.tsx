@@ -325,7 +325,6 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
                   masterSlug && s.id ? (
                     <Link
                       to={`/masters/${masterSlug}/services/${s.id}`}
-                      target="_blank"
                       onClick={(e) => e.stopPropagation()}
                       className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors min-h-[40px] -mx-1 px-1 touch-manipulation"
                     >
