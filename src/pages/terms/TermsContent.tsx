@@ -363,7 +363,7 @@ export default function TermsContent({ onOpenAppendix }: Props) {
       </section>
 
       {/* ЧАСТЬ IX */}
-      <section id="part8">
+      <section id="part9">
         <h2 className="text-2xl font-bold text-foreground mb-6 pb-2 border-b border-border">
           Часть IX. Заключительные положения
         </h2>

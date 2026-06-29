@@ -296,7 +296,8 @@ const TERMS_SECTIONS = [
   { id: "part5", title: "Часть V. Финансы" },
   { id: "part6", title: "Часть VI. Ответственность" },
   { id: "part7", title: "Часть VII. Интеллектуальная собственность" },
-  { id: "part8", title: "Часть VIII. Заключительные положения" },
+  { id: "part8a", title: "Часть VIII. Яндекс.Карты" },
+  { id: "part9", title: "Часть IX. Заключительные положения" },
 ];
 
 function TermsSidebar() {

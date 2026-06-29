@@ -41,7 +41,8 @@ export default function Terms() {
             <li><a href="#part5" className="hover:text-foreground transition-colors">Часть V. Финансы, комиссии, кошелёк</a></li>
             <li><a href="#part6" className="hover:text-foreground transition-colors">Часть VI. Ответственность, арбитраж, блокировки</a></li>
             <li><a href="#part7" className="hover:text-foreground transition-colors">Часть VII. Интеллектуальная собственность</a></li>
-            <li><a href="#part8" className="hover:text-foreground transition-colors">Часть VIII. Заключительные положения</a></li>
+            <li><a href="#part8a" className="hover:text-foreground transition-colors">Часть VIII. Яндекс.Карты</a></li>
+            <li><a href="#part9" className="hover:text-foreground transition-colors">Часть IX. Заключительные положения</a></li>
           </ol>
         </nav>
 
