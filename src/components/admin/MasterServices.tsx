@@ -1,4 +1,5 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
+import { Link } from "react-router-dom";
 import {
   Tooltip,
   TooltipContent,
@@ -35,6 +36,8 @@ import {
 interface ServiceFormData {
   name: string;
   description: string;
+  rich_description: string;
+  video_url: string;
   included: string[];
   bring: string[];
   contraindications: string[];
@@ -242,6 +245,8 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
     const [form, setForm] = useState<ServiceFormData>({ ...emptyForm });
     const [addresses, setAddresses] = useState<MasterAddress[]>([]);
     const [masterSlug, setMasterSlug] = useState<string>("");
+    const [servicePhotos, setServicePhotos] = useState<string[]>([]);
+    const [photoUploading, setPhotoUploading] = useState(false);
 
     const { toast } = useToast();
 
@@ -321,6 +326,7 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
     const openCreate = () => {
       setEditingService(null);
       setForm({ ...emptyForm });
+      setServicePhotos([]);
       setIsDialogOpen(true);
     };
 
@@ -332,6 +338,8 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
       setForm({
         name: service.name,
         description: parsed.intro,
+        rich_description: service.rich_description || "",
+        video_url: service.video_url || "",
         included: parsed.included,
         bring: parsed.bring,
         contraindications: parsed.contraindications,
@@ -344,6 +352,7 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
           ? String(service.departure_address_id)
           : "",
       });
+      setServicePhotos(Array.isArray(service.photos) ? service.photos : []);
       setIsDialogOpen(true);
     };
 
@@ -393,6 +402,8 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
             master_id: masterId,
             name: form.name.trim(),
             description: fullDescription || undefined,
+            rich_description: form.rich_description.trim() || undefined,
+            video_url: form.video_url.trim() || undefined,
             duration_minutes: Number(form.duration_minutes),
             price: Number(form.price),
             max_clients: Number(form.max_clients) || 1,
@@ -406,6 +417,8 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
             master_id: masterId,
             name: form.name.trim(),
             description: fullDescription || undefined,
+            rich_description: form.rich_description.trim() || undefined,
+            video_url: form.video_url.trim() || undefined,
             duration_minutes: Number(form.duration_minutes),
             price: Number(form.price),
             max_clients: Number(form.max_clients) || 1,
@@ -427,6 +440,40 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
         });
       } finally {
         setSaving(false);
+      }
+    };
+
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !editingService?.id) return;
+      setPhotoUploading(true);
+      try {
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          const base64 = (ev.target?.result as string) ?? "";
+          const result = await masterCalendarApi.uploadServicePhoto(
+            editingService.id!,
+            base64,
+            file.type,
+          );
+          setServicePhotos(result.photos);
+        };
+        reader.readAsDataURL(file);
+      } catch {
+        toast({ title: "Ошибка", description: "Не удалось загрузить фото", variant: "destructive" });
+      } finally {
+        setPhotoUploading(false);
+      }
+      e.target.value = "";
+    };
+
+    const handlePhotoDelete = async (url: string) => {
+      if (!editingService?.id) return;
+      try {
+        const result = await masterCalendarApi.deleteServicePhoto(editingService.id!, url);
+        setServicePhotos(result.photos);
+      } catch {
+        toast({ title: "Ошибка", description: "Не удалось удалить фото", variant: "destructive" });
       }
     };
 
@@ -657,6 +704,22 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                           сразу попадёт на запись
                         </TooltipContent>
                       </Tooltip>
+                      {masterSlug && service.id && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Link
+                              to={`/masters/${masterSlug}/services/${service.id}`}
+                              target="_blank"
+                              className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 transition-colors inline-flex"
+                            >
+                              <Icon name="ExternalLink" size={15} />
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-xs">
+                            Открыть страницу услуги
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button
@@ -814,6 +877,74 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                 <p className="text-[11px] text-gray-400 mt-1">
                   Например: «Традиционное русское парение с акцентом на
                   прогревание и массаж веником.»
+                </p>
+              </div>
+
+              {/* Подробное описание */}
+              <div>
+                <Label className="flex items-center gap-1.5">
+                  <Icon name="AlignLeft" size={14} className="text-nature-forest" />
+                  Подробное описание
+                </Label>
+                <Textarea
+                  value={form.rich_description}
+                  onChange={(e) => setForm({ ...form, rich_description: e.target.value })}
+                  placeholder="Расскажите подробнее об услуге: как проходит процедура, что гость почувствует, особенности вашего подхода..."
+                  className="mt-1"
+                  rows={5}
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Отображается на отдельной странице услуги
+                </p>
+              </div>
+
+              {/* Фото */}
+              <div>
+                <Label className="flex items-center gap-1.5">
+                  <Icon name="Images" size={14} className="text-nature-forest" />
+                  Фотографии услуги
+                </Label>
+                {servicePhotos.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2 mb-2">
+                    {servicePhotos.map((url) => (
+                      <div key={url} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handlePhotoDelete(url)}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white"
+                        >
+                          <Icon name="Trash2" size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {editingService?.id ? (
+                  <label className={`mt-1 flex items-center gap-2 cursor-pointer text-sm px-3 py-2 rounded-lg border border-dashed border-gray-300 hover:border-nature-forest hover:bg-nature-forest/5 transition ${photoUploading ? "opacity-50 pointer-events-none" : ""}`}>
+                    <Icon name={photoUploading ? "Loader" : "Upload"} size={16} className={`text-gray-400 ${photoUploading ? "animate-spin" : ""}`} />
+                    {photoUploading ? "Загружаю..." : "Добавить фото"}
+                    <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                  </label>
+                ) : (
+                  <p className="text-[11px] text-gray-400 mt-1">Сначала сохраните услугу, затем добавьте фото</p>
+                )}
+              </div>
+
+              {/* Видео */}
+              <div>
+                <Label className="flex items-center gap-1.5">
+                  <Icon name="Play" size={14} className="text-nature-forest" />
+                  Ссылка на видео
+                </Label>
+                <Input
+                  value={form.video_url}
+                  onChange={(e) => setForm({ ...form, video_url: e.target.value })}
+                  placeholder="https://youtube.com/watch?v=... или rutube.ru/video/..."
+                  className="mt-1"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  YouTube, Rutube — видео отобразится на странице услуги
                 </p>
               </div>
 

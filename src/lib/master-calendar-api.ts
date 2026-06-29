@@ -11,6 +11,9 @@ export interface MasterService {
   master_id: number;
   name: string;
   description?: string;
+  rich_description?: string;
+  photos?: string[];
+  video_url?: string | null;
   duration_minutes: number;
   price: number;
   max_clients: number;
@@ -20,6 +23,10 @@ export interface MasterService {
   departure_address_id?: number | null;
   created_at?: string;
   updated_at?: string;
+  // поля при публичном запросе
+  master_slug?: string;
+  master_name?: string;
+  master_avatar?: string;
 }
 
 export type AddressType = "home" | "studio" | "partner" | "other";
@@ -257,6 +264,21 @@ export const masterCalendarApi = {
     fetchApi(`${CALENDAR_URL}&sub=services`, {
       method: "DELETE",
       body: JSON.stringify({ id }),
+    }),
+
+  getServiceDetail: (id: number) =>
+    fetchApi<MasterService>(`${CALENDAR_URL}&sub=service-detail&id=${id}`),
+
+  uploadServicePhoto: (id: number, imageBase64: string, contentType: string) =>
+    fetchApi<{ url: string; photos: string[] }>(`${CALENDAR_URL}&sub=service-photo&id=${id}`, {
+      method: "POST",
+      body: JSON.stringify({ id, image: imageBase64, content_type: contentType }),
+    }),
+
+  deleteServicePhoto: (id: number, url: string) =>
+    fetchApi<{ photos: string[] }>(`${CALENDAR_URL}&sub=service-photo&id=${id}`, {
+      method: "DELETE",
+      body: JSON.stringify({ id, url }),
     }),
 
   getAddresses: (masterId: number) =>

@@ -85,6 +85,10 @@ def handle_calendar(event, method, params, schema, headers):
         return handle_maps_key(event, method, params, schema, headers)
     elif sub == 'geocode':
         return handle_geocode(event, method, params, schema, headers)
+    elif sub == 'service-detail':
+        return handle_service_detail(event, method, params, schema, headers)
+    elif sub == 'service-photo':
+        return handle_service_photo(event, method, params, schema, headers)
     return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown calendar sub'})}
 
 
@@ -626,11 +630,14 @@ def handle_services(event, method, params, schema, headers):
             fmt = 'on_site'
         dep_addr = body.get('departure_address_id')
         dep_val = f"{int(dep_addr)}" if dep_addr else "NULL"
+        rich_desc = (body.get('rich_description') or '').replace("'", "''")
+        video_url = (body.get('video_url') or '').replace("'", "''")
 
         cur.execute(f"""
             INSERT INTO {schema}.master_services
-            (master_id, name, description, duration_minutes, price, max_clients, service_format, departure_address_id)
-            VALUES ({int(master_id)}, '{name}', '{desc}', {duration}, {price}, {max_cl}, '{fmt}', {dep_val})
+            (master_id, name, description, duration_minutes, price, max_clients, service_format, departure_address_id, rich_description, video_url)
+            VALUES ({int(master_id)}, '{name}', '{desc}', {duration}, {price}, {max_cl}, '{fmt}', {dep_val},
+                    '{rich_desc}', {("'" + video_url + "'") if video_url else "NULL"})
             RETURNING *
         """)
         row = cur.fetchone()
@@ -646,6 +653,11 @@ def handle_services(event, method, params, schema, headers):
             updates.append(f"name = '{body['name'].replace(chr(39), chr(39)+chr(39))}'")
         if 'description' in body:
             updates.append(f"description = '{(body['description'] or '').replace(chr(39), chr(39)+chr(39))}'")
+        if 'rich_description' in body:
+            updates.append(f"rich_description = '{(body['rich_description'] or '').replace(chr(39), chr(39)+chr(39))}'")
+        if 'video_url' in body:
+            v = (body.get('video_url') or '').replace(chr(39), chr(39)+chr(39))
+            updates.append(f"video_url = {('NULL' if not v else chr(39)+v+chr(39))}")
         if 'duration_minutes' in body:
             updates.append(f"duration_minutes = {int(body['duration_minutes'])}")
         if 'price' in body:
@@ -684,6 +696,87 @@ def handle_services(event, method, params, schema, headers):
         conn.commit()
         conn.close()
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'success': True})}
+
+    conn.close()
+    return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+
+
+def handle_service_detail(event, method, params, schema, headers):
+    """GET — публичная страница услуги по id. Не требует авторизации."""
+    if method != 'GET':
+        return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
+    sid = params.get('id')
+    if not sid:
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id required'})}
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(f"""
+        SELECT ms.*, m.slug as master_slug, m.name as master_name, m.avatar as master_avatar
+        FROM {schema}.master_services ms
+        JOIN {schema}.masters m ON m.id = ms.master_id
+        WHERE ms.id = {int(sid)} AND ms.is_active = true AND m.is_active = true
+    """)
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'Not found'})}
+    return {'statusCode': 200, 'headers': headers, 'body': json.dumps(row, default=str)}
+
+
+def handle_service_photo(event, method, params, schema, headers):
+    """POST — загрузка фото услуги в S3. DELETE — удаление фото."""
+    import base64, uuid, boto3
+    sid = params.get('id') or json.loads(event.get('body', '{}')).get('id')
+    if not sid:
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'id required'})}
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    if method == 'POST':
+        body = json.loads(event.get('body', '{}'))
+        image_data = body.get('image')
+        if not image_data:
+            conn.close()
+            return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'image required'})}
+        if ',' in image_data:
+            image_data = image_data.split(',', 1)[1]
+        img_bytes = base64.b64decode(image_data)
+        ext = 'jpg'
+        content_type = body.get('content_type', 'image/jpeg')
+        if 'png' in content_type:
+            ext = 'png'
+        elif 'webp' in content_type:
+            ext = 'webp'
+        key = f"service-photos/{sid}/{uuid.uuid4().hex}.{ext}"
+        s3 = boto3.client('s3', endpoint_url='https://bucket.poehali.dev',
+                          aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+                          aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
+        s3.put_object(Bucket='files', Key=key, Body=img_bytes, ContentType=content_type)
+        url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+
+        cur.execute(f"SELECT photos FROM {schema}.master_services WHERE id = {int(sid)}")
+        row = cur.fetchone()
+        photos = row['photos'] if row and row['photos'] else []
+        photos.append(url)
+        import json as _json
+        cur.execute(f"UPDATE {schema}.master_services SET photos = '{_json.dumps(photos)}' WHERE id = {int(sid)}")
+        conn.commit()
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': _json.dumps({'url': url, 'photos': photos})}
+
+    if method == 'DELETE':
+        body = json.loads(event.get('body', '{}'))
+        url_to_remove = body.get('url')
+        cur.execute(f"SELECT photos FROM {schema}.master_services WHERE id = {int(sid)}")
+        row = cur.fetchone()
+        photos = row['photos'] if row and row['photos'] else []
+        photos = [p for p in photos if p != url_to_remove]
+        import json as _json
+        cur.execute(f"UPDATE {schema}.master_services SET photos = '{_json.dumps(photos)}' WHERE id = {int(sid)}")
+        conn.commit()
+        conn.close()
+        return {'statusCode': 200, 'headers': headers, 'body': _json.dumps({'photos': photos})}
 
     conn.close()
     return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}

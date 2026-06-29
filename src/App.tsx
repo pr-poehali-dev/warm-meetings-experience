@@ -64,6 +64,7 @@ const Baths = lazyWithRetry(() => import("./pages/Baths"));
 const BathDetail = lazyWithRetry(() => import("./pages/BathDetail"));
 const Masters = lazyWithRetry(() => import("./pages/Masters"));
 const MasterDetail = lazyWithRetry(() => import("./pages/MasterDetail"));
+const MasterServicePage = lazyWithRetry(() => import("./pages/MasterServicePage"));
 const About = lazyWithRetry(() => import("./pages/About"));
 const Workspace = lazyWithRetry(() => import("./pages/Workspace"));
 const InviteRegister = lazyWithRetry(() => import("./pages/InviteRegister"));
@@ -140,6 +141,7 @@ const AppContent = () => {
           <Route path="/baths/:slug" element={<BathDetail />} />
           <Route path="/masters" element={<Masters />} />
           <Route path="/masters/:slug" element={<MasterDetail />} />
+          <Route path="/masters/:slug/services/:id" element={<MasterServicePage />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/category/:slug" element={<BlogCategory />} />
           <Route path="/blog/:slug" element={<BlogArticle />} />

@@ -9,6 +9,22 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Публичная страница услуги — без id возвращает 400",
+      "method": "GET",
+      "path": "/?resource=calendar&sub=service-detail",
+      "expectedStatus": 400,
+      "expectedBody": {"error": "id required"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Публичная страница услуги — несуществующий id возвращает 404",
+      "method": "GET",
+      "path": "/?resource=calendar&sub=service-detail&id=999999999",
+      "expectedStatus": 404,
+      "expectedBody": {"error": "Not found"},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Чат — диалоги без master_id отвечают 400",
       "method": "GET",
       "path": "/?resource=chat&sub=dialogs",
