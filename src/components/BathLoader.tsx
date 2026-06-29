@@ -47,7 +47,7 @@ export default function BathLoader({ label = "Поддаём парку…", ful
 
             {/* ── Каменка с камнями ── */}
             <g>
-              <rect x="44" y="92" width="62" height="30" rx="5" fill="hsl(var(--primary) / 0.15)" stroke="hsl(var(--primary))" strokeWidth="2.5" />
+              <rect x="44" y="92" width="62" height="30" rx="5" fill="none" stroke="none" />
               {/* Камни */}
               <circle cx="58" cy="94" r="6" style={{ animation: "stones-glow 2.6s ease-in-out infinite" }} />
               <circle cx="72" cy="92" r="7" style={{ animation: "stones-glow 2.6s ease-in-out 0.2s infinite" }} />
