@@ -26,6 +26,7 @@ import FavoritesSection from "@/components/account/FavoritesSection";
 import WalletSection from "@/components/account/WalletSection";
 import ReferralsSection from "@/components/account/ReferralsSection";
 import { Button } from "@/components/ui/button";
+import BathLoader from "@/components/BathLoader";
 import { Card, CardContent } from "@/components/ui/card";
 import OnboardingTour, { TourStep } from "@/components/onboarding/OnboardingTour";
 import { useOnboardingTour } from "@/hooks/useOnboardingTour";
@@ -105,11 +106,7 @@ export default function Account() {
   const tour = useOnboardingTour("account", tourReady);
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <BathLoader label="Загружаем кабинет…" />;
   }
 
   if (!user) return null;

@@ -7,6 +7,7 @@ import { bathsApi, Bath } from "@/lib/baths-api";
 import { mastersApi, Master, Specialization } from "@/lib/masters-api";
 import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
 import PageShell from "@/components/ui/page-shell";
+import BathLoader from "@/components/BathLoader";
 import func2url from "../../backend/func2url.json";
 
 const VIDEOS_API = func2url["media-api"];
@@ -74,11 +75,7 @@ export default function BathDetail() {
   if (notFound) return <Navigate to="/baths" replace />;
 
   if (loading || !bath) {
-    return (
-      <PageShell className="flex items-center justify-center">
-        <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground" />
-      </PageShell>
-    );
+    return <BathLoader label="Загружаем баню…" />;
   }
 
   const placeholder = `https://placehold.co/800x500/e8dac0/8b7355?text=${encodeURIComponent(bath.name)}`;

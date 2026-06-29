@@ -13,6 +13,7 @@ import DynamicPricingBlock from "@/components/events/DynamicPricingBlock";
 import CrowdfundWidget from "@/components/events/CrowdfundWidget";
 import { VideoGallery, VideoItem } from "@/components/video/VideoPlayer";
 import PageShell from "@/components/ui/page-shell";
+import BathLoader from "@/components/BathLoader";
 import func2url from "../../backend/func2url.json";
 import EventMapView from "@/components/events/EventMapView";
 
@@ -50,14 +51,7 @@ export default function EventDetail() {
   if (notFound) return <Navigate to="/events" replace />;
 
   if (loading || !event) {
-    return (
-      <PageShell className="flex items-center justify-center">
-        <div className="text-center">
-          <Icon name="Loader2" size={32} className="animate-spin text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">Загрузка...</p>
-        </div>
-      </PageShell>
-    );
+    return <BathLoader label="Загружаем встречу…" />;
   }
 
   const typeColors = getTypeColors(event.type);

@@ -5,6 +5,7 @@ import Icon from "@/components/ui/icon";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { mastersApi, Master, Specialization } from "@/lib/masters-api";
+import BathLoader from "@/components/BathLoader";
 
 const HERO_IMG = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/72d028d8-3078-4526-a1a8-54f4ac23a26e.jpg";
 
@@ -441,10 +442,7 @@ export default function Masters() {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-24" style={{ color: "var(--c-muted)" }}>
-            <Icon name="Loader2" size={32} className="animate-spin mr-3" />
-            Загрузка мастеров...
-          </div>
+          <BathLoader fullscreen={false} label="Загрузка мастеров…" />
         ) : filtered.length === 0 ? (
           <div className="text-center py-20" style={{ color: "var(--c-muted)" }}>
             <Icon name="SearchX" size={48} className="mx-auto mb-4 opacity-30" />

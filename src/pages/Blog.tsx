@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { categories } from "@/lib/blog-data";
 import { blogApi, ApiBlogArticle } from "@/lib/blog-api";
+import BathLoader from "@/components/BathLoader";
 
 const HERO_IMG = "https://cdn.poehali.dev/projects/b2cfdb9f-e5f2-4dd1-84cb-905733c4941c/files/72e75dca-aed9-4626-aa70-d7c48a5923d1.jpg";
 
@@ -261,10 +262,7 @@ export default function Blog() {
       {/* Content */}
       <section className="relative z-10 px-4 sm:px-6 max-w-6xl mx-auto pb-20 pt-10">
         {loading ? (
-          <div className="flex items-center justify-center py-24" style={{ color: "var(--c-muted)" }}>
-            <Icon name="Loader2" size={32} className="animate-spin mr-3" />
-            Загрузка статей...
-          </div>
+          <BathLoader fullscreen={false} label="Загрузка статей…" />
         ) : filtered.length === 0 ? (
           <div className="text-center py-20" style={{ color: "var(--c-muted)" }}>
             <Icon name="FileText" size={48} className="mx-auto mb-4 opacity-30" />

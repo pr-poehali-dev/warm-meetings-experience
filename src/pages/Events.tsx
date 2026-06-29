@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import EventCalendar from "@/components/events/EventCalendar";
 import { EventItem, mapApiEvent, getTypeColors } from "@/data/events";
 import { eventsApi } from "@/lib/api";
+import BathLoader from "@/components/BathLoader";
 import { format, parseISO, isSameDay, startOfDay } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -502,10 +503,7 @@ export default function Events() {
 
         {/* Results */}
         {loading ? (
-          <div className="flex items-center justify-center py-24" style={{ color: "var(--c-muted)" }}>
-            <Icon name="Loader2" size={32} className="animate-spin mr-3" />
-            Загрузка встреч...
-          </div>
+          <BathLoader fullscreen={false} label="Загрузка встреч…" />
         ) : view === "calendar" ? (
           <div className="p-5 rounded-2xl" style={glassCard}>
             <EventCalendar
