@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { addDays, format, startOfToday } from "date-fns";
 import { ru } from "date-fns/locale";
 import Icon from "@/components/ui/icon";
@@ -64,6 +65,7 @@ interface ActiveBooking {
 
 interface MasterBookingFlowProps {
   masterId: number;
+  masterSlug?: string;
   services: MasterService[];
   onBookSlot: (option: BookingOption, service: MasterService) => void;
   preselectedServiceId?: number | null;
@@ -71,7 +73,7 @@ interface MasterBookingFlowProps {
   refreshKey?: number;
 }
 
-export default function MasterBookingFlow({ masterId, services, onBookSlot, preselectedServiceId, refreshKey = 0 }: MasterBookingFlowProps) {
+export default function MasterBookingFlow({ masterId, masterSlug, services, onBookSlot, preselectedServiceId, refreshKey = 0 }: MasterBookingFlowProps) {
   const activeServices = useMemo(() => services.filter((s) => s.is_active), [services]);
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(preselectedServiceId ?? null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -320,18 +322,31 @@ export default function MasterBookingFlow({ masterId, services, onBookSlot, pres
 
                 {/* Кнопка «Подробнее о процедуре» — появляется при выделении */}
                 {active && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setAboutServiceId(s.id!);
-                    }}
-                    className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors min-h-[40px] -mx-1 px-1 touch-manipulation"
-                  >
-                    <Icon name="Info" size={13} />
-                    Подробнее о процедуре
-                    <Icon name="ChevronRight" size={13} />
-                  </button>
+                  masterSlug && s.id ? (
+                    <Link
+                      to={`/masters/${masterSlug}/services/${s.id}`}
+                      target="_blank"
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors min-h-[40px] -mx-1 px-1 touch-manipulation"
+                    >
+                      <Icon name="Info" size={13} />
+                      Подробнее о процедуре
+                      <Icon name="ChevronRight" size={13} />
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAboutServiceId(s.id!);
+                      }}
+                      className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors min-h-[40px] -mx-1 px-1 touch-manipulation"
+                    >
+                      <Icon name="Info" size={13} />
+                      Подробнее о процедуре
+                      <Icon name="ChevronRight" size={13} />
+                    </button>
+                  )
                 )}
               </div>
             );

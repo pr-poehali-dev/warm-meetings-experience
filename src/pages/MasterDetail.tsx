@@ -727,6 +727,7 @@ export default function MasterDetail() {
               <div className="mb-8" data-section="schedule" id="booking-flow-section">
                 <MasterBookingFlow
                   masterId={master.id}
+                  masterSlug={master.slug}
                   services={services}
                   preselectedServiceId={selectedServiceForFlow}
                   refreshKey={bookingRefreshKey}
