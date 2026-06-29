@@ -612,25 +612,24 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                   </span>
                 </div>
 
-                {/* Строка 2: мета + кнопки */}
-                <div className="flex items-center gap-1">
-                  {/* Мета-инфо */}
-                  <div className="flex items-center gap-2 text-xs text-gray-500 flex-1 flex-wrap">
-                    <span className="flex items-center gap-0.5">
-                      <Icon name="Clock" size={11} className="text-gray-400" />
-                      {service.duration_minutes}м
-                    </span>
-                    <span className="flex items-center gap-0.5 font-semibold text-gray-900">
-                      <Icon name="Banknote" size={11} className="text-gray-400" />
-                      {formatPrice(service.price)}
-                    </span>
-                    <span className="flex items-center gap-0.5">
-                      <Icon name="Users" size={11} className="text-gray-400" />
-                      {service.max_clients} чел.
-                    </span>
-                  </div>
+                {/* Строка 2: мета-инфо */}
+                <div className="flex items-center gap-2 text-xs text-gray-500 mb-1.5">
+                  <span className="flex items-center gap-0.5">
+                    <Icon name="Clock" size={11} className="text-gray-400" />
+                    {service.duration_minutes}м
+                  </span>
+                  <span className="flex items-center gap-0.5 font-semibold text-gray-900">
+                    <Icon name="Banknote" size={11} className="text-gray-400" />
+                    {formatPrice(service.price)}
+                  </span>
+                  <span className="flex items-center gap-0.5">
+                    <Icon name="Users" size={11} className="text-gray-400" />
+                    {service.max_clients} чел.
+                  </span>
+                </div>
 
-                  {/* Кнопки */}
+                {/* Строка 3: кнопки */}
+                <div className="flex items-center border-t border-black/5 pt-1.5 -mx-3 px-2">
                   <div className="flex items-center gap-0 shrink-0">
                   <TooltipProvider delayDuration={400}>
                     <div className="flex items-center gap-0.5">
