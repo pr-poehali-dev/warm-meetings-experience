@@ -721,7 +721,11 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                             : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
-                        <span className="text-lg mt-0.5">{opt.emoji}</span>
+                        <Icon
+                          name={opt.icon}
+                          size={18}
+                          className={active ? "text-nature-forest mt-0.5" : "text-gray-400 mt-0.5"}
+                        />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900">
                             {opt.title}
