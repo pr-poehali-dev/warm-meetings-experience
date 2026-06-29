@@ -525,9 +525,9 @@ const MasterServices = forwardRef<MasterServicesRef, { masterId: number }>(
                 } ${!service.is_active ? "opacity-60" : ""}`}
               >
                 <div className="flex items-center gap-3">
-                  {/* Эмодзи формата */}
+                  {/* Иконка формата */}
                   {fmt && (
-                    <span className="text-xl shrink-0">{fmt.emoji}</span>
+                    <Icon name={fmt.icon as "Home"} size={18} className="text-gray-500 shrink-0" />
                   )}
                   {/* Название + описание */}
                   <div className="flex-1 min-w-0">
