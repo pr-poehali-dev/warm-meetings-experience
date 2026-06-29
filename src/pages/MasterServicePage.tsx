@@ -453,16 +453,18 @@ export default function MasterServicePage() {
           </div>
         )}
 
-        {/* Кнопка записаться */}
-        <div className="sticky bottom-4">
-          <button
-            onClick={() => navigate(`/masters/${slug}?service=${service.id}`)}
-            className="w-full bg-primary text-white rounded-2xl py-4 text-lg font-semibold shadow-lg hover:bg-primary/90 transition flex items-center justify-center gap-2"
-          >
-            <Icon name="CalendarCheck" size={22} />
-            Записаться — {fmtPrice(service.price)}
-          </button>
-        </div>
+        {/* Кнопка записаться — скрыта для владельца в режиме редактора */}
+        {!isOwner && (
+          <div className="sticky bottom-4">
+            <button
+              onClick={() => navigate(`/masters/${slug}?service=${service.id}`)}
+              className="w-full bg-primary text-white rounded-2xl py-4 text-lg font-semibold shadow-lg hover:bg-primary/90 transition flex items-center justify-center gap-2"
+            >
+              <Icon name="CalendarCheck" size={22} />
+              Записаться — {fmtPrice(service.price)}
+            </button>
+          </div>
+        )}
       </main>
 
       <Footer />
