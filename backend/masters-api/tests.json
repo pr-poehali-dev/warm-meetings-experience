@@ -41,6 +41,14 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Мои записи — без токена возвращает 401",
+      "method": "GET",
+      "path": "/?resource=bookings&sub=my-bookings",
+      "expectedStatus": 401,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Чат — диалоги без master_id отвечают 400",
       "method": "GET",
       "path": "/?resource=chat&sub=dialogs",

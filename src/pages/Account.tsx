@@ -10,6 +10,7 @@ import ProfileCard from "@/components/account/ProfileCard";
 import GrowthSection from "@/components/account/GrowthSection";
 import BadgesSection from "@/components/account/BadgesSection";
 import SignupsList from "@/components/account/SignupsList";
+import MyMasterBookings from "@/components/account/MyMasterBookings";
 import PasswordChangeForm from "@/components/account/PasswordChangeForm";
 import TwoFactorSection from "@/components/account/TwoFactorSection";
 import LoginSecuritySection from "@/components/account/LoginSecuritySection";
@@ -297,6 +298,7 @@ export default function Account() {
           {mainTab === "signups" && (
             <div className="space-y-4">
               <RefundsSection />
+              <MyMasterBookings />
               <SignupsList
                 signups={upcomingSignups}
                 signupsLoading={signupsLoading}

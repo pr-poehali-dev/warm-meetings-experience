@@ -932,9 +932,68 @@ def handle_bookings_root(event, method, params, schema, headers):
         return handle_public_settings(event, method, params, schema, headers)
     elif sub == 'booking-ics':
         return handle_booking_ics(event, method, params, schema, headers)
+    elif sub == 'my-bookings':
+        return handle_my_bookings(event, method, params, schema, headers)
     elif sub == 'stats':
         return handle_stats(event, method, params, schema, headers)
     return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown bookings sub'})}
+
+
+def handle_my_bookings(event, method, params, schema, headers):
+    """Список записей текущего гостя (по client_id из токена сессии).
+    GET ?resource=bookings&sub=my-bookings
+    """
+    if method != 'GET':
+        return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'GET only'})}
+
+    token = get_token(event)
+    if not token:
+        return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'auth required'})}
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    user = get_user_from_token(cur, schema, token)
+    if not user:
+        conn.close()
+        return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'auth required'})}
+
+    user_id = int(user['id'])
+    cur.execute(f"""
+        SELECT b.id, b.master_id, b.service_id, b.status, b.price,
+               b.datetime_start, b.datetime_end,
+               b.meeting_address, b.meeting_latitude, b.meeting_longitude,
+               b.comment, b.reply_token, b.created_at,
+               ms.name AS service_name, ms.duration_minutes,
+               m.name AS master_name, m.slug AS master_slug, m.avatar_url AS master_avatar,
+               COALESCE(mcs.timezone, 'Europe/Moscow') AS tz
+        FROM {schema}.master_bookings b
+        LEFT JOIN {schema}.master_services ms ON b.service_id = ms.id
+        LEFT JOIN {schema}.masters m ON b.master_id = m.id
+        LEFT JOIN {schema}.master_calendar_settings mcs ON mcs.master_id = m.id
+        WHERE b.client_id = {user_id}
+          AND b.archived_at IS NULL
+        ORDER BY b.datetime_start DESC
+        LIMIT 100
+    """)
+    rows = cur.fetchall() or []
+    conn.close()
+
+    bookings = []
+    for r in rows:
+        d = dict(r)
+        for k in ('datetime_start', 'datetime_end', 'created_at'):
+            if d.get(k) is not None:
+                d[k] = str(d[k])
+        if d.get('price') is not None:
+            d['price'] = float(d['price'])
+        if d.get('meeting_latitude') is not None:
+            d['meeting_latitude'] = float(d['meeting_latitude'])
+        if d.get('meeting_longitude') is not None:
+            d['meeting_longitude'] = float(d['meeting_longitude'])
+        bookings.append(d)
+
+    return {'statusCode': 200, 'headers': headers,
+            'body': json.dumps({'bookings': bookings}, default=str, ensure_ascii=False)}
 
 
 def handle_public_settings(event, method, params, schema, headers):

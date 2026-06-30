@@ -503,6 +503,9 @@ export const masterBookingsApi = {
       body: JSON.stringify(data),
     }),
 
+  getMyBookings: () =>
+    fetchApi<{ bookings: MyBooking[] }>(`${BOOKINGS_URL}&sub=my-bookings`),
+
   getReviews: (masterId: number) =>
     fetchApi<MasterReview[]>(`${REVIEWS_URL}&master_id=${masterId}`),
 
@@ -520,6 +523,28 @@ export interface MasterReview {
   rating: number;
   text?: string;
   created_at: string;
+}
+
+export interface MyBooking {
+  id: number;
+  master_id: number;
+  service_id?: number | null;
+  status: "pending" | "confirmed" | "canceled" | "completed" | "no_show";
+  price: number;
+  datetime_start: string;
+  datetime_end: string;
+  meeting_address?: string | null;
+  meeting_latitude?: number | null;
+  meeting_longitude?: number | null;
+  comment?: string | null;
+  reply_token?: string | null;
+  created_at?: string;
+  service_name?: string | null;
+  duration_minutes?: number | null;
+  master_name?: string | null;
+  master_slug?: string | null;
+  master_avatar?: string | null;
+  tz?: string;
 }
 
 // ─── Чат мастер↔гость ───────────────────────────────────────────────
