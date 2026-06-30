@@ -3,7 +3,10 @@ import os
 import threading
 import psycopg2.extras
 from datetime import datetime
-from shared import CORS_HEADERS, get_conn, get_schema, send_email, tg_send, vk_send, admin_email
+from shared import (
+    CORS_HEADERS, get_conn, get_schema, send_email, tg_send, vk_send, admin_email,
+    get_token, get_user_from_token,
+)
 from booking_validator import (
     acquire_master_lock, validate_booking_create, get_buffer_minutes,
     require_master_id, recalc_slot_status, ensure_master_access,
@@ -583,9 +586,18 @@ def _notify_client_about_new_booking(cur, schema, master_id, booking, service_na
     try:
         client_email = (booking.get('client_email') or '').strip()
         client_name = (booking.get('client_name') or '').strip() or 'клиент'
-        if not client_email or client_email.endswith('.vk.local') or client_email.endswith('@vk.local'):
-            return
-        if not (os.environ.get('UNISENDER_API_KEY') and os.environ.get('UNISENDER_SENDER_EMAIL')):
+        client_user_id = booking.get('client_id')
+
+        # Можно ли слать письмо: есть валидный email и настроен Unisender.
+        email_ok = (
+            bool(client_email)
+            and not client_email.endswith('.vk.local')
+            and not client_email.endswith('@vk.local')
+            and bool(os.environ.get('UNISENDER_API_KEY'))
+            and bool(os.environ.get('UNISENDER_SENDER_EMAIL'))
+        )
+        # Если ни email, ни привязанного аккаунта — уведомлять некуда.
+        if not email_ok and not client_user_id:
             return
 
         cur.execute(f"""
@@ -681,15 +693,124 @@ def _notify_client_about_new_booking(cur, schema, master_id, booking, service_na
         </div>
         """.strip()
 
-        ok = send_email(client_email, subject, body_html, tags=['booking-new-client'])
-        _log_notification(cur, schema,
-            channel='email', event_type='client_booking_created',
-            recipient=client_email, subject=subject,
-            status='success' if ok else 'failed',
-            related_id=booking.get('id'),
-            payload={'master_id': master_id, 'client_name': client_name, 'booking_status': status})
+        if email_ok:
+            ok = send_email(client_email, subject, body_html, tags=['booking-new-client'])
+            _log_notification(cur, schema,
+                channel='email', event_type='client_booking_created',
+                recipient=client_email, subject=subject,
+                status='success' if ok else 'failed',
+                related_id=booking.get('id'),
+                payload={'master_id': master_id, 'client_name': client_name, 'booking_status': status})
+
+        # === VK / Telegram клиенту (если записывался из своего аккаунта) ===
+        if client_user_id:
+            try:
+                _notify_client_via_messengers(
+                    cur, schema, client_user_id, client_name,
+                    master_name, dt_human, service_name, status,
+                    meeting_address, booking,
+                )
+            except Exception:
+                pass
     except Exception:
         pass
+
+
+def _notify_client_via_messengers(cur, schema, user_id, client_name, master_name,
+                                   dt_human, service_name, status, meeting_address, booking):
+    """Шлёт клиенту уведомление о записи в VK и Telegram по его user_id.
+    Учитывает флаги notify_vk / notify_telegram пользователя.
+    """
+    cur.execute(f"""
+        SELECT u.vk_id AS vk_id,
+               COALESCE(u.notify_vk, false) AS notify_vk,
+               u.tg_chat_id AS user_tg,
+               u.notify_telegram AS notify_telegram,
+               la.telegram_user_id AS linked_tg
+        FROM {schema}.users u
+        LEFT JOIN (
+            SELECT DISTINCT ON (user_id) user_id, telegram_user_id
+            FROM {schema}.tg_linked_accounts
+            ORDER BY user_id, linked_at DESC
+        ) la ON la.user_id = u.id
+        WHERE u.id = {int(user_id)}
+    """)
+    u = cur.fetchone()
+    if not u:
+        return
+
+    is_confirmed = status == 'confirmed'
+    head = 'Запись подтверждена' if is_confirmed else 'Заявка принята'
+    status_line = (
+        'Мастер подтвердил вашу запись.' if is_confirmed
+        else 'Ожидает подтверждения мастером — мы сообщим, как только мастер её примет.'
+    )
+
+    map_url = ''
+    if meeting_address:
+        m_lat = booking.get('meeting_latitude')
+        m_lng = booking.get('meeting_longitude')
+        if m_lat is not None and m_lng is not None:
+            map_url = f'https://yandex.ru/maps/?pt={m_lng},{m_lat}&z=17&l=map'
+        else:
+            from urllib.parse import quote as _quote
+            map_url = f'https://yandex.ru/maps/?text={_quote(meeting_address)}'
+
+    ics_url = _ics_download_url(booking.get('reply_token'))
+
+    # === Telegram (HTML) ===
+    tg_chat_id = u.get('linked_tg') or u.get('user_tg')
+    if tg_chat_id and u.get('notify_telegram') is not False:
+        lines = [
+            f'✅ <b>{head}</b>',
+            '',
+            f'Мастер: <b>{master_name}</b>',
+            f'📅 {dt_human}',
+        ]
+        if service_name:
+            lines.insert(3, f'📌 {service_name}')
+        if meeting_address:
+            lines.append(f'📍 {meeting_address}')
+        if map_url:
+            lines.append(f'🗺 <a href="{map_url}">Открыть на карте</a>')
+        if ics_url:
+            lines.append(f'📆 <a href="{ics_url}">Добавить в календарь</a>')
+        lines.append('')
+        lines.append(f'<i>{status_line}</i>')
+        ok_tg = tg_send(tg_chat_id, '\n'.join(lines))
+        _log_notification(cur, schema,
+            channel='telegram', event_type='client_booking_created',
+            recipient=str(tg_chat_id), subject=head,
+            status='success' if ok_tg else 'failed',
+            user_id=user_id, related_id=booking.get('id'),
+            payload={'client_name': client_name})
+
+    # === VK (plain text) ===
+    vk_id = u.get('vk_id')
+    if vk_id and u.get('notify_vk'):
+        vk_lines = [
+            f'✅ {head}',
+            '',
+            f'Мастер: {master_name}',
+            f'📅 {dt_human}',
+        ]
+        if service_name:
+            vk_lines.insert(3, f'📌 {service_name}')
+        if meeting_address:
+            vk_lines.append(f'📍 {meeting_address}')
+        if map_url:
+            vk_lines.append(f'🗺 На карте: {map_url}')
+        if ics_url:
+            vk_lines.append(f'📆 В календарь: {ics_url}')
+        vk_lines.append('')
+        vk_lines.append(status_line)
+        ok_vk = vk_send(vk_id, '\n'.join(vk_lines))
+        _log_notification(cur, schema,
+            channel='vk', event_type='client_booking_created',
+            recipient=str(vk_id), subject=head,
+            status='success' if ok_vk else 'failed',
+            user_id=user_id, related_id=booking.get('id'),
+            payload={'client_name': client_name})
 
 
 def _ics_download_url(reply_token):
@@ -1503,6 +1624,18 @@ def handle_public_book(event, method, params, schema, headers):
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+    # Если гость записывается из своего аккаунта — связываем бронь с user_id,
+    # чтобы потом отправить ему уведомление в VK / Telegram.
+    client_user_id = None
+    try:
+        _tok = get_token(event)
+        if _tok:
+            _u = get_user_from_token(cur, schema, _tok)
+            if _u:
+                client_user_id = _u.get('id')
+    except Exception:
+        client_user_id = None
+
     # Сначала получаем master_id из слота (без lock), чтобы поставить advisory lock.
     cur.execute(f"""
         SELECT master_id FROM {schema}.master_slots WHERE id = {int(slot_id)}
@@ -1667,16 +1800,17 @@ def handle_public_book(event, method, params, schema, headers):
     meeting_address_sql = f"'{meeting_address}'" if meeting_address else 'NULL'
     meeting_lat_sql = f"{meeting_lat}" if meeting_lat is not None else 'NULL'
     meeting_lng_sql = f"{meeting_lng}" if meeting_lng is not None else 'NULL'
+    client_id_sql = f"{int(client_user_id)}" if client_user_id else 'NULL'
 
     cur.execute(f"""
         INSERT INTO {schema}.master_bookings
-        (slot_id, master_id, client_name, client_phone, client_email, service_id,
+        (slot_id, master_id, client_id, client_name, client_phone, client_email, service_id,
          datetime_start, datetime_end, price, status, source, comment,
          confirmed_at,
          contraindications_accepted, contraindications_accepted_at,
          contraindications_accepted_ip, contraindications_snapshot,
          meeting_address, meeting_latitude, meeting_longitude)
-        VALUES ({int(slot_id)}, {int(master_id)}, '{client_name}', '{client_phone}', '{client_email}',
+        VALUES ({int(slot_id)}, {int(master_id)}, {client_id_sql}, '{client_name}', '{client_phone}', '{client_email}',
          {svc_val}, '{dt_start_str}', '{dt_end_str}', {booking_price}, '{status}', 'public', '{comment}',
          {confirmed_at_val},
          {contra_accepted_sql}, {contra_accepted_at_sql},
