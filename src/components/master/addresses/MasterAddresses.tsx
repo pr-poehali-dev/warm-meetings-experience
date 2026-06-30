@@ -69,6 +69,9 @@ const MasterAddresses = ({ masterId }: { masterId: number }) => {
           address_type: data.address_type,
           latitude: data.latitude,
           longitude: data.longitude,
+          label: data.label.trim(),
+          color: data.color,
+          is_primary: data.is_primary,
         });
         toast({ title: "Готово", description: "Адрес обновлён" });
       } else {
@@ -78,7 +81,9 @@ const MasterAddresses = ({ masterId }: { masterId: number }) => {
           address_type: data.address_type,
           latitude: data.latitude,
           longitude: data.longitude,
-          is_primary: addresses.length === 0,
+          label: data.label.trim(),
+          color: data.color,
+          is_primary: data.is_primary || addresses.length === 0,
         });
         toast({ title: "Готово", description: "Адрес добавлен" });
       }
@@ -141,14 +146,21 @@ const MasterAddresses = ({ masterId }: { masterId: number }) => {
       key={addr.id}
       className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3"
     >
-      <Icon
-        name={addr.is_primary ? "Star" : "MapPin"}
-        size={18}
-        className={addr.is_primary ? "text-amber-500 mt-0.5" : "text-muted-foreground mt-0.5"}
-      />
+      {addr.color ? (
+        <span
+          className="w-4 h-4 rounded-full mt-1 flex-shrink-0"
+          style={{ backgroundColor: addr.color }}
+        />
+      ) : (
+        <Icon
+          name={addr.is_primary ? "Star" : "MapPin"}
+          size={18}
+          className={addr.is_primary ? "text-amber-500 mt-0.5" : "text-muted-foreground mt-0.5"}
+        />
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium">{addr.address_text}</span>
+          <span className="text-sm font-medium">{addr.label || addr.address_text}</span>
           <span className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
             {TYPE_LABEL[addr.address_type]}
           </span>
@@ -158,6 +170,9 @@ const MasterAddresses = ({ masterId }: { masterId: number }) => {
             </span>
           )}
         </div>
+        {addr.label && (
+          <p className="text-xs text-muted-foreground mt-0.5">{addr.address_text}</p>
+        )}
         {addr.latitude != null && addr.longitude != null && (
           <p className="text-xs text-muted-foreground mt-0.5">
             Координаты: {Number(addr.latitude).toFixed(5)}, {Number(addr.longitude).toFixed(5)}

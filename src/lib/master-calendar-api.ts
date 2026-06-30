@@ -40,6 +40,8 @@ export interface MasterAddress {
   longitude?: number | null;
   is_primary: boolean;
   address_type: AddressType;
+  label?: string | null;
+  color?: string | null;
   created_at?: string;
   updated_at?: string;
 }

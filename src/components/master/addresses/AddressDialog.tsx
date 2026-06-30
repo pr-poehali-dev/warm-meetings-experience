@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import Icon from "@/components/ui/icon";
 import AddressMapPicker from "./AddressMapPicker";
 import { geocodeAddress } from "./geocode";
@@ -27,6 +28,9 @@ export interface AddressFormData {
   address_type: AddressType;
   latitude: number | null;
   longitude: number | null;
+  label: string;
+  color: string;
+  is_primary: boolean;
 }
 
 const TYPE_OPTIONS: { value: AddressType; label: string }[] = [
@@ -34,6 +38,17 @@ const TYPE_OPTIONS: { value: AddressType; label: string }[] = [
   { value: "studio", label: "Студия" },
   { value: "partner", label: "Партнёрская баня" },
   { value: "other", label: "Другое" },
+];
+
+const COLOR_OPTIONS = [
+  { value: "#22c55e", label: "Зелёный" },
+  { value: "#3b82f6", label: "Синий" },
+  { value: "#f59e0b", label: "Оранжевый" },
+  { value: "#ef4444", label: "Красный" },
+  { value: "#a855f7", label: "Фиолетовый" },
+  { value: "#14b8a6", label: "Бирюзовый" },
+  { value: "#ec4899", label: "Розовый" },
+  { value: "#6b7280", label: "Серый" },
 ];
 
 interface Props {
@@ -50,6 +65,9 @@ const AddressDialog = ({ open, onOpenChange, editing, saving, onSave }: Props) =
     address_type: "other",
     latitude: null,
     longitude: null,
+    label: "",
+    color: "",
+    is_primary: false,
   });
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
@@ -61,6 +79,9 @@ const AddressDialog = ({ open, onOpenChange, editing, saving, onSave }: Props) =
         address_type: editing?.address_type || "other",
         latitude: editing?.latitude ?? null,
         longitude: editing?.longitude ?? null,
+        label: editing?.label || "",
+        color: editing?.color || "",
+        is_primary: editing?.is_primary ?? false,
       });
       setSearch(editing?.address_text || "");
     }
@@ -104,6 +125,19 @@ const AddressDialog = ({ open, onOpenChange, editing, saving, onSave }: Props) =
         </DialogHeader>
 
         <div className="space-y-4">
+          <div>
+            <Label className="mb-1 block">Короткое название</Label>
+            <Input
+              value={form.label}
+              onChange={(e) => setForm((p) => ({ ...p, label: e.target.value }))}
+              placeholder="Например: Студия в центре"
+              maxLength={60}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Так адрес будет отображаться в списках и расписании.
+            </p>
+          </div>
+
           <div>
             <Label className="mb-1 block">Поиск адреса</Label>
             <div className="flex gap-2">
@@ -170,6 +204,44 @@ const AddressDialog = ({ open, onOpenChange, editing, saving, onSave }: Props) =
               </div>
             </div>
           </div>
+
+          <div>
+            <Label className="mb-1.5 block">Цвет метки</Label>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_OPTIONS.map((c) => {
+                const active = form.color === c.value;
+                return (
+                  <button
+                    key={c.value}
+                    type="button"
+                    title={c.label}
+                    onClick={() =>
+                      setForm((p) => ({ ...p, color: active ? "" : c.value }))
+                    }
+                    className={`w-8 h-8 rounded-full transition-transform ${
+                      active ? "ring-2 ring-offset-2 ring-foreground scale-110" : "hover:scale-105"
+                    }`}
+                    style={{ backgroundColor: c.value }}
+                  >
+                    {active && <Icon name="Check" size={16} className="text-white mx-auto" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2.5 cursor-pointer select-none rounded-lg border border-border px-3 py-2.5">
+            <Checkbox
+              checked={form.is_primary}
+              onCheckedChange={(v) => setForm((p) => ({ ...p, is_primary: v === true }))}
+            />
+            <div>
+              <span className="text-sm font-medium">Основной адрес</span>
+              <p className="text-[11px] text-muted-foreground">
+                Используется по умолчанию при записи и в расписании.
+              </p>
+            </div>
+          </label>
         </div>
 
         <DialogFooter>

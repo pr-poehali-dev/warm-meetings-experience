@@ -1129,6 +1129,8 @@ def _address_to_dict(row):
         'longitude': float(row['longitude']) if row.get('longitude') is not None else None,
         'is_primary': bool(row['is_primary']),
         'address_type': row['address_type'],
+        'label': row.get('label'),
+        'color': row.get('color'),
         'created_at': str(row['created_at']) if row.get('created_at') else None,
         'updated_at': str(row['updated_at']) if row.get('updated_at') else None,
     }
@@ -1191,13 +1193,18 @@ def handle_addresses(event, method, params, schema, headers):
             is_primary = bool(body.get('is_primary')) or cnt == 0
             addr_safe = address_text.replace("'", "''")
 
+            label = (body.get('label') or '').strip()[:60]
+            label_val = f"'{label.replace(chr(39), chr(39)+chr(39))}'" if label else "NULL"
+            color = (body.get('color') or '').strip()[:20]
+            color_val = f"'{color.replace(chr(39), chr(39)+chr(39))}'" if color else "NULL"
+
             if is_primary:
                 cur.execute(f"UPDATE {schema}.master_addresses SET is_primary = false WHERE master_id = {master_id}")
 
             cur.execute(f"""
                 INSERT INTO {schema}.master_addresses
-                    (master_id, address_text, latitude, longitude, is_primary, address_type)
-                VALUES ({master_id}, '{addr_safe}', {lat_val}, {lon_val}, {'true' if is_primary else 'false'}, '{addr_type}')
+                    (master_id, address_text, latitude, longitude, is_primary, address_type, label, color)
+                VALUES ({master_id}, '{addr_safe}', {lat_val}, {lon_val}, {'true' if is_primary else 'false'}, '{addr_type}', {label_val}, {color_val})
                 RETURNING *
             """)
             row = cur.fetchone()
@@ -1234,6 +1241,16 @@ def handle_addresses(event, method, params, schema, headers):
                 if at not in ALLOWED_ADDRESS_TYPES:
                     at = 'other'
                 updates.append(f"address_type = '{at}'")
+            if 'label' in body:
+                lbl = (body.get('label') or '').strip()[:60]
+                updates.append(f"label = '{lbl.replace(chr(39), chr(39)+chr(39))}'" if lbl else "label = NULL")
+            if 'color' in body:
+                clr = (body.get('color') or '').strip()[:20]
+                updates.append(f"color = '{clr.replace(chr(39), chr(39)+chr(39))}'" if clr else "color = NULL")
+            if 'is_primary' in body and bool(body.get('is_primary')):
+                # Делаем этот адрес основным — снимаем флаг с остальных.
+                cur.execute(f"UPDATE {schema}.master_addresses SET is_primary = false WHERE master_id = {master_id}")
+                updates.append("is_primary = true")
             if not updates:
                 return {'statusCode': 400, 'headers': headers,
                         'body': json.dumps({'error': 'Нечего обновлять'}, ensure_ascii=False)}
