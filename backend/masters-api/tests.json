@@ -25,6 +25,22 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Календарь .ics — невалидный токен возвращает 400",
+      "method": "GET",
+      "path": "/?resource=bookings&sub=booking-ics&token=!!!",
+      "expectedStatus": 400,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Календарь .ics — несуществующий токен возвращает 404",
+      "method": "GET",
+      "path": "/?resource=bookings&sub=booking-ics&token=deadbeefdeadbeefdeadbeef",
+      "expectedStatus": 404,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Чат — диалоги без master_id отвечают 400",
       "method": "GET",
       "path": "/?resource=chat&sub=dialogs",

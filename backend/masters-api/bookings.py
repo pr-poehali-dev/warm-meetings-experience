@@ -237,6 +237,10 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                 lines.append('')
                 lines.append('✅ <i>Клиент ознакомлен с противопоказаниями</i>')
                 lines.append(f'<i>{when}{ip_part}</i>')
+            _ics_url = _ics_download_url(booking.get('reply_token'))
+            if _ics_url:
+                lines.append('')
+                lines.append(f'📅 <a href="{_ics_url}">Добавить в календарь</a>')
             lines.append('')
             lines.append(f'<i>Статус: {status_human}</i>')
             # Богатое авто-сообщение — это fallback. Если админ настроил
@@ -385,6 +389,9 @@ def _notify_master_about_booking(cur, schema, master_id, booking, service_name):
                 vk_lines.append(f'📍 Выезд: {meeting_address}')
             if maps_url:
                 vk_lines.append(f'🗺 На карте: {maps_url}')
+            _ics_url_vk = _ics_download_url(booking.get('reply_token'))
+            if _ics_url_vk:
+                vk_lines.append(f'📅 В календарь: {_ics_url_vk}')
             vk_lines.append('')
             vk_lines.append(f'Статус: {status_human}')
             ok_vk = vk_send(vk_id, '\n'.join(vk_lines))
@@ -642,6 +649,17 @@ def _notify_client_about_new_booking(cur, schema, master_id, booking, service_na
                 f'&#128205; Посмотреть на карте</a></p>'
             )
 
+        # Кнопка «Добавить в календарь» (.ics)
+        ics_block = ''
+        ics_url = _ics_download_url(booking.get('reply_token'))
+        if ics_url:
+            ics_block = (
+                f'<p style="margin-top: 12px;"><a href="{ics_url}" '
+                f'style="display: inline-block; padding: 10px 18px; background: #c8834a; '
+                f'color: #fff; border-radius: 8px; text-decoration: none;">'
+                f'&#128197; Добавить в календарь</a></p>'
+            )
+
         if is_confirmed:
             subject = f'Запись на {dt_human} принята'
             status_text = f'Ваша запись к мастеру <b>{master_name}</b> на <b>{dt_human}</b> принята и подтверждена.'
@@ -658,6 +676,7 @@ def _notify_client_about_new_booking(cur, schema, master_id, booking, service_na
             <p>{status_text}</p>
             {svc_block}
             {addr_block}
+            {ics_block}
             {chat_block}
         </div>
         """.strip()
@@ -673,6 +692,112 @@ def _notify_client_about_new_booking(cur, schema, master_id, booking, service_na
         pass
 
 
+def _ics_download_url(reply_token):
+    """Ссылка на скачивание .ics-файла календаря для брони."""
+    if not reply_token:
+        return ''
+    base = (os.environ.get('MASTERS_API_URL')
+            or 'https://functions.poehali.dev/5e680421-cf43-4b07-abc1-8005b1b68de6').rstrip('/')
+    return f'{base}?resource=bookings&sub=booking-ics&token={reply_token}'
+
+
+def _ics_escape(text):
+    """Экранирует текст для поля .ics (RFC 5545)."""
+    if not text:
+        return ''
+    return (str(text).replace('\\', '\\\\').replace(';', '\\;')
+            .replace(',', '\\,').replace('\n', '\\n'))
+
+
+def _build_booking_ics(booking, master_name, service_name, tz_name):
+    """Собирает содержимое .ics-файла (VEVENT) для брони."""
+    try:
+        from zoneinfo import ZoneInfo
+        local_tz = ZoneInfo(tz_name)
+    except Exception:
+        from datetime import timezone as _tz, timedelta as _td
+        local_tz = _tz(_td(hours=3))
+
+    def _to_utc(raw):
+        dtv = datetime.fromisoformat(str(raw).replace('Z', '+00:00'))
+        if dtv.tzinfo is None:
+            dtv = dtv.replace(tzinfo=local_tz)
+        from datetime import timezone as _tz
+        return dtv.astimezone(_tz.utc)
+
+    dt_start = _to_utc(booking.get('datetime_start'))
+    dt_end_raw = booking.get('datetime_end')
+    dt_end = _to_utc(dt_end_raw) if dt_end_raw else dt_start
+
+    fmt_ics = lambda d: d.strftime('%Y%m%dT%H%M%SZ')
+    now_stamp = fmt_ics(datetime.utcnow())
+    uid = f"booking-{booking.get('id')}@sparcom.ru"
+    summary = service_name or 'Сеанс'
+    if master_name:
+        summary = f'{summary} — {master_name}'
+    location = (booking.get('meeting_address') or '').strip()
+
+    lines = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Sparcom//Booking//RU',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        'BEGIN:VEVENT',
+        f'UID:{uid}',
+        f'DTSTAMP:{now_stamp}',
+        f'DTSTART:{fmt_ics(dt_start)}',
+        f'DTEND:{fmt_ics(dt_end)}',
+        f'SUMMARY:{_ics_escape(summary)}',
+    ]
+    if location:
+        lines.append(f'LOCATION:{_ics_escape(location)}')
+        m_lat = booking.get('meeting_latitude')
+        m_lng = booking.get('meeting_longitude')
+        if m_lat is not None and m_lng is not None:
+            lines.append(f'GEO:{float(m_lat)};{float(m_lng)}')
+    lines += ['STATUS:CONFIRMED', 'BEGIN:VALARM', 'TRIGGER:-PT2H',
+              'ACTION:DISPLAY', 'DESCRIPTION:Напоминание о сеансе',
+              'END:VALARM', 'END:VEVENT', 'END:VCALENDAR']
+    return '\r\n'.join(lines)
+
+
+def handle_booking_ics(event, method, params, schema, headers):
+    """Отдаёт .ics-файл календаря для брони по reply_token (публичный доступ).
+    GET ?sub=booking-ics&token=XXXX
+    """
+    if method != 'GET':
+        return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'GET only'})}
+    token = (params.get('token') or '').strip()
+    if not token or not _re.fullmatch(r'[A-Za-z0-9_-]{6,128}', token):
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'token required'})}
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    safe_token = token.replace("'", "''")
+    cur.execute(f"""
+        SELECT b.*, ms.name AS service_name,
+               m.name AS master_name,
+               COALESCE(mcs.timezone, 'Europe/Moscow') AS tz
+        FROM {schema}.master_bookings b
+        LEFT JOIN {schema}.master_services ms ON b.service_id = ms.id
+        LEFT JOIN {schema}.masters m ON b.master_id = m.id
+        LEFT JOIN {schema}.master_calendar_settings mcs ON mcs.master_id = m.id
+        WHERE b.reply_token = '{safe_token}'
+        LIMIT 1
+    """)
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'not found'})}
+
+    ics = _build_booking_ics(dict(row), row.get('master_name'), row.get('service_name'), row.get('tz') or 'Europe/Moscow')
+    out_headers = dict(headers)
+    out_headers['Content-Type'] = 'text/calendar; charset=utf-8'
+    out_headers['Content-Disposition'] = 'attachment; filename="booking.ics"'
+    return {'statusCode': 200, 'headers': out_headers, 'body': ics}
+
+
 def handle_bookings_root(event, method, params, schema, headers):
     """Маршрутизация подресурсов записей: bookings/public-slots/public-book/public-settings/stats/reviews"""
     sub = params.get('sub') or params.get('subresource') or 'bookings'
@@ -684,6 +809,8 @@ def handle_bookings_root(event, method, params, schema, headers):
         return handle_public_book(event, method, params, schema, headers)
     elif sub == 'public-settings':
         return handle_public_settings(event, method, params, schema, headers)
+    elif sub == 'booking-ics':
+        return handle_booking_ics(event, method, params, schema, headers)
     elif sub == 'stats':
         return handle_stats(event, method, params, schema, headers)
     return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown bookings sub'})}
