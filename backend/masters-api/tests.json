@@ -49,6 +49,15 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Отмена своей записи — без токена возвращает 401",
+      "method": "POST",
+      "path": "/?resource=bookings&sub=cancel-my-booking",
+      "body": {"booking_id": 1},
+      "expectedStatus": 401,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Чат — диалоги без master_id отвечают 400",
       "method": "GET",
       "path": "/?resource=chat&sub=dialogs",

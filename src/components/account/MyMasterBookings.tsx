@@ -41,6 +41,8 @@ function isUpcoming(b: MyBooking): boolean {
 export default function MyMasterBookings() {
   const [bookings, setBookings] = useState<MyBooking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [cancelingId, setCancelingId] = useState<number | null>(null);
 
   useEffect(() => {
     masterBookingsApi
@@ -50,11 +52,27 @@ export default function MyMasterBookings() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleCancel = async (id: number) => {
+    setCancelingId(id);
+    try {
+      await masterBookingsApi.cancelMyBooking(id);
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status: "canceled" } : b)),
+      );
+      setConfirmId(null);
+    } catch {
+      /* пусть кнопка просто разблокируется */
+    } finally {
+      setCancelingId(null);
+    }
+  };
+
   const upcoming = bookings.filter(isUpcoming);
   const past = bookings.filter((b) => !isUpcoming(b));
 
   const renderCard = (b: MyBooking) => {
     const st = STATUS_META[b.status] || STATUS_META.pending;
+    const canCancel = b.status === "pending" || b.status === "confirmed";
     return (
       <div key={b.id} className="p-3 rounded-xl border hover:bg-accent/5 transition-colors">
         <div className="flex gap-3">
@@ -118,7 +136,46 @@ export default function MyMasterBookings() {
                   </Button>
                 </Link>
               )}
+              {canCancel && confirmId !== b.id && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                  onClick={() => setConfirmId(b.id)}
+                >
+                  <Icon name="X" size={13} className="mr-1" />
+                  Отменить
+                </Button>
+              )}
             </div>
+
+            {canCancel && confirmId === b.id && (
+              <div className="mt-2.5 rounded-lg border border-rose-200 bg-rose-50 p-2.5">
+                <p className="text-xs text-rose-700 mb-2">Отменить эту запись? Мастер получит уведомление.</p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="h-8 text-xs bg-rose-600 hover:bg-rose-700 text-white"
+                    disabled={cancelingId === b.id}
+                    onClick={() => handleCancel(b.id)}
+                  >
+                    {cancelingId === b.id ? (
+                      <Icon name="Loader2" size={13} className="mr-1 animate-spin" />
+                    ) : null}
+                    Да, отменить
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    disabled={cancelingId === b.id}
+                    onClick={() => setConfirmId(null)}
+                  >
+                    Назад
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

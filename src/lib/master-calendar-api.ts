@@ -506,6 +506,12 @@ export const masterBookingsApi = {
   getMyBookings: () =>
     fetchApi<{ bookings: MyBooking[] }>(`${BOOKINGS_URL}&sub=my-bookings`),
 
+  cancelMyBooking: (bookingId: number, reason?: string) =>
+    fetchApi<{ success: boolean; status: string }>(`${BOOKINGS_URL}&sub=cancel-my-booking`, {
+      method: "POST",
+      body: JSON.stringify({ booking_id: bookingId, reason }),
+    }),
+
   getReviews: (masterId: number) =>
     fetchApi<MasterReview[]>(`${REVIEWS_URL}&master_id=${masterId}`),
 

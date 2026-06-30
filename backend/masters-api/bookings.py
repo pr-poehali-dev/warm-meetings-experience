@@ -934,6 +934,8 @@ def handle_bookings_root(event, method, params, schema, headers):
         return handle_booking_ics(event, method, params, schema, headers)
     elif sub == 'my-bookings':
         return handle_my_bookings(event, method, params, schema, headers)
+    elif sub == 'cancel-my-booking':
+        return handle_cancel_my_booking(event, method, params, schema, headers)
     elif sub == 'stats':
         return handle_stats(event, method, params, schema, headers)
     return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Unknown bookings sub'})}
@@ -994,6 +996,91 @@ def handle_my_bookings(event, method, params, schema, headers):
 
     return {'statusCode': 200, 'headers': headers,
             'body': json.dumps({'bookings': bookings}, default=str, ensure_ascii=False)}
+
+
+def handle_cancel_my_booking(event, method, params, schema, headers):
+    """Гость отменяет свою запись (только свою, по client_id из токена).
+    POST ?resource=bookings&sub=cancel-my-booking  body: {booking_id, reason?}
+    """
+    if method != 'POST':
+        return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'POST only'})}
+
+    token = get_token(event)
+    if not token:
+        return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'auth required'})}
+
+    try:
+        body = json.loads(event.get('body') or '{}')
+    except (ValueError, TypeError):
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'invalid_json'})}
+
+    booking_id = body.get('booking_id')
+    if not booking_id:
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'booking_id required'})}
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    user = get_user_from_token(cur, schema, token)
+    if not user:
+        conn.close()
+        return {'statusCode': 401, 'headers': headers, 'body': json.dumps({'error': 'auth required'})}
+
+    user_id = int(user['id'])
+    cur.execute(f"""
+        SELECT id, master_id, slot_id, status, client_id
+        FROM {schema}.master_bookings
+        WHERE id = {int(booking_id)} AND client_id = {user_id} AND archived_at IS NULL
+    """)
+    bk = cur.fetchone()
+    if not bk:
+        conn.close()
+        return {'statusCode': 404, 'headers': headers, 'body': json.dumps({'error': 'not found'})}
+
+    if bk['status'] in ('canceled', 'completed', 'no_show'):
+        conn.close()
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({
+            'error': 'invalid_status', 'message': 'Эту запись нельзя отменить'
+        }, ensure_ascii=False)}
+
+    reason = (body.get('reason') or 'Отменено клиентом').replace("'", "''")[:500]
+    cur.execute(f"""
+        UPDATE {schema}.master_bookings SET
+            status = 'canceled', canceled_at = CURRENT_TIMESTAMP,
+            cancel_reason = '{reason}', updated_at = CURRENT_TIMESTAMP
+        WHERE id = {int(booking_id)}
+    """)
+    if bk.get('slot_id'):
+        recalc_slot_status(cur, schema, bk['slot_id'])
+    conn.commit()
+
+    # Уведомляем мастера об отмене (email/Telegram/VK через hub).
+    try:
+        master_id = bk['master_id']
+        cur.execute(f"SELECT * FROM {schema}.master_bookings WHERE id = {int(booking_id)}")
+        _cb = dict(cur.fetchone() or {})
+        _uid = get_master_user_id(cur, schema, master_id)
+        if _uid:
+            _svc_name = ''
+            if _cb.get('service_id'):
+                cur.execute(f"SELECT name FROM {schema}.master_services WHERE id = {int(_cb['service_id'])}")
+                _s = cur.fetchone()
+                if _s:
+                    _svc_name = _s.get('name') or ''
+            _bdate, _btime = fmt_dt(_cb.get('datetime_start'))
+            hub_notify('booking_cancelled', user_id=_uid, related_id=int(booking_id), owner_id=_uid,
+                       block=True,
+                       variables={
+                           'client_name': _cb.get('client_name', ''),
+                           'service_name': _svc_name,
+                           'date': _bdate, 'time': _btime,
+                           'master_name': '',
+                       })
+    except Exception:
+        pass
+
+    conn.close()
+    return {'statusCode': 200, 'headers': headers,
+            'body': json.dumps({'success': True, 'status': 'canceled'})}
 
 
 def handle_public_settings(event, method, params, schema, headers):
