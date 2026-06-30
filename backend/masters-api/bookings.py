@@ -1246,16 +1246,28 @@ def handle_bookings(event, method, params, schema, headers):
         slot_val = f"{int(slot_id)}" if slot_id else "NULL"
         svc_val = f"{int(service_id)}" if service_id else "NULL"
 
-        # Если место встречи не задано вручную, но к слоту привязан адрес мастера —
-        # фиксируем его в брони (та же логика, что и в публичном бронировании).
-        if not meeting_address and slot_id:
-            cur.execute(f"""
-                SELECT a.address_text, a.latitude, a.longitude
-                FROM {schema}.master_slots s
-                JOIN {schema}.master_addresses a ON a.id = s.address_id
-                WHERE s.id = {int(slot_id)}
-            """)
-            _sa = cur.fetchone()
+        # Если место встречи не задано вручную — определяем по приоритету:
+        # 1) адрес слота, 2) адрес дня (на дату слота), 3) выезд (без адреса).
+        if not meeting_address:
+            _sa = None
+            if slot_id:
+                cur.execute(f"""
+                    SELECT a.address_text, a.latitude, a.longitude
+                    FROM {schema}.master_slots s
+                    JOIN {schema}.master_addresses a ON a.id = s.address_id
+                    WHERE s.id = {int(slot_id)}
+                """)
+                _sa = cur.fetchone()
+            if not _sa:
+                _day_key = str(dt_start)[:10]
+                cur.execute(f"""
+                    SELECT a.address_text, a.latitude, a.longitude
+                    FROM {schema}.master_day_addresses da
+                    JOIN {schema}.master_addresses a ON a.id = da.address_id
+                    WHERE da.master_id = {int(master_id)} AND da.day_date = '{_day_key}'
+                      AND da.address_id IS NOT NULL
+                """)
+                _sa = cur.fetchone()
             if _sa:
                 meeting_address = (_sa.get('address_text') or '').strip()[:500].replace("'", "''")
                 meeting_address_sql = f"'{meeting_address}'" if meeting_address else 'NULL'
@@ -1927,21 +1939,36 @@ def handle_public_book(event, method, params, schema, headers):
     contra_ip_sql = f"'{client_ip}'" if (contra_accepted and client_ip) else 'NULL'
     contra_snapshot_sql = f"'{contra_snapshot}'" if (contra_accepted and contra_snapshot) else 'NULL'
 
-    # Если клиент не указал своё место встречи, но к слоту привязан адрес мастера
-    # (студия/салон/партнёрская точка) — фиксируем этот адрес в брони, чтобы
-    # клиент видел, куда приходить, а мастер — где принимать.
-    if not meeting_address and slot.get('address_id'):
-        cur.execute(f"""
-            SELECT address_text, latitude, longitude
-            FROM {schema}.master_addresses WHERE id = {int(slot['address_id'])}
-        """)
-        slot_addr = cur.fetchone()
-        if slot_addr:
-            meeting_address = (slot_addr.get('address_text') or '').strip()[:500].replace("'", "''")
-            if slot_addr.get('latitude') is not None:
-                meeting_lat = float(slot_addr['latitude'])
-            if slot_addr.get('longitude') is not None:
-                meeting_lng = float(slot_addr['longitude'])
+    # Определяем адрес встречи по приоритету (только если клиент не указал свой):
+    #   1) адрес слота (master_slots.address_id) — высший приоритет;
+    #   2) адрес дня (master_day_addresses на дату слота) — если у слота адреса нет;
+    #   3) ничего → выездной слот, адрес уточняет/указывает гость.
+    if not meeting_address:
+        resolved_addr_id = slot.get('address_id')
+        if not resolved_addr_id:
+            # Адрес дня по дате начала слота (берём «голую» дату).
+            day_key = str(dt_start)[:10]
+            cur.execute(f"""
+                SELECT address_id FROM {schema}.master_day_addresses
+                WHERE master_id = {int(master_id)} AND day_date = '{day_key}'
+                  AND address_id IS NOT NULL
+            """)
+            day_row = cur.fetchone()
+            if day_row:
+                resolved_addr_id = day_row['address_id']
+
+        if resolved_addr_id:
+            cur.execute(f"""
+                SELECT address_text, latitude, longitude
+                FROM {schema}.master_addresses WHERE id = {int(resolved_addr_id)}
+            """)
+            slot_addr = cur.fetchone()
+            if slot_addr:
+                meeting_address = (slot_addr.get('address_text') or '').strip()[:500].replace("'", "''")
+                if slot_addr.get('latitude') is not None:
+                    meeting_lat = float(slot_addr['latitude'])
+                if slot_addr.get('longitude') is not None:
+                    meeting_lng = float(slot_addr['longitude'])
 
     meeting_address_sql = f"'{meeting_address}'" if meeting_address else 'NULL'
     meeting_lat_sql = f"{meeting_lat}" if meeting_lat is not None else 'NULL'

@@ -46,6 +46,15 @@ export interface MasterAddress {
   updated_at?: string;
 }
 
+export interface DayAddress {
+  address_id: number;
+  address_text: string;
+  label?: string | null;
+  color?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
 export interface MasterSlot {
   id?: number;
   master_id: number;
@@ -310,6 +319,22 @@ export const masterCalendarApi = {
       method: "POST",
       body: JSON.stringify({ id, master_id: masterId }),
     }),
+
+  getDayAddresses: (masterId: number, dateFrom?: string, dateTo?: string) => {
+    let url = `${CALENDAR_URL}&sub=day-address&master_id=${masterId}`;
+    if (dateFrom) url += `&date_from=${dateFrom}`;
+    if (dateTo) url += `&date_to=${dateTo}`;
+    return fetchApi<{ days: Record<string, DayAddress> }>(url);
+  },
+
+  setDayAddress: (masterId: number, dayDate: string, addressId: number | null) =>
+    fetchApi<{ day_date: string; address_id: number | null }>(
+      `${CALENDAR_URL}&sub=day-address`,
+      {
+        method: "POST",
+        body: JSON.stringify({ master_id: masterId, day_date: dayDate, address_id: addressId }),
+      },
+    ),
 
   getMapsKey: () =>
     fetchApi<{ apikey: string }>(`${CALENDAR_URL}&sub=maps-key`),

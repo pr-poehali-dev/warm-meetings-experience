@@ -81,6 +81,8 @@ def handle_calendar(event, method, params, schema, headers):
         return handle_addresses(event, method, params, schema, headers)
     elif sub == 'set-primary-address':
         return handle_set_primary_address(event, method, params, schema, headers)
+    elif sub == 'day-address':
+        return handle_day_address(event, method, params, schema, headers)
     elif sub == 'maps-key':
         return handle_maps_key(event, method, params, schema, headers)
     elif sub == 'geocode':
@@ -1288,6 +1290,8 @@ def handle_addresses(event, method, params, schema, headers):
                         }, ensure_ascii=False)}
 
             cur.execute(f"UPDATE {schema}.master_addresses SET is_primary = false WHERE id = {addr_id}")
+            # Снимаем адрес с дней, где он был назначен «адресом дня».
+            cur.execute(f"UPDATE {schema}.master_day_addresses SET address_id = NULL WHERE address_id = {addr_id}")
             cur.execute(f"DELETE FROM {schema}.master_addresses WHERE id = {addr_id}")
             conn.commit()
             return {'statusCode': 200, 'headers': headers,
@@ -1332,6 +1336,98 @@ def handle_set_primary_address(event, method, params, schema, headers):
         conn.commit()
         return {'statusCode': 200, 'headers': headers,
                 'body': json.dumps(_address_to_dict(row), ensure_ascii=False)}
+    finally:
+        conn.close()
+
+
+def handle_day_address(event, method, params, schema, headers):
+    """Адрес дня — общий адрес по умолчанию для всех слотов конкретной даты.
+
+    GET  ?sub=day-address&master_id=X&date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
+         — карта дат → данные адреса (для подсветки в календаре).
+    POST ?sub=day-address  body: { master_id, day_date, address_id | null }
+         — назначить/снять адрес дня. address_id = null → день становится выездным
+           (если у слота тоже нет адреса).
+
+    Приоритет адреса слота над адресом дня реализуется при бронировании.
+    """
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        if method == 'GET':
+            master_id, err = require_master_id(params, headers)
+            if err:
+                return err
+            date_from = (params.get('date_from') or '')[:10]
+            date_to = (params.get('date_to') or '')[:10]
+            where = f"da.master_id = {int(master_id)} AND da.address_id IS NOT NULL"
+            if date_from:
+                where += f" AND da.day_date >= '{date_from}'"
+            if date_to:
+                where += f" AND da.day_date <= '{date_to}'"
+            cur.execute(f"""
+                SELECT da.day_date, da.address_id,
+                       a.address_text, a.label, a.color, a.latitude, a.longitude
+                FROM {schema}.master_day_addresses da
+                JOIN {schema}.master_addresses a ON a.id = da.address_id
+                WHERE {where}
+                ORDER BY da.day_date
+            """)
+            rows = cur.fetchall()
+            result = {}
+            for r in rows:
+                result[str(r['day_date'])] = {
+                    'address_id': r['address_id'],
+                    'address_text': r['address_text'],
+                    'label': r.get('label'),
+                    'color': r.get('color'),
+                    'latitude': float(r['latitude']) if r.get('latitude') is not None else None,
+                    'longitude': float(r['longitude']) if r.get('longitude') is not None else None,
+                }
+            return {'statusCode': 200, 'headers': headers,
+                    'body': json.dumps({'days': result}, ensure_ascii=False)}
+
+        body = json.loads(event.get('body') or '{}')
+        master_id = int(body.get('master_id', 0))
+        day_date = (body.get('day_date') or '')[:10]
+        if not master_id or not day_date:
+            return {'statusCode': 400, 'headers': headers,
+                    'body': json.dumps({'error': 'master_id и day_date обязательны'}, ensure_ascii=False)}
+
+        ok, deny = ensure_master_access(cur, schema, event, master_id, headers)
+        if not ok:
+            return deny
+
+        if method == 'POST':
+            address_id = body.get('address_id')
+            if address_id:
+                # Проверяем, что адрес принадлежит этому мастеру.
+                cur.execute(f"SELECT master_id FROM {schema}.master_addresses WHERE id = {int(address_id)}")
+                owner = cur.fetchone()
+                if not owner or owner['master_id'] != master_id:
+                    return {'statusCode': 404, 'headers': headers,
+                            'body': json.dumps({'error': 'Адрес не найден'}, ensure_ascii=False)}
+                addr_val = f"{int(address_id)}"
+            else:
+                addr_val = 'NULL'
+
+            cur.execute(f"""
+                INSERT INTO {schema}.master_day_addresses (master_id, day_date, address_id)
+                VALUES ({master_id}, '{day_date}', {addr_val})
+                ON CONFLICT (master_id, day_date)
+                DO UPDATE SET address_id = {addr_val}, updated_at = CURRENT_TIMESTAMP
+                RETURNING day_date, address_id
+            """)
+            row = cur.fetchone()
+            conn.commit()
+            return {'statusCode': 200, 'headers': headers,
+                    'body': json.dumps({
+                        'day_date': str(row['day_date']),
+                        'address_id': row['address_id'],
+                    }, ensure_ascii=False)}
+
+        return {'statusCode': 405, 'headers': headers,
+                'body': json.dumps({'error': 'Method not allowed'}, ensure_ascii=False)}
     finally:
         conn.close()
 

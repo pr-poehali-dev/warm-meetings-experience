@@ -19,12 +19,15 @@ import {
   CalendarSettings,
   MasterBackup,
   BookingApiError,
+  MasterAddress,
+  DayAddress,
 } from "@/lib/master-calendar-api";
 
 import EventForm, { CreateMode, CreatePayload } from "./EventForm";
 import QuickActionsPopover, { QuickEvent } from "./QuickActionsPopover";
 import AgendaView from "./AgendaView";
 import DayActionDialog, { DayBookingPayload, DayBlockPayload } from "./DayActionDialog";
+import DayAddressDialog from "./DayAddressDialog";
 import { FcbEvent, fmtTime, fmtDate } from "./calendarHelpers";
 import { ConfirmBar, CancelBookingDialog, ClearCalendarDialog, TrashDialog } from "./CalendarDialogs";
 import CalendarToolbar from "./CalendarToolbar";
@@ -97,6 +100,9 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
   const [agendaDate, setAgendaDate] = useState<Date>(new Date());
   const [dayAction, setDayAction] = useState<{ dayStr: string; dayLabel: string; offset: string } | null>(null);
   const [daySaving, setDaySaving] = useState(false);
+  const [addresses, setAddresses] = useState<MasterAddress[]>([]);
+  const [dayAddresses, setDayAddresses] = useState<Record<string, DayAddress>>({});
+  const [dayAddrDialog, setDayAddrDialog] = useState<{ dayStr: string; dayLabel: string } | null>(null);
   // Флаг: следующий allDay-select пришёл от нашей кнопки «+» → игнорируем EventForm
   const suppressAllDaySelect = useRef(false);
   const [clearOpen, setClearOpen] = useState(false);
@@ -203,16 +209,20 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
   const loadData = useCallback(async (dateFrom?: string, dateTo?: string) => {
     setLoading(true);
     try {
-      const [wv, srv, st] = await Promise.all([
+      const [wv, srv, st, addr, dayAddr] = await Promise.all([
         masterCalendarApi.getWeekView(masterId, undefined, dateFrom, dateTo),
         masterCalendarApi.getServices(masterId).catch(() => []),
         masterCalendarApi.getSettings(masterId).catch(() => null),
+        masterCalendarApi.getAddresses(masterId).catch(() => []),
+        masterCalendarApi.getDayAddresses(masterId, dateFrom, dateTo).catch(() => ({ days: {} })),
       ]);
       setBookings(wv.bookings || []);
       setSlots(wv.slots || []);
       setBlocks(wv.blocks || []);
       setServices(srv || []);
       setSettings(st);
+      setAddresses(addr || []);
+      setDayAddresses(dayAddr.days || {});
     } catch (e) {
       toast.error("Не удалось загрузить календарь: " + String(e));
     } finally {
@@ -872,11 +882,54 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     setDayAction({ dayStr, dayLabel, offset });
   }, [settings?.timezone, calDateKey, calIso]);
 
+  const openDayAddress = useCallback((date: Date) => {
+    const tz = settings?.timezone || "Europe/Moscow";
+    const dayStr = calDateKey(date);
+    const dayLabel = date.toLocaleDateString("ru-RU", {
+      weekday: "long", day: "2-digit", month: "long", timeZone: tz,
+    });
+    setDayAddrDialog({ dayStr, dayLabel });
+  }, [settings?.timezone, calDateKey]);
+
+  const handleSaveDayAddress = async (addressId: number | null) => {
+    if (!dayAddrDialog) return;
+    setDaySaving(true);
+    try {
+      await masterCalendarApi.setDayAddress(masterId, dayAddrDialog.dayStr, addressId);
+      setDayAddresses((prev) => {
+        const next = { ...prev };
+        if (addressId) {
+          const a = addresses.find((x) => x.id === addressId);
+          if (a) {
+            next[dayAddrDialog.dayStr] = {
+              address_id: addressId,
+              address_text: a.address_text,
+              label: a.label,
+              color: a.color,
+              latitude: a.latitude,
+              longitude: a.longitude,
+            };
+          }
+        } else {
+          delete next[dayAddrDialog.dayStr];
+        }
+        return next;
+      });
+      toast.success(addressId ? "Адрес дня сохранён" : "День стал выездным");
+      setDayAddrDialog(null);
+    } catch (e) {
+      toast.error("Не удалось сохранить адрес дня: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setDaySaving(false);
+    }
+  };
+
   const dayHeaderContent = (arg: { date: Date; text: string }) => {
     const key = calDateKey(arg.date);
     const load = dayLoad.get(key);
     const pct = load ? Math.min(100, Math.round((load.busy / load.total) * 100)) : 0;
     const isBlocked = blockedDates.has(key);
+    const dayAddr = dayAddresses[key];
     const tz = settings?.timezone || "Europe/Moscow";
     const shortDate = arg.date.toLocaleDateString("ru-RU", { day: "numeric", timeZone: tz });
     const shortDay = arg.date.toLocaleDateString("ru-RU", { weekday: "narrow", timeZone: tz });
@@ -906,6 +959,21 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           >
             <span className="fcb-day-plus-icon">+</span>
             <span className="fcb-day-plus-text hidden sm:inline">запись</span>
+          </button>
+        )}
+        {currentView !== "dayGridMonth" && (
+          <button
+            onClick={(e) => { e.stopPropagation(); openDayAddress(arg.date); }}
+            className="fcb-day-addr-row"
+            title={dayAddr ? `Адрес дня: ${dayAddr.label || dayAddr.address_text}` : "Задать адрес дня (иначе — выезд)"}
+          >
+            <span
+              className="fcb-day-addr-dot"
+              style={{ backgroundColor: dayAddr ? (dayAddr.color || "#22c55e") : "transparent" }}
+            />
+            <span className="fcb-day-addr-text hidden sm:inline">
+              {dayAddr ? (dayAddr.label || "адрес") : "выезд"}
+            </span>
           </button>
         )}
       </div>
@@ -1050,6 +1118,18 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           onClose={() => setDayAction(null)}
           onCreateBooking={handleDayBooking}
           onBlock={handleDayBlock}
+        />
+      )}
+
+      {/* Адрес дня */}
+      {dayAddrDialog && (
+        <DayAddressDialog
+          dayLabel={dayAddrDialog.dayLabel}
+          addresses={addresses}
+          currentAddressId={dayAddresses[dayAddrDialog.dayStr]?.address_id ?? null}
+          saving={daySaving}
+          onClose={() => setDayAddrDialog(null)}
+          onSave={handleSaveDayAddress}
         />
       )}
 

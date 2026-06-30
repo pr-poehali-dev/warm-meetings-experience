@@ -9,6 +9,15 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Адрес дня — POST без master_id возвращает 400",
+      "method": "POST",
+      "path": "/?resource=calendar&sub=day-address",
+      "body": {"day_date": "2026-01-01"},
+      "expectedStatus": 400,
+      "expectedBody": {},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Публичная страница услуги — без id возвращает 400",
       "method": "GET",
       "path": "/?resource=calendar&sub=service-detail",
