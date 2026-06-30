@@ -249,6 +249,19 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     if (api) setViewTitle(api.view.title);
   };
 
+  // Короткое имя адреса слота по приоритету: адрес слота → адрес дня → выезд.
+  const slotAddrLabel = useCallback((s: MasterSlot): string => {
+    if (s.address_id) {
+      const a = addresses.find((x) => x.id === s.address_id);
+      if (a) return a.label || a.address_text;
+      if (s.slot_address) return s.slot_address;
+    }
+    const dayKey = String(s.datetime_start).slice(0, 10);
+    const da = dayAddresses[dayKey];
+    if (da) return da.label || da.address_text;
+    return "Выезд";
+  }, [addresses, dayAddresses]);
+
   // Преобразуем в FC events
   const fcEvents = useMemo<FcbEvent[]>(() => {
     const list: FcbEvent[] = [];
@@ -297,15 +310,16 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           extendedProps: { kind: "break", raw: s },
         });
       } else if (s.status === "available" && !bookedSlotIds.has(s.id)) {
+        const addrLabel = slotAddrLabel(s);
         list.push({
           id: `s-${s.id}`,
-          title: `Свободно`,
+          title: `Свободно · ${addrLabel}`,
           start: s.datetime_start,
           end: s.datetime_end,
           classNames: ["fcb-available"],
           editable: false,
           display: "background",
-          extendedProps: { kind: "available", raw: s },
+          extendedProps: { kind: "available", raw: s, addrLabel },
         });
       }
     }
@@ -338,7 +352,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     }
 
     return list;
-  }, [bookings, slots, blocks, settings]);
+  }, [bookings, slots, blocks, settings, slotAddrLabel]);
 
   // Проверка конфликтов
   const hasConflict = useCallback((start: Date, end: Date, excludeId: string | null) => {
@@ -982,6 +996,31 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
 
   const tz = settings?.timezone || "Europe/Moscow";
 
+  // Кастомный контент события: на свободном слоте показываем адрес-метку,
+  // чтобы мастер сразу видел, где он работает в это время.
+  const renderEventContent = (arg: {
+    event: { title: string; extendedProps: Record<string, unknown>; classNames?: string[] };
+    timeText: string;
+  }) => {
+    const ep = arg.event.extendedProps as FcbEvent["extendedProps"] & { addrLabel?: string };
+    if (ep.kind === "available" && ep.addrLabel) {
+      return (
+        <div className="fcb-avail-label">
+          <Icon name="MapPin" size={10} />
+          <span>{ep.addrLabel}</span>
+        </div>
+      );
+    }
+    return (
+      <div className="fc-event-main-frame">
+        {arg.timeText && <div className="fc-event-time">{arg.timeText}</div>}
+        <div className="fc-event-title-container">
+          <div className="fc-event-title fc-sticky">{arg.event.title || "\u00A0"}</div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fc-dnd space-y-2">
       <CalendarToolbar
@@ -1045,6 +1084,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           height="auto"
           expandRows
           events={fcEvents}
+          eventContent={renderEventContent}
           dayCellClassNames={(arg) => {
             const key = calDateKey(arg.date);
             return blockedDates.has(key) ? ["fcb-day-cell-blocked"] : [];

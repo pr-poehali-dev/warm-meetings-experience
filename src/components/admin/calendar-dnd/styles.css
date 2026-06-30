@@ -162,6 +162,25 @@
   border: 1px dashed #4db6ac !important;
 }
 
+/* Метка адреса на свободном слоте */
+.fcb-avail-label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #00695c;
+  line-height: 1.1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fcb-avail-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Hover */
 .fc-dnd .fc-event:hover {
   filter: brightness(1.05);

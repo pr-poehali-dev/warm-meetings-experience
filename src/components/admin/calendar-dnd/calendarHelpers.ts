@@ -7,6 +7,7 @@ export type FcbEvent = EventInput & {
     raw?: MasterBooking | MasterSlot | DayBlock;
     buffer?: number;
     note?: string;
+    addrLabel?: string;
   };
 };
 
