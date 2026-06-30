@@ -625,6 +625,23 @@ def _notify_client_about_new_booking(cur, schema, master_id, booking, service_na
 
         svc_block = f'<p style="color: #6b7280;">Услуга: <b>{service_name}</b></p>' if service_name else ''
 
+        # Блок с адресом и ссылкой на карту
+        addr_block = ''
+        meeting_address = (booking.get('meeting_address') or '').strip()
+        if meeting_address:
+            m_lat = booking.get('meeting_latitude')
+            m_lng = booking.get('meeting_longitude')
+            if m_lat is not None and m_lng is not None:
+                map_link = f'https://yandex.ru/maps/?pt={m_lng},{m_lat}&z=17&l=map'
+            else:
+                from urllib.parse import quote as _quote
+                map_link = f'https://yandex.ru/maps/?text={_quote(meeting_address)}'
+            addr_block = (
+                f'<p style="color: #6b7280; margin-top: 12px;">Адрес: <b>{meeting_address}</b><br>'
+                f'<a href="{map_link}" style="color: #c8834a; text-decoration: none;">'
+                f'&#128205; Посмотреть на карте</a></p>'
+            )
+
         if is_confirmed:
             subject = f'Запись на {dt_human} принята'
             status_text = f'Ваша запись к мастеру <b>{master_name}</b> на <b>{dt_human}</b> принята и подтверждена.'
@@ -640,6 +657,7 @@ def _notify_client_about_new_booking(cur, schema, master_id, booking, service_na
             <h2 style="color: #0f172a;">Здравствуйте, {client_name}!</h2>
             <p>{status_text}</p>
             {svc_block}
+            {addr_block}
             {chat_block}
         </div>
         """.strip()
