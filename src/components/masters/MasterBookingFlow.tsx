@@ -29,6 +29,37 @@ function fmtTime(d: Date) {
   return format(d, "HH:mm");
 }
 
+/** Ключ адреса слота — null если адрес не задан. */
+function slotAddressKey(slot: MasterSlot): string {
+  if (slot.address_id != null) return `id:${slot.address_id}`;
+  if (slot.slot_address) return `txt:${slot.slot_address}`;
+  return "none";
+}
+
+/** Короткое название адреса для бейджа/фильтра. */
+function shortAddress(text?: string | null): string {
+  if (!text) return "Адрес";
+  const parts = text.split(",").map((p) => p.trim()).filter(Boolean);
+  // берём первые 2 значимые части (улица + дом, либо город + улица)
+  return parts.slice(0, 2).join(", ") || text;
+}
+
+/** Ссылка на Яндекс.Карты по координатам или тексту адреса. */
+function mapUrl(slot: { slot_latitude?: number | null; slot_longitude?: number | null; slot_address?: string | null }): string {
+  if (slot.slot_latitude != null && slot.slot_longitude != null) {
+    return `https://yandex.ru/maps/?pt=${slot.slot_longitude},${slot.slot_latitude}&z=17&l=map`;
+  }
+  return `https://yandex.ru/maps/?text=${encodeURIComponent(slot.slot_address || "")}`;
+}
+
+interface AddressInfo {
+  key: string;
+  label: string;
+  fullAddress: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
 const TZ_ABBR: Record<string, string> = {
   "Europe/Kaliningrad": "Калининград",
   "Europe/Moscow":      "Москва, Санкт-Петербург",
@@ -85,6 +116,7 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
   const [masterTz, setMasterTz] = useState<string>("Europe/Moscow");
   const [loading, setLoading] = useState(false);
   const [aboutServiceId, setAboutServiceId] = useState<number | null>(null);
+  const [addressFilter, setAddressFilter] = useState<string>("all");
 
   useEffect(() => {
     masterBookingsApi
@@ -200,23 +232,59 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
 
   const dayKey = (d: Date) => format(d, "yyyy-MM-dd");
 
+  // Уникальные адреса среди доступных вариантов выбранной услуги.
+  const availableAddresses = useMemo<AddressInfo[]>(() => {
+    const map = new Map<string, AddressInfo>();
+    for (const o of options) {
+      const key = slotAddressKey(o.slot);
+      if (key === "none") continue;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          label: shortAddress(o.slot.slot_address),
+          fullAddress: o.slot.slot_address ?? null,
+          latitude: o.slot.slot_latitude ?? null,
+          longitude: o.slot.slot_longitude ?? null,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [options]);
+
+  // Сброс фильтра, если выбранный адрес исчез из доступных (например, сменили услугу).
+  useEffect(() => {
+    if (addressFilter !== "all" && !availableAddresses.some((a) => a.key === addressFilter)) {
+      setAddressFilter("all");
+    }
+  }, [availableAddresses, addressFilter]);
+
+  // Опции с применённым фильтром адреса.
+  const filteredOptions = useMemo(() => {
+    if (addressFilter === "all") return options;
+    return options.filter((o) => slotAddressKey(o.slot) === addressFilter);
+  }, [options, addressFilter]);
+
   const optionsByDay = useMemo(() => {
     const map: Record<string, BookingOption[]> = {};
-    options.forEach((o) => {
+    filteredOptions.forEach((o) => {
       const k = format(o.start, "yyyy-MM-dd");
       if (!map[k]) map[k] = [];
       map[k].push(o);
     });
     return map;
-  }, [options]);
+  }, [filteredOptions]);
 
   useEffect(() => {
     if (!selectedService) {
       setSelectedDate(null);
       return;
     }
-    const firstAvailable = days.find((d) => (optionsByDay[dayKey(d)] ?? []).length > 0);
-    setSelectedDate(firstAvailable ?? null);
+    // Если текущая дата ещё доступна (после смены адреса) — не сбрасываем её.
+    setSelectedDate((prev) => {
+      if (prev && (optionsByDay[dayKey(prev)] ?? []).length > 0) return prev;
+      return days.find((d) => (optionsByDay[dayKey(d)] ?? []).length > 0) ?? null;
+    });
+     
   }, [selectedServiceId, optionsByDay, days, selectedService]);
 
   // Скролл к выбранному дню — только когда selectedDate реально меняется,
@@ -522,6 +590,100 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
         );
       })()}
 
+      {/* Фильтр по адресу / место встречи */}
+      {selectedService && availableAddresses.length > 0 && (
+        <div className="mb-5">
+          <div
+            className="text-[11px] font-semibold uppercase tracking-wider mb-3"
+            style={{ color: "var(--c-muted)" }}
+          >
+            {availableAddresses.length > 1 ? "Место" : "Место встречи"}
+          </div>
+
+          {availableAddresses.length > 1 ? (
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+              {/* Все адреса */}
+              <button
+                type="button"
+                onClick={() => setAddressFilter("all")}
+                className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all touch-manipulation active:scale-95"
+                style={{
+                  background: addressFilter === "all"
+                    ? "linear-gradient(135deg, var(--c-terra), var(--c-sage))"
+                    : "var(--card-idle)",
+                  color: addressFilter === "all" ? "#fff" : "var(--c-cream)",
+                  border: addressFilter === "all" ? "1px solid transparent" : "1px solid var(--card-border)",
+                }}
+              >
+                <Icon name="LayoutGrid" size={13} />
+                Все адреса
+              </button>
+
+              {availableAddresses.map((a) => {
+                const active = addressFilter === a.key;
+                return (
+                  <div
+                    key={a.key}
+                    className="flex-shrink-0 inline-flex items-center rounded-xl overflow-hidden"
+                    style={{
+                      background: active
+                        ? "linear-gradient(135deg, var(--c-terra), var(--c-sage))"
+                        : "var(--card-idle)",
+                      border: active ? "1px solid transparent" : "1px solid var(--card-border)",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setAddressFilter(a.key)}
+                      className="inline-flex items-center gap-1.5 pl-3 pr-2 py-2 text-xs font-semibold transition-all touch-manipulation active:scale-95"
+                      style={{ color: active ? "#fff" : "var(--c-cream)" }}
+                    >
+                      {a.label}
+                    </button>
+                    {(a.fullAddress || a.latitude != null) && (
+                      <a
+                        href={mapUrl({ slot_latitude: a.latitude, slot_longitude: a.longitude, slot_address: a.fullAddress })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Посмотреть на карте"
+                        className="inline-flex items-center justify-center px-2 py-2 transition-opacity hover:opacity-100 opacity-70"
+                        style={{ color: active ? "#fff" : "var(--c-terra)" }}
+                      >
+                        <Icon name="MapPin" size={14} />
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            // Единственный адрес — просто карточка с координатами/картой
+            <a
+              href={mapUrl({
+                slot_latitude: availableAddresses[0].latitude,
+                slot_longitude: availableAddresses[0].longitude,
+                slot_address: availableAddresses[0].fullAddress,
+              })}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all touch-manipulation active:scale-[0.99]"
+              style={{
+                background: "var(--card-idle)",
+                border: "1px solid var(--card-border)",
+                color: "var(--c-cream)",
+              }}
+            >
+              <Icon name="MapPin" size={16} style={{ color: "var(--c-terra)" }} />
+              <span className="truncate max-w-[260px]">
+                {availableAddresses[0].fullAddress || availableAddresses[0].label}
+              </span>
+              <Icon name="ExternalLink" size={13} className="opacity-50" />
+            </a>
+          )}
+        </div>
+      )}
+
       {/* ШАГ 2: Дата */}
       {selectedService && (
         <div className="mb-2">
@@ -625,38 +787,54 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
                 </div>
                 {optionsForDay.length === 0 ? (
                   <div className="text-center py-6 text-sm" style={{ color: "var(--c-text)" }}>
-                    Нет свободного времени на эту дату
+                    {addressFilter !== "all"
+                      ? "В этот день нет свободного времени по выбранному адресу"
+                      : "Нет свободного времени на эту дату"}
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:flex md:flex-wrap gap-2">
-                    {optionsForDay.map((opt, i) => (
-                      <button
-                        key={`${opt.slot.id}-${i}`}
-                        type="button"
-                        onClick={() => {
-                          if (selectedService) onBookSlot(opt, selectedService);
-                        }}
-                        className="min-h-[48px] px-3 py-2 rounded-xl transition-all text-base font-semibold active:scale-95 md:hover:-translate-y-0.5 touch-manipulation"
-                        style={{
-                          background: "var(--card-idle)",
-                          border: "1px solid var(--card-border)",
-                          color: "var(--c-cream)",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background =
-                            "linear-gradient(135deg, var(--c-terra), var(--c-sage))";
-                          e.currentTarget.style.color = "#fff";
-                          e.currentTarget.style.borderColor = "transparent";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = "var(--card-idle)";
-                          e.currentTarget.style.color = "var(--c-cream)";
-                          e.currentTarget.style.borderColor = "var(--card-border)";
-                        }}
-                      >
-                        {fmtTime(opt.start)}
-                      </button>
-                    ))}
+                    {optionsForDay.map((opt, i) => {
+                      // Показываем адрес у каждого слота, если адресов несколько
+                      // и фильтр «Все адреса» (иначе адрес уже понятен из контекста).
+                      const showAddr =
+                        addressFilter === "all" &&
+                        availableAddresses.length > 1 &&
+                        !!opt.slot.slot_address;
+                      return (
+                        <button
+                          key={`${opt.slot.id}-${i}`}
+                          type="button"
+                          onClick={() => {
+                            if (selectedService) onBookSlot(opt, selectedService);
+                          }}
+                          className="min-h-[48px] px-3 py-2 rounded-xl transition-all font-semibold active:scale-95 md:hover:-translate-y-0.5 touch-manipulation flex flex-col items-center justify-center gap-0.5"
+                          style={{
+                            background: "var(--card-idle)",
+                            border: "1px solid var(--card-border)",
+                            color: "var(--c-cream)",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background =
+                              "linear-gradient(135deg, var(--c-terra), var(--c-sage))";
+                            e.currentTarget.style.color = "#fff";
+                            e.currentTarget.style.borderColor = "transparent";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "var(--card-idle)";
+                            e.currentTarget.style.color = "var(--c-cream)";
+                            e.currentTarget.style.borderColor = "var(--card-border)";
+                          }}
+                        >
+                          <span className="text-base leading-none">{fmtTime(opt.start)}</span>
+                          {showAddr && (
+                            <span className="flex items-center gap-0.5 text-[9px] font-medium opacity-70 leading-none mt-0.5 max-w-full truncate">
+                              <Icon name="MapPin" size={9} />
+                              <span className="truncate">{shortAddress(opt.slot.slot_address)}</span>
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
