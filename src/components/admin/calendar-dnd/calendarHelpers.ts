@@ -8,6 +8,7 @@ export type FcbEvent = EventInput & {
     buffer?: number;
     note?: string;
     addrLabel?: string;
+    addrColor?: string | null;
   };
 };
 

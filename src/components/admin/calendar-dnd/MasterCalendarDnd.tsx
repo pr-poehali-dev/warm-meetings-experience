@@ -249,18 +249,27 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     if (api) setViewTitle(api.view.title);
   };
 
-  // Короткое имя адреса слота по приоритету: адрес слота → адрес дня → выезд.
-  const slotAddrLabel = useCallback((s: MasterSlot): string => {
+  // Адрес слота по приоритету: адрес слота → адрес дня → выезд.
+  // Возвращает короткое имя и цвет (для полосы слева). Цвет null = выезд.
+  const slotAddrInfo = useCallback((s: MasterSlot): { label: string; color: string | null } => {
     if (s.address_id) {
       const a = addresses.find((x) => x.id === s.address_id);
-      if (a) return a.label || a.address_text;
-      if (s.slot_address) return s.slot_address;
+      if (a) return { label: a.label || a.address_text, color: a.color || "#22c55e" };
+      if (s.slot_address) return { label: s.slot_address, color: "#22c55e" };
     }
     const dayKey = String(s.datetime_start).slice(0, 10);
     const da = dayAddresses[dayKey];
-    if (da) return da.label || da.address_text;
-    return "Выезд";
+    if (da) return { label: da.label || da.address_text, color: da.color || "#22c55e" };
+    return { label: "Выезд", color: null };
   }, [addresses, dayAddresses]);
+
+  // Цвет адреса встречи для брони (по совпадению адреса с сохранёнными).
+  const bookingAddrColor = useCallback((b: MasterBooking): string | null => {
+    const txt = (b.meeting_address || "").trim();
+    if (!txt) return null;
+    const a = addresses.find((x) => (x.address_text || "").trim() === txt);
+    return a?.color || "#22c55e";
+  }, [addresses]);
 
   // Преобразуем в FC events
   const fcEvents = useMemo<FcbEvent[]>(() => {
@@ -283,6 +292,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           kind: isCanceled ? "canceled" : "booking",
           raw: b,
           buffer: settings?.break_between_slots || 0,
+          addrColor: isCanceled ? null : bookingAddrColor(b),
         },
       });
     }
@@ -310,7 +320,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           extendedProps: { kind: "break", raw: s },
         });
       } else if (s.status === "available" && !bookedSlotIds.has(s.id)) {
-        const addrLabel = slotAddrLabel(s);
+        const { label: addrLabel, color: addrColor } = slotAddrInfo(s);
         list.push({
           id: `s-${s.id}`,
           title: `Свободно · ${addrLabel}`,
@@ -319,7 +329,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           classNames: ["fcb-available"],
           editable: false,
           display: "background",
-          extendedProps: { kind: "available", raw: s, addrLabel },
+          extendedProps: { kind: "available", raw: s, addrLabel, addrColor },
         });
       }
     }
@@ -352,7 +362,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     }
 
     return list;
-  }, [bookings, slots, blocks, settings, slotAddrLabel]);
+  }, [bookings, slots, blocks, settings, slotAddrInfo, bookingAddrColor]);
 
   // Проверка конфликтов
   const hasConflict = useCallback((start: Date, end: Date, excludeId: string | null) => {
@@ -1002,10 +1012,15 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     event: { title: string; extendedProps: Record<string, unknown>; classNames?: string[] };
     timeText: string;
   }) => {
-    const ep = arg.event.extendedProps as FcbEvent["extendedProps"] & { addrLabel?: string };
+    const ep = arg.event.extendedProps as FcbEvent["extendedProps"];
     if (ep.kind === "available" && ep.addrLabel) {
       return (
-        <div className="fcb-avail-label">
+        <div
+          className="fcb-avail-label"
+          style={ep.addrColor
+            ? { borderLeft: `3px solid ${ep.addrColor}`, paddingLeft: 4 }
+            : undefined}
+        >
           <Icon name="MapPin" size={10} />
           <span>{ep.addrLabel}</span>
         </div>
@@ -1108,13 +1123,19 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           dayHeaderContent={dayHeaderContent}
           datesSet={handleDatesSet}
           eventDidMount={(info) => {
-            const buffer = (info.event.extendedProps as FcbEvent["extendedProps"]).buffer || 0;
+            const ep = info.event.extendedProps as FcbEvent["extendedProps"];
+            const buffer = ep.buffer || 0;
             if (buffer > 0 && info.event.start && info.event.end) {
               const h = (buffer / 30) * 14;
               const div = document.createElement("div");
               div.className = "fcb-buffer";
               div.style.height = `${Math.min(h, 12)}px`;
               info.el.appendChild(div);
+            }
+            // Цветная полоса слота слева = цвет адреса (выезд — без полосы).
+            if (ep.addrColor) {
+              info.el.classList.add("fcb-has-addr-bar");
+              info.el.style.setProperty("--fcb-addr-color", ep.addrColor);
             }
           }}
         />
