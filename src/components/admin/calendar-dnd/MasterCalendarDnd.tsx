@@ -259,7 +259,11 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     }
     const dayKey = String(s.datetime_start).slice(0, 10);
     const da = dayAddresses[dayKey];
-    if (da) return { label: da.label || da.address_text, color: da.color || "#22c55e" };
+    // Явный выезд дня (is_travel) или конкретный адрес дня.
+    if (da && !da.is_travel) {
+      const daLabel = da.label || da.address_text;
+      if (daLabel) return { label: daLabel, color: da.color || "#22c55e" };
+    }
     return { label: "Выезд", color: null };
   }, [addresses, dayAddresses]);
 
@@ -1036,6 +1040,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
   }) => {
     const ep = arg.event.extendedProps as FcbEvent["extendedProps"];
     if (ep.kind === "available" && ep.addrLabel) {
+      const isTravel = !ep.addrColor;
       return (
         <div
           className="fcb-avail-label"
@@ -1043,7 +1048,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
             ? { borderLeft: `3px solid ${ep.addrColor}`, paddingLeft: 4 }
             : undefined}
         >
-          <Icon name="MapPin" size={10} />
+          <Icon name={isTravel ? "Car" : "MapPin"} size={10} />
           <span>{ep.addrLabel}</span>
         </div>
       );
