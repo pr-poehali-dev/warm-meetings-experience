@@ -751,7 +751,7 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
                               }}
                             >
                               <Icon name="Map" size={13} />
-                              <span>Карта</span>
+                              <span className="hidden sm:inline">Карта</span>
                             </a>
                           )}
                         </div>
