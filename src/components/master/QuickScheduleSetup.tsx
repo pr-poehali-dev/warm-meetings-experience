@@ -371,7 +371,7 @@ export default function QuickScheduleSetup({ masterId, masterSlug, onNavigateToS
                 onChange={(e) => setSelectedAddressId(e.target.value)}
                 className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <option value="">Без адреса</option>
+                <option value="">Выезд к гостю</option>
                 {addresses.map((a) => (
                   <option key={a.id} value={String(a.id)}>
                     {a.address_text}{a.is_primary ? " (основной)" : ""}
