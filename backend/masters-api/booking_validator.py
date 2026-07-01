@@ -11,7 +11,7 @@
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 def _client_ip(event):
@@ -349,6 +349,12 @@ def validate_booking_create(cur, schema, master_id, dt_start, dt_end,
         return {'error': 'invalid_datetime', 'message': 'Неверный формат даты/времени'}
     if e <= s:
         return {'error': 'invalid_range', 'message': 'Время окончания должно быть позже начала'}
+
+    # 1a. Нельзя бронировать в прошлом
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    s_naive = s.replace(tzinfo=None) if s.tzinfo else s
+    if s_naive < now_utc:
+        return {'error': 'past_datetime', 'message': 'Нельзя создать запись на прошедшее время'}
 
     # 2. Выходной мастера
     blocked = check_day_blocked(cur, schema, master_id, dt_start, dt_end)
