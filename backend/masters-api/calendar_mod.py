@@ -948,10 +948,12 @@ def handle_apply_template(event, method, params, schema, headers):
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'POST only'})}
 
     body = json.loads(event.get('body', '{}'))
-    template_id = body['template_id']
     master_id = body.get('master_id')
     if not master_id:
         return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'master_id обязателен'})}
+    template_id = body.get('template_id')
+    if not template_id:
+        return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'template_id обязателен'})}
     weeks = int(body.get('weeks', 4))
     start_date_str = body.get('start_date')
     dry_run = bool(body.get('dry_run', False))
