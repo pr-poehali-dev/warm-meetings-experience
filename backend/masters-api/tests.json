@@ -9,6 +9,14 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Напоминания за 24ч — cron-запуск возвращает 200",
+      "method": "GET",
+      "path": "/?resource=reminders",
+      "expectedStatus": 200,
+      "expectedBody": {"ok": true},
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Адрес дня — POST без master_id возвращает 400",
       "method": "POST",
       "path": "/?resource=calendar&sub=day-address",
