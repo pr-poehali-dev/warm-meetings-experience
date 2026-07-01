@@ -607,11 +607,18 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
       {/* Фильтр по адресу / место встречи */}
       {selectedService && availableAddresses.length > 0 && (
         <div className="mb-5">
-          <div
-            className="text-[11px] font-semibold uppercase tracking-wider mb-3"
-            style={{ color: "var(--c-muted)" }}
-          >
-            {availableAddresses.length > 1 ? "Место" : "Место встречи"}
+          <div className="mb-3">
+            <div
+              className="text-[11px] font-semibold uppercase tracking-wider"
+              style={{ color: "var(--c-muted)" }}
+            >
+              {availableAddresses.length > 1 ? "Место приёма" : "Место встречи"}
+            </div>
+            {availableAddresses.length > 1 && (
+              <div className="text-xs mt-0.5" style={{ color: "var(--c-muted)", opacity: 0.75 }}>
+                Выберите удобный адрес — отобразятся только свободные окна там
+              </div>
+            )}
           </div>
 
           {availableAddresses.length > 1 ? (
