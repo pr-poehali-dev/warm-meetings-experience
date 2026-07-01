@@ -256,9 +256,11 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
       const key = slotAddressKey(o.slot);
       if (key === "none") continue;
       if (!map.has(key)) {
+        const name = o.slot.slot_address_label?.trim() || shortAddress(o.slot.slot_address);
         map.set(key, {
           key,
-          label: shortAddress(o.slot.slot_address),
+          name,
+          label: name,
           fullAddress: o.slot.slot_address ?? null,
           latitude: o.slot.slot_latitude ?? null,
           longitude: o.slot.slot_longitude ?? null,
@@ -728,7 +730,7 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-semibold leading-tight" style={{ color: active ? "#fff" : "var(--c-cream)" }}>
-                                {a.label}
+                                {a.name}
                               </div>
                               {a.fullAddress && (
                                 <div className="text-xs mt-0.5 leading-snug" style={{ color: active ? "rgba(255,255,255,0.7)" : "var(--c-muted)" }}>
