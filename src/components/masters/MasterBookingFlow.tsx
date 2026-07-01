@@ -612,7 +612,7 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
               className="text-[11px] font-semibold uppercase tracking-wider"
               style={{ color: "var(--c-muted)" }}
             >
-              {availableAddresses.length > 1 ? "Место приёма" : "Место встречи"}
+              Место встречи
             </div>
             {availableAddresses.length > 1 && (
               <div className="text-xs mt-0.5" style={{ color: "var(--c-muted)", opacity: 0.75 }}>
