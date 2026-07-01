@@ -626,18 +626,22 @@ export function MasterScheduleSection({ masterId, masterSlug, onGoToServices, on
               <p className="text-xs text-muted-foreground">Адреса не добавлены. Слоты без адреса — выездные.</p>
             ) : (
               addresses.map((a) => (
-                <div key={a.id} className="flex items-center gap-2.5">
+                <div key={a.id} className="flex items-start gap-2.5">
                   <span
-                    className="w-3 h-3 rounded-full shrink-0 border border-border"
+                    className="w-3 h-3 rounded-full shrink-0 border border-border mt-0.5"
                     style={{ backgroundColor: a.color || "#94a3b8" }}
                   />
-                  <span className="text-sm font-medium truncate">{a.label || a.address_text}</span>
-                  {a.label && (
-                    <span className="text-xs text-muted-foreground truncate">{a.address_text}</span>
-                  )}
-                  {a.is_primary && (
-                    <span className="text-[10px] text-amber-600 ml-auto shrink-0">основной</span>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm font-medium">{a.label || a.address_text}</span>
+                      {a.is_primary && (
+                        <span className="text-[10px] text-amber-600 shrink-0">основной</span>
+                      )}
+                    </div>
+                    {a.label && (
+                      <span className="text-xs text-muted-foreground">{a.address_text}</span>
+                    )}
+                  </div>
                 </div>
               ))
             )}
