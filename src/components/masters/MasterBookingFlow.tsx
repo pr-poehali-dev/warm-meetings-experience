@@ -119,6 +119,7 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
   const [loading, setLoading] = useState(false);
   const [aboutServiceId, setAboutServiceId] = useState<number | null>(null);
   const [addressFilter, setAddressFilter] = useState<string>("all");
+  const [addressOpen, setAddressOpen] = useState(false);
 
   useEffect(() => {
     masterBookingsApi
@@ -621,104 +622,143 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
             )}
           </div>
 
-          {availableAddresses.length > 1 ? (
-            <div className="flex flex-col gap-2">
-              {/* Все адреса */}
-              <button
-                type="button"
-                onClick={() => setAddressFilter("all")}
-                className="flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-all touch-manipulation active:scale-[0.99]"
-                style={{
-                  background: addressFilter === "all"
-                    ? "linear-gradient(135deg, var(--c-terra), var(--c-sage))"
-                    : "var(--card-idle)",
-                  border: addressFilter === "all" ? "1.5px solid transparent" : "1.5px solid var(--card-border)",
-                }}
+          {availableAddresses.length > 1 ? (() => {
+            const selected = availableAddresses.find((a) => a.key === addressFilter);
+            const labelText = addressFilter === "all" ? "Все адреса" : (selected?.label ?? "Адрес");
+            const subText = addressFilter !== "all" && selected?.fullAddress && selected.fullAddress !== selected.label
+              ? selected.fullAddress : null;
+            return (
+              <div
+                className="rounded-2xl overflow-hidden"
+                style={{ border: "1.5px solid var(--card-border)" }}
               >
-                <div
-                  className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: addressFilter === "all" ? "rgba(255,255,255,0.2)" : "var(--card-border)" }}
+                {/* Заголовок аккордиона */}
+                <button
+                  type="button"
+                  onClick={() => setAddressOpen((v) => !v)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors touch-manipulation active:scale-[0.99]"
+                  style={{ background: "var(--card-idle)" }}
                 >
-                  <Icon name="LayoutGrid" size={15} style={{ color: addressFilter === "all" ? "#fff" : "var(--c-terra)" }} />
-                </div>
-                <span
-                  className="text-sm font-semibold"
-                  style={{ color: addressFilter === "all" ? "#fff" : "var(--c-cream)" }}
-                >
-                  Все адреса
-                </span>
-              </button>
-
-              {availableAddresses.map((a) => {
-                const active = addressFilter === a.key;
-                const hasMap = a.fullAddress || a.latitude != null;
-                return (
                   <div
-                    key={a.key}
-                    className="flex items-center gap-3 px-4 py-3 rounded-2xl transition-all"
-                    style={{
-                      background: active
-                        ? "linear-gradient(135deg, var(--c-terra), var(--c-sage))"
-                        : "var(--card-idle)",
-                      border: active ? "1.5px solid transparent" : "1.5px solid var(--card-border)",
-                    }}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: "var(--card-border)" }}
                   >
-                    {/* иконка-кнопка выбора */}
-                    <button
-                      type="button"
-                      onClick={() => setAddressFilter(a.key)}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 touch-manipulation active:scale-95 transition-all"
-                      style={{ background: active ? "rgba(255,255,255,0.2)" : "var(--card-border)" }}
-                    >
-                      <Icon name="MapPin" size={15} style={{ color: active ? "#fff" : "var(--c-terra)" }} />
-                    </button>
-
-                    {/* текст — занимает всё место, кликабелен для выбора */}
-                    <button
-                      type="button"
-                      onClick={() => setAddressFilter(a.key)}
-                      className="flex-1 text-left min-w-0 touch-manipulation"
-                    >
-                      <div
-                        className="text-sm font-semibold leading-tight"
-                        style={{ color: active ? "#fff" : "var(--c-cream)" }}
-                      >
-                        {a.label}
+                    <Icon name={addressFilter === "all" ? "LayoutGrid" : "MapPin"} size={15} style={{ color: "var(--c-terra)" }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold leading-tight" style={{ color: "var(--c-cream)" }}>
+                      {labelText}
+                    </div>
+                    {subText && (
+                      <div className="text-xs mt-0.5 truncate" style={{ color: "var(--c-muted)" }}>
+                        {subText}
                       </div>
-                      {a.fullAddress && a.fullAddress !== a.label && (
-                        <div
-                          className="text-xs mt-0.5 leading-snug truncate"
-                          style={{ color: active ? "rgba(255,255,255,0.7)" : "var(--c-muted)" }}
-                        >
-                          {a.fullAddress}
-                        </div>
-                      )}
-                    </button>
-
-                    {/* ссылка на карту */}
-                    {hasMap && (
-                      <a
-                        href={mapUrl({ slot_latitude: a.latitude, slot_longitude: a.longitude, slot_address: a.fullAddress })}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        title="Открыть на карте"
-                        className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all touch-manipulation active:scale-95"
-                        style={{
-                          background: active ? "rgba(255,255,255,0.18)" : "var(--card-border)",
-                          color: active ? "#fff" : "var(--c-terra)",
-                        }}
-                      >
-                        <Icon name="Map" size={13} />
-                        <span className="hidden sm:inline">Карта</span>
-                      </a>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            // Единственный адрес — карточка
+                  <Icon
+                    name="ChevronDown"
+                    size={16}
+                    style={{
+                      color: "var(--c-muted)",
+                      transform: addressOpen ? "rotate(180deg)" : "rotate(0deg)",
+                      transition: "transform 0.2s ease",
+                      flexShrink: 0,
+                    }}
+                  />
+                </button>
+
+                {/* Список адресов */}
+                {addressOpen && (
+                  <div style={{ borderTop: "1px solid var(--card-border)" }}>
+                    {/* Все адреса */}
+                    <button
+                      type="button"
+                      onClick={() => { setAddressFilter("all"); setAddressOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors touch-manipulation"
+                      style={{
+                        background: addressFilter === "all"
+                          ? "linear-gradient(135deg, var(--c-terra), var(--c-sage))"
+                          : "var(--card-idle)",
+                      }}
+                    >
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: addressFilter === "all" ? "rgba(255,255,255,0.2)" : "var(--card-border)" }}
+                      >
+                        <Icon name="LayoutGrid" size={13} style={{ color: addressFilter === "all" ? "#fff" : "var(--c-terra)" }} />
+                      </div>
+                      <span
+                        className="text-sm font-semibold flex-1"
+                        style={{ color: addressFilter === "all" ? "#fff" : "var(--c-cream)" }}
+                      >
+                        Все адреса
+                      </span>
+                      {addressFilter === "all" && <Icon name="Check" size={14} style={{ color: "#fff", flexShrink: 0 }} />}
+                    </button>
+
+                    {availableAddresses.map((a, i) => {
+                      const active = addressFilter === a.key;
+                      const hasMap = a.fullAddress || a.latitude != null;
+                      return (
+                        <div
+                          key={a.key}
+                          style={{
+                            borderTop: "1px solid var(--card-border)",
+                            background: active
+                              ? "linear-gradient(135deg, var(--c-terra), var(--c-sage))"
+                              : i % 2 === 0 ? "var(--card-idle)" : "color-mix(in srgb, var(--card-idle) 85%, transparent)",
+                          }}
+                          className="flex items-center gap-3 px-4 py-3"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => { setAddressFilter(a.key); setAddressOpen(false); }}
+                            className="flex items-center gap-3 flex-1 min-w-0 text-left touch-manipulation"
+                          >
+                            <div
+                              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={{ background: active ? "rgba(255,255,255,0.2)" : "var(--card-border)" }}
+                            >
+                              <Icon name="MapPin" size={13} style={{ color: active ? "#fff" : "var(--c-terra)" }} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-semibold leading-tight" style={{ color: active ? "#fff" : "var(--c-cream)" }}>
+                                {a.label}
+                              </div>
+                              {a.fullAddress && a.fullAddress !== a.label && (
+                                <div className="text-xs mt-0.5 leading-snug" style={{ color: active ? "rgba(255,255,255,0.7)" : "var(--c-muted)" }}>
+                                  {a.fullAddress}
+                                </div>
+                              )}
+                            </div>
+                            {active && <Icon name="Check" size={14} style={{ color: "#fff", flexShrink: 0 }} />}
+                          </button>
+                          {hasMap && (
+                            <a
+                              href={mapUrl({ slot_latitude: a.latitude, slot_longitude: a.longitude, slot_address: a.fullAddress })}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Открыть на карте"
+                              className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all touch-manipulation active:scale-95"
+                              style={{
+                                background: active ? "rgba(255,255,255,0.18)" : "var(--card-border)",
+                                color: active ? "#fff" : "var(--c-terra)",
+                              }}
+                            >
+                              <Icon name="Map" size={13} />
+                              <span>Карта</span>
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })() : (
+            // Единственный адрес — статичная карточка
             <div
               className="flex items-center gap-3 px-4 py-3 rounded-2xl"
               style={{ background: "var(--card-idle)", border: "1.5px solid var(--card-border)" }}
@@ -734,7 +774,7 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
                   {availableAddresses[0].label}
                 </div>
                 {availableAddresses[0].fullAddress && availableAddresses[0].fullAddress !== availableAddresses[0].label && (
-                  <div className="text-xs mt-0.5 truncate" style={{ color: "var(--c-muted)" }}>
+                  <div className="text-xs mt-0.5" style={{ color: "var(--c-muted)" }}>
                     {availableAddresses[0].fullAddress}
                   </div>
                 )}
