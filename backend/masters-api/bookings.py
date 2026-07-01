@@ -1066,7 +1066,8 @@ def handle_cancel_my_booking(event, method, params, schema, headers):
                 _s = cur.fetchone()
                 if _s:
                     _svc_name = _s.get('name') or ''
-            _bdate, _btime = fmt_dt(_cb.get('datetime_start'))
+            _tz = fetch_master_tz(cur, schema, master_id)
+            _bdate, _btime = fmt_dt(_cb.get('datetime_start'), _tz)
             hub_notify('booking_cancelled', user_id=_uid, related_id=int(booking_id), owner_id=_uid,
                        block=True,
                        variables={
@@ -1320,7 +1321,8 @@ def handle_bookings(event, method, params, schema, headers):
         try:
             _uid = get_master_user_id(cur, schema, master_id)
             if _uid:
-                _bdate, _btime = fmt_dt(booking.get('datetime_start'))
+                _tz = fetch_master_tz(cur, schema, master_id)
+                _bdate, _btime = fmt_dt(booking.get('datetime_start'), _tz)
                 hub_notify('master_booking_new', user_id=_uid, related_id=booking.get('id'), owner_id=_uid,
                            block=True,
                            variables={
@@ -1466,8 +1468,9 @@ def handle_bookings(event, method, params, schema, headers):
             try:
                 _uid = get_master_user_id(cur, schema, master_id)
                 if _uid:
-                    _old_date, _old_time = fmt_dt(curr_b.get('datetime_start'))
-                    _new_date, _new_time = fmt_dt(row.get('datetime_start'))
+                    _tz = fetch_master_tz(cur, schema, master_id)
+                    _old_date, _old_time = fmt_dt(curr_b.get('datetime_start'), _tz)
+                    _new_date, _new_time = fmt_dt(row.get('datetime_start'), _tz)
                     hub_notify('booking_rescheduled', user_id=_uid, related_id=booking_id, owner_id=_uid,
                                block=True,
                                variables={
@@ -1507,7 +1510,8 @@ def handle_bookings(event, method, params, schema, headers):
                             _s = cur.fetchone()
                             if _s:
                                 _svc_name = _s.get('name') or ''
-                        _bdate, _btime = fmt_dt(_cr.get('datetime_start'))
+                        _tz = fetch_master_tz(cur, schema, _cr['master_id'])
+                        _bdate, _btime = fmt_dt(_cr.get('datetime_start'), _tz)
                         hub_notify('booking_confirmed', user_id=_uid, related_id=booking_id, owner_id=_uid,
                                    block=True,
                                    variables={
@@ -1568,7 +1572,8 @@ def handle_bookings(event, method, params, schema, headers):
                                     _s = cur.fetchone()
                                     if _s:
                                         _svc_name = _s.get('name') or ''
-                                _bdate, _btime = fmt_dt(_cb.get('datetime_start'))
+                                _tz = fetch_master_tz(cur, schema, _cb['master_id'])
+                                _bdate, _btime = fmt_dt(_cb.get('datetime_start'), _tz)
                                 hub_notify('booking_cancelled', user_id=_uid, related_id=booking_id, owner_id=_uid,
                                            block=True,
                                            variables={

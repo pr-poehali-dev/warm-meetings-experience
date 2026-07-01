@@ -98,13 +98,24 @@ def get_master_user_id(cur, schema, master_id):
 
 
 def fmt_dt(dt_str, tz='Europe/Moscow'):
-    """Форматирует datetime строку в читаемый вид 'ДД.ММ.ГГГГ ЧЧ:ММ'."""
+    """Форматирует datetime строку в 'ДД.ММ.ГГГГ', 'ЧЧ:ММ' в ЭКРАННОЙ зоне мастера.
+
+    tz — IANA-имя таймзоны мастера. Строка из БД без offset считается UTC
+    (timestamptz сериализуется в UTC), затем приводится к зоне мастера.
+    Строку с явным offset уважаем. Никаких хардкод-сдвигов.
+    """
+    from datetime import datetime, timezone
     try:
-        from datetime import datetime, timedelta
-        import re
-        s = re.sub(r'\.\d+', '', str(dt_str)).replace('+00:00', '').replace('Z', '').strip()
-        dt = datetime.strptime(s[:19], '%Y-%m-%d %H:%M:%S')
-        dt = dt + timedelta(hours=3)
+        from zoneinfo import ZoneInfo
+        tz_obj = ZoneInfo(tz or 'Europe/Moscow')
+    except Exception:
+        from datetime import timedelta
+        tz_obj = timezone(timedelta(hours=3))
+    try:
+        dt = datetime.fromisoformat(str(dt_str).replace('Z', '+00:00'))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.astimezone(tz_obj)
         return dt.strftime('%d.%m.%Y'), dt.strftime('%H:%M')
     except Exception:
         s = str(dt_str or '')
