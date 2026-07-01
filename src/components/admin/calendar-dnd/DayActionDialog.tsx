@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
-import { MasterService } from "@/lib/master-calendar-api";
+import { MasterService, MasterAddress } from "@/lib/master-calendar-api";
 
 export interface DayBookingPayload {
   client_name: string;
@@ -14,6 +14,7 @@ export interface DayBookingPayload {
   comment: string;
   time_start: string;
   time_end: string;
+  address_id?: number | null;
 }
 
 export interface DayBlockPayload {
@@ -27,6 +28,7 @@ interface Props {
   dayStr: string;
   dayLabel: string;
   services: MasterService[];
+  addresses?: MasterAddress[];
   saving?: boolean;
   onClose: () => void;
   onCreateBooking: (p: DayBookingPayload) => void;
@@ -34,7 +36,7 @@ interface Props {
 }
 
 export default function DayActionDialog({
-  dayLabel, services, saving, onClose, onCreateBooking, onBlock,
+  dayLabel, services, addresses = [], saving, onClose, onCreateBooking, onBlock,
 }: Props) {
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -47,6 +49,8 @@ export default function DayActionDialog({
   const [blEnd, setBlEnd] = useState("18:00");
   const [reason, setReason] = useState("");
   const [wholeDay, setWholeDay] = useState(false);
+  // undefined = не выбрано, null = выезд к клиенту, number = id адреса
+  const [selectedAddress, setSelectedAddress] = useState<number | null | undefined>(undefined);
 
   useEffect(() => {
     if (!serviceId) return;
@@ -70,6 +74,7 @@ export default function DayActionDialog({
       comment: comment.trim(),
       time_start: bStart,
       time_end: bEnd,
+      address_id: selectedAddress,
     });
   };
 
@@ -90,7 +95,6 @@ export default function DayActionDialog({
             <DialogDescription className="text-xs capitalize">{dayLabel}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 mt-1">
-            {/* Весь день / Интервал */}
             <div className="inline-flex w-full border border-border rounded-lg overflow-hidden">
               <button
                 onClick={() => setWholeDay(false)}
@@ -208,24 +212,71 @@ export default function DayActionDialog({
             rows={2}
           />
 
-          <Button
-            className="w-full gap-1.5"
-            onClick={submitBooking}
-            disabled={saving || !clientName.trim() || bEnd <= bStart}
-          >
-            {saving && <Icon name="Loader2" size={15} className="animate-spin" />}
-            <Icon name="Check" size={15} />
-            Создать бронь
-          </Button>
+          {/* Выбор адреса — только если адреса есть */}
+          {addresses.length > 0 && (
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-muted-foreground block">Место встречи</label>
+              <div className="grid grid-cols-1 gap-1.5">
+                {addresses.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => setSelectedAddress(selectedAddress === a.id ? undefined : a.id)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border text-left text-sm transition-colors ${
+                      selectedAddress === a.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-muted/50"
+                    }`}
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ background: a.color || "#94a3b8" }}
+                    />
+                    <span className="flex-1 truncate font-medium">{a.label || a.address_text}</span>
+                    {selectedAddress === a.id && (
+                      <Icon name="Check" size={13} className="text-primary flex-shrink-0" />
+                    )}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setSelectedAddress(selectedAddress === null ? undefined : null)}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border text-left text-sm transition-colors ${
+                    selectedAddress === null
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  <Icon name="Car" size={13} className="text-blue-400 flex-shrink-0" />
+                  <span className="flex-1 font-medium">Выезд к клиенту</span>
+                  {selectedAddress === null && (
+                    <Icon name="Check" size={13} className="text-primary flex-shrink-0" />
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
 
-          {/* Переход к блокировке */}
-          <button
-            onClick={() => setBlockMode(true)}
-            className="w-full text-xs text-muted-foreground hover:text-red-600 transition-colors py-1.5 flex items-center justify-center gap-1.5 border border-dashed rounded-lg hover:border-red-300"
-          >
-            <Icon name="Lock" size={12} />
-            Заблокировать этот день
-          </button>
+          <div className="flex gap-2 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900 dark:hover:bg-rose-950/40"
+              onClick={() => setBlockMode(true)}
+            >
+              <Icon name="Lock" size={14} />
+              Блокировка
+            </Button>
+            <Button
+              className="flex-1 gap-1.5"
+              onClick={submitBooking}
+              disabled={saving || !clientName.trim() || bEnd <= bStart}
+            >
+              {saving && <Icon name="Loader2" size={15} className="animate-spin" />}
+              <Icon name="Check" size={15} />
+              Создать бронь
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

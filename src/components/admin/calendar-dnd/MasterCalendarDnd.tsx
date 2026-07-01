@@ -702,6 +702,12 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     const startIso = `${dayStr}T${p.time_start}:00${offset}`;
     const endIso = `${dayStr}T${p.time_end}:00${offset}`;
     const svc = services.find((s) => s.id === p.service_id);
+    // Разрешаем адрес из списка адресов мастера
+    const addrObj = p.address_id != null ? addresses.find((a) => a.id === p.address_id) : undefined;
+    const meetingAddress = addrObj?.address_text || undefined;
+    const meetingLat = addrObj?.latitude ?? undefined;
+    const meetingLng = addrObj?.longitude ?? undefined;
+
     setDaySaving(true);
     try {
       await masterBookingsApi.createBooking({
@@ -715,6 +721,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
         status: "confirmed",
         source: "manual",
         comment: p.comment || "",
+        ...(meetingAddress ? { meeting_address: meetingAddress, meeting_latitude: meetingLat, meeting_longitude: meetingLng } : {}),
       });
       toast.success("Бронь создана");
       setDayAction(null);
@@ -1230,6 +1237,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           dayStr={dayAction.dayStr}
           dayLabel={dayAction.dayLabel}
           services={services}
+          addresses={addresses}
           saving={daySaving}
           onClose={() => setDayAction(null)}
           onCreateBooking={handleDayBooking}
