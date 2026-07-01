@@ -1629,18 +1629,26 @@ def handle_public_slots(event, method, params, schema, headers):
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    # Рабочие интервалы (слоты со статусом 'available' или 'booked' — оба идут под нарезку)
+    # Рабочие интервалы (слоты со статусом 'available' или 'booked' — оба идут под нарезку).
+    # Адрес слота определяется по приоритету: адрес слота → адрес дня (master_day_addresses).
+    # Если нет ни того, ни другого — слот выездной (has_address = false).
+    master_tz = fetch_master_tz(cur, schema, master_id)
     cur.execute(f"""
         SELECT s.id, s.master_id, s.service_id, s.datetime_start, s.datetime_end,
                s.max_clients, s.booked_count, s.status,
                ms.name as service_name, ms.duration_minutes, ms.price as service_price, ms.description as service_description,
-               s.address_id,
-               a.address_text as slot_address,
-               a.latitude as slot_latitude,
-               a.longitude as slot_longitude
+               COALESCE(s.address_id, da.address_id) as address_id,
+               COALESCE(a.address_text, dda.address_text) as slot_address,
+               COALESCE(a.latitude, dda.latitude) as slot_latitude,
+               COALESCE(a.longitude, dda.longitude) as slot_longitude,
+               (COALESCE(s.address_id, da.address_id) IS NOT NULL) as has_address
         FROM {schema}.master_slots s
         LEFT JOIN {schema}.master_services ms ON s.service_id = ms.id
         LEFT JOIN {schema}.master_addresses a ON s.address_id = a.id
+        LEFT JOIN {schema}.master_day_addresses da
+               ON da.master_id = s.master_id
+              AND da.day_date = (s.datetime_start AT TIME ZONE '{master_tz}')::date
+        LEFT JOIN {schema}.master_addresses dda ON da.address_id = dda.id
         WHERE s.master_id = {int(master_id)}
           AND s.status IN ('available', 'booked')
           AND s.datetime_start >= '{date_from}'
@@ -1667,7 +1675,6 @@ def handle_public_slots(event, method, params, schema, headers):
     bookings = cur.fetchall()
 
     # Канон времени: отдаём в таймзоне мастера с явным offset (см. time_utils).
-    master_tz = fetch_master_tz(cur, schema, master_id)
     conn.close()
     localize_rows(slots, master_tz)
     localize_rows(bookings, master_tz)

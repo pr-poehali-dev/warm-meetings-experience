@@ -170,9 +170,21 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
     const now = new Date();
     const result: BookingOption[] = [];
 
+    // Есть ли у слота фактический адрес (свой или адрес дня).
+    const slotHasAddress = (slot: MasterSlot) =>
+      slot.has_address ?? (slot.address_id != null || !!slot.slot_address);
+
     for (const slot of slots) {
       if (slot.service_id != null && slot.service_id !== selectedService.id) continue;
       if (slot.max_clients > 1 && slot.booked_count >= slot.max_clients) continue;
+
+      // Фильтр по формату услуги:
+      //  • at_home (выезд) — только выездные слоты (без адреса);
+      //  • on_site (у мастера) — только слоты с адресом приёма;
+      //  • by_agreement — любые слоты.
+      const fmt = selectedService.service_format;
+      if (fmt === "at_home" && slotHasAddress(slot)) continue;
+      if (fmt === "on_site" && !slotHasAddress(slot)) continue;
 
       const winStart = parseLocalISO(slot.datetime_start);
       const winEnd = parseLocalISO(slot.datetime_end);

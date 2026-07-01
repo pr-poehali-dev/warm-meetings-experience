@@ -73,6 +73,7 @@ export interface MasterSlot {
   slot_address?: string | null;
   slot_latitude?: number | null;
   slot_longitude?: number | null;
+  has_address?: boolean;
   created_at?: string;
   updated_at?: string;
 }
