@@ -47,12 +47,14 @@ export interface MasterAddress {
 }
 
 export interface DayAddress {
-  address_id: number;
-  address_text: string;
+  address_id?: number | null;
+  address_text?: string;
   label?: string | null;
   color?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  /** true — явный «выезд к гостю» (запись в БД есть, но address_id = NULL) */
+  is_travel?: boolean;
 }
 
 export interface MasterSlot {
@@ -334,6 +336,15 @@ export const masterCalendarApi = {
       {
         method: "POST",
         body: JSON.stringify({ master_id: masterId, day_date: dayDate, address_id: addressId }),
+      },
+    ),
+
+  clearDayAddress: (masterId: number, dayDate: string) =>
+    fetchApi<{ day_date: string; cleared: boolean }>(
+      `${CALENDAR_URL}&sub=day-address`,
+      {
+        method: "DELETE",
+        body: JSON.stringify({ master_id: masterId, day_date: dayDate }),
       },
     ),
 

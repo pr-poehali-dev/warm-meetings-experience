@@ -27,7 +27,7 @@ import EventForm, { CreateMode, CreatePayload } from "./EventForm";
 import QuickActionsPopover, { QuickEvent } from "./QuickActionsPopover";
 import AgendaView from "./AgendaView";
 import DayActionDialog, { DayBookingPayload, DayBlockPayload } from "./DayActionDialog";
-import DayAddressDialog from "./DayAddressDialog";
+import DayAddressDialog, { DayAddressValue } from "./DayAddressDialog";
 import { FcbEvent, fmtTime, fmtDate } from "./calendarHelpers";
 import { ConfirmBar, CancelBookingDialog, ClearCalendarDialog, TrashDialog } from "./CalendarDialogs";
 import CalendarToolbar from "./CalendarToolbar";
@@ -915,31 +915,43 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
     setDayAddrDialog({ dayStr, dayLabel });
   }, [settings?.timezone, calDateKey]);
 
-  const handleSaveDayAddress = async (addressId: number | null) => {
+  const handleSaveDayAddress = async (value: DayAddressValue) => {
     if (!dayAddrDialog) return;
     setDaySaving(true);
     try {
-      await masterCalendarApi.setDayAddress(masterId, dayAddrDialog.dayStr, addressId);
-      setDayAddresses((prev) => {
-        const next = { ...prev };
-        if (addressId) {
-          const a = addresses.find((x) => x.id === addressId);
-          if (a) {
-            next[dayAddrDialog.dayStr] = {
-              address_id: addressId,
-              address_text: a.address_text,
-              label: a.label,
-              color: a.color,
-              latitude: a.latitude,
-              longitude: a.longitude,
-            };
-          }
-        } else {
+      if (value === "clear") {
+        // Удалить запись — день «не задан»
+        await masterCalendarApi.clearDayAddress(masterId, dayAddrDialog.dayStr);
+        setDayAddresses((prev) => {
+          const next = { ...prev };
           delete next[dayAddrDialog.dayStr];
-        }
-        return next;
-      });
-      toast.success(addressId ? "Адрес дня сохранён" : "День стал выездным");
+          return next;
+        });
+        toast.success("Адрес дня сброшен");
+      } else {
+        // null = явный выезд, number = конкретный адрес
+        await masterCalendarApi.setDayAddress(masterId, dayAddrDialog.dayStr, value);
+        setDayAddresses((prev) => {
+          const next = { ...prev };
+          if (value === null) {
+            next[dayAddrDialog.dayStr] = { is_travel: true };
+          } else {
+            const a = addresses.find((x) => x.id === value);
+            if (a) {
+              next[dayAddrDialog.dayStr] = {
+                address_id: value,
+                address_text: a.address_text,
+                label: a.label,
+                color: a.color,
+                latitude: a.latitude,
+                longitude: a.longitude,
+              };
+            }
+          }
+          return next;
+        });
+        toast.success(value === null ? "День помечен как выездной" : "Адрес дня сохранён");
+      }
       setDayAddrDialog(null);
     } catch (e) {
       toast.error("Не удалось сохранить адрес дня: " + (e instanceof Error ? e.message : String(e)));
@@ -989,14 +1001,24 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           <button
             onClick={(e) => { e.stopPropagation(); openDayAddress(arg.date); }}
             className="fcb-day-addr-row"
-            title={dayAddr ? `Адрес дня: ${dayAddr.label || dayAddr.address_text}` : "Задать адрес дня (иначе — выезд)"}
+            title={
+              !dayAddr
+                ? "Задать адрес дня"
+                : dayAddr.is_travel
+                ? "Выезд к гостю"
+                : `Адрес дня: ${dayAddr.label || dayAddr.address_text}`
+            }
           >
-            <span
-              className="fcb-day-addr-dot"
-              style={{ backgroundColor: dayAddr ? (dayAddr.color || "#22c55e") : "transparent" }}
-            />
+            {dayAddr?.is_travel ? (
+              <Icon name="Car" size={12} style={{ color: "#60a5fa", flexShrink: 0 }} />
+            ) : (
+              <span
+                className="fcb-day-addr-dot"
+                style={{ backgroundColor: dayAddr ? (dayAddr.color || "#22c55e") : "transparent" }}
+              />
+            )}
             <span className="fcb-day-addr-text hidden sm:inline">
-              {dayAddr ? (dayAddr.label || "адрес") : "выезд"}
+              {!dayAddr ? "—" : dayAddr.is_travel ? "выезд" : (dayAddr.label || "адрес")}
             </span>
           </button>
         )}
@@ -1187,7 +1209,8 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
         <DayAddressDialog
           dayLabel={dayAddrDialog.dayLabel}
           addresses={addresses}
-          currentAddressId={dayAddresses[dayAddrDialog.dayStr]?.address_id ?? null}
+          currentAddressId={dayAddresses[dayAddrDialog.dayStr]?.address_id ?? undefined}
+          currentIsTravel={dayAddresses[dayAddrDialog.dayStr]?.is_travel}
           saving={daySaving}
           onClose={() => setDayAddrDialog(null)}
           onSave={handleSaveDayAddress}

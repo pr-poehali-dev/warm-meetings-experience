@@ -1360,7 +1360,7 @@ def handle_day_address(event, method, params, schema, headers):
                 return err
             date_from = (params.get('date_from') or '')[:10]
             date_to = (params.get('date_to') or '')[:10]
-            where = f"da.master_id = {int(master_id)} AND da.address_id IS NOT NULL"
+            where = f"da.master_id = {int(master_id)}"
             if date_from:
                 where += f" AND da.day_date >= '{date_from}'"
             if date_to:
@@ -1369,21 +1369,25 @@ def handle_day_address(event, method, params, schema, headers):
                 SELECT da.day_date, da.address_id,
                        a.address_text, a.label, a.color, a.latitude, a.longitude
                 FROM {schema}.master_day_addresses da
-                JOIN {schema}.master_addresses a ON a.id = da.address_id
+                LEFT JOIN {schema}.master_addresses a ON a.id = da.address_id
                 WHERE {where}
                 ORDER BY da.day_date
             """)
             rows = cur.fetchall()
             result = {}
             for r in rows:
-                result[str(r['day_date'])] = {
-                    'address_id': r['address_id'],
-                    'address_text': r['address_text'],
-                    'label': r.get('label'),
-                    'color': r.get('color'),
-                    'latitude': float(r['latitude']) if r.get('latitude') is not None else None,
-                    'longitude': float(r['longitude']) if r.get('longitude') is not None else None,
-                }
+                if r['address_id'] is None:
+                    # Явный выезд: запись есть, но address_id = NULL
+                    result[str(r['day_date'])] = {'is_travel': True}
+                else:
+                    result[str(r['day_date'])] = {
+                        'address_id': r['address_id'],
+                        'address_text': r['address_text'],
+                        'label': r.get('label'),
+                        'color': r.get('color'),
+                        'latitude': float(r['latitude']) if r.get('latitude') is not None else None,
+                        'longitude': float(r['longitude']) if r.get('longitude') is not None else None,
+                    }
             return {'statusCode': 200, 'headers': headers,
                     'body': json.dumps({'days': result}, ensure_ascii=False)}
 
@@ -1425,6 +1429,16 @@ def handle_day_address(event, method, params, schema, headers):
                         'day_date': str(row['day_date']),
                         'address_id': row['address_id'],
                     }, ensure_ascii=False)}
+
+        if method == 'DELETE':
+            # Полный сброс адреса дня — удаляем запись (день становится «не задан»)
+            cur.execute(f"""
+                DELETE FROM {schema}.master_day_addresses
+                WHERE master_id = {master_id} AND day_date = '{day_date}'
+            """)
+            conn.commit()
+            return {'statusCode': 200, 'headers': headers,
+                    'body': json.dumps({'day_date': day_date, 'cleared': True}, ensure_ascii=False)}
 
         return {'statusCode': 405, 'headers': headers,
                 'body': json.dumps({'error': 'Method not allowed'}, ensure_ascii=False)}
