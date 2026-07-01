@@ -330,12 +330,17 @@ export const masterCalendarApi = {
     return fetchApi<{ days: Record<string, DayAddress> }>(url);
   },
 
-  setDayAddress: (masterId: number, dayDate: string, addressId: number | null) =>
-    fetchApi<{ day_date: string; address_id: number | null }>(
+  setDayAddress: (masterId: number, dayDate: string, addressId: number | null, clearSlotAddresses = false) =>
+    fetchApi<{ day_date: string; address_id: number | null; cleared_slots?: number }>(
       `${CALENDAR_URL}&sub=day-address`,
       {
         method: "POST",
-        body: JSON.stringify({ master_id: masterId, day_date: dayDate, address_id: addressId }),
+        body: JSON.stringify({
+          master_id: masterId,
+          day_date: dayDate,
+          address_id: addressId,
+          clear_slot_addresses: clearSlotAddresses,
+        }),
       },
     ),
 

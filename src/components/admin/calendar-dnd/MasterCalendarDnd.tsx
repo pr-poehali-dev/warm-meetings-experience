@@ -921,28 +921,49 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
 
   const handleSaveDayAddress = async (value: DayAddressValue) => {
     if (!dayAddrDialog) return;
+    const dayStr = dayAddrDialog.dayStr;
+
+    // Слоты этого дня, у которых задан СВОЙ адрес (он в приоритете над адресом дня).
+    const slotsWithOwnAddr = slots.filter(
+      (s) => s.status === "available" && s.address_id != null &&
+             String(s.datetime_start).slice(0, 10) === dayStr,
+    );
+
+    // Если у слотов есть свой адрес — спросим, сбросить ли его, чтобы новый
+    // адрес дня (в т.ч. «выезд») применился ко всему дню.
+    let clearSlotAddresses = false;
+    if (slotsWithOwnAddr.length > 0) {
+      const ok = await showConfirm({
+        title: "Сбросить адреса слотов?",
+        description: `У ${slotsWithOwnAddr.length} ${slotsWithOwnAddr.length === 1 ? "слота задан свой адрес" : "слотов задан свой адрес"} — он приоритетнее адреса дня. Сбросить их, чтобы новый адрес дня применился ко всем слотам?`,
+        confirmLabel: "Сбросить и применить",
+        cancelLabel: "Оставить как есть",
+      });
+      clearSlotAddresses = ok;
+    }
+
     setDaySaving(true);
     try {
       if (value === "clear") {
         // Удалить запись — день «не задан»
-        await masterCalendarApi.clearDayAddress(masterId, dayAddrDialog.dayStr);
+        await masterCalendarApi.clearDayAddress(masterId, dayStr);
         setDayAddresses((prev) => {
           const next = { ...prev };
-          delete next[dayAddrDialog.dayStr];
+          delete next[dayStr];
           return next;
         });
         toast.success("Адрес дня сброшен");
       } else {
         // null = явный выезд, number = конкретный адрес
-        await masterCalendarApi.setDayAddress(masterId, dayAddrDialog.dayStr, value);
+        await masterCalendarApi.setDayAddress(masterId, dayStr, value, clearSlotAddresses);
         setDayAddresses((prev) => {
           const next = { ...prev };
           if (value === null) {
-            next[dayAddrDialog.dayStr] = { is_travel: true };
+            next[dayStr] = { is_travel: true };
           } else {
             const a = addresses.find((x) => x.id === value);
             if (a) {
-              next[dayAddrDialog.dayStr] = {
+              next[dayStr] = {
                 address_id: value,
                 address_text: a.address_text,
                 label: a.label,
@@ -957,6 +978,8 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
         toast.success(value === null ? "День помечен как выездной" : "Адрес дня сохранён");
       }
       setDayAddrDialog(null);
+      // Слоты изменились (сброшены адреса) — перезагрузим данные календаря.
+      if (clearSlotAddresses) await loadData();
     } catch (e) {
       toast.error("Не удалось сохранить адрес дня: " + (e instanceof Error ? e.message : String(e)));
     } finally {

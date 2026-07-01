@@ -6,6 +6,7 @@ import psycopg2.extras
 from datetime import datetime, timedelta, date, time
 from shared import CORS_HEADERS, get_conn, get_schema
 from booking_validator import acquire_master_lock, check_day_blocked, require_master_id, ensure_master_access
+from time_utils import fetch_master_tz
 
 
 def _backup_bookings_to_s3(cur, schema, master_id, reason, where_extra=""):
@@ -1423,11 +1424,27 @@ def handle_day_address(event, method, params, schema, headers):
                 RETURNING day_date, address_id
             """)
             row = cur.fetchone()
+
+            # Опционально: сбросить собственные адреса всех слотов этого дня,
+            # чтобы они наследовали адрес дня (например при переводе дня в «выезд»).
+            cleared_slots = 0
+            if body.get('clear_slot_addresses'):
+                master_tz = fetch_master_tz(cur, schema, master_id)
+                cur.execute(f"""
+                    UPDATE {schema}.master_slots
+                    SET address_id = NULL, updated_at = CURRENT_TIMESTAMP
+                    WHERE master_id = {master_id}
+                      AND address_id IS NOT NULL
+                      AND (datetime_start AT TIME ZONE '{master_tz}')::date = '{day_date}'
+                """)
+                cleared_slots = cur.rowcount
+
             conn.commit()
             return {'statusCode': 200, 'headers': headers,
                     'body': json.dumps({
                         'day_date': str(row['day_date']),
                         'address_id': row['address_id'],
+                        'cleared_slots': cleared_slots,
                     }, ensure_ascii=False)}
 
         if method == 'DELETE':
