@@ -1646,6 +1646,7 @@ def handle_public_slots(event, method, params, schema, headers):
                COALESCE(a.address_text, dda.address_text) as slot_address,
                COALESCE(a.latitude, dda.latitude) as slot_latitude,
                COALESCE(a.longitude, dda.longitude) as slot_longitude,
+               COALESCE(a.label, dda.label) as slot_address_label,
                (COALESCE(s.address_id, da.address_id) IS NOT NULL) as has_address
         FROM {schema}.master_slots s
         LEFT JOIN {schema}.master_services ms ON s.service_id = ms.id
