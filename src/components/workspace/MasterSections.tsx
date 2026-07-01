@@ -4,7 +4,7 @@ import VkConnectBanner from "@/components/shared/VkConnectBanner";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { masterBookingsApi, masterCalendarApi, MasterReview } from "@/lib/master-calendar-api";
+import { masterBookingsApi, masterCalendarApi, MasterReview, MasterAddress } from "@/lib/master-calendar-api";
 import { mastersApi, Master } from "@/lib/masters-api";
 import MasterCalendar, { MasterCalendarDndRef } from "@/components/admin/calendar-dnd/MasterCalendarDnd";
 import MasterBookingsList from "@/components/admin/MasterBookingsList";
@@ -528,6 +528,12 @@ export function MasterServicesSection({ masterId }: { masterId: number }) {
 export function MasterScheduleSection({ masterId, masterSlug, onGoToServices, onGoToSettings }: { masterId: number; masterSlug: string; onGoToServices?: () => void; onGoToSettings?: () => void }) {
   const [quickOpen, setQuickOpen] = useState(false);
   const calRef = useRef<MasterCalendarDndRef>(null);
+  const [addresses, setAddresses] = useState<MasterAddress[]>([]);
+  const [legendOpen, setLegendOpen] = useState(false);
+
+  useEffect(() => {
+    masterCalendarApi.getAddresses(masterId).then(setAddresses).catch(() => {});
+  }, [masterId]);
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -588,19 +594,76 @@ export function MasterScheduleSection({ masterId, masterSlug, onGoToServices, on
         </div>
       </div>
 
-      {onGoToSettings && (
+      <div className="rounded-xl border border-border overflow-hidden">
         <button
-          onClick={onGoToSettings}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-muted/40 hover:bg-muted/70 transition-colors text-left group"
+          onClick={() => setLegendOpen((v) => !v)}
+          className="w-full flex items-center gap-3 px-4 py-3 bg-muted/40 hover:bg-muted/70 transition-colors text-left group"
         >
           <Icon name="MapPin" size={16} className="text-rose-500 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <span className="text-sm font-medium">Адреса приёма гостей</span>
-            <span className="text-xs text-muted-foreground ml-2">настраиваются в разделе «Настройки»</span>
-          </div>
-          <Icon name="ChevronRight" size={15} className="text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+          <span className="text-sm font-medium flex-1">Адреса приёма</span>
+          {addresses.length > 0 && (
+            <div className="flex items-center gap-1.5 mr-2">
+              {addresses.map((a) => (
+                <span
+                  key={a.id}
+                  className="w-3 h-3 rounded-full border border-white/40 shrink-0"
+                  style={{ backgroundColor: a.color || "#94a3b8" }}
+                  title={a.label || a.address_text}
+                />
+              ))}
+            </div>
+          )}
+          <Icon
+            name="ChevronDown"
+            size={15}
+            className={`text-muted-foreground transition-transform shrink-0 ${legendOpen ? "rotate-180" : ""}`}
+          />
         </button>
-      )}
+
+        {legendOpen && (
+          <div className="px-4 py-3 border-t border-border bg-background space-y-2">
+            {addresses.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Адреса не добавлены. Слоты без адреса — выездные.</p>
+            ) : (
+              addresses.map((a) => (
+                <div key={a.id} className="flex items-center gap-2.5">
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0 border border-border"
+                    style={{ backgroundColor: a.color || "#94a3b8" }}
+                  />
+                  <span className="text-sm font-medium truncate">{a.label || a.address_text}</span>
+                  {a.label && (
+                    <span className="text-xs text-muted-foreground truncate">{a.address_text}</span>
+                  )}
+                  {a.is_primary && (
+                    <span className="text-[10px] text-amber-600 ml-auto shrink-0">основной</span>
+                  )}
+                </div>
+              ))
+            )}
+            <div className="pt-1 border-t border-border/60">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full shrink-0 border border-dashed border-muted-foreground/50" />
+                <span className="text-xs text-muted-foreground">Без полосы — выезд к гостю</span>
+              </div>
+            </div>
+            {onGoToSettings && (
+              <button
+                onClick={() => {
+                  onGoToSettings();
+                  setTimeout(() => {
+                    document.getElementById("master-addresses")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 150);
+                }}
+                className="flex items-center gap-1.5 text-xs text-primary hover:underline pt-0.5"
+              >
+                <Icon name="Settings" size={12} />
+                Настроить адреса
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       <MasterCalendar ref={calRef} masterId={masterId} />
     </div>

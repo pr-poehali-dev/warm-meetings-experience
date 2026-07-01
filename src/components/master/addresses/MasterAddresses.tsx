@@ -208,7 +208,7 @@ const MasterAddresses = ({ masterId }: { masterId: number }) => {
   );
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div id="master-addresses" className="space-y-4 max-w-2xl">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold">Мои адреса</h3>
