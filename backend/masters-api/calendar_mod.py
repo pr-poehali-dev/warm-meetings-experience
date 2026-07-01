@@ -1489,6 +1489,7 @@ def handle_settings(event, method, params, schema, headers):
                 'auto_confirm': False,
                 'notify_new_booking': True,
                 'notify_24h_reminder': True,
+                'notify_1h_reminder': True,
                 'notify_cancellation': True,
                 'timezone': 'Europe/Moscow'
             })}
@@ -1506,7 +1507,7 @@ def handle_settings(event, method, params, schema, headers):
             for field in ['default_slot_duration', 'break_between_slots', 'prep_time', 'max_clients_per_day']:
                 if field in body:
                     updates.append(f"{field} = {int(body[field])}")
-            for field in ['auto_confirm', 'notify_new_booking', 'notify_24h_reminder', 'notify_cancellation']:
+            for field in ['auto_confirm', 'notify_new_booking', 'notify_24h_reminder', 'notify_1h_reminder', 'notify_cancellation']:
                 if field in body:
                     updates.append(f"{field} = {'true' if body[field] else 'false'}")
             if 'timezone' in body:
@@ -1523,7 +1524,7 @@ def handle_settings(event, method, params, schema, headers):
             cur.execute(f"""
                 INSERT INTO {schema}.master_calendar_settings
                 (master_id, default_slot_duration, break_between_slots, prep_time, max_clients_per_day,
-                 auto_confirm, notify_new_booking, notify_24h_reminder, notify_cancellation, timezone)
+                 auto_confirm, notify_new_booking, notify_24h_reminder, notify_1h_reminder, notify_cancellation, timezone)
                 VALUES (
                     {int(master_id)},
                     {int(body.get('default_slot_duration', 60))},
@@ -1533,6 +1534,7 @@ def handle_settings(event, method, params, schema, headers):
                     {'true' if body.get('auto_confirm') else 'false'},
                     {'true' if body.get('notify_new_booking', True) else 'false'},
                     {'true' if body.get('notify_24h_reminder', True) else 'false'},
+                    {'true' if body.get('notify_1h_reminder', True) else 'false'},
                     {'true' if body.get('notify_cancellation', True) else 'false'},
                     '{body.get('timezone', 'Europe/Moscow').replace("'", "''")}'
                 ) RETURNING *

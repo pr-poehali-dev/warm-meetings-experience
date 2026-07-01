@@ -48,8 +48,14 @@ def _map_url(booking):
     return f'https://yandex.ru/maps/?text={_quote(addr)}'
 
 
-def _send_reminder(cur, schema, booking, master_name, tz_name, service_name):
-    """Отправляет напоминание гостю по всем доступным каналам."""
+def _send_reminder(cur, schema, booking, master_name, tz_name, service_name, kind='24h'):
+    """Отправляет напоминание гостю по всем доступным каналам.
+
+    kind: '24h' — за сутки ('уже завтра'), '1h' — за час ('уже через час').
+    """
+    is_1h = kind == '1h'
+    when_phrase = 'уже через час' if is_1h else 'уже завтра'
+    event_type = 'client_booking_reminder_1h' if is_1h else 'client_booking_reminder_24h'
     client_email = (booking.get('client_email') or '').strip()
     client_name = (booking.get('client_name') or '').strip() or 'клиент'
     client_user_id = booking.get('client_id')
@@ -85,21 +91,23 @@ def _send_reminder(cur, schema, booking, master_name, tz_name, service_name):
                 f'color: #fff; border-radius: 8px; text-decoration: none;">'
                 f'&#128197; Добавить в календарь</a></p>'
             )
-        subject = f'Напоминание: запись завтра, {dt_human}'
+        subject = (f'Напоминание: запись через час, {dt_human}' if is_1h
+                   else f'Напоминание: запись завтра, {dt_human}')
         body_html = f"""
         <div style="font-family: -apple-system, Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #2d2318;">
             <h2 style="color: #0f172a;">Здравствуйте, {client_name}!</h2>
-            <p>Напоминаем о вашей записи к мастеру <b>{master_name}</b> — уже завтра, <b>{dt_human}</b>.</p>
+            <p>Напоминаем о вашей записи к мастеру <b>{master_name}</b> — {when_phrase}, <b>{dt_human}</b>.</p>
             {svc_block}
             {addr_block}
             {ics_block}
             <p style="color: #6b7280; margin-top: 16px;">Если планы изменились — свяжитесь с мастером заранее.</p>
         </div>
         """.strip()
-        ok = send_email(client_email, subject, body_html, tags=['booking-reminder-24h'])
+        ok = send_email(client_email, subject, body_html,
+                        tags=['booking-reminder-1h' if is_1h else 'booking-reminder-24h'])
         sent_any = sent_any or bool(ok)
         _log_notification(cur, schema,
-            channel='email', event_type='client_booking_reminder_24h',
+            channel='email', event_type=event_type,
             recipient=client_email, subject=subject,
             status='success' if ok else 'failed',
             related_id=booking.get('id'),
@@ -129,7 +137,7 @@ def _send_reminder(cur, schema, booking, master_name, tz_name, service_name):
                 lines = [
                     f'⏰ <b>{head}</b>',
                     '',
-                    f'Уже завтра, <b>{dt_human}</b>',
+                    f'{when_phrase.capitalize()}, <b>{dt_human}</b>',
                     f'Мастер: <b>{master_name}</b>',
                 ]
                 if service_name:
@@ -143,7 +151,7 @@ def _send_reminder(cur, schema, booking, master_name, tz_name, service_name):
                 ok_tg = tg_send(tg_chat_id, '\n'.join(lines))
                 sent_any = sent_any or bool(ok_tg)
                 _log_notification(cur, schema,
-                    channel='telegram', event_type='client_booking_reminder_24h',
+                    channel='telegram', event_type=event_type,
                     recipient=str(tg_chat_id), subject=head,
                     status='success' if ok_tg else 'failed',
                     user_id=client_user_id, related_id=booking.get('id'),
@@ -154,7 +162,7 @@ def _send_reminder(cur, schema, booking, master_name, tz_name, service_name):
                 vk_lines = [
                     f'⏰ {head}',
                     '',
-                    f'Уже завтра, {dt_human}',
+                    f'{when_phrase.capitalize()}, {dt_human}',
                     f'Мастер: {master_name}',
                 ]
                 if service_name:
@@ -168,7 +176,7 @@ def _send_reminder(cur, schema, booking, master_name, tz_name, service_name):
                 ok_vk = vk_send(vk_id, '\n'.join(vk_lines))
                 sent_any = sent_any or bool(ok_vk)
                 _log_notification(cur, schema,
-                    channel='vk', event_type='client_booking_reminder_24h',
+                    channel='vk', event_type=event_type,
                     recipient=str(vk_id), subject=head,
                     status='success' if ok_vk else 'failed',
                     user_id=client_user_id, related_id=booking.get('id'),
@@ -177,72 +185,103 @@ def _send_reminder(cur, schema, booking, master_name, tz_name, service_name):
     return sent_any
 
 
-def handle_reminders(event, method, params, schema, headers):
-    """Рассылка напоминаний за 24ч. Вызывается по расписанию (cron).
+# Конфигурация видов напоминаний: окно поиска, колонка-отметка, флаг мастера.
+_REMINDER_KINDS = {
+    '24h': {
+        'sent_col': 'reminder_24h_sent_at',
+        'enabled_col': 'notify_24h_reminder',
+        'window_from': "NOW() + INTERVAL '23 hours'",
+        'window_to': "NOW() + INTERVAL '25 hours'",
+    },
+    '1h': {
+        'sent_col': 'reminder_1h_sent_at',
+        'enabled_col': 'notify_1h_reminder',
+        'window_from': "NOW() + INTERVAL '45 minutes'",
+        'window_to': "NOW() + INTERVAL '75 minutes'",
+    },
+}
 
-    Находит активные брони со стартом в окне [now+23ч, now+25ч], у мастеров
-    с включённым notify_24h_reminder, которым напоминание ещё не отправлено,
-    шлёт напоминание гостю и проставляет reminder_24h_sent_at.
-    """
-    conn = get_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+def _run_reminders_kind(conn, cur, schema, kind):
+    """Обрабатывает один вид напоминаний ('24h' или '1h'). Возвращает статистику."""
+    cfg = _REMINDER_KINDS[kind]
+    sent_col = cfg['sent_col']
     processed = 0
     sent = 0
     errors = []
+
+    cur.execute(f"""
+        SELECT b.*, m.name AS master_name,
+               COALESCE(mcs.timezone, 'Europe/Moscow') AS tz,
+               COALESCE(mcs.{cfg['enabled_col']}, true) AS reminder_enabled,
+               s.name AS service_name
+        FROM {schema}.master_bookings b
+        JOIN {schema}.masters m ON m.id = b.master_id
+        LEFT JOIN {schema}.master_calendar_settings mcs ON mcs.master_id = b.master_id
+        LEFT JOIN {schema}.master_services s ON s.id = b.service_id
+        WHERE b.status IN ('pending', 'confirmed')
+          AND b.{sent_col} IS NULL
+          AND b.datetime_start >= {cfg['window_from']}
+          AND b.datetime_start <= {cfg['window_to']}
+        ORDER BY b.datetime_start
+        LIMIT 200
+    """)
+    rows = [dict(r) for r in cur.fetchall()]
+
+    for b in rows:
+        processed += 1
+        bid = b['id']
+        # Отметку ставим всегда (даже если канал недоступен/выключен), чтобы не
+        # долбить одну и ту же бронь при каждом запуске.
+        if not b.get('reminder_enabled'):
+            cur.execute(f"UPDATE {schema}.master_bookings SET {sent_col} = NOW() WHERE id = {int(bid)}")
+            conn.commit()
+            continue
+        try:
+            ok = _send_reminder(cur, schema, b, b.get('master_name') or 'мастер',
+                                b.get('tz'), b.get('service_name') or '', kind=kind)
+            if ok:
+                sent += 1
+            cur.execute(f"UPDATE {schema}.master_bookings SET {sent_col} = NOW() WHERE id = {int(bid)}")
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            errors.append({'booking_id': bid, 'error': str(e)[:200]})
+
+    return processed, sent, errors
+
+
+def handle_reminders(event, method, params, schema, headers):
+    """Рассылка напоминаний за 24ч и за 1ч. Вызывается по расписанию (cron).
+
+    Параметр kind: '24h' | '1h' | 'all' (по умолчанию 'all' — оба вида).
+    Для каждого вида находит активные брони в своём временном окне у мастеров
+    с включённым флагом, шлёт напоминание гостю и проставляет отметку.
+    """
+    import json
+    kind = (params.get('kind') or 'all').lower()
+    kinds = list(_REMINDER_KINDS.keys()) if kind == 'all' else [kind]
+    if any(k not in _REMINDER_KINDS for k in kinds):
+        return {'statusCode': 400, 'headers': headers,
+                'body': json.dumps({'error': 'invalid kind'})}
+
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    total_processed = 0
+    total_sent = 0
+    all_errors = []
     try:
-        cur.execute(f"""
-            SELECT b.*, m.name AS master_name,
-                   COALESCE(mcs.timezone, 'Europe/Moscow') AS tz,
-                   COALESCE(mcs.notify_24h_reminder, true) AS reminder_enabled,
-                   s.name AS service_name
-            FROM {schema}.master_bookings b
-            JOIN {schema}.masters m ON m.id = b.master_id
-            LEFT JOIN {schema}.master_calendar_settings mcs ON mcs.master_id = b.master_id
-            LEFT JOIN {schema}.master_services s ON s.id = b.service_id
-            WHERE b.status IN ('pending', 'confirmed')
-              AND b.reminder_24h_sent_at IS NULL
-              AND b.datetime_start >= NOW() + INTERVAL '23 hours'
-              AND b.datetime_start <= NOW() + INTERVAL '25 hours'
-            ORDER BY b.datetime_start
-            LIMIT 200
-        """)
-        rows = [dict(r) for r in cur.fetchall()]
+        for k in kinds:
+            p, s, errs = _run_reminders_kind(conn, cur, schema, k)
+            total_processed += p
+            total_sent += s
+            all_errors.extend(errs)
 
-        for b in rows:
-            processed += 1
-            bid = b['id']
-            # Отметку ставим всегда (даже если канал недоступен), чтобы не
-            # долбить одну и ту же бронь при каждом запуске.
-            if not b.get('reminder_enabled'):
-                cur.execute(f"""
-                    UPDATE {schema}.master_bookings
-                    SET reminder_24h_sent_at = NOW()
-                    WHERE id = {int(bid)}
-                """)
-                conn.commit()
-                continue
-            try:
-                ok = _send_reminder(cur, schema, b, b.get('master_name') or 'мастер',
-                                    b.get('tz'), b.get('service_name') or '')
-                if ok:
-                    sent += 1
-                cur.execute(f"""
-                    UPDATE {schema}.master_bookings
-                    SET reminder_24h_sent_at = NOW()
-                    WHERE id = {int(bid)}
-                """)
-                conn.commit()
-            except Exception as e:
-                conn.rollback()
-                errors.append({'booking_id': bid, 'error': str(e)[:200]})
-
-        import json
         return {'statusCode': 200, 'headers': headers,
-                'body': json.dumps({'ok': True, 'processed': processed,
-                                    'sent': sent, 'errors': errors})}
+                'body': json.dumps({'ok': True, 'processed': total_processed,
+                                    'sent': total_sent, 'errors': all_errors})}
     except Exception as e:
         conn.rollback()
-        import json
         return {'statusCode': 500, 'headers': headers,
                 'body': json.dumps({'error': str(e)[:500]})}
     finally:

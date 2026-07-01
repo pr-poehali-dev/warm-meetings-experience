@@ -390,14 +390,15 @@ def validate_booking_create(cur, schema, master_id, dt_start, dt_end,
             },
         }
 
-    # 5. Пересечение с заблокированным слотом (мастер вручную закрыл время)
+    # 5. Пересечение с заблокированным слотом (мастер вручную закрыл время).
+    # Учитываем буфер: запись не должна вплотную примыкать к закрытому времени.
     cur.execute(f"""
         SELECT id, notes, datetime_start, datetime_end
         FROM {schema}.master_slots
         WHERE master_id = {int(master_id)}
           AND status = 'blocked'
-          AND datetime_start < '{dt_end}'
-          AND datetime_end > '{dt_start}'
+          AND datetime_start < ('{dt_end}'::timestamptz + INTERVAL '{int(buf)} minutes')
+          AND datetime_end > ('{dt_start}'::timestamptz - INTERVAL '{int(buf)} minutes')
         LIMIT 1
     """)
     blk_slot = cur.fetchone()
