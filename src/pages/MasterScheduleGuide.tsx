@@ -36,10 +36,11 @@ const BOOKING_STATUSES = [
 ];
 
 const SLOT_STATUSES = [
-  { color: "bg-green-500", label: "Свободен", desc: "Гость может записаться" },
-  { color: "bg-yellow-400", label: "Ожидает", desc: "Есть заявка, ждёт вашего подтверждения" },
-  { color: "bg-red-500", label: "Занят", desc: "Все места заняты или заполнены" },
-  { color: "bg-zinc-400", label: "Заблокирован", desc: "Вы закрыли этот период вручную" },
+  { color: "bg-blue-500", label: "Рабочее окно", desc: "Открыто для записи — гость может занять" },
+  { color: "bg-yellow-400", label: "Бронь ждёт", desc: "Есть заявка, ждёт вашего подтверждения" },
+  { color: "bg-green-500", label: "Бронь принята", desc: "Запись подтверждена, гость придёт" },
+  { color: "bg-red-500", label: "Занято", desc: "Все места в окне заполнены" },
+  { color: "bg-zinc-400", label: "Закрыто", desc: "Перерыв, выходной или заблокированный период" },
 ];
 
 const SCENARIOS = [
@@ -119,6 +120,38 @@ const SCENARIOS = [
       "Новые слоты создадутся, уже существующие не изменятся",
     ],
   },
+  {
+    num: "8",
+    title: "Быстро провести приём по списку на день",
+    steps: [
+      "Откройте вкладку «Расписание» и переключитесь в режим «Список»",
+      "Выберите нужный день стрелками или кнопкой «Сегодня»",
+      "Сверху видно: число записей, доход за день и сколько ждут подтверждения",
+      "По каждой записи — кнопки связи (Звонок, WhatsApp, Telegram) и смены статуса",
+      "Отмечайте «Завершена» или «Не пришёл» прямо из списка",
+    ],
+  },
+  {
+    num: "9",
+    title: "Перезаписать расписание новым шаблоном",
+    steps: [
+      "Во вкладке «Шаблоны» откройте нужный шаблон и нажмите «Применить»",
+      "Укажите дату начала, число недель и включите режим перезаписи",
+      "Сначала посмотрите предпросмотр — сколько окон создастся и где пересечения",
+      "Если в периоде есть активные записи — система предупредит перед заменой",
+      "Подтвердите — старые окна заменятся, при необходимости брони отменятся",
+    ],
+  },
+  {
+    num: "10",
+    title: "Вернуть случайно удалённые записи",
+    steps: [
+      "Откройте вкладку «Расписание»",
+      "Нажмите «Корзина» — там лежат удалённые записи и резервные копии",
+      "Найдите нужную запись или копию расписания",
+      "Нажмите «Восстановить» — данные вернутся в календарь",
+    ],
+  },
 ];
 
 const FAQ = [
@@ -161,6 +194,30 @@ const FAQ = [
   {
     q: "Шаблон и Быстрый старт — в чём разница?",
     a: "Быстрый старт — это одноразовая быстрая настройка для тех, кто только начинает. Шаблоны — более гибкий инструмент с разными услугами в разные дни. Если нужна тонкая настройка — используйте Шаблоны.",
+  },
+  {
+    q: "Какие режимы просмотра календаря есть?",
+    a: "Четыре: «День» — один день по часам, «Неделя» — вся неделя сразу (основной режим), «Месяц» — обзор загрузки по дням, «Список» — лента записей дня с кнопками связи и сменой статуса. Выбранный режим запоминается до следующего входа.",
+  },
+  {
+    q: "Как перенести запись на другое время?",
+    a: "Прямо в календаре зажмите событие и перетащите на новое время или день — внизу появится полоса подтверждения со старым и новым временем. Нажмите «Подтвердить». Либо откройте меню записи и выберите «Перенести».",
+  },
+  {
+    q: "Что значат цветные полосы на окнах?",
+    a: "Это адреса приёма — каждому адресу задан свой цвет, и окно подсвечивается им, чтобы вы видели, где принимаете. Окно без полосы — это выезд к гостю, адрес гость указывает сам при записи. Настроить адреса и цвета можно в блоке «Адреса приёма» над календарём.",
+  },
+  {
+    q: "Применил шаблон повторно — старые окна не пропадут?",
+    a: "В обычном режиме нет: дни с уже существующими окнами пропускаются, добавляются только недостающие. Если нужно именно заменить расписание — включите режим перезаписи, тогда старые окна заменятся новыми (с предупреждением, если есть активные записи).",
+  },
+  {
+    q: "Можно ли восстановить удалённое расписание?",
+    a: "Да. На странице «Расписание» есть «Корзина» — туда попадают удалённые записи и резервные копии перед очисткой. Найдите нужное и нажмите «Восстановить».",
+  },
+  {
+    q: "Почему гость видит другое время, чем я?",
+    a: "Все времена показываются в вашем часовом поясе (задаётся в Настройках, отображается справа над календарём). Гостю из другого региона система автоматически пересчитывает время в его пояс — путаницы не будет.",
   },
 ];
 
@@ -477,14 +534,38 @@ export default function MasterScheduleGuide() {
                 </CardContent>
               </Card>
 
+              <Card className="mb-4">
+                <CardContent className="p-5">
+                  <p className="text-sm font-semibold mb-3">Что происходит при применении:</p>
+                  <div className="space-y-3">
+                    {[
+                      { icon: "Eye", title: "Предпросмотр", desc: "Перед созданием видно, сколько окон появится, сколько дней пропустится из-за выходных и где есть пересечения" },
+                      { icon: "SkipForward", title: "Обычный режим", desc: "Дни, где уже есть окна, пропускаются — ничего не ломается. В результате: «Создано X окон»" },
+                      { icon: "AlertTriangle", title: "С перезаписью", desc: "Если включить перезапись, старые окна в периоде заменяются новыми. Если там есть активные записи — система предупредит и попросит подтверждение (брони будут отменены)" },
+                      { icon: "CalendarX", title: "Выходные учитываются", desc: "Заблокированные дни (отпуск, выходные) шаблон пропускает автоматически" },
+                    ].map((a) => (
+                      <div key={a.title} className="flex items-start gap-3">
+                        <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Icon name={a.icon as "Eye"} size={14} className="text-muted-foreground" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium">{a.title}</span>
+                          <span className="text-sm text-muted-foreground"> — {a.desc}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
               <div className="grid sm:grid-cols-2 gap-3">
                 <InfoBox icon="Info" color="blue">
                   <strong>Несколько шаблонов.</strong> Можно создать разные шаблоны для разных периодов —
                   «Летнее», «Зимнее», «Праздничное». Применяйте нужный под конкретный месяц.
                 </InfoBox>
                 <InfoBox icon="AlertCircle" color="amber">
-                  <strong>Повторное применение</strong> не удаляет уже созданные слоты — оно только добавляет новые.
-                  Перед применением не нужно чистить календарь.
+                  <strong>Повторное применение</strong> в обычном режиме не удаляет уже созданные окна —
+                  только добавляет недостающие. Чистить календарь заранее не нужно.
                 </InfoBox>
               </div>
             </section>
@@ -496,14 +577,153 @@ export default function MasterScheduleGuide() {
                 Календарь
               </SectionTitle>
               <p className="text-sm text-muted-foreground mb-4">
-                Здесь вы видите все окна доступности, записи гостей и блокировки в виде сетки по дням и часам.
-                Навигируйте по неделям, кликайте на слоты, перетаскивайте их.
+                Календарь — это сетка вашего рабочего времени по дням и часам (с 07:00 до 23:00). Здесь
+                вы видите рабочие окна, записи гостей и закрытое время. Всё управление — прямо мышкой:
+                кликнули, перетащили, растянули. Ниже разобраны все режимы, кнопки и действия с примерами.
               </p>
+
+              {/* Режимы просмотра */}
+              <Card className="mb-4">
+                <CardContent className="p-5">
+                  <p className="text-sm font-semibold mb-3">Режимы просмотра — переключаются вверху календаря:</p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {[
+                      { icon: "Calendar", label: "День", desc: "Один день по часам. Удобно, когда день плотно расписан." },
+                      { icon: "CalendarRange", label: "Неделя", desc: "Вся неделя (пн–вс) сразу. Основной режим для планирования." },
+                      { icon: "CalendarDays", label: "Месяц", desc: "Обзор месяца целиком — видно загрузку по дням." },
+                      { icon: "List", label: "Список", desc: "Лента записей выбранного дня: время, гость, услуга, цена, кнопки связи." },
+                    ].map((v) => (
+                      <div key={v.label} className="flex gap-3 bg-muted/40 rounded-xl p-3">
+                        <Icon name={v.icon as "Calendar"} size={16} className="text-primary flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium">{v.label}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{v.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3 leading-snug">
+                    Выбранный режим запоминается — при следующем входе календарь откроется в нём же.
+                    Кнопки <strong>← →</strong> листают периоды, <strong>«Сегодня»</strong> возвращает к текущему дню.
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Три типа события */}
+              <Card className="mb-4">
+                <CardContent className="p-5">
+                  <p className="text-sm font-semibold mb-1">Создание: выделите время мышкой</p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Зажмите и протяните по свободному месту (в пределах одного дня) — откроется выбор
+                    «Что создать?» с тремя вариантами:
+                  </p>
+                  <div className="space-y-3">
+                    {[
+                      { color: "bg-blue-500", title: "Рабочее время", desc: "Открывает окно для записи гостей. Создаётся сразу. Пример: выделили пн 10:00–14:00 → гости могут записаться на это время." },
+                      { color: "bg-green-500", title: "Бронь", desc: "Запись конкретного гостя. Откроется форма: имя, телефон, услуга, комментарий. Пример: гость позвонил — заносите его на ср 16:00." },
+                      { color: "bg-zinc-400", title: "Закрыть время", desc: "Перерыв, обед, личное время — на этот интервал записаться нельзя. Создаётся сразу. Пример: закрыли 13:00–14:00 на обед." },
+                    ].map((t) => (
+                      <div key={t.title} className="flex items-start gap-3">
+                        <div className={`w-3 h-3 rounded-full flex-shrink-0 mt-1.5 ${t.color}`} />
+                        <div>
+                          <span className="text-sm font-medium">{t.title}</span>
+                          <span className="text-sm text-muted-foreground"> — {t.desc}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3 leading-snug">
+                    Время «прилипает» к шагу в 15 минут — удобно попадать в ровные интервалы.
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Кнопка + в заголовке дня */}
+              <Card className="mb-4">
+                <CardContent className="p-5">
+                  <p className="text-sm font-semibold mb-1">Кнопка «+запись» под датой дня</p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    В шапке каждого дня есть кнопка добавления. Она открывает окно с двумя вкладками:
+                  </p>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <Icon name="UserPlus" size={16} className="text-green-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium">Новая бронь</p>
+                        <p className="text-sm text-muted-foreground leading-snug">
+                          Время начала и конца (по умолчанию 10:00–11:00), услуга (подставит длительность и цену),
+                          имя гостя, телефон, комментарий.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Icon name="Lock" size={16} className="text-rose-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium">Блокировка дня</p>
+                        <p className="text-sm text-muted-foreground leading-snug">
+                          Два варианта: <strong>«Интервал»</strong> — закрыть часть дня (например, 14:00–18:00),
+                          или <strong>«Весь день»</strong> — закрыть полностью. Можно указать причину (гость её не видит).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Действия со слотом */}
+              <Card className="mb-4">
+                <CardContent className="p-5 space-y-4">
+                  <p className="text-sm font-semibold">Действия с событием на календаре:</p>
+                  <div className="space-y-3">
+                    {[
+                      { icon: "MousePointerClick", title: "Клик по событию", desc: "Открывает меню действий: детали, статус, кнопки связи и управления" },
+                      { icon: "Move", title: "Перетащить", desc: "Зажмите и перенесите на другое время или день. Внизу появится полоса подтверждения со старым и новым временем — «Подтвердить» или «Отмена»" },
+                      { icon: "Expand", title: "Растянуть", desc: "Потяните за нижний край, чтобы изменить длительность. Тоже с подтверждением" },
+                      { icon: "Trash2", title: "Удалить / Отменить", desc: "Для рабочего окна — «Удалить», для брони — «Отменить запись»" },
+                    ].map((a) => (
+                      <div key={a.title} className="flex items-start gap-3">
+                        <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Icon name={a.icon as "Move"} size={14} className="text-muted-foreground" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium">{a.title}</span>
+                          <span className="text-sm text-muted-foreground"> — {a.desc}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Меню действий по записи */}
+              <Card className="mb-4">
+                <CardContent className="p-5">
+                  <p className="text-sm font-semibold mb-1">Меню записи (по клику на бронь)</p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Открывает карточку гостя со всем необходимым в один экран:
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-2.5">
+                    {[
+                      { icon: "Phone", text: "Быстрая связь: Звонок, WhatsApp, Telegram" },
+                      { icon: "CheckCircle", text: "«Подтвердить запись» — если гость ждёт подтверждения" },
+                      { icon: "Flag", text: "«Завершена» — отметить, что сеанс прошёл" },
+                      { icon: "UserX", text: "«Не пришёл» — отметить неявку, время освободится" },
+                      { icon: "Move", text: "«Перенести» — перетащить бронь на новое время" },
+                      { icon: "MapPin", text: "Адрес встречи и ссылка на Яндекс.Карты (если задан)" },
+                    ].map((r) => (
+                      <div key={r.text} className="flex items-start gap-2.5 bg-muted/40 rounded-lg p-2.5">
+                        <Icon name={r.icon as "Phone"} size={14} className="text-primary flex-shrink-0 mt-0.5" />
+                        <span className="text-xs text-muted-foreground leading-snug">{r.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Статусы слотов */}
               <Card className="mb-4">
                 <CardContent className="p-5">
-                  <p className="text-sm font-semibold mb-3">Цвета окон в календаре:</p>
+                  <p className="text-sm font-semibold mb-3">Цвета событий в календаре:</p>
                   <div className="space-y-2">
                     {SLOT_STATUSES.map((s) => (
                       <div key={s.label} className="flex items-center gap-3">
@@ -516,54 +736,46 @@ export default function MasterScheduleGuide() {
                 </CardContent>
               </Card>
 
-              <Card className="mb-4">
-                <CardContent className="p-5 space-y-4">
-                  <p className="text-sm font-semibold">Что можно делать с окном:</p>
-                  <div className="space-y-3">
-                    {[
-                      { icon: "MousePointerClick", title: "Клик по окну", desc: "Открывает детали: список гостей, статус, кнопки управления" },
-                      { icon: "GripVertical", title: "Перетащить окно", desc: "Переместить на другое время или день (только если нет подтверждённых записей)" },
-                      { icon: "Expand", title: "Растянуть окно", desc: "Изменить длительность — потяните за нижний край" },
-                      { icon: "Plus", title: "Двойной клик по пустому месту", desc: "Быстро создать новое окно на выбранное время" },
-                      { icon: "Lock", title: "Заблокировать", desc: "Закрыть окно от записи — в деталях слота кнопка «Заблокировать»" },
-                      { icon: "Trash2", title: "Удалить", desc: "Убрать окно из расписания (только если нет записей)" },
-                    ].map((a) => (
-                      <div key={a.title} className="flex items-start gap-3">
-                        <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Icon name={a.icon as "Plus"} size={14} className="text-muted-foreground" />
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium">{a.title}</span>
-                          <span className="text-sm text-muted-foreground"> — {a.desc}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
+              {/* Адреса приёма */}
               <Card className="mb-4">
                 <CardContent className="p-5">
-                  <p className="text-sm font-semibold mb-3">Кнопки в заголовке календаря:</p>
-                  <div className="space-y-2">
+                  <p className="text-sm font-semibold mb-1">Адреса приёма и выезд</p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Над календарём есть блок «Адреса приёма». Каждому адресу присваивается свой цвет —
+                    рабочие окна помечаются цветной полосой, и вы сразу видите, где принимаете.
+                  </p>
+                  <ul className="space-y-1.5">
                     {[
-                      { label: "Новый слот", desc: "Создать окно доступности вручную — дата, время, услуга, максимум гостей" },
-                      { label: "Блокировка", desc: "Заблокировать диапазон дней (отпуск, болезнь, личные дела)" },
-                      { label: "Применить шаблон", desc: "Применить существующий шаблон на выбранный период" },
-                      { label: "Сегодня", desc: "Вернуться к текущей неделе" },
-                    ].map((b) => (
-                      <div key={b.label} className="flex items-start gap-3 text-sm">
-                        <span className="font-medium bg-muted px-2 py-0.5 rounded text-xs whitespace-nowrap">{b.label}</span>
-                        <span className="text-muted-foreground">{b.desc}</span>
-                      </div>
+                      "Цветная полоса на окне = конкретный адрес приёма",
+                      "Окно без полосы = выезд к гостю (адрес гость указывает сам при записи)",
+                      "Можно задать «адрес дня» — все окна этого дня по одному адресу",
+                      "Один из адресов помечается как «основной»",
+                    ].map((t) => (
+                      <li key={t} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <Icon name="Check" size={14} className="text-green-500 flex-shrink-0 mt-0.5" />
+                        <span>{t}</span>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </CardContent>
               </Card>
 
-              <InfoBox icon="Info" color="blue">
-                <strong>Процент заполненности</strong> под датой показывает, сколько окон в этот день занято.
-                0% — все свободны, 100% — все окна заняты или заблокированы.
+              {/* Нагрузка дня */}
+              <div className="grid sm:grid-cols-2 gap-3 mb-4">
+                <InfoBox icon="BarChart3" color="blue">
+                  <strong>Полоса нагрузки под датой</strong> показывает загрузку дня в процентах: 0% — всё
+                  свободно, 100% — всё занято или закрыто. У выходного дня вместо полосы — значок замка.
+                </InfoBox>
+                <InfoBox icon="Globe" color="blue">
+                  <strong>Часовой пояс</strong> показан справа вверху. Все времена — в вашем поясе; гость из
+                  другого региона увидит время в своём. Задаётся в разделе «Настройки».
+                </InfoBox>
+              </div>
+
+              <InfoBox icon="AlertCircle" color="amber">
+                <strong>Что нельзя удалить или перетащить.</strong> Рабочее окно с подтверждённой бронью не
+                получится просто удалить или перенести — сначала отмените или перенесите саму запись гостя.
+                Это защищает от случайной потери записей.
               </InfoBox>
             </section>
 
@@ -692,9 +904,24 @@ export default function MasterScheduleGuide() {
                       desc: "Если включено — новые заявки от гостей сразу получают статус «Подтверждена» без вашего участия. Если выключено — каждую нужно подтверждать вручную в разделе «Записи».",
                     },
                     {
+                      icon: "Bell",
+                      title: "Уведомление о новой записи",
+                      desc: "Приходит вам, когда гость записался. Так вы не пропустите новую заявку.",
+                    },
+                    {
+                      icon: "Clock",
+                      title: "Напоминание за 24 часа",
+                      desc: "Автоматическое напоминание о предстоящем сеансе — приходит за сутки. Помогает снизить неявки. Можно включить или выключить.",
+                    },
+                    {
+                      icon: "XCircle",
+                      title: "Уведомление об отмене",
+                      desc: "Сообщает, если гость отменил запись, чтобы вы вовремя освободили время.",
+                    },
+                    {
                       icon: "MapPin",
                       title: "Мои адреса",
-                      desc: "Сохранённые адреса для услуг формата «Выезд к гостю». Укажите откуда выезжаете — система учтёт это при создании услуги.",
+                      desc: "Сохранённые адреса приёма и точки выезда. Каждому можно задать название и цвет — он подсветит окна в календаре. Один адрес отмечается основным.",
                     },
                   ].map((s) => (
                     <div key={s.title} className="flex gap-3">
