@@ -629,15 +629,22 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
               ? selected.fullAddress : null;
             return (
               <div
-                className="rounded-2xl overflow-hidden"
-                style={{ border: "1.5px solid var(--card-border)" }}
+                className="rounded-2xl overflow-hidden transition-all"
+                style={{
+                  background: "var(--card-idle)",
+                  border: addressOpen ? "1px solid transparent" : "1px solid var(--card-border)",
+                  boxShadow: addressOpen ? "0 4px 14px rgba(200,131,74,0.35)" : "none",
+                  backgroundImage: addressOpen ? "linear-gradient(var(--card-idle), var(--card-idle)), linear-gradient(135deg, var(--c-terra), var(--c-sage))" : "none",
+                  backgroundOrigin: addressOpen ? "border-box" : undefined,
+                  backgroundClip: addressOpen ? "padding-box, border-box" : undefined,
+                }}
               >
                 {/* Заголовок аккордиона */}
                 <button
                   type="button"
                   onClick={() => setAddressOpen((v) => !v)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors touch-manipulation active:scale-[0.99]"
-                  style={{ background: "var(--card-idle)" }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left touch-manipulation active:scale-[0.99] transition-all"
+                  style={{ background: "transparent" }}
                 >
                   <div
                     className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
