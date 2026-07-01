@@ -978,6 +978,9 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
         toast.success(value === null ? "День помечен как выездной" : "Адрес дня сохранён");
       }
       setDayAddrDialog(null);
+      // Принудительно перерисовываем заголовки FullCalendar, т.к. он не реагирует
+      // на изменение внешнего состояния dayAddresses без явного render().
+      setTimeout(() => calRef.current?.getApi()?.render(), 0);
       // Слоты изменились (сброшены адреса) — перезагрузим данные календаря.
       if (clearSlotAddresses) await loadData();
     } catch (e) {
