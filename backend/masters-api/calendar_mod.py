@@ -831,7 +831,7 @@ def handle_templates(event, method, params, schema, headers):
             ) FILTER (WHERE r.id IS NOT NULL) as rules
             FROM {schema}.master_schedule_templates t
             LEFT JOIN {schema}.master_template_rules r ON r.template_id = t.id
-            WHERE t.master_id = {int(master_id)}
+            WHERE t.master_id = {int(master_id)} AND t.is_active = true
             GROUP BY t.id
             ORDER BY t.id
         """)
@@ -926,7 +926,8 @@ def handle_templates(event, method, params, schema, headers):
     if method == 'DELETE':
         body = json.loads(event.get('body', '{}'))
         tmpl_id = body.get('id') or params.get('id')
-        cur.execute(f"UPDATE {schema}.master_schedule_templates SET is_active = false WHERE id = {int(tmpl_id)}")
+        cur.execute(f"DELETE FROM {schema}.master_template_rules WHERE template_id = {int(tmpl_id)}")
+        cur.execute(f"DELETE FROM {schema}.master_schedule_templates WHERE id = {int(tmpl_id)}")
         conn.commit()
         conn.close()
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'success': True})}
