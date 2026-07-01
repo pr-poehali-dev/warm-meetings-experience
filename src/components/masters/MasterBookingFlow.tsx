@@ -696,7 +696,7 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
                       </div>
                       <span
                         className="text-sm font-semibold flex-1"
-                        style={{ color: addressFilter === "all" ? "#fff" : "var(--c-cream)" }}
+                        style={{ color: addressFilter === "all" ? "#fff" : "var(--foreground)" }}
                       >
                         Все адреса
                       </span>
