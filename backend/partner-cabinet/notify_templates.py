@@ -14,7 +14,7 @@ def handle_notify_templates(cur, conn, schema, user, method, params, event):
     owner_id = user['id']
 
     if method == 'GET':
-        return _list(cur, conn, schema, owner_id)
+        return _list(cur, conn, schema, owner_id, user)
     if method == 'POST':
         body = json.loads(event.get('body', '{}'))
         return _save(cur, conn, schema, owner_id, body)
@@ -26,8 +26,29 @@ def handle_notify_templates(cur, conn, schema, user, method, params, event):
     return respond(405, {'error': 'Метод не поддерживается'})
 
 
-def _list(cur, conn, schema, owner_id):
-    """Глобальные редактируемые шаблоны + персональные переопределения владельца."""
+def _get_user_roles(cur, schema, user_id):
+    """Возвращает список slug-ов активных ролей пользователя."""
+    cur.execute(f"""
+        SELECT r.slug FROM {schema}.user_roles ur
+        JOIN {schema}.roles r ON r.id = ur.role_id
+        WHERE ur.user_id = {int(user_id)} AND ur.status = 'active'
+    """)
+    return [row['slug'] for row in cur.fetchall()]
+
+
+def _list(cur, conn, schema, owner_id, user):
+    """Глобальные редактируемые шаблоны + персональные переопределения владельца.
+    Фильтрует по recipient_roles — показывает только шаблоны, релевантные ролям пользователя.
+    """
+    user_roles = _get_user_roles(cur, schema, owner_id)
+    # Если ролей нет — ничего не показываем
+    if not user_roles:
+        conn.close()
+        return respond(200, {'templates': []})
+
+    # Postgres: recipient_roles && ARRAY['master','organizer',...]
+    roles_literal = "ARRAY[" + ",".join(f"'{r}'" for r in user_roles) + "]"
+
     cur.execute(f"""
         SELECT g.event_type, g.name, g.description, g.category,
                g.variables, g.bodies AS global_bodies, g.default_channels,
@@ -36,6 +57,7 @@ def _list(cur, conn, schema, owner_id):
         LEFT JOIN {schema}.notification_templates_owner o
                ON o.event_type = g.event_type AND o.owner_id = {int(owner_id)}
         WHERE g.owner_editable = TRUE AND g.is_active = TRUE
+          AND g.recipient_roles && {roles_literal}
         ORDER BY g.category, g.name
     """)
     rows = []

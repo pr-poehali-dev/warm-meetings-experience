@@ -44,6 +44,10 @@ def handler(event, context):
         conn.close()
         return respond(401, {'error': 'Не авторизован'})
 
+    # notify_templates доступен всем авторизованным пользователям — фильтрация по ролям на уровне запроса
+    if resource == 'notify_templates':
+        return handle_notify_templates(cur, conn, schema, user, method, params, event)
+
     is_partner = check_partner_role(cur, schema, user['id'])
     if not is_partner:
         conn.close()
@@ -80,9 +84,6 @@ def handler(event, context):
         if method == 'POST':
             body = json.loads(event.get('body', '{}'))
             return handle_deactivate_bath(cur, conn, schema, user, body)
-
-    if resource == 'notify_templates':
-        return handle_notify_templates(cur, conn, schema, user, method, params, event)
 
     conn.close()
     return respond(400, {'error': 'Unknown resource'})
