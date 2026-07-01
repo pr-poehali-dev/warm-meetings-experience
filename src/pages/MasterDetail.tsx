@@ -732,6 +732,7 @@ export default function MasterDetail() {
                   preselectedServiceId={selectedServiceForFlow}
                   refreshKey={bookingRefreshKey}
                   onBookSlot={(option, service) => setBookingState({ option, service })}
+                  onAskMaster={() => setAskOpen(true)}
                 />
               </div>
             )}

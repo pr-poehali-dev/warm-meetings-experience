@@ -104,9 +104,11 @@ interface MasterBookingFlowProps {
   refreshKey?: number;
   /** Скрыть выбор услуги и заголовок (когда услуга уже выбрана извне). */
   hideServiceSelector?: boolean;
+  /** Открыть диалог «написать мастеру» */
+  onAskMaster?: () => void;
 }
 
-export default function MasterBookingFlow({ masterId, masterSlug, services, onBookSlot, preselectedServiceId, refreshKey = 0, hideServiceSelector = false }: MasterBookingFlowProps) {
+export default function MasterBookingFlow({ masterId, masterSlug, services, onBookSlot, preselectedServiceId, refreshKey = 0, hideServiceSelector = false, onAskMaster }: MasterBookingFlowProps) {
   const activeServices = useMemo(() => services.filter((s) => s.is_active), [services]);
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(preselectedServiceId ?? null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -712,16 +714,36 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
             </div>
           ) : !hasAnyOptions ? (
             <div
-              className="text-center py-8 rounded-2xl"
+              className="text-center py-8 px-5 rounded-2xl"
               style={{ background: "var(--card-idle)", border: "1px dashed var(--card-border)" }}
             >
-              <Icon name="CalendarX" size={32} className="mx-auto mb-2 opacity-30" />
-              <p className="text-sm font-medium" style={{ color: "var(--c-cream)" }}>
-                Нет свободного времени
+              <Icon name="CalendarX" size={32} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm font-semibold mb-1" style={{ color: "var(--c-cream)" }}>
+                {selectedService?.service_format === "at_home"
+                  ? "Мастер пока не открыл окна для выезда"
+                  : selectedService?.service_format === "on_site"
+                  ? "Нет свободного времени для приёма"
+                  : "Нет свободного времени"}
               </p>
-              <p className="text-xs mt-1" style={{ color: "var(--c-text)" }}>
-                Попробуйте позже или свяжитесь с мастером напрямую
+              <p className="text-xs mb-4" style={{ color: "var(--c-text)" }}>
+                {selectedService?.service_format === "at_home"
+                  ? "Напишите мастеру — он подберёт удобную дату для выезда к вам"
+                  : "Попробуйте позже или уточните у мастера"}
               </p>
+              {onAskMaster && (
+                <button
+                  type="button"
+                  onClick={onAskMaster}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all touch-manipulation active:scale-95"
+                  style={{
+                    background: "linear-gradient(135deg, var(--c-terra), var(--c-sage))",
+                    color: "#fff",
+                  }}
+                >
+                  <Icon name="MessageCircleQuestion" size={15} />
+                  Написать мастеру
+                </button>
+              )}
             </div>
           ) : (
             <>
