@@ -545,6 +545,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           max_clients: 1,
           status: "available",
           notes: payload.comment || "",
+          ...(payload.address_id !== undefined ? { address_id: payload.address_id } : {}),
         });
         toast.success("Рабочее время добавлено");
       } else if (mode === "block") {
@@ -1203,6 +1204,7 @@ const MasterCalendarDnd = forwardRef<MasterCalendarDndRef, Props>(function Maste
           endStr={createMode.endStr}
           allDay={createMode.allDay}
           services={services}
+          addresses={addresses}
           onCancel={() => setCreateMode({ open: false, start: null, end: null, startStr: null, endStr: null, allDay: false })}
           onCreate={handleCreate}
         />

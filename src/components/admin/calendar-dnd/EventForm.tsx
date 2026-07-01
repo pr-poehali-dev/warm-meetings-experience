@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Icon from "@/components/ui/icon";
-import { MasterService } from "@/lib/master-calendar-api";
+import { MasterService, MasterAddress } from "@/lib/master-calendar-api";
 
 export type CreateMode = "booking" | "block" | "break" | "work";
 // "block" и "break" семантически одинаковы — оба закрывают время от записи.
@@ -19,6 +19,8 @@ export interface CreatePayload {
   // Переопределение времени (HH:MM), когда пользователь правит его в форме.
   time_start?: string;
   time_end?: string;
+  // Адрес слота: number = конкретный адрес, null = явный выезд
+  address_id?: number | null;
 }
 
 interface Props {
@@ -29,6 +31,7 @@ interface Props {
   endStr?: string | null;
   allDay?: boolean;
   services: MasterService[];
+  addresses?: MasterAddress[];
   onCancel: () => void;
   onCreate: (mode: CreateMode, payload: CreatePayload) => Promise<void> | void;
 }
@@ -73,8 +76,8 @@ const fmtIsoDay = (iso: string) => {
   return `${wdName(p.y, p.mo, p.d)}, ${pad(p.d)} ${MM[p.mo - 1]}`;
 };
 
-export default function EventForm({ start, end, startStr, endStr, allDay, services, onCancel, onCreate }: Props) {
-  const [step, setStep] = useState<"choose" | "form">(allDay ? "form" : "choose");
+export default function EventForm({ start, end, startStr, endStr, allDay, services, addresses = [], onCancel, onCreate }: Props) {
+  const [step, setStep] = useState<"choose" | "form" | "address">(allDay ? "form" : "choose");
   const [mode, setMode] = useState<CreateMode>(allDay ? "block" : "booking");
 
   // Поля формы
@@ -83,6 +86,8 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
   const [serviceId, setServiceId] = useState<string>("");
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
+  // Выбранный адрес для рабочего времени: undefined = не выбрано, null = выезд, number = id адреса
+  const [selectedAddress, setSelectedAddress] = useState<number | null | undefined>(undefined);
 
   // Редактируемое время (HH:MM) — извлекаем из «экранной» ISO-строки.
   const initTime = (iso?: string | null) => (iso ? iso.slice(11, 16) : "09:00");
@@ -96,18 +101,34 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
     setClientPhone("");
     setServiceId("");
     setComment("");
+    setSelectedAddress(undefined);
     setTimeStart(initTime(startStr));
     setTimeEnd(initTime(endStr));
   }, [start, end, allDay, startStr, endStr]);
 
   const pick = (m: CreateMode) => {
-    // Для «закрыть время» и «рабочее время» форма не нужна — создаём сразу.
-    if (m === "block" || m === "work") {
+    if (m === "block") {
       onCreate(m, {});
+      return;
+    }
+    if (m === "work") {
+      // Если адресов нет — создаём сразу без выбора
+      if (addresses.length === 0) {
+        onCreate(m, {});
+        return;
+      }
+      // Иначе показываем шаг выбора адреса
+      setMode(m);
+      setStep("address");
       return;
     }
     setMode(m);
     setStep("form");
+  };
+
+  const confirmAddress = () => {
+    // selectedAddress: undefined → не выбрано (не должно быть), null → выезд, number → адрес
+    onCreate("work", { address_id: selectedAddress ?? null });
   };
 
   const submit = async () => {
@@ -154,6 +175,7 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
 
   const title =
     step === "choose" ? "Что создать?" :
+    step === "address" ? "Рабочее время" :
     mode === "booking" ? "Новая бронь" :
     mode === "block" ? "Заблокировать время" :
     mode === "work" ? "Рабочее время" :
@@ -190,9 +212,12 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
               <div className="w-3 h-3 rounded-full" style={{ background: "#2196F3" }} />
               <div className="flex-1">
                 <div className="font-semibold text-sm">Рабочее время</div>
-                <div className="text-xs text-muted-foreground">Открыть время для записи клиентов</div>
+                <div className="text-xs text-muted-foreground">
+                  Открыть время для записи клиентов
+                  {addresses.length > 0 && " · укажите адрес"}
+                </div>
               </div>
-              <Icon name="Plus" size={14} className="text-muted-foreground" />
+              <Icon name={addresses.length > 0 ? "ChevronRight" : "Plus"} size={14} className="text-muted-foreground" />
             </button>
             <button
               onClick={() => pick("booking")}
@@ -216,6 +241,63 @@ export default function EventForm({ start, end, startStr, endStr, allDay, servic
               </div>
               <Icon name="Lock" size={14} className="text-muted-foreground" />
             </button>
+          </div>
+        ) : step === "address" ? (
+          <div className="space-y-3 mt-2">
+            <p className="text-xs text-muted-foreground">Где будет приём? Гость увидит адрес на странице записи.</p>
+            <div className="grid grid-cols-1 gap-2">
+              {addresses.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setSelectedAddress(a.id)}
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition-colors text-left ${
+                    selectedAddress === a.id
+                      ? "border-primary bg-primary/5"
+                      : "hover:bg-muted/50"
+                  }`}
+                >
+                  <span
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ background: a.color || "#94a3b8" }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{a.label || a.address_text}</div>
+                    {a.label && <div className="text-xs text-muted-foreground truncate">{a.address_text}</div>}
+                  </div>
+                  {selectedAddress === a.id && <Icon name="Check" size={14} className="text-primary flex-shrink-0" />}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setSelectedAddress(null)}
+                className={`flex items-center gap-3 p-3 rounded-lg border transition-colors text-left ${
+                  selectedAddress === null
+                    ? "border-primary bg-primary/5"
+                    : "hover:bg-muted/50"
+                }`}
+              >
+                <Icon name="Car" size={14} className="text-blue-400 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="font-medium text-sm">Выезд к клиенту</div>
+                  <div className="text-xs text-muted-foreground">Клиент укажет свой адрес при записи</div>
+                </div>
+                {selectedAddress === null && <Icon name="Check" size={14} className="text-primary flex-shrink-0" />}
+              </button>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" size="sm" onClick={() => setStep("choose")} className="flex-1">
+                Назад
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1"
+                disabled={selectedAddress === undefined || saving}
+                onClick={confirmAddress}
+              >
+                {saving ? "Создание…" : "Создать"}
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-2 mt-2">
