@@ -19,6 +19,7 @@ import {
   CenterEvent,
 } from "@/lib/notify-api";
 import { userProfileApi } from "@/lib/user-api";
+import PartnerNotifications from "@/components/partner/PartnerNotifications";
 
 const CHANNEL_META: Record<CenterChannel, { label: string; icon: string; color: string }> = {
   telegram: { label: "Telegram", icon: "Send", color: "text-sky-500" },
@@ -59,6 +60,7 @@ export default function NotificationsCenterSection({
   selectedUserId,
   onUserChange,
 }: Props) {
+  const [tab, setTab] = useState<"settings" | "templates">("settings");
   const [state, setState] = useState<NotifyCenterState | null>(null);
   const [loading, setLoading] = useState(true);
   const [wizard, setWizard] = useState<"telegram" | "vk" | "email" | null>(null);
@@ -96,6 +98,26 @@ export default function NotificationsCenterSection({
         </p>
       </div>
 
+      {/* ── Вкладки ── */}
+      <div className="flex gap-1 border-b border-border">
+        {(["settings", "templates"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              tab === t
+                ? "border-violet-500 text-violet-600"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t === "settings" ? "Настройки" : "Тексты уведомлений"}
+          </button>
+        ))}
+      </div>
+
+      {tab === "templates" && <PartnerNotifications />}
+
+      {tab === "settings" && <>
       {/* ── Выбор пользователя (если передан список) ── */}
       {userOptions && userOptions.length > 1 && onUserChange && (
         <div className="flex items-center gap-3">
@@ -299,6 +321,7 @@ export default function NotificationsCenterSection({
         schedule={state.schedule}
         onChange={(sch) => setState((p) => (p ? { ...p, schedule: sch } : p))}
       />
+      </>}
     </div>
   );
 }

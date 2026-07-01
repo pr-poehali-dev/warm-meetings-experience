@@ -197,13 +197,7 @@ export default function WorkspaceSidebar({
           label="Центр уведомлений"
           accent="text-violet-500"
         />
-        <NavItem
-          active={roleTab === "partner" && partnerView === "notifications"}
-          onClick={() => switchPartnerView("notifications")}
-          icon="FileText"
-          label="Тексты уведомлений"
-          accent="text-violet-400"
-        />
+
         <NavItem
           active={roleTab === "blog"}
           onClick={() => switchRoleTab("blog")}
