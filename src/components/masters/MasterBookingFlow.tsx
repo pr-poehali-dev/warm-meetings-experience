@@ -36,12 +36,13 @@ function slotAddressKey(slot: MasterSlot): string {
   return "none";
 }
 
-/** Короткое название адреса для бейджа/фильтра. */
+/** Короткое название адреса: последние 2 части (улица + дом). */
 function shortAddress(text?: string | null): string {
   if (!text) return "Адрес";
   const parts = text.split(",").map((p) => p.trim()).filter(Boolean);
-  // берём первые 2 значимые части (улица + дом, либо город + улица)
-  return parts.slice(0, 2).join(", ") || text;
+  if (parts.length <= 2) return text;
+  // последние 2 части — обычно улица + номер дома
+  return parts.slice(-2).join(", ");
 }
 
 /** Ссылка на Яндекс.Карты по координатам или тексту адреса. */
@@ -625,8 +626,7 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
           {availableAddresses.length > 1 ? (() => {
             const selected = availableAddresses.find((a) => a.key === addressFilter);
             const labelText = addressFilter === "all" ? "Все адреса" : (selected?.label ?? "Адрес");
-            const subText = addressFilter !== "all" && selected?.fullAddress && selected.fullAddress !== selected.label
-              ? selected.fullAddress : null;
+            const subText = addressFilter !== "all" && selected?.fullAddress ? selected.fullAddress : null;
             return (
               <div
                 className="rounded-2xl overflow-hidden transition-all"
@@ -729,7 +729,7 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
                               <div className="text-sm font-semibold leading-tight" style={{ color: active ? "#fff" : "var(--c-cream)" }}>
                                 {a.label}
                               </div>
-                              {a.fullAddress && a.fullAddress !== a.label && (
+                              {a.fullAddress && (
                                 <div className="text-xs mt-0.5 leading-snug" style={{ color: active ? "rgba(255,255,255,0.7)" : "var(--c-muted)" }}>
                                   {a.fullAddress}
                                 </div>
