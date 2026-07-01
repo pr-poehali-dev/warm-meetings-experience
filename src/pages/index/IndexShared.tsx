@@ -31,7 +31,7 @@ export const THEME_STYLES = `
     --card-meta:     rgba(255,255,255,0.55);
     --card-hover:    rgba(237,224,204,0.09);
     --card-idle:     rgba(237,224,204,0.05);
-    --card-border:   rgba(237,224,204,0.1);
+    --card-border:   rgba(237,224,204,0.22);
     --faq-answer:    rgba(217,237,232,0.6);
     --faq-border:    rgba(237,224,204,0.1);
     --hero-text-from:  #EDE0CC;

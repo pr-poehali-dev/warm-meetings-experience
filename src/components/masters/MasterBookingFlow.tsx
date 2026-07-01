@@ -632,7 +632,7 @@ export default function MasterBookingFlow({ masterId, masterSlug, services, onBo
                 className="rounded-2xl overflow-hidden transition-all"
                 style={{
                   background: "var(--card-idle)",
-                  border: addressOpen ? "1.5px solid var(--c-terra)" : "1.5px solid var(--card-border)",
+                  border: addressOpen ? "1.5px solid var(--c-terra)" : "1.5px solid color-mix(in srgb, currentColor 18%, transparent)",
                   boxShadow: addressOpen ? "0 4px 14px rgba(200,131,74,0.25)" : "none",
                 }}
               >
