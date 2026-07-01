@@ -57,6 +57,15 @@
     --header-nav-hover-bg: rgba(0, 0, 0, 0.06);
     --header-login-bg: rgba(0, 0, 0, 0.06);
     --header-login-border: rgba(0, 0, 0, 0.15);
+
+    --c-terra: #c8834a;
+    --c-sage: #7a9e87;
+    --c-cream: #2d2318;
+    --c-text: #3d3028;
+    --c-muted: rgba(45, 35, 24, 0.5);
+    --c-faint: rgba(45, 35, 24, 0.25);
+    --card-idle: #f5efe8;
+    --card-border: rgba(45, 35, 24, 0.12);
   }
 
   .dark {
@@ -101,6 +110,15 @@
     --header-nav-hover-bg: rgba(255, 255, 255, 0.1);
     --header-login-bg: rgba(255, 255, 255, 0.1);
     --header-login-border: rgba(255, 255, 255, 0.2);
+
+    --c-terra: #c8834a;
+    --c-sage: #7a9e87;
+    --c-cream: #ede0cc;
+    --c-text: rgba(237, 224, 204, 0.85);
+    --c-muted: rgba(237, 224, 204, 0.45);
+    --c-faint: rgba(237, 224, 204, 0.2);
+    --card-idle: rgba(255, 255, 255, 0.06);
+    --card-border: rgba(255, 255, 255, 0.1);
   }
 
   [data-sparcom-theme="light"] {
