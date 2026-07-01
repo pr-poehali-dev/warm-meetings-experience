@@ -71,7 +71,7 @@ export const THEME_STYLES = `
     --card-meta:     rgba(45,35,24,0.45);
     --card-hover:    rgba(200,131,74,0.07);
     --card-idle:     rgba(255,255,255,0.8);
-    --card-border:   rgba(200,131,74,0.15);
+    --card-border:   rgba(200,131,74,0.35);
     --faq-answer:    rgba(35,40,38,0.6);
     --faq-border:    rgba(200,131,74,0.12);
     --hero-text-from:  #2d2318;
