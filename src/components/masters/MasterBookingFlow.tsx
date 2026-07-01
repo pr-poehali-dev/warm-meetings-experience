@@ -55,7 +55,8 @@ function mapUrl(slot: { slot_latitude?: number | null; slot_longitude?: number |
 
 interface AddressInfo {
   key: string;
-  label: string;
+  name: string;       // краткое название (label из БД или shortAddress)
+  label: string;      // для обратной совместимости = name
   fullAddress: string | null;
   latitude: number | null;
   longitude: number | null;

@@ -73,6 +73,7 @@ export interface MasterSlot {
   service_price?: number;
   address_id?: number | null;
   slot_address?: string | null;
+  slot_address_label?: string | null;
   slot_latitude?: number | null;
   slot_longitude?: number | null;
   has_address?: boolean;

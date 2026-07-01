@@ -315,7 +315,8 @@ def handle_slots(event, method, params, schema, headers):
 
         query = f"""
             SELECT s.*, ms.name as service_name, ms.duration_minutes, ms.price as service_price,
-                   a.address_text as slot_address, a.latitude as slot_latitude, a.longitude as slot_longitude
+                   a.address_text as slot_address, a.latitude as slot_latitude, a.longitude as slot_longitude,
+                   a.label as slot_address_label
             FROM {schema}.master_slots s
             LEFT JOIN {schema}.master_services ms ON s.service_id = ms.id
             LEFT JOIN {schema}.master_addresses a ON s.address_id = a.id
