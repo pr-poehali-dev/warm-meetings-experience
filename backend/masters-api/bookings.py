@@ -1,6 +1,5 @@
 import json
 import os
-import threading
 import psycopg2.extras
 from datetime import datetime
 from shared import (
@@ -1334,30 +1333,21 @@ def handle_bookings(event, method, params, schema, headers):
         except Exception:
             pass
 
-        # Email/Telegram/VK уведомления — в фоновом потоке, чтобы не блокировать ответ
-        _booking_snap = dict(booking)
-        _svc_snap = svc_name_for_notify
-        _schema_snap = schema
-        _mid_snap = master_id
-
-        def _bg_notify():
-            try:
-                _c = get_conn()
-                _cur = _c.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-                try:
-                    _notify_master_about_booking(_cur, _schema_snap, _mid_snap, _booking_snap, _svc_snap)
-                except Exception:
-                    pass
-                try:
-                    _notify_client_about_new_booking(_cur, _schema_snap, _mid_snap, _booking_snap, _svc_snap)
-                except Exception:
-                    pass
-                _c.commit()
-                _c.close()
-            except Exception:
-                pass
-
-        threading.Thread(target=_bg_notify, daemon=True).start()
+        # Email/Telegram/VK уведомления — синхронно до ответа.
+        # На serverless фоновый поток убивается вместе с процессом после return,
+        # поэтому отправляем в основном потоке. Сбои каждого канала изолированы.
+        try:
+            _notify_master_about_booking(cur, schema, master_id, booking, svc_name_for_notify)
+        except Exception:
+            pass
+        try:
+            _notify_client_about_new_booking(cur, schema, master_id, booking, svc_name_for_notify)
+        except Exception:
+            pass
+        try:
+            conn.commit()
+        except Exception:
+            pass
 
         conn.close()
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(booking, default=str)}
