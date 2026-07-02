@@ -30,16 +30,17 @@ interface Props {
   onToggleVisibility: (event: OrgEvent) => void;
   onDeleteEvent: (event: OrgEvent) => void;
   repeatLoading?: boolean;
+  initialFilter?: StatusFilter;
 }
 
 export default function OrgDashboard({
   data, events, eventsLoading,
   onCreateEvent, onManageEvent, onEditEvent,
   onDuplicateEvent, onRepeat, onToggleVisibility, onDeleteEvent,
-  repeatLoading,
+  repeatLoading, initialFilter,
 }: Props) {
   const { user, stats } = data;
-  const [filter, setFilter] = useState<StatusFilter>("all");
+  const [filter, setFilter] = useState<StatusFilter>(initialFilter ?? "all");
   const [search, setSearch] = useState("");
   const [repeatEvent, setRepeatEvent] = useState<OrgEvent | null>(null);
 

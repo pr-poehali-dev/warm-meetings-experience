@@ -118,6 +118,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
 
   // Диалог гостей события (CRM)
   const [guestsDialog, setGuestsDialog] = useState<{ id: number; title: string } | null>(null);
+  const [orgInitialFilter, setOrgInitialFilter] = useState<"all" | "active" | "past" | "drafts">("all");
 
   // Лёгкая подсветка раздела в цвет роли (как в боковом меню)
   const roleAccent = (accent: "orange" | "emerald" | "violet", node: React.ReactNode) => {
@@ -207,7 +208,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         isMaster={isMaster}
         isOrganizer={isOrganizer}
         onGoToMasterSection={(s) => { switchRoleTab("master"); props.switchMasterSection(s); }}
-        onGoToOrgView={(v) => { switchRoleTab("organizer"); setOrgView(v); }}
+        onGoToOrgView={(v, filter) => { switchRoleTab("organizer"); setOrgView(v); if (filter) setOrgInitialFilter(filter); else setOrgInitialFilter("all"); }}
         onCreateEvent={() => { switchRoleTab("organizer"); setOrgView("create"); }}
       />
     );
@@ -317,9 +318,11 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
       case "dashboard":
         return wrap(orgDashboard ? (
           <OrgDashboard
+            key={orgInitialFilter}
             data={orgDashboard}
             events={events}
             eventsLoading={false}
+            initialFilter={orgInitialFilter}
             onCreateEvent={() => setOrgView("create")}
             onManageEvent={(ev) => { setSelectedEvent(ev); setGuestsDialog({ id: ev.id, title: ev.title }); }}
             onEditEvent={async (ev) => {

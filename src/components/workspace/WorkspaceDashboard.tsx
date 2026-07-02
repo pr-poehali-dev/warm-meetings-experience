@@ -13,7 +13,7 @@ interface WorkspaceDashboardProps {
   isMaster: boolean;
   isOrganizer: boolean;
   onGoToMasterSection: (s: MasterSection) => void;
-  onGoToOrgView: (v: OrgView) => void;
+  onGoToOrgView: (v: OrgView, filter?: "all" | "active" | "past" | "drafts") => void;
   onCreateEvent: () => void;
 }
 
@@ -217,7 +217,7 @@ export default function WorkspaceDashboard({
               value={orgData.stats.upcoming_events ?? upcomingEvents.length}
               label="Предстоящих событий"
               hint="Мои события"
-              onClick={() => onGoToOrgView("dashboard")}
+              onClick={() => onGoToOrgView("dashboard", "active")}
             />
             <StatCard
               icon="Users" color="text-violet-600 dark:text-violet-400" bg="bg-violet-500/15"
