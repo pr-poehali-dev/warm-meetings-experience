@@ -58,6 +58,12 @@ const NAV: NavGroup[] = [
         hint: "Заявки организаторов",
         badgeKey: "moderation",
       },
+      {
+        view: "event-types",
+        label: "Типы мероприятий",
+        icon: "Tags",
+        hint: "Список категорий событий",
+      },
     ],
   },
   {
@@ -142,12 +148,6 @@ const NAV: NavGroup[] = [
         icon: "Video",
         hint: "Модерация внешних видео",
         badgeKey: "videos",
-      },
-      {
-        view: "event-types",
-        label: "Типы мероприятий",
-        icon: "Tags",
-        hint: "Список категорий событий",
       },
     ],
   },
