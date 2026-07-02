@@ -87,12 +87,12 @@ export default function AdminOverview({
       tone: badges.support > 5 ? "danger" : badges.support > 0 ? "warning" : "muted",
     },
     {
-      label: "Заявки калькулятора",
-      hint: "Новые брони",
-      icon: "FileText",
-      count: badges.calculator,
-      view: "bookings",
-      tone: badges.calculator > 0 ? "warning" : "muted",
+      label: "Журнал ошибок",
+      hint: "Ошибки сайта и сервера",
+      icon: "Bug",
+      count: 0,
+      view: "errors",
+      tone: "muted",
     },
     {
       label: "Гости (CRM)",
