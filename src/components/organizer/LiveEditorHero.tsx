@@ -26,7 +26,7 @@ export default function LiveEditorHero({ fd, set, showSensitive = false }: Props
 
   const typeColors = getTypeColors(fd.event_type || "знакомство");
   const typeIcon = fd.event_type_icon || "Users";
-  const typeLabel = fd.event_type || "знакомство";
+  const typeLabel = types.find(t => t.value === fd.event_type)?.label || fd.event_type || "знакомство";
 
   return (
     <>
