@@ -160,9 +160,24 @@ export default function AdminErrors() {
                       className="mt-2 p-2 rounded bg-muted text-[11px] overflow-x-auto whitespace-pre-wrap break-words max-h-64 cursor-pointer select-all"
                       title="Нажмите, чтобы скопировать"
                       onClick={() => {
-                        navigator.clipboard.writeText(e.stack ?? "").then(() => {
-                          toast.success("Скопировано");
-                        });
+                        const text = e.stack ?? "";
+                        try {
+                          if (navigator.clipboard) {
+                            navigator.clipboard.writeText(text).then(() => toast.success("Скопировано")).catch(() => {
+                              const ta = document.createElement("textarea");
+                              ta.value = text; ta.style.cssText = "position:fixed;opacity:0";
+                              document.body.appendChild(ta); ta.focus(); ta.select();
+                              document.execCommand("copy"); document.body.removeChild(ta);
+                              toast.success("Скопировано");
+                            });
+                          } else {
+                            const ta = document.createElement("textarea");
+                            ta.value = text; ta.style.cssText = "position:fixed;opacity:0";
+                            document.body.appendChild(ta); ta.focus(); ta.select();
+                            document.execCommand("copy"); document.body.removeChild(ta);
+                            toast.success("Скопировано");
+                          }
+                        } catch { toast.error("Не удалось скопировать"); }
                       }}
                     >
                       {e.stack}
