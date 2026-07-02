@@ -115,14 +115,13 @@ export default function WorkspaceSidebar({
       {/* Мастер-разделы */}
       {isMaster && (
         <CollapsibleSection sectionKey="master" icon="Flame" accent="text-orange-500" tint="bg-orange-500/[0.04] border-orange-500/15" label="Мастер-услуги">
-          {MASTER_NAV.filter((n) => n.id !== "dashboard").map((n) => (
+          {MASTER_NAV.filter((n) => n.id !== "dashboard" && n.id !== "messages").map((n) => (
             <NavItem
               key={n.id}
               active={roleTab === "master" && masterSection === n.id}
               onClick={() => switchMasterSection(n.id)}
               icon={n.icon}
               label={n.label}
-              badge={n.id === "messages" ? unreadMessages || undefined : undefined}
             />
           ))}
         </CollapsibleSection>
@@ -143,13 +142,6 @@ export default function WorkspaceSidebar({
             onClick={onCreateOrgEvent}
             icon="Plus"
             label="Создать событие"
-          />
-          <NavItem
-            active={roleTab === "organizer" && orgView === "questions"}
-            onClick={() => switchOrgView("questions")}
-            icon="MessageCircleQuestion"
-            label="Вопросы"
-            badge={unreadQuestions || undefined}
           />
           <NavItem
             active={roleTab === "organizer" && orgView === "calculator"}
@@ -182,6 +174,16 @@ export default function WorkspaceSidebar({
 
       {/* Общий блок: Визитка + Telegram + Рассылки — для всех коммерческих ролей */}
       <div className="border-t border-border/60 pt-2 mt-3">
+        {(isMaster || isOrganizer) && (
+          <NavItem
+            active={roleTab === "messages"}
+            onClick={() => switchRoleTab("messages")}
+            icon="MessagesSquare"
+            label="Общение"
+            accent="text-sky-500"
+            badge={(unreadMessages || 0) + (unreadQuestions || 0) || undefined}
+          />
+        )}
         <NavItem
           active={roleTab === "landing"}
           onClick={() => switchRoleTab("landing")}

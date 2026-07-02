@@ -347,6 +347,8 @@ export default function Workspace() {
               tgLinked={tgLinked}
               tgChannelsCount={tgChannelsCount}
               refreshTgInfo={loadTgInfo}
+              unreadMessages={unreadMessages}
+              unreadQuestions={orgDashboard?.unread_questions ?? orgDashboard?.stats?.unread_questions ?? 0}
             />
           </div>
         </main>

@@ -31,6 +31,7 @@ import NotificationsCenterSection from "@/components/workspace/NotificationsCent
 import MasterAddresses from "@/components/master/addresses/MasterAddresses";
 import MasterScheduleSettings from "@/components/master/MasterScheduleSettings";
 import MasterMessages from "@/components/master/MasterMessages";
+import MessagesHub from "@/components/workspace/MessagesHub";
 import { RoleTab, MasterSection, OrgView, PartnerView } from "./workspace-types";
 
 interface WorkspaceContentProps {
@@ -75,6 +76,10 @@ interface WorkspaceContentProps {
   tgLinked: boolean;
   tgChannelsCount: number;
   refreshTgInfo: () => void;
+
+  // Messages hub
+  unreadMessages?: number;
+  unreadQuestions?: number;
 }
 
 export default function WorkspaceContent(props: WorkspaceContentProps) {
@@ -112,6 +117,8 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
     tgLinked,
     tgChannelsCount,
     refreshTgInfo,
+    unreadMessages,
+    unreadQuestions,
   } = props;
 
   const [confirm, ConfirmDialog] = useConfirm();
@@ -143,6 +150,19 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
       {ConfirmDialog}
     </>
   );
+
+  // ─── Общение: Сообщения (мастер) + Вопросы (организатор) ───────────────────
+  if (roleTab === "messages") {
+    return (
+      <MessagesHub
+        isMaster={isMaster}
+        isOrganizer={isOrganizer}
+        masterId={masterId}
+        unreadMessages={unreadMessages}
+        unreadQuestions={unreadQuestions}
+      />
+    );
+  }
 
   // ─── Универсальный раздел «Моя визитка» для всех коммерческих ролей ────────
   if (roleTab === "landing") {
@@ -232,7 +252,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
       case "schedule": return roleAccent("orange", <>{backBtn}<MasterScheduleSection masterId={masterId} masterSlug={masterSlug} onGoToServices={() => switchMasterSection("services")} onGoToSettings={() => switchMasterSection("settings")} /></>);
       case "services": return roleAccent("orange", <>{backBtn}<MasterServicesSection masterId={masterId} /></>);
       case "bookings": return roleAccent("orange", <>{backBtn}<MasterBookingsSection masterId={masterId} /></>);
-      case "messages": return roleAccent("orange", <>{backBtn}<MasterMessages masterId={masterId} /></>);
+      case "messages": switchRoleTab("messages"); return null;
       case "reviews": return roleAccent("orange", <>{backBtn}<MasterReviewsSection masterId={masterId} /></>);
       case "finances": return roleAccent("orange", <>{backBtn}<MasterFinancesSection masterId={masterId} /></>);
     }
@@ -420,7 +440,7 @@ export default function WorkspaceContent(props: WorkspaceContentProps) {
         }
         return wrap(null);
       case "calculator": return wrap(<EventCalculator onCreateEvent={(data) => { setFormData(data as OrgEvent); setSelectedEvent(null); setOrgView("create"); }} />);
-      case "questions": return wrap(<EventQuestionsSection />);
+      case "questions": switchRoleTab("messages"); return wrap(null);
       case "blog": return wrap(<div className="max-w-3xl mx-auto"><MyArticles /></div>);
     }
   }
