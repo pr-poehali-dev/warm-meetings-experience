@@ -156,7 +156,15 @@ export default function AdminErrors() {
                     )}
                   </div>
                   {expanded === e.id && e.stack && (
-                    <pre className="mt-2 p-2 rounded bg-muted text-[11px] overflow-x-auto whitespace-pre-wrap break-words max-h-64">
+                    <pre
+                      className="mt-2 p-2 rounded bg-muted text-[11px] overflow-x-auto whitespace-pre-wrap break-words max-h-64 cursor-pointer select-all"
+                      title="Нажмите, чтобы скопировать"
+                      onClick={() => {
+                        navigator.clipboard.writeText(e.stack ?? "").then(() => {
+                          toast.success("Скопировано");
+                        });
+                      }}
+                    >
                       {e.stack}
                     </pre>
                   )}
