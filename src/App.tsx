@@ -1,5 +1,7 @@
 import { lazy, Suspense, ComponentType } from "react";
 import { ThemeProvider } from "next-themes";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { installGlobalErrorHandlers } from "./lib/errorReporter";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -82,6 +84,8 @@ const FunctionalDescription = lazyWithRetry(() => import("./pages/FunctionalDesc
 const Support = lazyWithRetry(() => import("./pages/Support"));
 const LoaderPreview = lazyWithRetry(() => import("./pages/LoaderPreview"));
 
+installGlobalErrorHandlers();
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -162,6 +166,7 @@ const AppContent = () => {
 };
 
 const App = () => (
+  <ErrorBoundary>
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="sparcom-theme">
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -177,6 +182,7 @@ const App = () => (
     </TooltipProvider>
   </QueryClientProvider>
   </ThemeProvider>
+  </ErrorBoundary>
 );
 
 export default App;

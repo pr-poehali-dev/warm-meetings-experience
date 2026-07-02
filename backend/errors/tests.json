@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "POST приём ошибки фронта",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "source": "frontend",
+        "level": "warning",
+        "message": "Test error from tests.json",
+        "url": "/test",
+        "user_agent": "test-runner"
+      },
+      "expectedStatus": 200
+    },
+    {
+      "name": "GET без админ-токена → 403",
+      "method": "GET",
+      "path": "/?limit=10",
+      "expectedStatus": 403
+    }
+  ]
+}

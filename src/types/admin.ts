@@ -24,7 +24,8 @@ export type ViewType =
   | "notifications"
   | "mailings"
   | "notification-hub"
-  | "merge-accounts";
+  | "merge-accounts"
+  | "errors";
 
 export interface AdminEvent {
   id?: number;

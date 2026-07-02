@@ -29,6 +29,7 @@ import AdminNotifications from "@/components/admin/AdminNotifications";
 import AdminMailings from "@/components/admin/AdminMailings";
 import AdminNotificationHub from "@/components/admin/AdminNotificationHub";
 import AdminMergeAccounts from "@/components/admin/AdminMergeAccounts";
+import AdminErrors from "@/components/admin/AdminErrors";
 
 
 export default function Admin() {
@@ -143,6 +144,8 @@ export default function Admin() {
         return <AdminNotificationHub />;
       case "merge-accounts":
         return <AdminMergeAccounts />;
+      case "errors":
+        return <AdminErrors />;
       default:
         return null;
     }

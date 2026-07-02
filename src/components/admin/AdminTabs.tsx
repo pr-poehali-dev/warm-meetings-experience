@@ -218,6 +218,12 @@ const NAV: NavGroup[] = [
         icon: "SlidersHorizontal",
         hint: "Общие параметры",
       },
+      {
+        view: "errors",
+        label: "Журнал ошибок",
+        icon: "Bug",
+        hint: "Ошибки сайта и сервера",
+      },
     ],
   },
 ];

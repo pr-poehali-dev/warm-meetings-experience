@@ -1,4 +1,5 @@
 {
+  "errors": "https://functions.poehali.dev/be5d8e75-ef47-40c3-a99b-5e09b3d83995",
   "notification-hub": "https://functions.poehali.dev/97c298d6-818a-47f3-8061-6a5d49c7375b",
   "merge-accounts": "https://functions.poehali.dev/832b8fe2-55d9-4f1c-9d1e-4647ff305f32",
   "yookassa-yookassa": "https://functions.poehali.dev/6a6dd242-fee5-4b7d-a8dc-676e8adfd2f9",
