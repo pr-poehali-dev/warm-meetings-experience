@@ -217,11 +217,13 @@ def handle_events(event, method, params, schema, headers):
         bath_address = (body.get('bath_address') or '').replace("'", "''")
         price_label = (body.get('price_label') or body.get('price') or '').replace("'", "''")
 
+        event_parent_type_val = (body.get('event_parent_type') or '').replace("'", "''")
+        event_parent_type_sql = f"'{event_parent_type_val}'" if event_parent_type_val else 'NULL'
         cur.execute(f"""
             INSERT INTO {schema}.events (
                 title, slug, short_code, short_description, full_description, description,
                 event_date, start_time, end_time,
-                event_type, event_type_icon, occupancy,
+                event_type, event_type_icon, event_parent_type, occupancy,
                 bath_name, bath_address, image_url,
                 price, price_amount, price_label,
                 total_spots, spots_left, featured, is_visible,
@@ -229,7 +231,7 @@ def handle_events(event, method, params, schema, headers):
             ) VALUES (
                 '{title}', '{slug}', '{short_code}', '{short_desc}', '{full_desc}', '{description}',
                 '{body.get('event_date')}', '{body.get('start_time', '19:00')}', '{body.get('end_time', '23:00')}',
-                '{body.get('event_type', 'знакомство')}', '{body.get('event_type_icon', 'Users')}', '{body.get('occupancy', 'low')}',
+                '{body.get('event_type', 'знакомство')}', '{body.get('event_type_icon', 'Users')}', {event_parent_type_sql}, '{body.get('occupancy', 'low')}',
                 '{bath_name}', '{bath_address}', '{body.get('image_url', '')}',
                 '{price_label}', {body.get('price_amount', 0)}, '{price_label}',
                 {body.get('total_spots', 10)}, {body.get('spots_left', 10)}, {body.get('featured', False)}, {body.get('is_visible', True)},
@@ -256,6 +258,10 @@ def handle_events(event, method, params, schema, headers):
             if field in body:
                 val = str(body[field]).replace("'", "''")
                 sets.append(f"{field} = '{val}'")
+
+        if 'event_parent_type' in body:
+            pt = (body['event_parent_type'] or '').replace("'", "''")
+            sets.append(f"event_parent_type = '{pt}'" if pt else "event_parent_type = NULL")
 
         for field in ['price_amount', 'total_spots', 'spots_left']:
             if field in body:

@@ -20,6 +20,7 @@ export default function LiveEditorHero({ fd, set, showSensitive = false }: Props
   const [showPhotoBank, setShowPhotoBank] = useState(false);
   const [customInput, setCustomInput] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customParentType, setCustomParentType] = useState('');
   const { addRecent } = useRecentPhotos();
   const { types } = useEventTypes();
 
@@ -89,67 +90,84 @@ export default function LiveEditorHero({ fd, set, showSensitive = false }: Props
 
       {/* Type selector dropdown */}
       {showTypeSelector && (
-        <div className="border rounded-b-lg bg-background shadow-md p-3 mb-0 z-10 relative">
-          <p className="text-xs text-muted-foreground mb-2 font-medium">Тип мероприятия</p>
-          <div className="flex flex-wrap gap-2">
-            {types.map((t) => (
+        <div className="border rounded-b-lg bg-background shadow-md p-4 mb-0 z-10 relative">
+          <p className="text-xs text-muted-foreground mb-3 font-medium">Тип мероприятия</p>
+          <div className="grid grid-cols-3 gap-2">
+            {types.filter(t => t.value !== 'другое').map((t) => (
               <button
                 key={t.value}
                 type="button"
                 onClick={() => {
-                  set({ event_type: t.value, event_type_icon: t.icon });
+                  set({ event_type: t.value, event_type_icon: t.icon, event_parent_type: null });
                   setShowTypeSelector(false);
                   setShowCustomInput(false);
                 }}
-                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${
                   fd.event_type === t.value
                     ? "bg-primary text-primary-foreground border-primary"
                     : "border-border hover:bg-muted"
                 }`}
               >
-                <Icon name={t.icon} size={13} />
-                {t.label}
+                <Icon name={t.icon as "Flame"} size={20} />
+                <span className="text-xs font-medium leading-tight text-center">{t.label}</span>
               </button>
             ))}
             <button
               type="button"
               onClick={() => setShowCustomInput(!showCustomInput)}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-dashed border-primary text-primary hover:bg-primary/5 transition-colors"
+              className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border border-dashed transition-all ${
+                showCustomInput ? "border-primary bg-primary/5 text-primary" : "border-border hover:bg-muted text-muted-foreground"
+              }`}
             >
-              <Icon name="Plus" size={13} />
-              Свой тип
+              <Icon name="Plus" size={20} />
+              <span className="text-xs font-medium">Свой тип</span>
             </button>
           </div>
           {showCustomInput && (
-            <div className="flex gap-2 mt-2">
+            <div className="mt-3 space-y-2 border-t pt-3">
+              <p className="text-xs text-muted-foreground">Название вашего типа</p>
               <Input
-                className="h-7 text-xs"
-                placeholder="Например: Женская, Нетворкинг..."
+                className="h-8 text-xs"
+                placeholder="Например: Женская баня, Детокс..."
                 value={customInput}
                 onChange={(e) => setCustomInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && customInput.trim()) {
-                    set({ event_type: customInput.trim(), event_type_icon: 'Circle' });
-                    setShowTypeSelector(false);
-                    setShowCustomInput(false);
-                    setCustomInput('');
-                  }
-                }}
                 maxLength={100}
+                autoFocus
               />
+              <p className="text-xs text-muted-foreground">Родительский тип (для фильтрации)</p>
+              <div className="flex flex-wrap gap-1.5">
+                {types.filter(t => t.value !== 'другое').map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setCustomParentType(customParentType === t.value ? '' : t.value)}
+                    className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                      customParentType === t.value
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border hover:bg-muted"
+                    }`}
+                  >
+                    <Icon name={t.icon as "Flame"} size={11} />
+                    {t.label}
+                  </button>
+                ))}
+              </div>
               <button
                 type="button"
+                disabled={!customInput.trim()}
                 onClick={() => {
                   if (customInput.trim()) {
-                    set({ event_type: customInput.trim(), event_type_icon: 'Circle' });
+                    const parentIcon = types.find(t => t.value === customParentType)?.icon || 'Circle';
+                    set({ event_type: customInput.trim(), event_type_icon: parentIcon, event_parent_type: customParentType || null });
                     setShowTypeSelector(false);
                     setShowCustomInput(false);
                     setCustomInput('');
+                    setCustomParentType('');
                   }
                 }}
-                className="text-xs px-3 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                className="w-full text-xs py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40"
               >
-                Готово
+                Применить
               </button>
             </div>
           )}

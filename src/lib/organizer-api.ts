@@ -34,6 +34,7 @@ export interface OrgEvent {
   is_visible: boolean;
   event_type: string;
   event_type_icon: string;
+  event_parent_type?: string | null;
   organizer_id: number;
   signups_count: number;
   paid_count: number;
