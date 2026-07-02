@@ -54,11 +54,22 @@ def err(message, status=400):
     return respond(status, {'error': message})
 
 # --- Process-local memo cache (TTL) ---
+#
+# Простой in-memory кэш для счётчиков публичных списков и справочников.
+# Живёт в памяти Cloud Function между холодными стартами (пока контейнер тёплый).
+# Не подходит для авторизованных персональных данных — используй только для
+# того, что одинаково для всех клиентов: total публичных списков, справочники,
+# агрегаты по событиям/мастерам/баням.
+#
+# Использование:
+#     from shared import cached
+#     total = cached('events:total', 60, lambda: _query_events_total(cur, schema))
 
-_MEMO: dict = {}
+_MEMO: dict = {}  # key -> (expires_at_ts, value)
 
 
 def memo_get(key: str):
+    """Возвращает значение из кэша, если не протухло. Иначе None."""
     item = _MEMO.get(key)
     if not item:
         return None
@@ -70,11 +81,13 @@ def memo_get(key: str):
 
 
 def memo_set(key: str, value, ttl_seconds: int = 60):
+    """Кладёт значение в кэш с TTL (по умолчанию 60 секунд)."""
     _MEMO[key] = (time.time() + max(1, int(ttl_seconds)), value)
     return value
 
 
 def memo_invalidate(prefix: str = ''):
+    """Сбрасывает кэш (полностью или по префиксу ключа)."""
     if not prefix:
         _MEMO.clear()
         return
@@ -84,7 +97,10 @@ def memo_invalidate(prefix: str = ''):
 
 
 def cached(key: str, ttl_seconds: int, loader):
-    """Вернуть из кэша или вызвать loader() и закэшировать."""
+    """Удобная обёртка: вернуть из кэша или вызвать loader() и закэшировать.
+
+    loader — callable без аргументов, возвращающий JSON-сериализуемое значение.
+    """
     hit = memo_get(key)
     if hit is not None:
         return hit
@@ -245,8 +261,50 @@ def tg_send(chat_id, text, token=None, parse_mode='HTML'):
     return False
 
 def tg_notify_admin(text, token=None):
-    """Уведомление администратору (TELEGRAM_CHAT_ID)."""
-    return tg_send(os.environ.get('TELEGRAM_CHAT_ID', ''), text, token=token)
+    """Уведомление администратору (TELEGRAM_CHAT_ID).
+
+    Всегда шлём через АДМИН-бота (TELEGRAM_BOT_TOKEN), а не через бота
+    публикаций (TG_PUBLISH_BOT_TOKEN). Иначе уведомления поддержки уходят
+    от имени бота организатора и могут не доставляться.
+    """
+    admin_token = token or os.environ.get('TELEGRAM_BOT_TOKEN', '')
+    return tg_send(os.environ.get('TELEGRAM_CHAT_ID', ''), text, token=admin_token)
+
+# --- VK (сообщения сообщества) ---
+
+def vk_send(vk_user_id, text):
+    """Личное сообщение ВКонтакте от имени сообщества. True/False, не падает."""
+    token = os.environ.get('VK_COMMUNITY_TOKEN', '')
+    community_id = os.environ.get('VK_COMMUNITY_ID', '0')
+    if not token or not vk_user_id:
+        return False
+    import random as _random
+    import urllib.parse as _urlparse
+    params = {
+        'peer_id': str(int(vk_user_id)),
+        'message': text,
+        'random_id': str(_random.randint(1, 2 ** 31)),
+        'access_token': token,
+        'v': '5.199',
+    }
+    if community_id and community_id != '0':
+        params['group_id'] = str(int(community_id))
+    payload = _urlparse.urlencode(params).encode('utf-8')
+    req = urllib.request.Request(
+        'https://api.vk.com/method/messages.send',
+        data=payload,
+        headers={'Content-Type': 'application/x-www-form-urlencoded'},
+    )
+    try:
+        resp = urllib.request.urlopen(req, timeout=6)
+        result = json.loads(resp.read().decode('utf-8'))
+        if 'error' in result:
+            print(f'[vk_send] error vk_id={vk_user_id}: {result["error"]}')
+            return False
+        return True
+    except Exception as e:
+        print(f'[vk_send] exception vk_id={vk_user_id}: {e}')
+        return False
 
 # --- Email (Unisender Go) ---
 
@@ -288,10 +346,12 @@ def send_email(to_email, subject, body_html, to_name=None, tags=None):
     try:
         resp = urllib.request.urlopen(req, timeout=10)
         raw = resp.read().decode('utf-8', 'replace')
+        # Unisender Go даже при HTTP 200 может вернуть отказ по получателю.
         try:
             data = json.loads(raw)
         except Exception:
             data = {}
+        # Успех: status == 'success' ИЛИ есть failed_emails пустой/отсутствует.
         failed = data.get('failed_emails') or {}
         if data.get('status') == 'error' or failed:
             print(f'[send_email] FAIL to={to_email}: provider_resp={raw[:500]}')
@@ -312,3 +372,98 @@ def send_email(to_email, subject, body_html, to_name=None, tags=None):
 def admin_email():
     """Email администратора для уведомлений (env SUPPORT_ADMIN_EMAIL или UNISENDER_SENDER_EMAIL)."""
     return os.environ.get('SUPPORT_ADMIN_EMAIL') or os.environ.get('UNISENDER_SENDER_EMAIL', '')
+
+# --- Error logging (журнал ошибок бэкенда) ---
+
+_ERR_ALERT_TS: dict = {}  # fingerprint -> last alert ts (антиспам в рамках процесса)
+_ERR_ALERT_COOLDOWN = 15 * 60
+
+
+def log_backend_error(function_name, message, stack=None, context=None, level='error'):
+    """Пишет ошибку серверной функции в error_logs и шлёт алерт в Telegram.
+
+    Никогда не бросает исключение — безопасно вызывать из except.
+    Дедуплицирует по fingerprint (function_name + message) за последние 24ч.
+    """
+    try:
+        fp_raw = f"backend|{(message or '')[:200]}|{function_name or ''}"
+        fp = hashlib.sha256(fp_raw.encode('utf-8')).hexdigest()[:32]
+        ctx_json = None
+        if context is not None:
+            try:
+                ctx_json = json.dumps(context, ensure_ascii=False, default=str)[:8000]
+            except (TypeError, ValueError):
+                ctx_json = None
+
+        conn = get_conn()
+        try:
+            schema = get_schema()
+            cur = get_cursor(conn)
+            cur.execute(f"""
+                UPDATE {schema}.error_logs
+                SET count = count + 1, last_seen_at = NOW(), resolved = false
+                WHERE fingerprint = '{fp}' AND last_seen_at > NOW() - INTERVAL '24 hours'
+                RETURNING id, count
+            """)
+            row = cur.fetchone()
+            if row:
+                new_count = row['count']
+            else:
+                cur.execute(f"""
+                    INSERT INTO {schema}.error_logs
+                        (source, level, message, stack, function_name, fingerprint, context)
+                    VALUES ('backend', {_esc(level)}, {_esc((message or 'Unknown')[:2000])},
+                            {_esc(stack[:8000] if stack else None)}, {_esc((function_name or '')[:120])},
+                            '{fp}', {_esc(ctx_json)})
+                    RETURNING id, count
+                """)
+                r = cur.fetchone()
+                new_count = r['count'] if r else 1
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Telegram-алерт с антиспамом
+        now = time.time()
+        if level in ('error', 'fatal', 'critical') and now - _ERR_ALERT_TS.get(fp, 0) >= _ERR_ALERT_COOLDOWN:
+            _ERR_ALERT_TS[fp] = now
+            repeat = f"\n<b>Повторов:</b> {new_count}" if new_count and new_count > 1 else ''
+            tg_notify_admin(
+                f"🔴 <b>Ошибка · Бэкенд</b>\n\n"
+                f"<b>{(message or 'Unknown')[:300]}</b>\n"
+                f"<i>{(function_name or '')[:120]}</i>{repeat}"
+            )
+    except Exception as e:
+        # логирование ошибок не должно ронять функцию
+        print(f'[log_backend_error] failed: {e}')
+
+
+def with_error_logging(function_name):
+    """Декоратор для handler: ловит любые падения, логирует и возвращает 500.
+
+    Использование:
+        @with_error_logging('masters-api')
+        def handler(event, context):
+            ...
+    """
+    import functools
+    import traceback
+
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(event, context):
+            try:
+                return fn(event, context)
+            except Exception as e:
+                method = (event or {}).get('httpMethod', '')
+                path = (event or {}).get('queryStringParameters') or {}
+                log_backend_error(
+                    function_name,
+                    f"{type(e).__name__}: {e}",
+                    stack=traceback.format_exc(),
+                    context={'method': method, 'query': path,
+                             'request_id': getattr(context, 'request_id', None)},
+                )
+                return respond(500, {'error': 'Внутренняя ошибка сервера'})
+        return wrapper
+    return decorator

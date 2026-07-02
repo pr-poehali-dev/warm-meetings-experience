@@ -7,6 +7,7 @@ import psycopg2.extras
 import requests
 
 from shared import *
+from err_log import with_error_logging
 
 TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
 
@@ -33,6 +34,7 @@ def get_user_and_roles(cur, schema, token):
     return dict(user), roles
 
 
+@with_error_logging('blog-articles')
 def handler(event, context):
     """API для статей блога: чтение, создание, редактирование, модерация"""
     if event.get('httpMethod') == 'OPTIONS':

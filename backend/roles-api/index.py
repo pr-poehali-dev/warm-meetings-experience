@@ -9,8 +9,10 @@ import psycopg2.extras
 import requests
 
 from shared import *
+from err_log import with_error_logging
 
 
+@with_error_logging('roles-api')
 def handler(event, context):
     """Система ролей: получение ролей пользователя, прогресса, бейджей, подача заявок и администрирование"""
     if event.get('httpMethod') == 'OPTIONS':

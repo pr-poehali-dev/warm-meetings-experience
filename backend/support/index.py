@@ -17,6 +17,7 @@ from shared import (
     get_user_from_token, verify_admin_token,
     send_email, admin_email, audit_log,
 )
+from err_log import with_error_logging
 
 
 def _hub_notify_admin(event_type, variables):
@@ -734,6 +735,7 @@ def admin_stats(cur, schema):
     })
 
 
+@with_error_logging('support')
 def handler(event, context):
     """Поддержка пользователей: FAQ, тикеты, переписка, админка"""
     if event.get('httpMethod') == 'OPTIONS':

@@ -1,5 +1,7 @@
 import json  # noqa
+import traceback
 from shared import CORS_HEADERS, options_response, get_schema
+from err_log import log_backend_error
 from profile import handle_profile
 from calendar_mod import handle_calendar
 from bookings import handle_bookings_root, handle_reviews
@@ -37,4 +39,7 @@ def handler(event, context):
         # profile / без resource — старое поведение
         return handle_profile(event, method, params, schema, headers)
     except Exception as e:
+        log_backend_error('masters-api', f'{type(e).__name__}: {e}',
+                          stack=traceback.format_exc(),
+                          context={'method': method, 'resource': resource})
         return {'statusCode': 500, 'headers': headers, 'body': json.dumps({'error': str(e)})}

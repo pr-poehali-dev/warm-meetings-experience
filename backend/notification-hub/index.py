@@ -28,12 +28,14 @@ from shared import (
     get_conn, get_schema, options_response, respond, err,
     verify_admin_token,
 )
+from err_log import with_error_logging
 from engine import send_notification, CHANNELS
 from templates import handle_templates
 from logs import handle_logs
 from user_channels import handle_user_channels
 
 
+@with_error_logging('notification-hub')
 def handler(event, context):
     """Единый движок отправки уведомлений: шаблоны, каналы, лог доставки."""
     if event.get('httpMethod') == 'OPTIONS':

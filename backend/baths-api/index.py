@@ -3,6 +3,7 @@ import os
 import psycopg2
 import psycopg2.extras
 from shared import *
+from err_log import with_error_logging
 
 def row_to_dict(row, cursor):
     import datetime
@@ -15,6 +16,7 @@ def row_to_dict(row, cursor):
             result[col] = val
     return result
 
+@with_error_logging('baths-api')
 def handler(event, context):
     """API для управления банями — список, детали, CRUD, фильтрация"""
     if event.get('httpMethod') == 'OPTIONS':

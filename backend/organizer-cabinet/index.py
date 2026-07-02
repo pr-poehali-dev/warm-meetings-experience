@@ -11,6 +11,7 @@ import psycopg2.extras
 import requests as http_requests
 
 from shared import *
+from err_log import with_error_logging
 
 # build: anon-count-v2
 TG_BOT_URL = "https://functions.poehali.dev/c54f8799-96a5-4519-a2c7-e1b2e5f9d8c1"
@@ -27,6 +28,7 @@ def trigger_tg_publish(event_id, organizer_id):
         pass
 
 
+@with_error_logging('organizer-cabinet')
 def handler(event, context):
     """Личный кабинет организатора: дашборд, события, участники"""
     if event.get('httpMethod') == 'OPTIONS':

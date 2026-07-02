@@ -4,6 +4,7 @@ import psycopg2
 import psycopg2.extras
 
 from shared import *
+from err_log import with_error_logging
 from notify_templates import handle_notify_templates
 
 
@@ -23,6 +24,7 @@ def check_bath_owner(cur, schema, bath_id, user_id):
     return cur.fetchone() is not None
 
 
+@with_error_logging('partner-cabinet')
 def handler(event, context):
     """Кабинет управляющего: управление банями, статистика, верификация"""
     if event.get('httpMethod') == 'OPTIONS':

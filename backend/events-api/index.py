@@ -7,8 +7,10 @@ import psycopg2.extras
 import requests
 
 from shared import *
+from err_log import with_error_logging
 
 
+@with_error_logging('events-api')
 def handler(event, context):
     """API для управления событиями и записями на них"""
     if event.get('httpMethod') == 'OPTIONS':

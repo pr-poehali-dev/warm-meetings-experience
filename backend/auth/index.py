@@ -3,7 +3,9 @@ import os
 import hashlib
 import time
 from shared import options_response, respond, CORS_HEADERS
+from err_log import with_error_logging
 
+@with_error_logging('auth')
 def handler(event, context):
     """Авторизация в админ-панели по паролю"""
     if event.get('httpMethod') == 'OPTIONS':

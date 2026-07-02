@@ -8,6 +8,7 @@ import psycopg2
 import psycopg2.extras
 
 from shared import *
+from err_log import with_error_logging
 
 # ВАЖНО: тяжёлые библиотеки (bcrypt, pyotp, requests) импортируются ЛЕНИВО
 # внутри функций, где реально используются. Это сокращает cold start для
@@ -80,6 +81,7 @@ def check_device_and_notify(cur, schema, user_id, user_email, user_name, ip, use
     return False
 
 
+@with_error_logging('user-auth')
 def handler(event, context):
     """Авторизация пользователей: регистрация, вход, сброс пароля, 2FA"""
     if event.get('httpMethod') == 'OPTIONS':
