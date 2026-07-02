@@ -197,7 +197,7 @@ def handle_restore(event, method, params, schema, headers):
     Если ids не переданы — восстанавливаются все архивные записи мастера."""
     if method != 'POST':
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
-    body = json.loads(event.get('body', '{}'))
+    body = json.loads(event.get('body') or '{}')
     master_id = int(body.get('master_id', 0))
     if not master_id:
         return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'master_id required'})}
@@ -224,7 +224,7 @@ def handle_backup(event, method, params, schema, headers):
     """POST — создать резервную копию записей мастера прямо сейчас. body: { master_id }."""
     if method != 'POST':
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
-    body = json.loads(event.get('body', '{}'))
+    body = json.loads(event.get('body') or '{}')
     master_id = int(body.get('master_id', 0))
     if not master_id:
         return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'master_id required'})}
@@ -247,7 +247,7 @@ def handle_clear(event, method, params, schema, headers):
     if method != 'POST':
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'Method not allowed'})}
 
-    body = json.loads(event.get('body', '{}'))
+    body = json.loads(event.get('body') or '{}')
     master_id = int(body.get('master_id', 0))
     if not master_id:
         return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'master_id required'})}
@@ -341,7 +341,7 @@ def handle_slots(event, method, params, schema, headers):
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps(rows, default=str)}
 
     if method == 'POST':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         master_id = body.get('master_id')
         if not master_id:
             conn.close()
@@ -421,7 +421,7 @@ def handle_slots(event, method, params, schema, headers):
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(row, default=str)}
 
     if method == 'PUT':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         slot_id = int(body['id'])
         new_start = body.get('datetime_start')
         new_end = body.get('datetime_end')
@@ -581,7 +581,7 @@ def handle_slots(event, method, params, schema, headers):
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps(row, default=str)}
 
     if method == 'DELETE':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         slot_id = body.get('id') or params.get('id')
 
         cur.execute(f"SELECT id, status FROM {schema}.master_slots WHERE id = {int(slot_id)}")
@@ -622,7 +622,7 @@ def handle_services(event, method, params, schema, headers):
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps(rows, default=str)}
 
     if method == 'POST':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         master_id = body.get('master_id', 1)
         name = body['name'].replace("'", "''")
         desc = (body.get('description') or '').replace("'", "''")
@@ -650,7 +650,7 @@ def handle_services(event, method, params, schema, headers):
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(row, default=str)}
 
     if method == 'PUT':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         sid = body['id']
         # Проверяем что услуга принадлежит мастеру из тела запроса
         cur.execute(f"SELECT master_id FROM {schema}.master_services WHERE id = {int(sid)}")
@@ -704,7 +704,7 @@ def handle_services(event, method, params, schema, headers):
         return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Nothing to update'})}
 
     if method == 'DELETE':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         sid = body.get('id') or params.get('id')
         cur.execute(f"UPDATE {schema}.master_services SET is_active = false WHERE id = {int(sid)}")
         conn.commit()
@@ -760,7 +760,7 @@ def handle_service_photo(event, method, params, schema, headers):
         return err
 
     if method == 'POST':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         image_data = body.get('image')
         if not image_data:
             conn.close()
@@ -792,7 +792,7 @@ def handle_service_photo(event, method, params, schema, headers):
         return {'statusCode': 200, 'headers': headers, 'body': _json.dumps({'url': url, 'photos': photos})}
 
     if method == 'DELETE':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         url_to_remove = body.get('url')
         cur.execute(f"SELECT photos FROM {schema}.master_services WHERE id = {int(sid)}")
         row = cur.fetchone()
@@ -841,7 +841,7 @@ def handle_templates(event, method, params, schema, headers):
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps(rows, default=str)}
 
     if method == 'POST':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         master_id = body.get('master_id', 1)
         name = body['name'].replace("'", "''")
         rules = body.get('rules', [])
@@ -895,7 +895,7 @@ def handle_templates(event, method, params, schema, headers):
         return {'statusCode': 201, 'headers': headers, 'body': json.dumps(row, default=str)}
 
     if method == 'PUT':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         tmpl_id = body['id']
         if 'name' in body:
             name = body['name'].replace("'", "''")
@@ -925,7 +925,7 @@ def handle_templates(event, method, params, schema, headers):
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'success': True})}
 
     if method == 'DELETE':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         tmpl_id = body.get('id') or params.get('id')
         cur.execute(f"DELETE FROM {schema}.master_template_rules WHERE template_id = {int(tmpl_id)}")
         cur.execute(f"DELETE FROM {schema}.master_schedule_templates WHERE id = {int(tmpl_id)}")
@@ -948,7 +948,7 @@ def handle_apply_template(event, method, params, schema, headers):
     if method != 'POST':
         return {'statusCode': 405, 'headers': headers, 'body': json.dumps({'error': 'POST only'})}
 
-    body = json.loads(event.get('body', '{}'))
+    body = json.loads(event.get('body') or '{}')
     master_id = body.get('master_id')
     if not master_id:
         return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'master_id обязателен'})}
@@ -1496,7 +1496,7 @@ def handle_settings(event, method, params, schema, headers):
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps(row, default=str)}
 
     if method in ('POST', 'PUT'):
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         master_id = body.get('master_id', 1)
 
         cur.execute(f"SELECT id FROM {schema}.master_calendar_settings WHERE master_id = {int(master_id)}")
@@ -1568,7 +1568,7 @@ def handle_blocks(event, method, params, schema, headers):
         return {'statusCode': 200, 'headers': headers, 'body': json.dumps(rows, default=str)}
 
     if method == 'POST':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         master_id = body.get('master_id', 1)
         block_date = body['block_date']
         block_end_date = body.get('block_end_date')
@@ -1656,7 +1656,7 @@ def handle_blocks(event, method, params, schema, headers):
         })}
 
     if method == 'DELETE':
-        body = json.loads(event.get('body', '{}'))
+        body = json.loads(event.get('body') or '{}')
         block_id = body.get('id') or params.get('id')
 
         cur.execute(f"""
